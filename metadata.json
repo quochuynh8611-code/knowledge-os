@@ -1,0 +1,6 @@
+{
+  "name": "Dashboard Quản Lý Nghiên Cứu Phật Học & Huyền Học",
+  "description": "Nền tảng hệ thống hóa, quản lý ghi chú, theo dõi tiến độ và đồ thị tri thức cho nghiên cứu Phật học (Abhidharma, Tam Tạng, Thiền định) và Huyền học phương Đông (Kỳ Môn, Thái Ất, Phong Thủy, Tử Vi, Kinh Dịch).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
