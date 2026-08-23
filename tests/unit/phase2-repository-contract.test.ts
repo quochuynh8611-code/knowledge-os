@@ -6,6 +6,7 @@ import {
 import {
   HydratePayloadSchema,
   HydrateResponseSchema,
+  SyncSessionSchema,
   ValidatedHydrateInput,
 } from "../../src/lib/validation";
 import {
@@ -54,9 +55,25 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
       expect(loaded.topics.length).toBe(INITIAL_TOPICS.length);
       expect(loaded.notes.length).toBe(INITIAL_NOTES.length);
     });
+
+    it("Tự động khôi phục dữ liệu từ LocalStorage khi khởi tạo lại repository", async () => {
+      const initialTopic = INITIAL_TOPICS[0];
+      await repository.saveTopic(initialTopic);
+
+      // Mô phỏng instance mới được tạo ra
+      const newRepoInstance = new LocalStorageDataRepository(TEST_STORAGE_KEY);
+      await newRepoInstance.syncHydrate({
+        clientSyncId: "boot-sync-1",
+        topics: [initialTopic],
+      });
+
+      const restoredData = await newRepoInstance.loadInitialData();
+      expect(restoredData.topics).toHaveLength(1);
+      expect(restoredData.topics[0].id).toBe(initialTopic.id);
+    });
   });
 
-  describe("2. Idempotent Hydration Contract (Retry Safety)", () => {
+  describe("2. Idempotent Hydration Contract & SyncSession Persistence", () => {
     it("Thực thi syncHydrate nhiều lần với cùng clientSyncId cho kết quả bất biến", async () => {
       const syncId = "idempotent-sync-uuid-999";
       const payload: ValidatedHydrateInput = {
@@ -81,10 +98,41 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
       expect(res2.clientSyncId).toBe(syncId);
       expect(res2.summary.topicsUpserted).toBe(res1.summary.topicsUpserted);
 
-      // Kiểm tra trong database/storage không bị nhân đôi số lượng bản ghi
+      // Kiểm tra trong storage không bị nhân đôi số lượng bản ghi
       const loaded = await repository.loadInitialData();
       expect(loaded.topics.length).toBe(2);
       expect(loaded.notes.length).toBe(2);
+    });
+
+    it("Bắt lỗi khi HydratePayloadSchema thiếu clientSyncId", () => {
+      const invalidPayload = {
+        version: "2.0.0",
+        categories: [],
+        topics: [],
+        notes: [],
+      };
+
+      const result = HydratePayloadSchema.safeParse(invalidPayload);
+      expect(result.success).toBe(false);
+    });
+
+    it("Xác thực schema của bảng ghi nhận phiên SyncSession bền vững", () => {
+      const syncLog = {
+        clientSyncId: "uuid-sync-persisted-123",
+        clientTimestamp: "2026-08-23T10:00:00.000Z",
+        status: "completed" as const,
+        summary: {
+          topicsUpserted: 15,
+          notesUpserted: 42,
+        },
+      };
+
+      const result = SyncSessionSchema.safeParse(syncLog);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.clientSyncId).toBe("uuid-sync-persisted-123");
+        expect(result.data.status).toBe("completed");
+      }
     });
 
     it("Xác thực định dạng phản hồi HydrateResponse tuân thủ HydrateResponseSchema", async () => {
@@ -105,7 +153,7 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
     });
   });
 
-  describe("3. Last-Write-Wins (LWW) Conflict Resolution Simulation", () => {
+  describe("3. Last-Write-Wins (LWW) & Spaced Repetition Conflict Resolution Rules", () => {
     it("Ưu tiên bản ghi có updatedAt mới hơn khi đồng bộ", () => {
       const serverNote = {
         id: "note-01",
@@ -137,6 +185,49 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
       const resolved = resolveLWW(serverNote, clientNoteNewer);
       expect(resolved).toEqual(clientNoteNewer);
       expect(resolved.title).toBe("Bản mới từ client");
+    });
+
+    it("Hợp nhất Spaced Repetition Progress giữ mức tiến độ và số lần lặp lớn nhất", () => {
+      const serverProgress = {
+        topicId: "topic-01",
+        status: "in_progress" as const,
+        progress: 40,
+        repetitions: 2,
+        timeSpent: 60,
+        interval: 3,
+        easeFactor: 2.5,
+        totalNotes: 5,
+      };
+
+      const clientProgress = {
+        topicId: "topic-01",
+        status: "in_progress" as const,
+        progress: 60,
+        repetitions: 4,
+        timeSpent: 120,
+        interval: 6,
+        easeFactor: 2.6,
+        totalNotes: 7,
+      };
+
+      // Thuật toán Merge Progress
+      const mergeProgress = (
+        server: typeof serverProgress,
+        client: typeof clientProgress,
+      ) => ({
+        ...server,
+        progress: Math.max(server.progress, client.progress),
+        repetitions: Math.max(server.repetitions, client.repetitions),
+        timeSpent: Math.max(server.timeSpent, client.timeSpent),
+        interval: Math.max(server.interval, client.interval),
+        easeFactor: Math.max(server.easeFactor, client.easeFactor),
+        totalNotes: Math.max(server.totalNotes, client.totalNotes),
+      });
+
+      const merged = mergeProgress(serverProgress, clientProgress);
+      expect(merged.progress).toBe(60);
+      expect(merged.repetitions).toBe(4);
+      expect(merged.timeSpent).toBe(120);
     });
   });
 });

@@ -280,6 +280,19 @@ export const HydrateResponseSchema = z.object({
   }),
 });
 
+// ==========================================
+// 11. PERSISTENT SYNC SESSION SCHEMA (IDEMPOTENCY LOG)
+// ==========================================
+
+export const SyncSessionSchema = z.object({
+  id: z.string().optional(),
+  clientSyncId: z.string().min(1, "clientSyncId không được để trống"),
+  clientTimestamp: z.string(),
+  processedAt: z.string().default(() => new Date().toISOString()),
+  status: z.enum(["pending", "completed", "failed"]).default("completed"),
+  summary: z.record(z.string(), z.unknown()).optional().default({}),
+});
+
 export type ValidatedTopic = z.infer<typeof TopicSchema>;
 export type ValidatedTopicCreate = z.infer<typeof TopicCreateSchema>;
 export type ValidatedNote = z.infer<typeof NoteSchema>;
@@ -295,3 +308,4 @@ export type ValidatedImportExportPayload = z.infer<
 export type ValidatedHydratePayload = z.infer<typeof HydratePayloadSchema>;
 export type ValidatedHydrateInput = z.input<typeof HydratePayloadSchema>;
 export type ValidatedHydrateResponse = z.infer<typeof HydrateResponseSchema>;
+export type ValidatedSyncSession = z.infer<typeof SyncSessionSchema>;

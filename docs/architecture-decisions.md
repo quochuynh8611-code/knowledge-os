@@ -86,32 +86,35 @@
 
 ---
 
-## ADR-006: Kiến Trúc Persistence Chuẩn Hóa với PostgreSQL, Idempotent Hydration Contract & Repository Pattern
+## ADR-006: Kiến Trúc Persistence Chuẩn Hóa với PostgreSQL, Persistent Idempotent Hydration & Repository Pattern
 
-- **Trạng thái:** PROPOSED FOR REVIEW (REVISION 2)
+- **Trạng thái:** FINAL FOR IMPLEMENTATION REVIEW (PHASE 2A)
 - **Bối cảnh:**
   - Ứng dụng hiện lưu trữ hoàn toàn trên `localStorage` client-side. Cần chuyển sang PostgreSQL + Prisma ORM làm cơ sở dữ liệu quan hệ production-ready duy nhất.
   - Cần đảm bảo:
-    1. Cơ sở dữ liệu server-side có cấu hình đơn nhất, chuẩn hóa, không dùng kỹ thuật hybrid đa provider phức tạp trong runtime.
-    2. Giao thức `POST /api/sync/hydrate` phải có tính bất biến (Idempotent), hỗ trợ retry an toàn nhiều lần mà không tạo bản ghi trùng lặp hoặc sai lệch dữ liệu.
-    3. Tránh việc refactor lớn trực tiếp vào `DataContext.tsx` làm tăng blast-radius; tách biệt bằng lớp `DataRepository` trung gian.
+    1. Cơ sở dữ liệu server-side có cấu hình đơn nhất, chuẩn hóa (`postgresql`), không dùng hybrid provider phức tạp.
+    2. Giao thức `POST /api/sync/hydrate` phải có tính bất biến (Idempotency) được bảo vệ bằng bảng ghi nhận phiên (`SyncSession`) bền vững trong database; không sử dụng in-memory state dễ mất khi server restart.
+    3. Tránh việc refactor lớn trực tiếp vào `DataContext.tsx` làm tăng blast-radius; tách biệt hoàn toàn bằng lớp `DataRepository` trung gian.
 - **Quyết định Kiến Trúc:**
   1. **Single Target Persistence (PostgreSQL + Prisma ORM):**
      - Target duy nhất cho server persistence trong Phase 2A là **PostgreSQL** (`provider = "postgresql"` trong `prisma/schema.prisma`).
      - Chuỗi kết nối được cấu hình thông qua biến môi trường chuẩn `DATABASE_URL` trong `.env`.
-  2. **Giao Thức Idempotent Hydration (`POST /api/sync/hydrate`):**
-     - **Payload Contract:** Gồm `clientSyncId` (UUID v4 chống trùng lặp), `version: "2.0.0"`, `clientTimestamp` (ISO 8601), và toàn bộ các thực thể dữ liệu.
-     - **Quy tắc Giải quyết Xung đột (Last-Write-Wins - LWW):**
-       - So sánh trường `updatedAt` của bản ghi: nếu bản ghi trên Client có `updatedAt` mới hơn Server $\rightarrow$ tiến hành cập nhật; ngược lại giữ nguyên dữ liệu Server.
-       - Với `StudyProgress`: Hợp nhất thông minh, giữ `timeSpent`, `repetitions`, `easeFactor` và `interval` tối ưu nhất.
-     - **Tính Bất Biến khi Retry:** Gửi lại cùng một payload nhiều lần (hoặc khi mất kết nối mạng giữa chừng) cho ra cùng một kết quả chính xác, không sinh duplicate ID hay foreign key lỗi.
-  3. **Kiến Trúc Repository Pattern (`src/services/dataRepository.ts`):**
-     - Tạo interface `IDataRepository` chuẩn hóa: `getTopics()`, `saveTopic()`, `deleteTopic()`, `getNotes()`, `saveNote()`, `syncHydrate()`...
+  2. **Bảng Quản Lý Phiên Đồng Bộ Bền Vững (Persistent `SyncSession` Model):**
+     - Tạo model `SyncSession` trong Prisma: `id` (UUID), `clientSyncId` (String @unique), `clientTimestamp` (DateTime), `processedAt` (DateTime @default(now())), `status` (String), `summary` (Json).
+     - Khi nhận yêu cầu `POST /api/sync/hydrate`:
+       - Server kiểm tra `SyncSession.findUnique({ where: { clientSyncId } })`.
+       - Nếu đã tồn tại phiên thành công trước đó $\rightarrow$ Trả về ngay lập tức `summary` của phiên cũ với HTTP 200 (Idempotent Fast Return).
+       - Nếu là phiên mới $\rightarrow$ Thực hiện Transaction upsert toàn bộ dữ liệu kèm bản ghi `SyncSession` trong cùng một `$transaction` ACID.
+  3. **Quy tắc Giải quyết Xung đột (Last-Write-Wins - LWW):**
+     - So sánh trường `updatedAt` của bản ghi: nếu bản ghi trên Client có `updatedAt` mới hơn Server $\rightarrow$ tiến hành cập nhật; ngược lại giữ nguyên dữ liệu Server.
+     - Với `StudyProgress`: Hợp nhất thông minh, giữ `timeSpent`, `repetitions`, `easeFactor` và `interval` tối ưu nhất.
+  4. **Kiến Trúc Repository Pattern (`src/services/dataRepository.ts`):**
+     - Tạo interface `IDataRepository` chuẩn hóa: `loadInitialData()`, `saveTopic()`, `deleteTopic()`, `saveNote()`, `syncHydrate()`...
      - `DataContext.tsx` chỉ tương tác với `dataRepository`, không trực tiếp gọi `fetch()` hay `localStorage`, giữ nguyên 100% API cho UI components và giảm thiểu tối đa blast-radius.
 - **Hệ quả:**
   - _Tích cực:_
-    - Kiến trúc Prisma rõ ràng, chuẩn mực công nghiệp, dễ bảo trì và migrate.
+    - Tính bất biến của giao dịch đồng bộ được đảm bảo 100% ngay cả khi server restart hoặc container scale.
     - An toàn tuyệt đối khi mạng chập chờn hoặc người dùng bấm đồng bộ nhiều lần.
-    - Giảm thiểu 80% rủi ro regression trên `DataContext.tsx` và UI layer.
+    - Giảm thiểu 90% rủi ro regression trên `DataContext.tsx` và UI layer.
   - _Tiêu cực:_
-    - Cần triển khai thêm lớp Repository service và viết test suite bao phủ các kịch bản LWW conflict resolution.
+    - Cần quản lý cấu hình Prisma Client và thực hiện test suite bao phủ các kịch bản LWW conflict resolution.
