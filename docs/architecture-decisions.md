@@ -118,3 +118,34 @@
     - Giảm thiểu 90% rủi ro regression trên `DataContext.tsx` và UI layer.
   - _Tiêu cực:_
     - Cần quản lý cấu hình Prisma Client và thực hiện test suite bao phủ các kịch bản LWW conflict resolution.
+
+---
+
+## ADR-007: Database Seeding, Snapshot Backup/Restore API, and DB Health Probes
+
+- **Trạng thái:** ACCEPTED / APPROVED SPEC (PHASE 2B)
+- **Bối cảnh:**
+  - Sau khi hoàn tất Phase 2A (PostgreSQL Persistence & DataContext Wiring), hệ thống cần chuẩn hóa cơ chế nạp dữ liệu nền tảng (Seeding), cung cấp API xuất/nhập sao lưu toàn diện (Snapshot Backup/Restore), và kiểm tra độ trễ kết nối database runtime (`/api/health/db`).
+- **Quyết định Kiến Trúc:**
+  1. **Idempotent Seeding với Canonical Dataset (`prisma/seed.ts`):**
+     - Khóa cứng dataset chuẩn mực từ `src/data/initialData.ts`: **8 Categories, 35 Topics (chứa lồng StudyProgress & KnowledgeLinks), 5 Notes, 4 Resources, 12 Tags** (Tổng cộng 64 thực thể).
+     - Sử dụng `prisma.category.upsert()`, `prisma.topic.upsert()`, `prisma.tag.upsert()` theo khóa duy nhất `slug` và `id` cho `Note`, `Resource`.
+     - Chạy lại nhiều lần (`npx prisma db seed`) không bao giờ sinh bản ghi trùng hoặc vi phạm khóa ngoại.
+  2. **Backup Snapshot Versioning & Checksum:**
+     - Snapshot chuẩn có `version: "2.0.0"`. Schema validator chấp nhận toàn bộ dải phiên bản tương thích semver `2.x` (`/^2\.\d+\.\d+$/`).
+     - Checksum được tính toán bằng thuật toán **SHA-256** trên chuỗi canonical JSON sắp xếp khóa của đúng 5 mảng thực thể `{ categories, topics, notes, resources, tags }`.
+     - Khóa `counts` bao gồm đúng 5 trường: `{ categories: 8, topics: 35, notes: 5, resources: 4, tags: 12 }`.
+  3. **Restore Strategy (Replace vs Merge):**
+     - **Mode `replace` (Full Disaster Recovery):** Thực thi trong `prisma.$transaction(...)`. Xóa sạch dữ liệu cũ theo thứ tự quan hệ ngược và nạp toàn bộ snapshot. Yêu cầu bắt buộc client phải gửi cờ `confirmReplace: true`.
+     - **Mode `merge` (Không phá hủy - LWW):** Áp dụng quy tắc Last-Write-Wins (LWW) theo `updatedAt`:
+       - `Category`: Khóa `slug`. Cập nhật các trường thông tin nếu đã tồn tại.
+       - `Topic`: Khóa `slug`. Cập nhật nội dung khi `incoming.updatedAt >= existing.updatedAt`; `studyProgress` giữ `progress` cao nhất `Math.max(existing.progress, incoming.progress)`; `links` gộp không trùng lặp.
+       - `Note`: Khóa `id`. Cập nhật khi `incoming.updatedAt >= existing.updatedAt`.
+       - `Resource`: Khóa `id`. Cập nhật thông tin tài nguyên.
+       - `Tag`: Khóa `slug`. Cập nhật thông tin thẻ và tính lại count.
+  4. **Database Health Probe (`/api/health/db`):**
+     - Thực thi truy vấn nhẹ `SELECT 1` đo thời gian khứ hồi `latencyMs`.
+     - Trả về JSON: `{ status: "healthy" | "degraded" | "unhealthy", latencyMs: number, database: "postgresql", connected: boolean, timestamp: string }`.
+- **Hệ quả:**
+  - _Tích cực:_ Đảm bảo khả năng phục hồi thảm họa (Disaster Recovery) với tính toàn vẹn cao (Checksum SHA-256), khép kín hạ tầng DB và không ảnh hưởng UI layer.
+  - _Tiêu cực:_ Cần xử lý thứ tự xóa/nạp bảng trong transaction để không vi phạm ràng buộc khóa ngoại PostgreSQL.
