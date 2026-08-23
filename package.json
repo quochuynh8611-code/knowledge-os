@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@prisma/client": "^7.9.1",
     "@tailwindcss/vite": "^4.1.14",
     "@types/jszip": "^3.4.1",
     "@vitejs/plugin-react": "^5.0.4",
@@ -43,6 +44,7 @@
     "eslint": "^10.9.0",
     "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

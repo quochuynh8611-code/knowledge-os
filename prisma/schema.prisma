@@ -1,0 +1,117 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  type        String    // 'phat-hoc' | 'huyen-hoc'
+  description String?
+  parentId    String?
+  icon        String?
+  color       String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  topics      Topic[]
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  color     String   @default("#D97706")
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Topic {
+  id            String          @id @default(uuid())
+  title         String
+  slug          String          @unique
+  categoryId    String
+  category      Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  type          String          // 'phat-hoc' | 'huyen-hoc'
+  parentId      String?
+  description   String          @default("")
+  content       String          @default("")
+  tags          String[]        @default([])
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  notes         Note[]
+  resources     Resource[]
+  studyProgress StudyProgress?
+  sourceLinks   KnowledgeLink[] @relation("SourceLinks")
+  targetLinks   KnowledgeLink[] @relation("TargetLinks")
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  type      String   @default("insight") // 'study' | 'insight' | 'question' | 'summary'
+  isPrivate Boolean  @default(false)
+  tags      String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Resource {
+  id        String   @id @default(uuid())
+  topicId   String
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title     String
+  type      String   @default("book") // 'book' | 'article' | 'video' | 'audio' | 'pdf' | 'link'
+  author    String?
+  url       String?
+  filePath  String?
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model KnowledgeLink {
+  id          String   @id @default(uuid())
+  sourceId    String
+  source      Topic    @relation("SourceLinks", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId    String
+  target      Topic    @relation("TargetLinks", fields: [targetId], references: [id], onDelete: Cascade)
+  linkType    String   @default("related") // 'related' | 'prerequisite' | 'advanced' | 'contradicts'
+  strength    Int      @default(3)
+  notes       String?
+  explanation String?
+  createdAt   DateTime @default(now())
+}
+
+model StudyProgress {
+  id          String    @id @default(uuid())
+  topicId     String    @unique
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  status      String    @default("not_started") // 'not_started' | 'in_progress' | 'completed' | 'reviewing'
+  progress    Float     @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  lastStudied DateTime?
+  nextReview  DateTime?
+  interval    Int       @default(0)
+  easeFactor  Float     @default(2.5)
+  repetitions Int       @default(0)
+  totalNotes  Int       @default(0)
+  timeSpent   Int       @default(0)
+  updatedAt   DateTime  @updatedAt
+}
+
+model SyncSession {
+  id              String   @id @default(uuid())
+  clientSyncId    String   @unique
+  clientTimestamp DateTime
+  processedAt     DateTime @default(now())
+  status          String   @default("completed") // 'pending' | 'completed' | 'failed'
+  summary         Json
+}
