@@ -14,8 +14,10 @@ import {
   HydratePayloadSchema,
   BackupSnapshotSchema,
   RestoreRequestSchema,
+  DbHealthResponseSchema,
   calculateBackupChecksum,
   ValidatedBackupSnapshot,
+  ValidatedDbHealthResponse,
 } from "./src/lib/validation";
 
 dotenv.config();
@@ -37,8 +39,36 @@ function getGenAI(): GoogleGenAI | null {
 }
 
 // ==========================================
-// BACKUP & RESTORE DOMAIN HELPERS (PHASE 2B)
+// BACKUP, RESTORE & HEALTH DOMAIN HELPERS (PHASE 2B)
 // ==========================================
+
+export async function checkDbHealth(
+  db: typeof prisma,
+): Promise<ValidatedDbHealthResponse> {
+  const start = Date.now();
+  try {
+    await db.$queryRawUnsafe("SELECT 1");
+    const latencyMs = Date.now() - start;
+    const status =
+      latencyMs < 100 ? "healthy" : latencyMs < 1000 ? "degraded" : "unhealthy";
+    return DbHealthResponseSchema.parse({
+      status,
+      latencyMs,
+      database: "postgresql",
+      connected: true,
+      timestamp: new Date().toISOString(),
+    });
+  } catch {
+    const latencyMs = Date.now() - start;
+    return DbHealthResponseSchema.parse({
+      status: "unhealthy",
+      latencyMs: Math.max(0, latencyMs),
+      database: "postgresql",
+      connected: false,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
 
 export async function buildBackupSnapshotFromDb(
   db: typeof prisma,
@@ -557,13 +587,19 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
 
-  // Health check endpoint
+  // Health check endpoint (App & Gemini Key status)
   app.get("/api/health", (req, res) => {
     res.json({
       status: "ok",
       hasApiKey: Boolean(process.env.GEMINI_API_KEY),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Database Health check endpoint (Phase 2B)
+  app.get("/api/health/db", async (_req, res) => {
+    const health = await checkDbHealth(prisma);
+    res.json(health);
   });
 
   // Antigravity & Gemini Research Scholar Endpoint

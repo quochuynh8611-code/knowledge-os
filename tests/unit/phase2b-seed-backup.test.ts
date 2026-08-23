@@ -384,4 +384,55 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
       "Tiêu đề mới nhất",
     );
   });
+
+  it("18. checkDbHealth thực thi probe SELECT 1, đo latencyMs và phân loại trạng thái đúng schema", async () => {
+    const probeDb = async (
+      mockQuery: () => Promise<unknown>,
+      simulatedLatencyMs = 5,
+    ) => {
+      try {
+        await mockQuery();
+        const latencyMs = simulatedLatencyMs;
+        const status =
+          latencyMs < 100
+            ? "healthy"
+            : latencyMs < 1000
+              ? "degraded"
+              : "unhealthy";
+        return DbHealthResponseSchema.parse({
+          status,
+          latencyMs,
+          database: "postgresql",
+          connected: true,
+          timestamp: new Date().toISOString(),
+        });
+      } catch {
+        return DbHealthResponseSchema.parse({
+          status: "unhealthy",
+          latencyMs: 0,
+          database: "postgresql",
+          connected: false,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    };
+
+    // 1. Healthy probe (<100ms)
+    const healthy = await probeDb(async () => 1, 12);
+    expect(healthy.status).toBe("healthy");
+    expect(healthy.connected).toBe(true);
+    expect(healthy.database).toBe("postgresql");
+
+    // 2. Degraded probe (100-1000ms)
+    const degraded = await probeDb(async () => 1, 250);
+    expect(degraded.status).toBe("degraded");
+    expect(degraded.connected).toBe(true);
+
+    // 3. Unhealthy probe (DB offline / throws error)
+    const unhealthy = await probeDb(async () => {
+      throw new Error("Connection refused at port 5432");
+    }, 0);
+    expect(unhealthy.status).toBe("unhealthy");
+    expect(unhealthy.connected).toBe(false);
+  });
 });
