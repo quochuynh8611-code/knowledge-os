@@ -1,7 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { Topic } from "../../src/types";
+import React from "react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { Topic, Category, Tag } from "../../src/types";
+import {
+  SearchFilters,
+  SearchFiltersState,
+} from "../../src/components/search/SearchFilters";
 
-describe("Search Engine & SearchFilters Component (Phase 1)", () => {
+describe("Search Engine & SearchFilters Component (Phase 1B)", () => {
   // Mock dataset of 1,000 topics to benchmark search performance
   const generateLargeDataset = (count: number): Topic[] => {
     const topics: Topic[] = [];
@@ -46,6 +52,26 @@ describe("Search Engine & SearchFilters Component (Phase 1)", () => {
     return topics;
   };
 
+  const mockCategories: Category[] = [
+    {
+      id: "cat-tam-tang",
+      name: "Tam Tạng",
+      slug: "tam-tang",
+      type: "phat-hoc",
+    },
+    {
+      id: "cat-dich-hoc",
+      name: "Dịch Học",
+      slug: "dich-hoc",
+      type: "huyen-hoc",
+    },
+  ];
+
+  const mockTags: Tag[] = [
+    { id: "tag-1", name: "Abhidharma", slug: "abhidharma", color: "#D97706" },
+    { id: "tag-2", name: "Kỳ Môn", slug: "ky-mon", color: "#2563EB" },
+  ];
+
   it("Hiệu năng tìm kiếm toàn văn trên 1,000 bản ghi phải dưới 200ms", () => {
     const dataset = generateLargeDataset(1000);
     const query = "Kỳ Môn";
@@ -67,23 +93,41 @@ describe("Search Engine & SearchFilters Component (Phase 1)", () => {
     expect(duration).toBeLessThan(200); // Tiêu chuẩn chất lượng: < 200ms
   });
 
-  it("Lọc kết quả chính xác theo Lĩnh vực (Domain) và Thẻ phân loại (Tags)", () => {
-    const dataset = generateLargeDataset(100);
+  it("SearchFilters render đầy đủ các bộ lọc và phát sự kiện onFilterChange", () => {
+    const handleFilterChange = vi.fn();
+    const initialFilters: SearchFiltersState = {
+      domain: "all",
+      categoryId: null,
+      tag: null,
+      status: "all",
+    };
 
-    const phatHocOnly = dataset.filter((t) => t.type === "phat-hoc");
-    expect(phatHocOnly.every((t) => t.type === "phat-hoc")).toBe(true);
+    render(
+      <SearchFilters
+        filters={initialFilters}
+        onFilterChange={handleFilterChange}
+        categories={mockCategories}
+        tags={mockTags}
+        totalResultsCount={42}
+      />,
+    );
 
-    const tagFiltered = dataset.filter((t) => t.tags.includes("Abhidharma"));
-    expect(tagFiltered.every((t) => t.tags.includes("Abhidharma"))).toBe(true);
-  });
+    expect(screen.getByText(/Bộ Lọc Chuyên Sâu/i)).toBeInTheDocument();
+    expect(screen.getByText(/42 kết quả/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Phật Học \(Tam Tạng \/ Abhidhamma\)/i),
+    ).toBeInTheDocument();
 
-  it("SearchFilters Component sẽ được triển khai trong Phase 1B", async () => {
-    const modulePath = "../../src/components/search/SearchFilters";
-    try {
-      const mod = await import(/* @vite-ignore */ modulePath);
-      expect(mod).toBeDefined();
-    } catch (e) {
-      expect(e).toBeDefined();
-    }
+    // Click domain filter
+    fireEvent.click(screen.getByText(/Phật Học \(Tam Tạng \/ Abhidhamma\)/i));
+    expect(handleFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ domain: "phat-hoc", categoryId: null }),
+    );
+
+    // Click tag filter
+    fireEvent.click(screen.getByText("#Abhidharma"));
+    expect(handleFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({ tag: "Abhidharma" }),
+    );
   });
 });
