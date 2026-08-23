@@ -149,3 +149,27 @@
 - **Hệ quả:**
   - _Tích cực:_ Đảm bảo khả năng phục hồi thảm họa (Disaster Recovery) với tính toàn vẹn cao (Checksum SHA-256), khép kín hạ tầng DB và không ảnh hưởng UI layer.
   - _Tiêu cực:_ Cần xử lý thứ tự xóa/nạp bảng trong transaction để không vi phạm ràng buộc khóa ngoại PostgreSQL.
+
+---
+
+## ADR-008: Canonical Seed Hydration, Snapshot Backup/Restore, and DB Health Contract
+
+- **Trạng thái:** ACCEPTED / READY FOR INCREMENTAL EXECUTION (PHASE 2B)
+- **Bối cảnh:**
+  - Dataset SSOT đã được canonicalize thành công lên 35 topics tại commit `aab4976`.
+  - Cần triển khai các contracts máy chủ đáp ứng: (1) Seeding dữ liệu canonical vào PostgreSQL/Prisma có tính idempotent, (2) Endpoint Backup (`GET /api/backup/export`) và Restore (`POST /api/backup/restore`) an toàn với schema validation và SHA-256 integrity, (3) Endpoint Health Check (`GET /api/health/db`) trả về machine-readable JSON cho monitoring.
+- **Quyết định:**
+  1. **Canonical Source:** `src/data/initialData.ts` là Single Source of Truth duy nhất cho `prisma/seed.ts`.
+  2. **Idempotency Contract:** Lệnh seed (`npx prisma db seed` hoặc `POST /api/sync/hydrate`) sử dụng `upsert` theo unique constraints (`slug` cho Category/Tag/Topic, `id` cho Note/Resource, `topicId` cho StudyProgress), đảm bảo cardinality không đổi dù thực thi $N$ lần.
+  3. **Snapshot Verification Contract:** Endpoint Restore buộc phải validate qua `RestoreRequestSchema` và kiểm tra khớp SHA-256 checksum trước khi thực hiện mutation trong `prisma.$transaction`. Nếu validation thất bại hoặc checksum lệch $\rightarrow$ Fail-fast với HTTP 400, không thay đổi bất kỳ bản ghi nào (Zero Dirty Partial State).
+  4. **Health Probe Contract:** `GET /api/health/db` thực thi `SELECT 1` bằng Prisma Raw Query, đo `latencyMs`, phân loại trạng thái (`healthy`: <100ms, `degraded`: 100-1000ms, `unhealthy`: >=1000ms hoặc lỗi kết nối).
+- **Hệ quả:**
+  - _Tích cực:_
+    - Zero blast-radius đối với UI layer và local bootstrap hiện hữu.
+    - Đảm bảo tính toàn vẹn dữ liệu học thuật với checksum SHA-256 và transaction ACID.
+    - Cung cấp khả năng quan sát vận hành (Observability) tức thì cho hệ thống cơ sở dữ liệu.
+  - _Tiêu cực / Trade-offs:_
+    - Việc tính toán SHA-256 checksum trên snapshot lớn tiêu tốn một lượng nhỏ CPU cycle server-side, nhưng hoàn toàn xứng đáng để chống hỏng hóc dữ liệu.
+- **Phân loại quyết định:**
+  - _Two-way doors:_ Quy tắc phân loại ngưỡng `latencyMs` trong health check, tùy chọn format ngày tháng trong backup metadata.
+  - _One-way doors:_ Checksum strategy (SHA-256 trên canonical JSON keys), contract của `BackupSnapshotSchema` Semver 2.x, và tính atomic của Restore transaction.

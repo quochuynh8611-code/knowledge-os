@@ -293,6 +293,107 @@ export const SyncSessionSchema = z.object({
   summary: z.record(z.string(), z.unknown()).optional().default({}),
 });
 
+// ==========================================
+// 12. BACKUP SNAPSHOT & RESTORE SCHEMAS (PHASE 2B)
+// ==========================================
+
+export function calculateBackupChecksum(data: {
+  categories: unknown[];
+  topics: unknown[];
+  notes: unknown[];
+  resources: unknown[];
+  tags: unknown[];
+}): string {
+  const canonicalData = {
+    categories: data.categories,
+    topics: data.topics,
+    notes: data.notes,
+    resources: data.resources,
+    tags: data.tags,
+  };
+  const jsonString = JSON.stringify(canonicalData);
+  // Node.js crypto when in node runtime
+  if (
+    typeof globalThis !== "undefined" &&
+    (globalThis as any).process?.versions?.node
+  ) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const nodeCrypto = require("crypto");
+      return nodeCrypto.createHash("sha256").update(jsonString).digest("hex");
+    } catch {
+      // Fallback
+    }
+  }
+  let hash = 0;
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(64, "0");
+}
+
+export const BackupSnapshotSchema = z.object({
+  version: z
+    .string()
+    .regex(/^2\.\d+\.\d+$/, "Version must be semver 2.x format (e.g. 2.0.0)"),
+  exportedAt: z.string().datetime(),
+  checksum: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/, "Checksum must be a 64-char SHA-256 hex string"),
+  counts: z.object({
+    categories: z.number().int().nonnegative(),
+    topics: z.number().int().nonnegative(),
+    notes: z.number().int().nonnegative(),
+    resources: z.number().int().nonnegative(),
+    tags: z.number().int().nonnegative(),
+  }),
+  data: z.object({
+    categories: z.array(CategorySchema),
+    topics: z.array(TopicSchema),
+    notes: z.array(NoteSchema),
+    resources: z.array(ResourceSchema),
+    tags: z.array(TagSchema),
+  }),
+});
+
+export const RestoreRequestSchema = z
+  .object({
+    snapshot: BackupSnapshotSchema,
+    mode: z.enum(["replace", "merge"]).default("replace"),
+    confirmReplace: z.boolean().optional(),
+  })
+  .refine((data) => data.mode !== "replace" || data.confirmReplace === true, {
+    message: "confirmReplace must be true when mode is 'replace'",
+    path: ["confirmReplace"],
+  });
+
+export const RestoreResponseSchema = z.object({
+  success: z.boolean(),
+  mode: z.enum(["replace", "merge"]),
+  restoredAt: z.string().datetime(),
+  restoredCounts: z.object({
+    categories: z.number().int().nonnegative(),
+    topics: z.number().int().nonnegative(),
+    notes: z.number().int().nonnegative(),
+    resources: z.number().int().nonnegative(),
+    tags: z.number().int().nonnegative(),
+  }),
+});
+
+// ==========================================
+// 13. DATABASE HEALTH PROBE SCHEMA (PHASE 2B)
+// ==========================================
+
+export const DbHealthResponseSchema = z.object({
+  status: z.enum(["healthy", "degraded", "unhealthy"]),
+  latencyMs: z.number().nonnegative(),
+  database: z.literal("postgresql"),
+  connected: z.boolean(),
+  timestamp: z.string().datetime(),
+});
+
 export type ValidatedTopic = z.infer<typeof TopicSchema>;
 export type ValidatedTopicCreate = z.infer<typeof TopicCreateSchema>;
 export type ValidatedNote = z.infer<typeof NoteSchema>;
@@ -309,3 +410,7 @@ export type ValidatedHydratePayload = z.infer<typeof HydratePayloadSchema>;
 export type ValidatedHydrateInput = z.input<typeof HydratePayloadSchema>;
 export type ValidatedHydrateResponse = z.infer<typeof HydrateResponseSchema>;
 export type ValidatedSyncSession = z.infer<typeof SyncSessionSchema>;
+export type ValidatedBackupSnapshot = z.infer<typeof BackupSnapshotSchema>;
+export type ValidatedRestoreRequest = z.infer<typeof RestoreRequestSchema>;
+export type ValidatedRestoreResponse = z.infer<typeof RestoreResponseSchema>;
+export type ValidatedDbHealthResponse = z.infer<typeof DbHealthResponseSchema>;

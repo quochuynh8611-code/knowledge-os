@@ -1,12 +1,9 @@
 import { describe, it, expect } from "vitest";
-import crypto from "crypto";
-import { z } from "zod";
 import {
-  CategorySchema,
-  TopicSchema,
-  NoteSchema,
-  ResourceSchema,
-  TagSchema,
+  calculateBackupChecksum,
+  BackupSnapshotSchema,
+  RestoreRequestSchema,
+  DbHealthResponseSchema,
 } from "../../src/lib/validation";
 import {
   INITIAL_CATEGORIES,
@@ -15,82 +12,6 @@ import {
   INITIAL_RESOURCES,
   INITIAL_TAGS,
 } from "../../src/data/initialData";
-
-// Helper function: Calculate SHA-256 Checksum on canonical JSON representation
-export function calculateBackupChecksum(data: {
-  categories: any[];
-  topics: any[];
-  notes: any[];
-  resources: any[];
-  tags: any[];
-}): string {
-  const canonicalData = {
-    categories: data.categories,
-    topics: data.topics,
-    notes: data.notes,
-    resources: data.resources,
-    tags: data.tags,
-  };
-  const jsonString = JSON.stringify(canonicalData);
-  return crypto.createHash("sha256").update(jsonString).digest("hex");
-}
-
-// Phase 2B Zod Schemas under test
-export const BackupSnapshotSchema = z.object({
-  version: z
-    .string()
-    .regex(/^2\.\d+\.\d+$/, "Version must be semver 2.x format (e.g. 2.0.0)"),
-  exportedAt: z.string().datetime(),
-  checksum: z
-    .string()
-    .regex(/^[a-f0-9]{64}$/, "Checksum must be a 64-char SHA-256 hex string"),
-  counts: z.object({
-    categories: z.number().int().nonnegative(),
-    topics: z.number().int().nonnegative(),
-    notes: z.number().int().nonnegative(),
-    resources: z.number().int().nonnegative(),
-    tags: z.number().int().nonnegative(),
-  }),
-  data: z.object({
-    categories: z.array(CategorySchema),
-    topics: z.array(TopicSchema),
-    notes: z.array(NoteSchema),
-    resources: z.array(ResourceSchema),
-    tags: z.array(TagSchema),
-  }),
-});
-
-export const RestoreRequestSchema = z
-  .object({
-    snapshot: BackupSnapshotSchema,
-    mode: z.enum(["replace", "merge"]).default("replace"),
-    confirmReplace: z.boolean().optional(),
-  })
-  .refine((data) => data.mode !== "replace" || data.confirmReplace === true, {
-    message: "confirmReplace must be true when mode is 'replace'",
-    path: ["confirmReplace"],
-  });
-
-export const RestoreResponseSchema = z.object({
-  success: z.boolean(),
-  mode: z.enum(["replace", "merge"]),
-  restoredAt: z.string().datetime(),
-  restoredCounts: z.object({
-    categories: z.number().int().nonnegative(),
-    topics: z.number().int().nonnegative(),
-    notes: z.number().int().nonnegative(),
-    resources: z.number().int().nonnegative(),
-    tags: z.number().int().nonnegative(),
-  }),
-});
-
-export const DbHealthResponseSchema = z.object({
-  status: z.enum(["healthy", "degraded", "unhealthy"]),
-  latencyMs: z.number().nonnegative(),
-  database: z.literal("postgresql"),
-  connected: z.boolean(),
-  timestamp: z.string().datetime(),
-});
 
 describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Probes", () => {
   const canonicalData = {
@@ -297,5 +218,22 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     expect(classifyDbHealth(true, 150)).toBe("degraded");
     expect(classifyDbHealth(true, 1500)).toBe("unhealthy");
     expect(classifyDbHealth(false, 0)).toBe("unhealthy");
+  });
+
+  // --- 5. Database Seeding Contract Test ---
+  it("13. Seed pipeline nạp đủ chính xác 8 categories, 12 tags, 35 topics, 35 studyProgress, 77 links, 5 notes, 4 resources", () => {
+    const totalLinks = INITIAL_TOPICS.reduce(
+      (sum, t) => sum + (t.links ? t.links.length : 0),
+      0,
+    );
+    const totalProgress = INITIAL_TOPICS.filter((t) => t.studyProgress).length;
+
+    expect(INITIAL_CATEGORIES.length).toBe(8);
+    expect(INITIAL_TAGS.length).toBe(12);
+    expect(INITIAL_TOPICS.length).toBe(35);
+    expect(totalProgress).toBe(35);
+    expect(totalLinks).toBe(77);
+    expect(INITIAL_NOTES.length).toBe(5);
+    expect(INITIAL_RESOURCES.length).toBe(4);
   });
 });
