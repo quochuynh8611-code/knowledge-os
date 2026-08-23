@@ -1,7 +1,7 @@
-import React from 'react';
+import React from "react";
 
 export interface LoadingSkeletonProps {
-  variant?: 'text' | 'rect' | 'circle' | 'card';
+  variant?: "text" | "rect" | "circle" | "card";
   width?: string | number;
   height?: string | number;
   className?: string;
@@ -9,23 +9,23 @@ export interface LoadingSkeletonProps {
 }
 
 export function LoadingSkeleton({
-  variant = 'text',
+  variant = "text",
   width,
   height,
-  className = '',
+  className = "",
   count = 1,
 }: LoadingSkeletonProps) {
   const getVariantStyles = () => {
     switch (variant) {
-      case 'circle':
-        return 'rounded-full shrink-0';
-      case 'rect':
-        return 'rounded-xl';
-      case 'card':
-        return 'rounded-2xl p-5 border border-stone-200/80 dark:border-stone-800';
-      case 'text':
+      case "circle":
+        return "rounded-full shrink-0";
+      case "rect":
+        return "rounded-xl";
+      case "card":
+        return "rounded-2xl p-5 border border-stone-200/80 dark:border-stone-800";
+      case "text":
       default:
-        return 'rounded-md h-3.5';
+        return "rounded-md h-3.5";
     }
   };
 
@@ -39,7 +39,13 @@ export function LoadingSkeleton({
             key={i}
             className={baseClasses}
             style={{
-              width: width || (variant === 'text' ? (i === count - 1 ? '70%' : '100%') : undefined),
+              width:
+                width ||
+                (variant === "text"
+                  ? i === count - 1
+                    ? "70%"
+                    : "100%"
+                  : undefined),
               height: height,
             }}
           />

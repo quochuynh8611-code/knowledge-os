@@ -1,28 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-export type Theme = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
+export type Theme = "light" | "dark" | "system";
+export type ResolvedTheme = "light" | "dark";
 
-const THEME_STORAGE_KEY = 'phat_hoc_huyen_hoc_theme_v1';
+const THEME_STORAGE_KEY = "phat_hoc_huyen_hoc_theme_v1";
 
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'system';
+    if (typeof window === "undefined") return "system";
     try {
       const saved = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+      if (saved === "light" || saved === "dark" || saved === "system") {
         return saved;
       }
     } catch {
       // LocalStorage access failure fallback
     }
-    return 'system';
+    return "system";
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
-    if (typeof window === 'undefined') return 'light';
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (typeof window === "undefined") return "light";
+    if (theme === "system") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     }
     return theme;
   });
@@ -30,24 +32,24 @@ export function useTheme() {
   // Apply theme to DOM
   const applyTheme = useCallback((resolved: ResolvedTheme) => {
     const root = document.documentElement;
-    if (resolved === 'dark') {
-      root.classList.add('dark');
-      root.setAttribute('data-theme', 'dark');
-      root.style.colorScheme = 'dark';
+    if (resolved === "dark") {
+      root.classList.add("dark");
+      root.setAttribute("data-theme", "dark");
+      root.style.colorScheme = "dark";
     } else {
-      root.classList.remove('dark');
-      root.setAttribute('data-theme', 'light');
-      root.style.colorScheme = 'light';
+      root.classList.remove("dark");
+      root.setAttribute("data-theme", "light");
+      root.style.colorScheme = "light";
     }
   }, []);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
     const updateResolvedTheme = () => {
       let resolved: ResolvedTheme;
-      if (theme === 'system') {
-        resolved = mediaQuery.matches ? 'dark' : 'light';
+      if (theme === "system") {
+        resolved = mediaQuery.matches ? "dark" : "light";
       } else {
         resolved = theme;
       }
@@ -58,13 +60,13 @@ export function useTheme() {
     updateResolvedTheme();
 
     const handleChange = () => {
-      if (theme === 'system') {
+      if (theme === "system") {
         updateResolvedTheme();
       }
     };
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme, applyTheme]);
 
   const setTheme = useCallback((newTheme: Theme) => {
@@ -72,12 +74,12 @@ export function useTheme() {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (e) {
-      console.error('Failed to save theme to localStorage', e);
+      console.error("Failed to save theme to localStorage", e);
     }
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
   }, [resolvedTheme, setTheme]);
 
   return {
@@ -85,6 +87,6 @@ export function useTheme() {
     resolvedTheme,
     setTheme,
     toggleTheme,
-    isDark: resolvedTheme === 'dark',
+    isDark: resolvedTheme === "dark",
   };
 }

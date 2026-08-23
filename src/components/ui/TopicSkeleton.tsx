@@ -1,20 +1,22 @@
-import React from 'react';
-import { LoadingSkeleton } from './LoadingSkeleton';
+import React from "react";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 
 export interface TopicSkeletonProps {
-  mode?: 'card' | 'detail' | 'tree';
+  mode?: "card" | "detail" | "tree";
   count?: number;
   className?: string;
 }
 
 export function TopicSkeleton({
-  mode = 'card',
+  mode = "card",
   count = 4,
-  className = '',
+  className = "",
 }: TopicSkeletonProps) {
-  if (mode === 'detail') {
+  if (mode === "detail") {
     return (
-      <div className={`p-6 lg:p-8 max-w-5xl mx-auto space-y-6 animate-pulse ${className}`}>
+      <div
+        className={`p-6 lg:p-8 max-w-5xl mx-auto space-y-6 animate-pulse ${className}`}
+      >
         {/* Breadcrumb & Navigation skeleton */}
         <div className="flex items-center justify-between gap-4">
           <LoadingSkeleton variant="text" width="220px" height="18px" />
@@ -29,7 +31,7 @@ export function TopicSkeleton({
           </div>
           <LoadingSkeleton variant="text" width="60%" height="28px" />
           <LoadingSkeleton variant="text" count={2} />
-          
+
           {/* Progress bar */}
           <div className="pt-2">
             <LoadingSkeleton variant="rect" width="100%" height="8px" />
@@ -55,7 +57,7 @@ export function TopicSkeleton({
     );
   }
 
-  if (mode === 'tree') {
+  if (mode === "tree") {
     return (
       <div className={`space-y-3 p-4 ${className}`}>
         {Array.from({ length: count }).map((_, i) => (

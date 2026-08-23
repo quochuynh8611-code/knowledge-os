@@ -1,15 +1,12 @@
-import React from 'react';
-import { LoadingSkeleton } from './LoadingSkeleton';
+import React from "react";
+import { LoadingSkeleton } from "./LoadingSkeleton";
 
 export interface NoteSkeletonProps {
   count?: number;
   className?: string;
 }
 
-export function NoteSkeleton({
-  count = 4,
-  className = '',
-}: NoteSkeletonProps) {
+export function NoteSkeleton({ count = 4, className = "" }: NoteSkeletonProps) {
   return (
     <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${className}`}>
       {Array.from({ length: count }).map((_, i) => (

@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
+import { describe, it, expect } from "vitest";
+import { z } from "zod";
 
 // Định nghĩa Data Contract Zod Schema chuẩn cho Import / Export
 export const CategorySchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).max(100),
   slug: z.string().min(1),
-  type: z.enum(['phat-hoc', 'huyen-hoc']),
+  type: z.enum(["phat-hoc", "huyen-hoc"]),
   parentId: z.string().nullable().optional(),
   description: z.string().optional(),
   icon: z.string().optional(),
@@ -15,7 +15,7 @@ export const CategorySchema = z.object({
 
 export const StudyProgressSchema = z.object({
   topicId: z.string().min(1),
-  status: z.enum(['not_started', 'in_progress', 'completed', 'reviewing']),
+  status: z.enum(["not_started", "in_progress", "completed", "reviewing"]),
   progress: z.number().min(0).max(100),
   interval: z.number().min(0),
   easeFactor: z.number().min(1.3),
@@ -30,7 +30,7 @@ export const KnowledgeLinkSchema = z.object({
   id: z.string().min(1),
   sourceId: z.string().min(1),
   targetId: z.string().min(1),
-  linkType: z.enum(['related', 'prerequisite', 'advanced', 'contradicts']),
+  linkType: z.enum(["related", "prerequisite", "advanced", "contradicts"]),
   strength: z.number().min(1).max(5),
   notes: z.string().optional(),
 });
@@ -40,7 +40,7 @@ export const TopicSchema = z.object({
   title: z.string().min(2).max(255),
   slug: z.string().min(1),
   categoryId: z.string().min(1),
-  type: z.enum(['phat-hoc', 'huyen-hoc']),
+  type: z.enum(["phat-hoc", "huyen-hoc"]),
   parentId: z.string().nullable().optional(),
   description: z.string(),
   content: z.string(),
@@ -61,33 +61,33 @@ export const BackupPackageSchema = z.object({
   tags: z.array(z.any()),
 });
 
-describe('Data Validation & Import/Export Contract (Zod Validation)', () => {
-  it('Chấp thuận gói dữ liệu sao lưu hợp lệ (Valid Backup Payload)', () => {
+describe("Data Validation & Import/Export Contract (Zod Validation)", () => {
+  it("Chấp thuận gói dữ liệu sao lưu hợp lệ (Valid Backup Payload)", () => {
     const validPayload = {
-      version: '2.0.0',
+      version: "2.0.0",
       exportDate: new Date().toISOString(),
       categories: [
         {
-          id: 'cat-tam-tang',
-          name: 'Tam Tạng',
-          slug: 'tam-tang',
-          type: 'phat-hoc',
+          id: "cat-tam-tang",
+          name: "Tam Tạng",
+          slug: "tam-tang",
+          type: "phat-hoc",
         },
       ],
       topics: [
         {
-          id: 'topic-1',
-          title: 'Vi Diệu Pháp Toàn Thư',
-          slug: 'vi-dieu-phap',
-          categoryId: 'cat-tam-tang',
-          type: 'phat-hoc',
-          description: 'Mô tả chi tiết',
-          content: 'Nội dung khảo cứu...',
-          tags: ['Abhidharma'],
+          id: "topic-1",
+          title: "Vi Diệu Pháp Toàn Thư",
+          slug: "vi-dieu-phap",
+          categoryId: "cat-tam-tang",
+          type: "phat-hoc",
+          description: "Mô tả chi tiết",
+          content: "Nội dung khảo cứu...",
+          tags: ["Abhidharma"],
           links: [],
           studyProgress: {
-            topicId: 'topic-1',
-            status: 'not_started',
+            topicId: "topic-1",
+            status: "not_started",
             progress: 0,
             interval: 0,
             easeFactor: 2.5,
@@ -107,16 +107,16 @@ describe('Data Validation & Import/Export Contract (Zod Validation)', () => {
     expect(parseResult.success).toBe(true);
   });
 
-  it('Từ chối gói dữ liệu bị hỏng (Corrupted Payload: sai kiểu, thiếu trường bắt buộc, easeFactor < 1.3)', () => {
+  it("Từ chối gói dữ liệu bị hỏng (Corrupted Payload: sai kiểu, thiếu trường bắt buộc, easeFactor < 1.3)", () => {
     const invalidPayload = {
-      version: '2.0.0',
-      exportDate: 'not-a-date',
+      version: "2.0.0",
+      exportDate: "not-a-date",
       categories: [],
       topics: [
         {
-          id: 'topic-bad',
-          title: 'A', // Tiêu đề quá ngắn (< 2 ký tự)
-          type: 'invalid-domain', // Sai enum
+          id: "topic-bad",
+          title: "A", // Tiêu đề quá ngắn (< 2 ký tự)
+          type: "invalid-domain", // Sai enum
           studyProgress: {
             easeFactor: 0.5, // Vi phạm floor 1.3
             progress: 200, // Vượt quá 100%
@@ -132,8 +132,8 @@ describe('Data Validation & Import/Export Contract (Zod Validation)', () => {
     }
   });
 
-  it('Schema Validation File (src/schemas/validation.ts) sẽ được nạp trong Phase 2', async () => {
-    const modulePath = '../../src/schemas/validation';
+  it("Schema Validation File (src/schemas/validation.ts) sẽ được nạp trong Phase 2", async () => {
+    const modulePath = "../../src/schemas/validation";
     try {
       const mod = await import(/* @vite-ignore */ modulePath);
       expect(mod).toBeDefined();

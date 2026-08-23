@@ -1,11 +1,11 @@
-import React from 'react';
-import { Sparkles, BookOpen, Plus, RefreshCw } from 'lucide-react';
+import React from "react";
+import { Sparkles, BookOpen, Plus, RefreshCw } from "lucide-react";
 
 export interface EmptyStateAction {
   label: string;
   onClick: () => void;
   icon?: React.ComponentType<{ className?: string }>;
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: "primary" | "secondary" | "outline";
 }
 
 export interface EmptyStateProps {
@@ -20,12 +20,12 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon = BookOpen,
-  title = 'Chưa có dữ liệu khảo cứu',
-  description = 'Bắt đầu ghi chép, tạo chủ đề mới hoặc kết nối dữ liệu để mở rộng bản đồ tri thức của bạn.',
+  title = "Chưa có dữ liệu khảo cứu",
+  description = "Bắt đầu ghi chép, tạo chủ đề mới hoặc kết nối dữ liệu để mở rộng bản đồ tri thức của bạn.",
   primaryAction,
   secondaryAction,
   suggestions,
-  className = '',
+  className = "",
 }: EmptyStateProps) {
   return (
     <div
@@ -53,7 +53,9 @@ export function EmptyState({
               onClick={secondaryAction.onClick}
               className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 transition flex items-center gap-1.5"
             >
-              {secondaryAction.icon && <secondaryAction.icon className="w-3.5 h-3.5" />}
+              {secondaryAction.icon && (
+                <secondaryAction.icon className="w-3.5 h-3.5" />
+              )}
               <span>{secondaryAction.label}</span>
             </button>
           )}
@@ -64,7 +66,9 @@ export function EmptyState({
               onClick={primaryAction.onClick}
               className="px-4 py-2 text-xs font-semibold rounded-xl bg-amber-800 hover:bg-amber-900 dark:bg-amber-700 dark:hover:bg-amber-600 text-white shadow-xs transition flex items-center gap-1.5"
             >
-              {primaryAction.icon && <primaryAction.icon className="w-3.5 h-3.5" />}
+              {primaryAction.icon && (
+                <primaryAction.icon className="w-3.5 h-3.5" />
+              )}
               <span>{primaryAction.label}</span>
             </button>
           )}
@@ -74,7 +78,9 @@ export function EmptyState({
       {/* Search suggestions if any */}
       {suggestions && suggestions.length > 0 && (
         <div className="pt-4 border-t border-stone-200/80 dark:border-stone-800 w-full flex flex-col items-center gap-2">
-          <span className="text-[11px] text-stone-400 font-medium">Gợi ý từ khóa khảo cứu:</span>
+          <span className="text-[11px] text-stone-400 font-medium">
+            Gợi ý từ khóa khảo cứu:
+          </span>
           <div className="flex flex-wrap items-center justify-center gap-1.5">
             {suggestions.map((s, idx) => (
               <button

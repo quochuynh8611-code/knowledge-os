@@ -1,25 +1,29 @@
-import React from 'react';
-import { Sun, Moon, Laptop } from 'lucide-react';
-import { useTheme, Theme } from '../../hooks/useTheme';
+import React from "react";
+import { Sun, Moon, Laptop } from "lucide-react";
+import { useTheme, Theme } from "../../hooks/useTheme";
 
 export interface ThemeToggleProps {
-  variant?: 'button' | 'dropdown' | 'segmented';
+  variant?: "button" | "dropdown" | "segmented";
   className?: string;
   showLabel?: boolean;
 }
 
 export function ThemeToggle({
-  variant = 'button',
-  className = '',
+  variant = "button",
+  className = "",
   showLabel = false,
 }: ThemeToggleProps) {
   const { theme, resolvedTheme, setTheme, toggleTheme, isDark } = useTheme();
 
-  if (variant === 'segmented') {
-    const options: { id: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-      { id: 'light', label: 'Sáng (Giấy cổ)', icon: Sun },
-      { id: 'dark', label: 'Tối (Mực nho)', icon: Moon },
-      { id: 'system', label: 'Hệ thống', icon: Laptop },
+  if (variant === "segmented") {
+    const options: {
+      id: Theme;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+    }[] = [
+      { id: "light", label: "Sáng (Giấy cổ)", icon: Sun },
+      { id: "dark", label: "Tối (Mực nho)", icon: Moon },
+      { id: "system", label: "Hệ thống", icon: Laptop },
     ];
 
     return (
@@ -39,8 +43,8 @@ export function ThemeToggle({
               onClick={() => setTheme(opt.id)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${
                 isSelected
-                  ? 'bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-400 shadow-2xs'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                  ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-400 shadow-2xs"
+                  : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
               }`}
               title={opt.label}
             >
@@ -57,8 +61,8 @@ export function ThemeToggle({
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={`Chuyển sang giao diện ${isDark ? 'Sáng (Giấy cổ)' : 'Tối (Mực nho)'}`}
-      title={`Đang dùng giao diện ${isDark ? 'Tối' : 'Sáng'}. Nhấp để đổi`}
+      aria-label={`Chuyển sang giao diện ${isDark ? "Sáng (Giấy cổ)" : "Tối (Mực nho)"}`}
+      title={`Đang dùng giao diện ${isDark ? "Tối" : "Sáng"}. Nhấp để đổi`}
       className={`relative p-2 text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-xl transition flex items-center gap-2 ${className}`}
     >
       {isDark ? (
@@ -68,7 +72,7 @@ export function ThemeToggle({
       )}
       {showLabel && (
         <span className="text-xs font-medium">
-          {isDark ? 'Giao diện Tối' : 'Giao diện Sáng'}
+          {isDark ? "Giao diện Tối" : "Giao diện Sáng"}
         </span>
       )}
     </button>
