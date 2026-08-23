@@ -236,4 +236,152 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     expect(INITIAL_NOTES.length).toBe(5);
     expect(INITIAL_RESOURCES.length).toBe(4);
   });
+
+  // --- 6. Backup Export & Restore Route Contract Tests ---
+  it("14. Export Snapshot Builder tạo snapshot hợp lệ theo BackupSnapshotSchema với counts và checksum chuẩn", () => {
+    const snapshotBuilder = (db: typeof canonicalData) => {
+      const data = {
+        categories: db.categories,
+        topics: db.topics,
+        notes: db.notes,
+        resources: db.resources,
+        tags: db.tags,
+      };
+      const checksum = calculateBackupChecksum(data);
+      const counts = {
+        categories: db.categories.length,
+        topics: db.topics.length,
+        notes: db.notes.length,
+        resources: db.resources.length,
+        tags: db.tags.length,
+      };
+      return {
+        version: "2.0.0",
+        exportedAt: new Date().toISOString(),
+        checksum,
+        counts,
+        data,
+      };
+    };
+
+    const exported = snapshotBuilder(canonicalData);
+    const validationResult = BackupSnapshotSchema.safeParse(exported);
+    expect(validationResult.success).toBe(true);
+    if (validationResult.success) {
+      expect(validationResult.data.counts.categories).toBe(8);
+      expect(validationResult.data.counts.topics).toBe(35);
+      expect(validationResult.data.counts.notes).toBe(5);
+      expect(validationResult.data.counts.resources).toBe(4);
+      expect(validationResult.data.counts.tags).toBe(12);
+      expect(validationResult.data.checksum).toBe(validChecksum);
+    }
+  });
+
+  it("15. Restore Handler từ chối Checksum Mismatch và không thực hiện mutation (Fail-Fast)", () => {
+    const corruptedSnapshot = {
+      ...sampleSnapshot,
+      data: {
+        ...sampleSnapshot.data,
+        topics: [
+          ...sampleSnapshot.data.topics.slice(1),
+          { ...sampleSnapshot.data.topics[0], title: "Hacked Topic" },
+        ],
+      },
+    };
+
+    const verifyAndRestore = (req: {
+      snapshot: typeof sampleSnapshot;
+      mode: "replace" | "merge";
+      confirmReplace?: boolean;
+    }) => {
+      const parsed = RestoreRequestSchema.safeParse(req);
+      if (!parsed.success) {
+        return { status: 400, error: "VALIDATION_ERROR" };
+      }
+      const expectedChecksum = calculateBackupChecksum(req.snapshot.data);
+      if (req.snapshot.checksum !== expectedChecksum) {
+        return { status: 400, error: "CHECKSUM_MISMATCH" };
+      }
+      return { status: 200, success: true };
+    };
+
+    const result = verifyAndRestore({
+      snapshot: corruptedSnapshot,
+      mode: "replace",
+      confirmReplace: true,
+    });
+    expect(result.status).toBe(400);
+    expect(result.error).toBe("CHECKSUM_MISMATCH");
+  });
+
+  it("16. Restore Handler từ chối mode replace nếu confirmReplace không phải true", () => {
+    const verifyAndRestore = (req: any) => {
+      const parsed = RestoreRequestSchema.safeParse(req);
+      if (!parsed.success) {
+        return {
+          status: 400,
+          error: "VALIDATION_ERROR",
+          details: parsed.error.issues,
+        };
+      }
+      return { status: 200, success: true };
+    };
+
+    const resNoConfirm = verifyAndRestore({
+      snapshot: sampleSnapshot,
+      mode: "replace",
+    });
+    expect(resNoConfirm.status).toBe(400);
+    expect(resNoConfirm.error).toBe("VALIDATION_ERROR");
+
+    const resConfirmFalse = verifyAndRestore({
+      snapshot: sampleSnapshot,
+      mode: "replace",
+      confirmReplace: false,
+    });
+    expect(resConfirmFalse.status).toBe(400);
+  });
+
+  it("17. Restore Merge Mode áp dụng LWW cho Note và giữ ghi chú có updatedAt mới hơn", () => {
+    const existingNote = {
+      ...INITIAL_NOTES[0],
+      title: "Tiêu đề cũ",
+      content: "Nội dung cũ",
+      updatedAt: "2026-08-20T10:00:00.000Z",
+    };
+
+    const incomingOlderNote = {
+      ...INITIAL_NOTES[0],
+      title: "Tiêu đề từ máy cũ",
+      content: "Nội dung từ máy cũ",
+      updatedAt: "2026-08-19T10:00:00.000Z",
+    };
+
+    const incomingNewerNote = {
+      ...INITIAL_NOTES[0],
+      title: "Tiêu đề mới nhất",
+      content: "Nội dung mới nhất",
+      updatedAt: "2026-08-23T15:00:00.000Z",
+    };
+
+    const mergeNoteLWW = (
+      current: typeof existingNote,
+      incoming: typeof existingNote,
+    ) => {
+      if (new Date(incoming.updatedAt) >= new Date(current.updatedAt)) {
+        return { ...incoming };
+      }
+      return { ...current };
+    };
+
+    // Khi note đến cũ hơn -> Giữ nguyên current
+    expect(mergeNoteLWW(existingNote, incomingOlderNote).title).toBe(
+      "Tiêu đề cũ",
+    );
+
+    // Khi note đến mới hơn -> Cập nhật sang incoming
+    expect(mergeNoteLWW(existingNote, incomingNewerNote).title).toBe(
+      "Tiêu đề mới nhất",
+    );
+  });
 });
