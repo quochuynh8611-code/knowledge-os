@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  ReactNode,
+} from "react";
 import {
   Category,
   Topic,
@@ -10,30 +17,39 @@ import {
   NoteType,
   ResourceType,
   StudyProgress,
-} from '../types';
+} from "../types";
 import {
   INITIAL_CATEGORIES,
   INITIAL_TOPICS,
   INITIAL_NOTES,
   INITIAL_RESOURCES,
   INITIAL_TAGS,
-} from '../data/initialData';
-import { calculateNextReview, getReviewQueue } from '../lib/spaced-repetition';
+} from "../data/initialData";
+import { calculateNextReview, getReviewQueue } from "../lib/spaced-repetition";
+import {
+  LocalStorageDataRepository,
+  ApiDataRepository,
+  IDataRepository,
+} from "../services/dataRepository";
 
-const STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3';
+const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
+const dataRepository: IDataRepository =
+  typeof window !== "undefined"
+    ? new ApiDataRepository("/api", new LocalStorageDataRepository(STORAGE_KEY))
+    : new LocalStorageDataRepository(STORAGE_KEY);
 
 export type ActiveTab =
-  | 'dashboard'
-  | 'topics'
-  | 'graph'
-  | 'progress'
-  | 'notes'
-  | 'resources'
-  | 'search'
-  | 'ai_studio'
-  | 'abhidharma_matrix'
-  | 'divination_matrix'
-  | 'lexicon';
+  | "dashboard"
+  | "topics"
+  | "graph"
+  | "progress"
+  | "notes"
+  | "resources"
+  | "search"
+  | "ai_studio"
+  | "abhidharma_matrix"
+  | "divination_matrix"
+  | "lexicon";
 
 interface DataContextType {
   // State
@@ -47,12 +63,12 @@ interface DataContextType {
   searchQuery: string;
   selectedCategoryFilter: string | null;
   selectedTagFilter: string | null;
-  
+
   // Timer State
   activeTimerTopicId: string | null;
   timerSeconds: number;
   isTimerRunning: boolean;
-  timerMode: 'stopwatch' | 'pomodoro';
+  timerMode: "stopwatch" | "pomodoro";
   pomodoroTimeRemaining: number;
 
   // Actions - Navigation
@@ -64,27 +80,36 @@ interface DataContextType {
   openTopicDetail: (topicId: string) => void;
 
   // Actions - Topics
-  addTopic: (topicData: Omit<Topic, 'id' | 'createdAt' | 'updatedAt' | 'studyProgress' | 'links'>) => string;
+  addTopic: (
+    topicData: Omit<
+      Topic,
+      "id" | "createdAt" | "updatedAt" | "studyProgress" | "links"
+    >,
+  ) => string;
   updateTopic: (id: string, topicData: Partial<Topic>) => void;
   deleteTopic: (id: string) => void;
-  updateTopicProgress: (topicId: string, progress: number, status?: TopicStatus) => void;
-  addKnowledgeLink: (linkData: Omit<KnowledgeLink, 'id'>) => void;
+  updateTopicProgress: (
+    topicId: string,
+    progress: number,
+    status?: TopicStatus,
+  ) => void;
+  addKnowledgeLink: (linkData: Omit<KnowledgeLink, "id">) => void;
   removeKnowledgeLink: (linkId: string) => void;
 
   // Actions - Notes
-  addNote: (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => string;
+  addNote: (noteData: Omit<Note, "id" | "createdAt" | "updatedAt">) => string;
   updateNote: (id: string, noteData: Partial<Note>) => void;
   deleteNote: (id: string) => void;
 
   // Actions - Resources
-  addResource: (resData: Omit<Resource, 'id' | 'createdAt'>) => string;
+  addResource: (resData: Omit<Resource, "id" | "createdAt">) => string;
   updateResource: (id: string, resData: Partial<Resource>) => void;
   deleteResource: (id: string) => void;
 
   // Actions - Spaced Repetition & Study
   reviewTopicSM2: (topicId: string, quality: number) => void;
   logStudyTime: (topicId: string, minutes: number) => void;
-  startStudyTimer: (topicId: string, mode?: 'stopwatch' | 'pomodoro') => void;
+  startStudyTimer: (topicId: string, mode?: "stopwatch" | "pomodoro") => void;
   pauseStudyTimer: () => void;
   stopAndSaveStudyTimer: () => void;
 
@@ -160,29 +185,66 @@ export function DataProvider({ children }: { children: ReactNode }) {
   });
 
   // UI Navigation State
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
+    string | null
+  >(null);
+  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(
+    null,
+  );
 
   // Timer State
-  const [activeTimerTopicId, setActiveTimerTopicId] = useState<string | null>(null);
+  const [activeTimerTopicId, setActiveTimerTopicId] = useState<string | null>(
+    null,
+  );
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerMode, setTimerMode] = useState<'stopwatch' | 'pomodoro'>('stopwatch');
+  const [timerMode, setTimerMode] = useState<"stopwatch" | "pomodoro">(
+    "stopwatch",
+  );
   const [pomodoroTimeRemaining, setPomodoroTimeRemaining] = useState(25 * 60);
+
+  // Bootstrap Load & Hydration via DataRepository
+  useEffect(() => {
+    dataRepository
+      .loadInitialData()
+      .then((data) => {
+        if (data.topics && data.topics.length > 0) {
+          if (data.categories && data.categories.length > 0)
+            setCategories(data.categories);
+          setTopics(data.topics);
+          if (data.notes && data.notes.length > 0) setNotes(data.notes);
+          if (data.resources && data.resources.length > 0)
+            setResources(data.resources);
+          if (data.tags && data.tags.length > 0) setTags(data.tags);
+        }
+      })
+      .catch((err) => {
+        console.warn(
+          "Repository initial load error, continuing with local state:",
+          err,
+        );
+      });
+  }, []);
 
   // Auto-sync to LocalStorage
   useEffect(() => {
     try {
-      localStorage.setItem(`${STORAGE_KEY}_categories`, JSON.stringify(categories));
+      localStorage.setItem(
+        `${STORAGE_KEY}_categories`,
+        JSON.stringify(categories),
+      );
       localStorage.setItem(`${STORAGE_KEY}_topics`, JSON.stringify(topics));
       localStorage.setItem(`${STORAGE_KEY}_notes`, JSON.stringify(notes));
-      localStorage.setItem(`${STORAGE_KEY}_resources`, JSON.stringify(resources));
+      localStorage.setItem(
+        `${STORAGE_KEY}_resources`,
+        JSON.stringify(resources),
+      );
       localStorage.setItem(`${STORAGE_KEY}_tags`, JSON.stringify(tags));
     } catch (e) {
-      console.error('Failed to save state to localStorage', e);
+      console.error("Failed to save state to localStorage", e);
     }
   }, [categories, topics, notes, resources, tags]);
 
@@ -191,7 +253,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     let interval: NodeJS.Timeout | null = null;
     if (isTimerRunning) {
       interval = setInterval(() => {
-        if (timerMode === 'stopwatch') {
+        if (timerMode === "stopwatch") {
           setTimerSeconds((prev) => prev + 1);
         } else {
           setPomodoroTimeRemaining((prev) => {
@@ -213,11 +275,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Navigation Helpers
   const openTopicDetail = (topicId: string) => {
     setSelectedTopicId(topicId);
-    setActiveTab('topics');
+    setActiveTab("topics");
   };
 
   // Topics CRUD
-  const addTopic = (topicData: Omit<Topic, 'id' | 'createdAt' | 'updatedAt' | 'studyProgress' | 'links'>): string => {
+  const addTopic = (
+    topicData: Omit<
+      Topic,
+      "id" | "createdAt" | "updatedAt" | "studyProgress" | "links"
+    >,
+  ): string => {
     const id = `topic-${Date.now()}`;
     const newTopic: Topic = {
       ...topicData,
@@ -225,7 +292,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       links: [],
       studyProgress: {
         topicId: id,
-        status: 'not_started',
+        status: "not_started",
         progress: 0,
         interval: 0,
         easeFactor: 2.5,
@@ -237,12 +304,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
     setTopics((prev) => [newTopic, ...prev]);
+    dataRepository.saveTopic(newTopic).catch(console.error);
     return id;
   };
 
   const updateTopic = (id: string, topicData: Partial<Topic>) => {
     setTopics((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...topicData, updatedAt: new Date().toISOString() } : t))
+      prev.map((t) => {
+        if (t.id === id) {
+          const updated = {
+            ...t,
+            ...topicData,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository.saveTopic(updated).catch(console.error);
+          return updated;
+        }
+        return t;
+      }),
     );
   };
 
@@ -250,56 +329,78 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTopics((prev) => prev.filter((t) => t.id !== id));
     setNotes((prev) => prev.filter((n) => n.topicId !== id));
     setResources((prev) => prev.filter((r) => r.topicId !== id));
+    dataRepository.deleteTopic(id).catch(console.error);
     if (selectedTopicId === id) setSelectedTopicId(null);
   };
 
-  const updateTopicProgress = (topicId: string, progress: number, status?: TopicStatus) => {
+  const updateTopicProgress = (
+    topicId: string,
+    progress: number,
+    status?: TopicStatus,
+  ) => {
     setTopics((prev) =>
       prev.map((t) => {
         if (t.id !== topicId) return t;
         let newStatus = status || t.studyProgress.status;
         if (!status) {
-          if (progress >= 100) newStatus = 'completed';
-          else if (progress > 0 && newStatus === 'not_started') newStatus = 'in_progress';
+          if (progress >= 100) newStatus = "completed";
+          else if (progress > 0 && newStatus === "not_started")
+            newStatus = "in_progress";
         }
-        return {
+        const updatedProgress: StudyProgress = {
+          ...t.studyProgress,
+          progress: Math.min(100, Math.max(0, progress)),
+          status: newStatus,
+          endDate:
+            progress >= 100
+              ? new Date().toISOString()
+              : t.studyProgress.endDate,
+        };
+        const updatedTopic: Topic = {
           ...t,
-          studyProgress: {
-            ...t.studyProgress,
-            progress: Math.min(100, Math.max(0, progress)),
-            status: newStatus,
-            endDate: progress >= 100 ? new Date().toISOString() : t.studyProgress.endDate,
-          },
+          studyProgress: updatedProgress,
           updatedAt: new Date().toISOString(),
         };
-      })
+        dataRepository
+          .saveStudyProgress(topicId, updatedProgress)
+          .catch(console.error);
+        return updatedTopic;
+      }),
     );
   };
 
-  const addKnowledgeLink = (linkData: Omit<KnowledgeLink, 'id'>) => {
+  const addKnowledgeLink = (linkData: Omit<KnowledgeLink, "id">) => {
     const id = `link-${Date.now()}`;
     const newLink: KnowledgeLink = { ...linkData, id };
     setTopics((prev) =>
       prev.map((t) => {
         if (t.id === linkData.sourceId) {
-          return { ...t, links: [...t.links, newLink] };
+          const updated = { ...t, links: [...t.links, newLink] };
+          dataRepository.saveTopic(updated).catch(console.error);
+          return updated;
         }
         return t;
-      })
+      }),
     );
   };
 
   const removeKnowledgeLink = (linkId: string) => {
     setTopics((prev) =>
-      prev.map((t) => ({
-        ...t,
-        links: t.links.filter((l) => l.id !== linkId),
-      }))
+      prev.map((t) => {
+        const updated = {
+          ...t,
+          links: t.links.filter((l) => l.id !== linkId),
+        };
+        dataRepository.saveTopic(updated).catch(console.error);
+        return updated;
+      }),
     );
   };
 
   // Notes CRUD
-  const addNote = (noteData: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>): string => {
+  const addNote = (
+    noteData: Omit<Note, "id" | "createdAt" | "updatedAt">,
+  ): string => {
     const id = `note-${Date.now()}`;
     const newNote: Note = {
       ...noteData,
@@ -308,22 +409,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date().toISOString(),
     };
     setNotes((prev) => [newNote, ...prev]);
+    dataRepository.saveNote(newNote).catch(console.error);
 
     // Update topic note count
     if (noteData.topicId) {
       setTopics((prev) =>
         prev.map((t) => {
           if (t.id === noteData.topicId) {
-            return {
+            const updated = {
               ...t,
               studyProgress: {
                 ...t.studyProgress,
                 totalNotes: (t.studyProgress.totalNotes || 0) + 1,
               },
             };
+            dataRepository.saveTopic(updated).catch(console.error);
+            return updated;
           }
           return t;
-        })
+        }),
       );
     }
     return id;
@@ -331,33 +435,47 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const updateNote = (id: string, noteData: Partial<Note>) => {
     setNotes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, ...noteData, updatedAt: new Date().toISOString() } : n))
+      prev.map((n) => {
+        if (n.id === id) {
+          const updated = {
+            ...n,
+            ...noteData,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository.saveNote(updated).catch(console.error);
+          return updated;
+        }
+        return n;
+      }),
     );
   };
 
   const deleteNote = (id: string) => {
     const noteToDelete = notes.find((n) => n.id === id);
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    dataRepository.deleteNote(id).catch(console.error);
     if (noteToDelete?.topicId) {
       setTopics((prev) =>
         prev.map((t) => {
           if (t.id === noteToDelete.topicId) {
-            return {
+            const updated = {
               ...t,
               studyProgress: {
                 ...t.studyProgress,
                 totalNotes: Math.max(0, (t.studyProgress.totalNotes || 1) - 1),
               },
             };
+            dataRepository.saveTopic(updated).catch(console.error);
+            return updated;
           }
           return t;
-        })
+        }),
       );
     }
   };
 
   // Resources CRUD
-  const addResource = (resData: Omit<Resource, 'id' | 'createdAt'>): string => {
+  const addResource = (resData: Omit<Resource, "id" | "createdAt">): string => {
     const id = `res-${Date.now()}`;
     const newResource: Resource = {
       ...resData,
@@ -365,15 +483,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     setResources((prev) => [newResource, ...prev]);
+    dataRepository.saveResource(newResource).catch(console.error);
     return id;
   };
 
   const updateResource = (id: string, resData: Partial<Resource>) => {
-    setResources((prev) => prev.map((r) => (r.id === id ? { ...r, ...resData } : r)));
+    setResources((prev) =>
+      prev.map((r) => {
+        if (r.id === id) {
+          const updated = { ...r, ...resData };
+          dataRepository.saveResource(updated).catch(console.error);
+          return updated;
+        }
+        return r;
+      }),
+    );
   };
 
   const deleteResource = (id: string) => {
     setResources((prev) => prev.filter((r) => r.id !== id));
+    dataRepository.deleteResource(id).catch(console.error);
   };
 
   // Spaced Repetition SM-2
@@ -386,19 +515,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
           currentProg.interval,
           currentProg.easeFactor,
           currentProg.repetitions,
-          quality
+          quality,
         );
-        return {
+        const updatedProgress: StudyProgress = {
+          ...t.studyProgress,
+          ...schedule,
+          lastStudied: new Date().toISOString(),
+          status: t.studyProgress.progress >= 100 ? "completed" : "in_progress",
+        };
+        const updatedTopic: Topic = {
           ...t,
-          studyProgress: {
-            ...t.studyProgress,
-            ...schedule,
-            lastStudied: new Date().toISOString(),
-            status: t.studyProgress.progress >= 100 ? 'completed' : 'in_progress',
-          },
+          studyProgress: updatedProgress,
           updatedAt: new Date().toISOString(),
         };
-      })
+        dataRepository
+          .saveStudyProgress(topicId, updatedProgress)
+          .catch(console.error);
+        return updatedTopic;
+      }),
     );
   };
 
@@ -416,11 +550,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
             lastStudied: new Date().toISOString(),
           },
         };
-      })
+      }),
     );
   };
 
-  const startStudyTimer = (topicId: string, mode: 'stopwatch' | 'pomodoro' = 'stopwatch') => {
+  const startStudyTimer = (
+    topicId: string,
+    mode: "stopwatch" | "pomodoro" = "stopwatch",
+  ) => {
     setActiveTimerTopicId(topicId);
     setTimerMode(mode);
     setTimerSeconds(0);
@@ -447,18 +584,41 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Comprehensive Analytics
   const stats = useMemo(() => {
-    const phatHocList = topics.filter((t) => t.type === 'phat-hoc');
-    const huyenHocList = topics.filter((t) => t.type === 'huyen-hoc');
+    const phatHocList = topics.filter((t) => t.type === "phat-hoc");
+    const huyenHocList = topics.filter((t) => t.type === "huyen-hoc");
 
-    const phatHocDoneSum = phatHocList.reduce((acc, t) => acc + (t.studyProgress?.progress || 0), 0);
-    const phatHocDonePercent = phatHocList.length > 0 ? Math.round(phatHocDoneSum / phatHocList.length) : 0;
+    const phatHocDoneSum = phatHocList.reduce(
+      (acc, t) => acc + (t.studyProgress?.progress || 0),
+      0,
+    );
+    const phatHocDonePercent =
+      phatHocList.length > 0
+        ? Math.round(phatHocDoneSum / phatHocList.length)
+        : 0;
 
-    const huyenHocDoneSum = huyenHocList.reduce((acc, t) => acc + (t.studyProgress?.progress || 0), 0);
-    const huyenHocDonePercent = huyenHocList.length > 0 ? Math.round(huyenHocDoneSum / huyenHocList.length) : 0;
+    const huyenHocDoneSum = huyenHocList.reduce(
+      (acc, t) => acc + (t.studyProgress?.progress || 0),
+      0,
+    );
+    const huyenHocDonePercent =
+      huyenHocList.length > 0
+        ? Math.round(huyenHocDoneSum / huyenHocList.length)
+        : 0;
 
-    const studyingThisWeek = topics.filter((t) => t.studyProgress.status === 'in_progress' || t.studyProgress.status === 'reviewing').length;
-    const totalTimeSpentMinutes = topics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0);
-    const completedTopicsCount = topics.filter((t) => t.studyProgress?.progress >= 100 || t.studyProgress.status === 'completed').length;
+    const studyingThisWeek = topics.filter(
+      (t) =>
+        t.studyProgress.status === "in_progress" ||
+        t.studyProgress.status === "reviewing",
+    ).length;
+    const totalTimeSpentMinutes = topics.reduce(
+      (acc, t) => acc + (t.studyProgress?.timeSpent || 0),
+      0,
+    );
+    const completedTopicsCount = topics.filter(
+      (t) =>
+        t.studyProgress?.progress >= 100 ||
+        t.studyProgress.status === "completed",
+    ).length;
 
     return {
       totalTopics: topics.length,
@@ -484,7 +644,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       resources,
       tags,
       exportDate: new Date().toISOString(),
-      version: '1.0',
+      version: "1.0",
     };
     return JSON.stringify(fullData, null, 2);
   };
@@ -498,6 +658,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (parsed.notes) setNotes(parsed.notes);
         if (parsed.resources) setResources(parsed.resources);
         if (parsed.tags) setTags(parsed.tags);
+
+        dataRepository
+          .syncHydrate({
+            clientSyncId: `import-${Date.now()}`,
+            version: "2.0.0",
+            clientTimestamp: new Date().toISOString(),
+            categories: parsed.categories || categories,
+            topics: parsed.topics,
+            notes: parsed.notes || notes,
+            resources: parsed.resources || resources,
+            tags: parsed.tags || tags,
+          })
+          .catch(console.error);
+
         return true;
       }
       return false;
@@ -513,11 +687,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem(`${STORAGE_KEY}_notes`);
       localStorage.removeItem(`${STORAGE_KEY}_resources`);
       localStorage.removeItem(`${STORAGE_KEY}_tags`);
-      localStorage.removeItem('phat_hoc_huyen_hoc_dashboard_v1_categories');
-      localStorage.removeItem('phat_hoc_huyen_hoc_dashboard_v1_topics');
-      localStorage.removeItem('phat_hoc_huyen_hoc_dashboard_v1_notes');
-      localStorage.removeItem('phat_hoc_huyen_hoc_dashboard_v1_resources');
-      localStorage.removeItem('phat_hoc_huyen_hoc_dashboard_v1_tags');
+      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_categories");
+      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_topics");
+      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_notes");
+      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_resources");
+      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_tags");
     } catch {
       // Ignore storage clear errors
     }
@@ -587,7 +761,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 export function useData() {
   const context = useContext(DataContext);
   if (!context) {
-    throw new Error('useData must be used within a DataProvider');
+    throw new Error("useData must be used within a DataProvider");
   }
   return context;
 }

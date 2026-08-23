@@ -214,28 +214,49 @@ export class ApiDataRepository implements IDataRepository {
     this.localFallback = localFallback;
   }
 
-  async loadInitialData() {
-    try {
-      const res = await fetch(`${this.apiBaseUrl}/topics`);
-      if (res.ok) {
-        const topics = await res.json();
-        if (Array.isArray(topics) && topics.length > 0) {
-          const notesRes = await fetch(`${this.apiBaseUrl}/notes`);
-          const notes = notesRes.ok ? await notesRes.json() : [];
-          const resourcesRes = await fetch(`${this.apiBaseUrl}/resources`);
-          const resources = resourcesRes.ok ? await resourcesRes.json() : [];
+  private getUrl(path: string): string | null {
+    if (
+      typeof window !== "undefined" &&
+      window.location &&
+      window.location.origin &&
+      window.location.origin.startsWith("http")
+    ) {
+      return `${window.location.origin}${this.apiBaseUrl}${path}`;
+    }
+    return null;
+  }
 
-          return {
-            categories: [],
-            topics,
-            notes,
-            resources,
-            tags: [],
-          };
+  async loadInitialData() {
+    const url = this.getUrl("/topics");
+    if (url) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const topics = await res.json();
+          if (Array.isArray(topics) && topics.length > 0) {
+            const notesUrl = this.getUrl("/notes");
+            const notesRes = notesUrl ? await fetch(notesUrl) : null;
+            const notes = notesRes && notesRes.ok ? await notesRes.json() : [];
+
+            const resourcesUrl = this.getUrl("/resources");
+            const resourcesRes = resourcesUrl
+              ? await fetch(resourcesUrl)
+              : null;
+            const resources =
+              resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
+
+            return {
+              categories: [],
+              topics,
+              notes,
+              resources,
+              tags: [],
+            };
+          }
         }
+      } catch {
+        // Fallback silently to LocalStorage
       }
-    } catch (e) {
-      console.warn("REST API unavailable, using LocalStorage fallback", e);
     }
     return this.localFallback.loadInitialData();
   }
@@ -243,98 +264,112 @@ export class ApiDataRepository implements IDataRepository {
   async syncHydrate(
     payload: ValidatedHydrateInput,
   ): Promise<ValidatedHydrateResponse> {
-    try {
-      const res = await fetch(`${this.apiBaseUrl}/sync/hydrate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        // Cập nhật cả local fallback
-        await this.localFallback.syncHydrate(payload);
-        return result;
+    const url = this.getUrl("/sync/hydrate");
+    if (url) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          await this.localFallback.syncHydrate(payload);
+          return result;
+        }
+      } catch {
+        // Fallback silently to LocalStorage
       }
-    } catch (e) {
-      console.warn("Hydrate via API failed, storing to LocalStorage", e);
     }
     return this.localFallback.syncHydrate(payload);
   }
 
   async saveTopic(topic: Topic): Promise<Topic> {
     await this.localFallback.saveTopic(topic);
-    try {
-      await fetch(`${this.apiBaseUrl}/topics`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(topic),
-      });
-    } catch (e) {
-      console.warn("Failed to save topic to server", e);
+    const url = this.getUrl("/topics");
+    if (url) {
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(topic),
+        });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return topic;
   }
 
   async deleteTopic(topicId: string): Promise<boolean> {
     await this.localFallback.deleteTopic(topicId);
-    try {
-      await fetch(`${this.apiBaseUrl}/topics/${topicId}`, {
-        method: "DELETE",
-      });
-    } catch (e) {
-      console.warn("Failed to delete topic on server", e);
+    const url = this.getUrl(`/topics/${topicId}`);
+    if (url) {
+      try {
+        await fetch(url, { method: "DELETE" });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return true;
   }
 
   async saveNote(note: Note): Promise<Note> {
     await this.localFallback.saveNote(note);
-    try {
-      await fetch(`${this.apiBaseUrl}/notes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(note),
-      });
-    } catch (e) {
-      console.warn("Failed to save note to server", e);
+    const url = this.getUrl("/notes");
+    if (url) {
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(note),
+        });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return note;
   }
 
   async deleteNote(noteId: string): Promise<boolean> {
     await this.localFallback.deleteNote(noteId);
-    try {
-      await fetch(`${this.apiBaseUrl}/notes/${noteId}`, {
-        method: "DELETE",
-      });
-    } catch (e) {
-      console.warn("Failed to delete note on server", e);
+    const url = this.getUrl(`/notes/${noteId}`);
+    if (url) {
+      try {
+        await fetch(url, { method: "DELETE" });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return true;
   }
 
   async saveResource(resource: Resource): Promise<Resource> {
     await this.localFallback.saveResource(resource);
-    try {
-      await fetch(`${this.apiBaseUrl}/resources`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(resource),
-      });
-    } catch (e) {
-      console.warn("Failed to save resource to server", e);
+    const url = this.getUrl("/resources");
+    if (url) {
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resource),
+        });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return resource;
   }
 
   async deleteResource(resourceId: string): Promise<boolean> {
     await this.localFallback.deleteResource(resourceId);
-    try {
-      await fetch(`${this.apiBaseUrl}/resources/${resourceId}`, {
-        method: "DELETE",
-      });
-    } catch (e) {
-      console.warn("Failed to delete resource on server", e);
+    const url = this.getUrl(`/resources/${resourceId}`);
+    if (url) {
+      try {
+        await fetch(url, { method: "DELETE" });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return true;
   }
@@ -344,14 +379,17 @@ export class ApiDataRepository implements IDataRepository {
     progress: StudyProgress,
   ): Promise<StudyProgress> {
     await this.localFallback.saveStudyProgress(topicId, progress);
-    try {
-      await fetch(`${this.apiBaseUrl}/study-progress`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topicId, progress }),
-      });
-    } catch (e) {
-      console.warn("Failed to save study progress to server", e);
+    const url = this.getUrl("/study-progress");
+    if (url) {
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topicId, progress }),
+        });
+      } catch {
+        // Handled via local fallback
+      }
     }
     return progress;
   }
