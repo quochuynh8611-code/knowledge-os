@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useData } from '../../context/DataContext';
+import React, { useState } from "react";
+import { useData } from "../../context/DataContext";
 import {
   ArrowLeft,
   BookOpen,
@@ -21,18 +21,23 @@ import {
   Bookmark,
   ChevronRight,
   Trash2,
-} from 'lucide-react';
-import { NoteFormModal } from '../modals/NoteFormModal';
-import { ResourceFormModal } from '../modals/ResourceFormModal';
-import { TopicFormModal } from '../modals/TopicFormModal';
-import { SpacedReviewModal } from '../modals/SpacedReviewModal';
-import { StudyTimerModal } from '../modals/StudyTimerModal';
-import { ResourceViewerModal } from '../modals/ResourceViewerModal';
-import { ObsidianBridgeModal } from '../integrations/ObsidianBridgeModal';
-import { NotebookLMStudioModal } from '../integrations/NotebookLMStudioModal';
-import { AIResearchStudio } from '../ai/AIResearchStudio';
-import { Resource, Note, TopicStatus } from '../../types';
-import { formatMinutesToHours, formatTimeAgo } from '../../lib/spaced-repetition';
+} from "lucide-react";
+import { NoteFormModal } from "../modals/NoteFormModal";
+import { ResourceFormModal } from "../modals/ResourceFormModal";
+import { TopicFormModal } from "../modals/TopicFormModal";
+import { SpacedReviewModal } from "../modals/SpacedReviewModal";
+import { StudyTimerModal } from "../modals/StudyTimerModal";
+import { ResourceViewerModal } from "../modals/ResourceViewerModal";
+import { ObsidianBridgeModal } from "../integrations/ObsidianBridgeModal";
+import { NotebookLMStudioModal } from "../integrations/NotebookLMStudioModal";
+import { AIResearchStudio } from "../ai/AIResearchStudio";
+import { Breadcrumbs } from "../layout/Breadcrumbs";
+import { EmptyState } from "../ui/EmptyState";
+import { Resource, Note, TopicStatus } from "../../types";
+import {
+  formatMinutesToHours,
+  formatTimeAgo,
+} from "../../lib/spaced-repetition";
 
 export function TopicDetail() {
   const {
@@ -49,7 +54,9 @@ export function TopicDetail() {
     removeKnowledgeLink,
   } = useData();
 
-  const [activeTab, setActiveTab] = useState<'content' | 'notes' | 'links' | 'resources' | 'spaced'>('content');
+  const [activeTab, setActiveTab] = useState<
+    "content" | "notes" | "links" | "resources" | "spaced"
+  >("content");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showEditTopicModal, setShowEditTopicModal] = useState(false);
@@ -63,8 +70,10 @@ export function TopicDetail() {
 
   // Link addition helper
   const [showAddLink, setShowAddLink] = useState(false);
-  const [targetTopicId, setTargetTopicId] = useState('');
-  const [linkType, setLinkType] = useState<'related' | 'prerequisite' | 'advanced' | 'contradicts'>('related');
+  const [targetTopicId, setTargetTopicId] = useState("");
+  const [linkType, setLinkType] = useState<
+    "related" | "prerequisite" | "advanced" | "contradicts"
+  >("related");
   const [linkStrength, setLinkStrength] = useState(3);
 
   const topic = topics.find((t) => t.id === selectedTopicId) || topics[0];
@@ -104,24 +113,24 @@ export function TopicDetail() {
       sourceId: topic.id,
       targetId: targetTopicId,
       sourceTitle: topic.title,
-      targetTitle: targetObj?.title || 'Chủ đề',
+      targetTitle: targetObj?.title || "Chủ đề",
       linkType,
       strength: linkStrength,
     });
     setShowAddLink(false);
-    setTargetTopicId('');
+    setTargetTopicId("");
   };
 
   // Helper to parse Wiki-style [[Topic Name]] in note or content and make them clickable
   const renderWikiLinks = (text: string) => {
     const parts = text.split(/(\[\[.*?\]\])/g);
     return parts.map((part, index) => {
-      if (part.startsWith('[[') && part.endsWith(']]')) {
+      if (part.startsWith("[[") && part.endsWith("]]")) {
         const titleQuery = part.slice(2, -2).trim();
         const matchedTopic = topics.find(
           (t) =>
             t.title.toLowerCase().includes(titleQuery.toLowerCase()) ||
-            titleQuery.toLowerCase().includes(t.title.toLowerCase())
+            titleQuery.toLowerCase().includes(t.title.toLowerCase()),
         );
 
         if (matchedTopic) {
@@ -138,7 +147,10 @@ export function TopicDetail() {
           );
         }
         return (
-          <span key={index} className="px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded text-xs font-mono">
+          <span
+            key={index}
+            className="px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded text-xs font-mono"
+          >
             {titleQuery}
           </span>
         );
@@ -149,15 +161,27 @@ export function TopicDetail() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      {/* Top Breadcrumbs & Back (Matching Page 5: "← Quay lại Abhidharma - Vi Diệu Pháp") */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-4">
-        <button
-          onClick={() => setSelectedTopicId(null)}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-stone-600 hover:text-stone-950 transition group"
-        >
-          <ArrowLeft className="w-4 h-4 text-stone-500 group-hover:-translate-x-0.5 transition" />
-          <span>Quay lại danh mục chủ đề</span>
-        </button>
+      {/* Top Breadcrumbs & Back Navigation */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
+        <Breadcrumbs
+          items={[
+            {
+              label: topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học",
+              onClick: () => setSelectedTopicId(null),
+            },
+            {
+              label:
+                topic.categoryName ||
+                (topic.type === "phat-hoc" ? "Tam Tạng" : "Dịch Học"),
+              onClick: () => setSelectedTopicId(null),
+            },
+            {
+              label: topic.title,
+              isCurrent: true,
+            },
+          ]}
+          onHomeClick={() => setSelectedTopicId(null)}
+        />
 
         <div className="flex flex-wrap items-center gap-2">
           {/* AI Scholar trigger */}
@@ -214,12 +238,13 @@ export function TopicDetail() {
           <div className="flex items-center gap-2">
             <span
               className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                topic.type === 'phat-hoc'
-                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                  : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                topic.type === "phat-hoc"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                  : "bg-indigo-100 text-indigo-900 border border-indigo-300"
               }`}
             >
-              {topic.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'} • {topic.categoryName}
+              {topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học"} •{" "}
+              {topic.categoryName}
             </span>
             <span className="text-xs text-stone-500 font-mono flex items-center gap-1">
               <Clock className="w-3 h-3 text-stone-400" />
@@ -229,10 +254,18 @@ export function TopicDetail() {
 
           {/* Status badge & selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-500 font-medium">Trạng thái:</span>
+            <span className="text-xs text-stone-500 font-medium">
+              Trạng thái:
+            </span>
             <select
               value={topic.studyProgress.status}
-              onChange={(e) => updateTopicProgress(topic.id, topic.studyProgress.progress, e.target.value as TopicStatus)}
+              onChange={(e) =>
+                updateTopicProgress(
+                  topic.id,
+                  topic.studyProgress.progress,
+                  e.target.value as TopicStatus,
+                )
+              }
               className="text-xs px-2.5 py-1 bg-stone-100 border border-stone-300 rounded-lg font-semibold text-stone-800"
             >
               <option value="not_started">Chưa học</option>
@@ -248,7 +281,8 @@ export function TopicDetail() {
             {topic.title}
           </h1>
           <p className="text-xs sm:text-sm text-stone-700 mt-2 leading-relaxed bg-stone-50 p-3.5 rounded-xl border border-stone-200">
-            <span className="font-semibold text-stone-900">Mô tả:</span> {topic.description}
+            <span className="font-semibold text-stone-900">Mô tả:</span>{" "}
+            {topic.description}
           </p>
         </div>
 
@@ -256,7 +290,8 @@ export function TopicDetail() {
         <div className="pt-2 border-t border-stone-100 space-y-2">
           <div className="flex items-center justify-between text-xs">
             <span className="font-semibold text-stone-700 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" /> Tiến độ nghiên cứu
+              <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" /> Tiến độ
+              nghiên cứu
             </span>
             <span className="font-bold font-mono text-amber-900 text-sm">
               {topic.studyProgress.progress}% hoàn thành
@@ -266,7 +301,7 @@ export function TopicDetail() {
             <div className="flex-1 bg-stone-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  topic.type === 'phat-hoc' ? 'bg-amber-600' : 'bg-indigo-600'
+                  topic.type === "phat-hoc" ? "bg-amber-600" : "bg-indigo-600"
                 }`}
                 style={{ width: `${topic.studyProgress.progress}%` }}
               />
@@ -276,7 +311,9 @@ export function TopicDetail() {
               min={0}
               max={100}
               value={topic.studyProgress.progress}
-              onChange={(e) => updateTopicProgress(topic.id, Number(e.target.value))}
+              onChange={(e) =>
+                updateTopicProgress(topic.id, Number(e.target.value))
+              }
               className="w-28 accent-amber-700 cursor-pointer"
               title="Kéo thanh trượt để cập nhật tiến độ"
             />
@@ -287,56 +324,59 @@ export function TopicDetail() {
       {/* Navigation Tabs for Topic Detail */}
       <div className="flex border-b border-stone-200 gap-2">
         <button
-          onClick={() => setActiveTab('content')}
+          onClick={() => setActiveTab("content")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'content'
-              ? 'border-amber-700 text-amber-900'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+            activeTab === "content"
+              ? "border-amber-700 text-amber-900"
+              : "border-transparent text-stone-600 hover:text-stone-900"
           }`}
         >
           <BookOpen className="w-4 h-4" /> Nội Dung (Markdown)
         </button>
 
         <button
-          onClick={() => setActiveTab('notes')}
+          onClick={() => setActiveTab("notes")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'notes'
-              ? 'border-amber-700 text-amber-900'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+            activeTab === "notes"
+              ? "border-amber-700 text-amber-900"
+              : "border-transparent text-stone-600 hover:text-stone-900"
           }`}
         >
           <FileText className="w-4 h-4" /> Ghi Chú ({topicNotes.length})
         </button>
 
         <button
-          onClick={() => setActiveTab('links')}
+          onClick={() => setActiveTab("links")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'links'
-              ? 'border-amber-700 text-amber-900'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+            activeTab === "links"
+              ? "border-amber-700 text-amber-900"
+              : "border-transparent text-stone-600 hover:text-stone-900"
           }`}
         >
-          <Share2 className="w-4 h-4" /> Liên Kết Tri Thức ({topic.links.length})
+          <Share2 className="w-4 h-4" /> Liên Kết Tri Thức ({topic.links.length}
+          )
         </button>
 
         <button
-          onClick={() => setActiveTab('resources')}
+          onClick={() => setActiveTab("resources")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-            activeTab === 'resources'
-              ? 'border-amber-700 text-amber-900'
-              : 'border-transparent text-stone-600 hover:text-stone-900'
+            activeTab === "resources"
+              ? "border-amber-700 text-amber-900"
+              : "border-transparent text-stone-600 hover:text-stone-900"
           }`}
         >
-          <Library className="w-4 h-4" /> Tài Liệu Đính Kèm ({topicResources.length})
+          <Library className="w-4 h-4" /> Tài Liệu Đính Kèm (
+          {topicResources.length})
         </button>
       </div>
 
       {/* Tab 1: Nội dung (Markdown Reader & Wiki Link Parser) */}
-      {activeTab === 'content' && (
+      {activeTab === "content" && (
         <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-700" /> Hệ thống luận giải &amp; Giáo lý
+              <BookOpen className="w-4 h-4 text-amber-700" /> Hệ thống luận giải
+              &amp; Giáo lý
             </h3>
             <button
               onClick={() => setShowEditTopicModal(true)}
@@ -357,7 +397,10 @@ export function TopicDetail() {
               <TagIcon className="w-3.5 h-3.5 text-stone-400" /> Thẻ chủ đề:
             </span>
             {topic.tags.map((tg) => (
-              <span key={tg} className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg text-xs font-medium">
+              <span
+                key={tg}
+                className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg text-xs font-medium"
+              >
                 #{tg}
               </span>
             ))}
@@ -366,7 +409,7 @@ export function TopicDetail() {
       )}
 
       {/* Tab 2: Ghi chú (Notes matching Page 5 wireframe) */}
-      {activeTab === 'notes' && (
+      {activeTab === "notes" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900">
@@ -387,10 +430,16 @@ export function TopicDetail() {
             {topicNotes.map((note) => {
               const getTypeIcon = () => {
                 switch (note.type) {
-                  case 'insight': return <Lightbulb className="w-3.5 h-3.5 text-amber-700" />;
-                  case 'question': return <HelpCircle className="w-3.5 h-3.5 text-rose-700" />;
-                  case 'summary': return <Bookmark className="w-3.5 h-3.5 text-emerald-700" />;
-                  default: return <FileText className="w-3.5 h-3.5 text-blue-700" />;
+                  case "insight":
+                    return <Lightbulb className="w-3.5 h-3.5 text-amber-700" />;
+                  case "question":
+                    return <HelpCircle className="w-3.5 h-3.5 text-rose-700" />;
+                  case "summary":
+                    return (
+                      <Bookmark className="w-3.5 h-3.5 text-emerald-700" />
+                    );
+                  default:
+                    return <FileText className="w-3.5 h-3.5 text-blue-700" />;
                 }
               };
 
@@ -408,7 +457,9 @@ export function TopicDetail() {
                       <span>{formatTimeAgo(note.createdAt)}</span>
                     </div>
 
-                    <h4 className="font-bold text-stone-900 text-sm">{note.title}</h4>
+                    <h4 className="font-bold text-stone-900 text-sm">
+                      {note.title}
+                    </h4>
 
                     <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
                       {renderWikiLinks(note.content)}
@@ -418,7 +469,10 @@ export function TopicDetail() {
                   <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
                     <div className="flex flex-wrap gap-1">
                       {note.tags.map((t) => (
-                        <span key={t} className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]">
+                        <span
+                          key={t}
+                          className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]"
+                        >
                           #{t}
                         </span>
                       ))}
@@ -436,7 +490,8 @@ export function TopicDetail() {
                       </button>
                       <button
                         onClick={() => {
-                          if (window.confirm('Xóa ghi chú này?')) deleteNote(note.id);
+                          if (window.confirm("Xóa ghi chú này?"))
+                            deleteNote(note.id);
                         }}
                         className="p-1 text-stone-400 hover:text-rose-700 rounded"
                         title="Xóa ghi chú"
@@ -450,8 +505,19 @@ export function TopicDetail() {
             })}
 
             {topicNotes.length === 0 && (
-              <div className="col-span-2 text-center py-10 bg-white border border-stone-200 rounded-2xl p-6 text-stone-400 text-xs">
-                Chưa có ghi chú nào cho chủ đề này. Hãy nhấn "Thêm ghi chú mới" để ghi lại những chiêm nghiệm và luận điểm quan trọng!
+              <div className="col-span-2">
+                <EmptyState
+                  icon={FileText}
+                  title="Chưa có ghi chú nào cho chủ đề này"
+                  description="Ghi lại các kiến giải sâu sắc, đoạn kinh tạng đối chiếu hoặc câu hỏi khảo cứu của bạn."
+                  primaryAction={{
+                    label: "Thêm ghi chú đầu tiên",
+                    onClick: () => {
+                      setEditingNote(null);
+                      setShowNoteModal(true);
+                    },
+                  }}
+                />
               </div>
             )}
           </div>
@@ -459,15 +525,17 @@ export function TopicDetail() {
       )}
 
       {/* Tab 3: Liên kết tri thức (Knowledge Links) */}
-      {activeTab === 'links' && (
+      {activeTab === "links" && (
         <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-stone-100 pb-3">
             <div>
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-amber-700" /> Sơ đồ mối quan hệ tri thức
+                <Share2 className="w-4 h-4 text-amber-700" /> Sơ đồ mối quan hệ
+                tri thức
               </h3>
               <p className="text-xs text-stone-500">
-                Các chủ đề liên quan, tiền đề (prerequisite) và tương hợp học thuật
+                Các chủ đề liên quan, tiền đề (prerequisite) và tương hợp học
+                thuật
               </p>
             </div>
             <button
@@ -480,7 +548,10 @@ export function TopicDetail() {
 
           {/* Add Link Form */}
           {showAddLink && (
-            <form onSubmit={handleAddLinkSubmit} className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
+            <form
+              onSubmit={handleAddLinkSubmit}
+              className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3"
+            >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
@@ -497,7 +568,8 @@ export function TopicDetail() {
                       .filter((t) => t.id !== topic.id)
                       .map((t) => (
                         <option key={t.id} value={t.id}>
-                          [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
+                          [{t.type === "phat-hoc" ? "Phật Học" : "Huyền Học"}]{" "}
+                          {t.title}
                         </option>
                       ))}
                   </select>
@@ -513,9 +585,15 @@ export function TopicDetail() {
                     className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs"
                   >
                     <option value="related">Tương quan (Related)</option>
-                    <option value="prerequisite">Tiền đề nền tảng (Prerequisite)</option>
-                    <option value="advanced">Mở rộng nâng cao (Advanced)</option>
-                    <option value="contradicts">Biện luận đối nghịch (Contradicts)</option>
+                    <option value="prerequisite">
+                      Tiền đề nền tảng (Prerequisite)
+                    </option>
+                    <option value="advanced">
+                      Mở rộng nâng cao (Advanced)
+                    </option>
+                    <option value="contradicts">
+                      Biện luận đối nghịch (Contradicts)
+                    </option>
                   </select>
                 </div>
 
@@ -567,16 +645,19 @@ export function TopicDetail() {
                         {link.linkType}
                       </span>
                       <span className="text-amber-800 text-[10px] font-bold">
-                        {'★'.repeat(link.strength)}
+                        {"★".repeat(link.strength)}
                       </span>
                     </div>
                     <h4
                       onClick={() => openTopicDetail(link.targetTopic!.id)}
                       className="text-xs font-bold text-stone-900 hover:text-amber-800 cursor-pointer flex items-center gap-1"
                     >
-                      {link.targetTopic.title} <ChevronRight className="w-3 h-3" />
+                      {link.targetTopic.title}{" "}
+                      <ChevronRight className="w-3 h-3" />
                     </h4>
-                    {link.notes && <p className="text-[11px] text-stone-500">{link.notes}</p>}
+                    {link.notes && (
+                      <p className="text-[11px] text-stone-500">{link.notes}</p>
+                    )}
                   </div>
 
                   <button
@@ -592,7 +673,8 @@ export function TopicDetail() {
 
             {linkedTopics.length === 0 && (
               <div className="col-span-2 text-center py-6 text-stone-400 text-xs">
-                Chưa có liên kết tri thức nào được thiết lập. Hãy tạo liên kết giữa các chủ đề liên quan để biểu đồ tri thức phong phú hơn!
+                Chưa có liên kết tri thức nào được thiết lập. Hãy tạo liên kết
+                giữa các chủ đề liên quan để biểu đồ tri thức phong phú hơn!
               </div>
             )}
           </div>
@@ -600,7 +682,7 @@ export function TopicDetail() {
       )}
 
       {/* Tab 4: Tài liệu đính kèm (Resources) */}
-      {activeTab === 'resources' && (
+      {activeTab === "resources" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900">
@@ -627,9 +709,13 @@ export function TopicDetail() {
                     </span>
                     <span>{formatTimeAgo(res.createdAt)}</span>
                   </div>
-                  <h4 className="font-bold text-stone-900 text-sm line-clamp-2">{res.title}</h4>
+                  <h4 className="font-bold text-stone-900 text-sm line-clamp-2">
+                    {res.title}
+                  </h4>
                   {res.author && (
-                    <p className="text-xs text-stone-600">Tác giả: <span className="font-medium">{res.author}</span></p>
+                    <p className="text-xs text-stone-600">
+                      Tác giả: <span className="font-medium">{res.author}</span>
+                    </p>
                   )}
                   {res.notes && (
                     <p className="text-xs text-stone-500 bg-stone-50 p-2 rounded-lg border border-stone-100">
@@ -660,7 +746,8 @@ export function TopicDetail() {
                     )}
                     <button
                       onClick={() => {
-                        if (window.confirm('Xóa tài liệu này?')) deleteResource(res.id);
+                        if (window.confirm("Xóa tài liệu này?"))
+                          deleteResource(res.id);
                       }}
                       className="p-1 text-stone-400 hover:text-rose-700"
                     >
@@ -672,8 +759,16 @@ export function TopicDetail() {
             ))}
 
             {topicResources.length === 0 && (
-              <div className="col-span-2 text-center py-8 bg-white border border-stone-200 rounded-2xl p-6 text-stone-400 text-xs">
-                Chưa có tài liệu đính kèm cho chủ đề này. Bạn có thể thêm file PDF, sách tham khảo hoặc video bài giảng.
+              <div className="col-span-2">
+                <EmptyState
+                  icon={Library}
+                  title="Chưa có tài liệu đính kèm cho chủ đề này"
+                  description="Đính kèm tài liệu PDF, sách tham khảo cổ học hoặc liên kết số hóa phục vụ khảo cứu."
+                  primaryAction={{
+                    label: "Thêm tài liệu mới",
+                    onClick: () => setShowResourceModal(true),
+                  }}
+                />
               </div>
             )}
           </div>
@@ -730,7 +825,10 @@ export function TopicDetail() {
       {showAIStudioModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
           <div className="w-full max-w-4xl max-h-[90vh]">
-            <AIResearchStudio currentTopic={topic} onClose={() => setShowAIStudioModal(false)} />
+            <AIResearchStudio
+              currentTopic={topic}
+              onClose={() => setShowAIStudioModal(false)}
+            />
           </div>
         </div>
       )}
