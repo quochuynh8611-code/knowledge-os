@@ -44,8 +44,8 @@ export const TagSchema = z.object({
   id: z.string().min(1, "Tag ID không được để trống"),
   name: z.string().min(1, "Tên tag không được để trống"),
   slug: z.string().min(1, "Slug không được để trống"),
-  color: z.string().optional().default("#D97706"),
-  count: z.number().int().optional().default(0),
+  color: z.string().optional(),
+  count: z.number().int().optional(),
 });
 
 export const TagCreateSchema = TagSchema.omit({ id: true });
@@ -63,7 +63,7 @@ export const CategorySchema = z.object({
   parentId: z.string().nullable().optional(),
   icon: z.string().optional(),
   color: z.string().optional(),
-  order: z.number().int().optional().default(0),
+  order: z.number().int().optional(),
 });
 
 export const CategoryCreateSchema = CategorySchema.omit({ id: true });
@@ -245,6 +245,41 @@ export const ImportExportPayloadSchema = z.object({
   links: z.array(KnowledgeLinkSchema).optional().default([]),
 });
 
+// ==========================================
+// 10. IDEMPOTENT HYDRATION SYNC SCHEMAS
+// ==========================================
+
+export const HydratePayloadSchema = z.object({
+  clientSyncId: z.string().min(1, "clientSyncId không được để trống"),
+  version: z.string().optional().default("2.0.0"),
+  clientTimestamp: z
+    .string()
+    .optional()
+    .default(() => new Date().toISOString()),
+  forceOverwrite: z.boolean().optional().default(false),
+  categories: z.array(CategorySchema).optional().default([]),
+  topics: z.array(TopicSchema).optional().default([]),
+  notes: z.array(NoteSchema).optional().default([]),
+  resources: z.array(ResourceSchema).optional().default([]),
+  tags: z.array(TagSchema).optional().default([]),
+  links: z.array(KnowledgeLinkSchema).optional().default([]),
+});
+
+export const HydrateResponseSchema = z.object({
+  success: z.boolean(),
+  clientSyncId: z.string(),
+  serverTimestamp: z.string(),
+  summary: z.object({
+    categoriesUpserted: z.number().int().min(0),
+    topicsUpserted: z.number().int().min(0),
+    notesUpserted: z.number().int().min(0),
+    resourcesUpserted: z.number().int().min(0),
+    tagsUpserted: z.number().int().min(0),
+    linksUpserted: z.number().int().min(0),
+    progressMerged: z.number().int().min(0),
+  }),
+});
+
 export type ValidatedTopic = z.infer<typeof TopicSchema>;
 export type ValidatedTopicCreate = z.infer<typeof TopicCreateSchema>;
 export type ValidatedNote = z.infer<typeof NoteSchema>;
@@ -257,3 +292,6 @@ export type ValidatedStudyProgress = z.infer<typeof StudyProgressSchema>;
 export type ValidatedImportExportPayload = z.infer<
   typeof ImportExportPayloadSchema
 >;
+export type ValidatedHydratePayload = z.infer<typeof HydratePayloadSchema>;
+export type ValidatedHydrateInput = z.input<typeof HydratePayloadSchema>;
+export type ValidatedHydrateResponse = z.infer<typeof HydrateResponseSchema>;

@@ -5,7 +5,7 @@ Tính năng: Quản lý Lưu Trữ Bền Vững & Migration (Phase 2 - Persisten
   Để không bao giờ bị mất dữ liệu khi đổi trình duyệt, dọn cache, hoặc nghiên cứu trên nhiều thiết bị.
 
   Bối cảnh:
-    Cho hệ thống có sẵn bộ Zod Schema Validation và dịch vụ Persistence Hydration
+    Cho hệ thống có sẵn bộ Zod Schema Validation và lớp DataRepository trừu tượng
 
   Kịch bản: Xác thực hợp chuẩn khi tạo Chủ đề nghiên cứu mới (Topic Create Payload)
     Khi người dùng gửi payload tạo chủ đề:
@@ -34,14 +34,20 @@ Tính năng: Quản lý Lưu Trữ Bền Vững & Migration (Phase 2 - Persisten
     Thì Zod Schema "SM2ReviewInputSchema" phải parse thành công với quality trong khoảng từ 0 đến 5
     Và nếu quality nằm ngoài khoảng 0 đến 5 thì hệ thống phải báo lỗi "Chất lượng ôn tập phải từ 0 đến 5"
 
-  Kịch bản: Hydration dữ liệu từ LocalStorage lên Server mà không mất dữ liệu (Zero-Loss Migration)
-    Cho người dùng có dữ liệu LocalStorage chứa 5 chủ đề và 12 ghi chú cá nhân
-    Khi ứng dụng khởi động và gửi payload tới endpoint "/api/sync/hydrate"
-    Thì hệ thống phải xác thực payload bằng "ImportExportPayloadSchema"
-    Và lưu thành công toàn bộ 5 chủ đề và 12 ghi chú vào cơ sở dữ liệu
-    Và không ghi đè làm mất bất kỳ ghi chú nào đã tồn tại
+  Kịch bản: Đảm bảo tính Bất Biến (Idempotency) khi gửi lại Hydration Payload nhiều lần
+    Cho một gói tin Hydration có "clientSyncId" là "sync-session-uuid-123"
+    Khi gói tin được gửi tới server lần thứ nhất
+    Thì server xử lý thành công và lưu 10 topics, 20 notes
+    Và khi gói tin cùng "clientSyncId" được gửi lại lần thứ hai do retry mạng
+    Thì server không tạo thêm bản ghi trùng lặp nào và trả về kết quả thống kê tương đương
 
-  Kịch bản: Xuất và Nhập toàn bộ cơ sở tri thức (Full Backup & Restore)
-    Khi người dùng yêu cầu xuất file sao lưu JSON
-    Thì hệ thống tạo ra file JSON chứa đầy đủ metadata, topics, notes, resources, tags, và studyProgress
-    Và khi nhập lại file này vào một hệ thống mới, hệ thống phải phục hồi chính xác 100% dữ liệu
+  Kịch bản: Giải quyết xung đột dữ liệu theo nguyên tắc Last-Write-Wins (LWW)
+    Cho ghi chú "note-01" đã có trên server với thời gian sửa là "2026-08-20T10:00:00Z"
+    Khi client gửi phiên bản ghi chú "note-01" có thời gian sửa là "2026-08-23T15:00:00Z" (mới hơn)
+    Thì server cập nhật nội dung ghi chú thành phiên bản mới nhất từ client
+    Và nếu client gửi bản ghi có thời gian cũ hơn thì server bảo lưu nội dung hiện tại
+
+  Kịch bản: Tương tác qua lớp DataRepository mà không gọi trực tiếp Database hay LocalStorage trong UI
+    Khi DataContext cần nạp dữ liệu khởi tạo
+    Thì DataContext gọi "dataRepository.loadInitialData()"
+    Và nhận về dữ liệu được chuẩn hóa theo đúng interface "IDataRepository"

@@ -86,31 +86,32 @@
 
 ---
 
-## ADR-006: Chiến Lược Chuyển Đổi Lưu Trữ từ LocalStorage sang PostgreSQL / Prisma (Hybrid Persistence & Zero-Loss Hydration)
+## ADR-006: Kiến Trúc Persistence Chuẩn Hóa với PostgreSQL, Idempotent Hydration Contract & Repository Pattern
 
-- **Trạng thái:** PROPOSED FOR REVIEW
+- **Trạng thái:** PROPOSED FOR REVIEW (REVISION 2)
 - **Bối cảnh:**
-  - Hiện tại, cơ sở tri thức nghiên cứu của người dùng chỉ được lưu trong `localStorage` của trình duyệt. Điều này tiềm ẩn các giới hạn:
-    1. Dung lượng tối đa của LocalStorage chỉ khoảng 5MB - 10MB, không đủ chứa hàng nghìn ghi chú, trích dẫn kinh điển lớn hoặc hình ảnh số hóa.
-    2. Không hỗ trợ truy vấn quan hệ nhiều-nhiều (Many-to-Many), chỉ mục phức tạp, hoặc giao dịch ACID an toàn.
-    3. Dữ liệu dễ bị mất khi người dùng dọn dẹp trình duyệt hoặc chuyển đổi máy tính.
-  - Tuy nhiên, nhiều học giả và người dùng phi công nghệ cần ứng dụng chạy ngay được mà không bắt buộc phải cài đặt máy chủ PostgreSQL cục bộ trước.
-- **Quyết định:**
-  - Thiết kế kiến trúc lưu trữ **Lai Hai Tầng (Hybrid Resilience Layer)** với PostgreSQL + Prisma ORM làm Backend Core và LocalStorage làm Client Fallback:
-    1. **Prisma ORM Models:** Định nghĩa các thực thể có quan hệ chặt chẽ: `Category`, `Topic`, `Note`, `Resource`, `Tag`, `KnowledgeLink`, `StudyProgress`, `StudySessionLog`, `LexiconTerm`.
-    2. **Đa dạng hóa Database Engine (Zero Friction):** Hỗ trợ chuỗi kết nối linh hoạt qua biến môi trường `DATABASE_URL`:
-       - Môi trường Production / Server: PostgreSQL (`postgresql://...`).
-       - Môi trường Local Dev / Offline: SQLite (`file:./dev.db`) khi chưa có máy chủ PostgreSQL.
-    3. **Quy trình Hydration Không Mất Dữ Liệu (Zero-Loss First Boot Migration):**
-       - Khi khởi động, Frontend kiểm tra kết nối API máy chủ (`/api/health`).
-       - Nếu máy chủ phản hồi và cơ sở dữ liệu rỗng (hoặc có dữ liệu mới trên client chưa đồng bộ), Frontend tự động kích hoạt gói tin `POST /api/sync/hydrate` gửi toàn bộ dữ liệu từ `localStorage` lên máy chủ.
-       - Server sử dụng Transaction (`prisma.$transaction`) để `upsert` theo UUID/Slug, kết hợp dữ liệu cũ và mới mà không bao giờ ghi đè làm mất ghi chú người dùng.
-    4. **Offline Resilience & Fallback:**
-       - Nếu backend tạm thời không kết nối được, Frontend tự động chuyển về chế độ LocalStorage mượt mà mà không ném lỗi ra màn hình.
+  - Ứng dụng hiện lưu trữ hoàn toàn trên `localStorage` client-side. Cần chuyển sang PostgreSQL + Prisma ORM làm cơ sở dữ liệu quan hệ production-ready duy nhất.
+  - Cần đảm bảo:
+    1. Cơ sở dữ liệu server-side có cấu hình đơn nhất, chuẩn hóa, không dùng kỹ thuật hybrid đa provider phức tạp trong runtime.
+    2. Giao thức `POST /api/sync/hydrate` phải có tính bất biến (Idempotent), hỗ trợ retry an toàn nhiều lần mà không tạo bản ghi trùng lặp hoặc sai lệch dữ liệu.
+    3. Tránh việc refactor lớn trực tiếp vào `DataContext.tsx` làm tăng blast-radius; tách biệt bằng lớp `DataRepository` trung gian.
+- **Quyết định Kiến Trúc:**
+  1. **Single Target Persistence (PostgreSQL + Prisma ORM):**
+     - Target duy nhất cho server persistence trong Phase 2A là **PostgreSQL** (`provider = "postgresql"` trong `prisma/schema.prisma`).
+     - Chuỗi kết nối được cấu hình thông qua biến môi trường chuẩn `DATABASE_URL` trong `.env`.
+  2. **Giao Thức Idempotent Hydration (`POST /api/sync/hydrate`):**
+     - **Payload Contract:** Gồm `clientSyncId` (UUID v4 chống trùng lặp), `version: "2.0.0"`, `clientTimestamp` (ISO 8601), và toàn bộ các thực thể dữ liệu.
+     - **Quy tắc Giải quyết Xung đột (Last-Write-Wins - LWW):**
+       - So sánh trường `updatedAt` của bản ghi: nếu bản ghi trên Client có `updatedAt` mới hơn Server $\rightarrow$ tiến hành cập nhật; ngược lại giữ nguyên dữ liệu Server.
+       - Với `StudyProgress`: Hợp nhất thông minh, giữ `timeSpent`, `repetitions`, `easeFactor` và `interval` tối ưu nhất.
+     - **Tính Bất Biến khi Retry:** Gửi lại cùng một payload nhiều lần (hoặc khi mất kết nối mạng giữa chừng) cho ra cùng một kết quả chính xác, không sinh duplicate ID hay foreign key lỗi.
+  3. **Kiến Trúc Repository Pattern (`src/services/dataRepository.ts`):**
+     - Tạo interface `IDataRepository` chuẩn hóa: `getTopics()`, `saveTopic()`, `deleteTopic()`, `getNotes()`, `saveNote()`, `syncHydrate()`...
+     - `DataContext.tsx` chỉ tương tác với `dataRepository`, không trực tiếp gọi `fetch()` hay `localStorage`, giữ nguyên 100% API cho UI components và giảm thiểu tối đa blast-radius.
 - **Hệ quả:**
   - _Tích cực:_
-    - Dữ liệu nghiên cứu tồn tại vĩnh viễn, bảo vệ toàn vẹn bằng quan hệ Foreign Key và Transaction ACID.
-    - Không gián đoạn trải nghiệm của người dùng cũ (dữ liệu LocalStorage tự động chuyển đổi lên DB).
-    - Hỗ trợ cả hai chế độ chạy máy chủ PostgreSQL và chạy cục bộ không cần cấu hình phức tạp.
+    - Kiến trúc Prisma rõ ràng, chuẩn mực công nghiệp, dễ bảo trì và migrate.
+    - An toàn tuyệt đối khi mạng chập chờn hoặc người dùng bấm đồng bộ nhiều lần.
+    - Giảm thiểu 80% rủi ro regression trên `DataContext.tsx` và UI layer.
   - _Tiêu cực:_
-    - Cần quản lý cấu hình Prisma Client và thực hiện test các tình huống xung đột cập nhật (Conflict Resolution).
+    - Cần triển khai thêm lớp Repository service và viết test suite bao phủ các kịch bản LWW conflict resolution.
