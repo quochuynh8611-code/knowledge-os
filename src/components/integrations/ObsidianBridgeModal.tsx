@@ -12,6 +12,7 @@ import {
   Sparkles,
   Layers,
   BookOpen,
+  PlusCircle,
 } from 'lucide-react';
 import {
   getStoredVaultName,
@@ -20,6 +21,7 @@ import {
   getObsidianNewNoteUri,
   generateObsidianVaultZip,
   formatTopicForObsidian,
+  sanitizeFileName,
 } from '../../lib/obsidian';
 import { Topic } from '../../types';
 
@@ -68,22 +70,31 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
     }
   };
 
-  const handleCopyFormattedMarkdown = () => {
+  const handleCopyFormattedMarkdown = async () => {
     if (!currentTopic) return;
-    const md = formatTopicForObsidian(currentTopic, notes);
-    navigator.clipboard.writeText(md);
-    setCopiedNote(true);
-    setTimeout(() => setCopiedNote(false), 2000);
+    try {
+      const md = formatTopicForObsidian(currentTopic, notes);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(md);
+      }
+      setCopiedNote(true);
+      setTimeout(() => setCopiedNote(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy markdown to clipboard', err);
+    }
   };
 
   const openInObsidianLink = currentTopic
-    ? getObsidianOpenUri(vaultName, `${currentTopic.type === 'phat-hoc' ? 'Phat-Hoc' : 'Huyen-Hoc'}/${currentTopic.title}`)
+    ? getObsidianOpenUri(
+        vaultName,
+        `${currentTopic.type === 'phat-hoc' ? 'Phat-Hoc' : 'Huyen-Hoc'}/${sanitizeFileName(currentTopic.title)}`
+      )
     : '';
 
   const createInObsidianLink = currentTopic
     ? getObsidianNewNoteUri(
         vaultName,
-        currentTopic.title,
+        sanitizeFileName(currentTopic.title),
         formatTopicForObsidian(currentTopic, notes)
       )
     : '';
@@ -152,9 +163,9 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                {/* Direct create note URI */}
+                {/* Direct Open Link (obsidian://open) */}
                 <a
-                  href={createInObsidianLink}
+                  href={openInObsidianLink}
                   className="px-3.5 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-xs transition"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -169,6 +180,17 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
                   {copiedNote ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedNote ? 'Đã sao chép Markdown!' : 'Sao chép Note (+ Frontmatter)'}</span>
                 </button>
+              </div>
+
+              {/* Secondary Create Note URI */}
+              <div className="text-center pt-1">
+                <a
+                  href={createInObsidianLink}
+                  className="text-[11px] text-purple-800 hover:text-purple-950 font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <PlusCircle className="w-3 h-3 text-purple-700" />
+                  <span>Hoặc tạo note mới kèm toàn bộ nội dung Markdown (obsidian://new)</span>
+                </a>
               </div>
             </div>
           )}

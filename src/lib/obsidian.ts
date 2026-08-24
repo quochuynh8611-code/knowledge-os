@@ -2,18 +2,35 @@ import JSZip from 'jszip';
 import { Topic, Note, Resource, Category } from '../types';
 
 export const DEFAULT_OBSIDIAN_VAULT_KEY = 'obsidian_vault_name_pref';
+export const DEFAULT_OBSIDIAN_VAULT_NAME = 'Khao-Cuu-Phat-Hoc-Huyen-Hoc';
+
+/**
+ * Sanitize title into valid filename across OS and ZIP structures
+ */
+export function sanitizeFileName(title: string): string {
+  return title.replace(/[/\\?%*:|"<>]/g, '-').trim();
+}
 
 export function getStoredVaultName(): string {
   try {
-    return localStorage.getItem(DEFAULT_OBSIDIAN_VAULT_KEY) || 'Khao-Cuu-Phat-Hoc-Huyen-Hoc';
+    const stored = localStorage.getItem(DEFAULT_OBSIDIAN_VAULT_KEY);
+    if (stored && stored.trim().length > 0) {
+      return stored.trim();
+    }
+    return DEFAULT_OBSIDIAN_VAULT_NAME;
   } catch {
-    return 'Khao-Cuu-Phat-Hoc-Huyen-Hoc';
+    return DEFAULT_OBSIDIAN_VAULT_NAME;
   }
 }
 
 export function setStoredVaultName(name: string): void {
   try {
-    localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, name.trim());
+    const trimmed = name.trim();
+    if (trimmed.length > 0) {
+      localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, trimmed);
+    } else {
+      localStorage.removeItem(DEFAULT_OBSIDIAN_VAULT_KEY);
+    }
   } catch (e) {
     console.error('Failed to store vault name', e);
   }
@@ -62,7 +79,7 @@ export function formatTopicForObsidian(topic: Topic, allNotes: Note[] = []): str
   if (relatedNotes.length > 0) {
     body += `## 📝 Ghi Chú Chuyên Sâu Liên Quan\n\n`;
     relatedNotes.forEach((n) => {
-      body += `### [[Ghi-Chu/${n.title.replace(/[/\\?%*:|"<>]/g, '-')}|${n.title}]]\n`;
+      body += `### [[Ghi-Chu/${sanitizeFileName(n.title)}|${n.title}]]\n`;
       body += `*Loại: ${n.type} | Ngày: ${n.createdAt.slice(0, 10)}*\n\n`;
       body += `${n.content}\n\n---\n\n`;
     });
@@ -100,14 +117,16 @@ export function formatNoteForObsidian(note: Note): string {
  * Generate deep link to open Obsidian
  */
 export function getObsidianOpenUri(vaultName: string, filePath: string): string {
-  return `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(filePath)}`;
+  const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
+  return `obsidian://open?vault=${encodeURIComponent(cleanVault)}&file=${encodeURIComponent(filePath)}`;
 }
 
 /**
  * Generate URI to create note in Obsidian
  */
 export function getObsidianNewNoteUri(vaultName: string, noteName: string, content: string): string {
-  return `obsidian://new?vault=${encodeURIComponent(vaultName)}&name=${encodeURIComponent(noteName)}&content=${encodeURIComponent(content)}`;
+  const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
+  return `obsidian://new?vault=${encodeURIComponent(cleanVault)}&name=${encodeURIComponent(noteName)}&content=${encodeURIComponent(content)}`;
 }
 
 /**
@@ -118,25 +137,26 @@ export async function generateObsidianVaultZip(
   notes: Note[],
   resources: Resource[],
   categories: Category[],
-  vaultName: string = 'Khao-Cuu-Phat-Hoc-Huyen-Hoc'
+  vaultName: string = DEFAULT_OBSIDIAN_VAULT_NAME
 ): Promise<Blob> {
   const zip = new JSZip();
+  const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
 
   // Root README / Map of Content (MOC)
   let mocContent = `# 🧭 BẢN ĐỒ TRI THỨC (MAP OF CONTENT - MOC)\n\n`;
-  mocContent += `*Vault: ${vaultName} | Ngày tạo: ${new Date().toLocaleDateString('vi-VN')}*\n\n`;
+  mocContent += `*Vault: ${cleanVault} | Ngày tạo: ${new Date().toLocaleDateString('vi-VN')}*\n\n`;
   mocContent += `Chào mừng bạn đến với Obsidian Vault Khảo Cứu Phật Học & Huyền Học. Tất cả các ghi chú đã được kết nối bằng hệ thống liên kết hai chiều \`[[Wiki Links]]\`.\n\n`;
 
   mocContent += `## 🪷 1. Lĩnh Vực Phật Học (Buddhism)\n`;
   const phatHocTopics = topics.filter((t) => t.type === 'phat-hoc');
   phatHocTopics.forEach((t) => {
-    mocContent += `- [[Phat-Hoc/${t.title.replace(/[/\\?%*:|"<>]/g, '-')}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
+    mocContent += `- [[Phat-Hoc/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
   });
 
   mocContent += `\n## ☯️ 2. Lĩnh Vực Huyền Học & Dịch Học (Esotericism)\n`;
   const huyenHocTopics = topics.filter((t) => t.type === 'huyen-hoc');
   huyenHocTopics.forEach((t) => {
-    mocContent += `- [[Huyen-Hoc/${t.title.replace(/[/\\?%*:|"<>]/g, '-')}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
+    mocContent += `- [[Huyen-Hoc/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
   });
 
   mocContent += `\n## 📚 3. Thư Viện Tài Liệu Tham Khảo\n`;
@@ -149,7 +169,7 @@ export async function generateObsidianVaultZip(
   // Add Phat-Hoc topic notes
   const phatHocFolder = zip.folder('Phat-Hoc');
   phatHocTopics.forEach((topic) => {
-    const cleanFileName = `${topic.title.replace(/[/\\?%*:|"<>]/g, '-')}.md`;
+    const cleanFileName = `${sanitizeFileName(topic.title)}.md`;
     const content = formatTopicForObsidian(topic, notes);
     phatHocFolder?.file(cleanFileName, content);
   });
@@ -157,7 +177,7 @@ export async function generateObsidianVaultZip(
   // Add Huyen-Hoc topic notes
   const huyenHocFolder = zip.folder('Huyen-Hoc');
   huyenHocTopics.forEach((topic) => {
-    const cleanFileName = `${topic.title.replace(/[/\\?%*:|"<>]/g, '-')}.md`;
+    const cleanFileName = `${sanitizeFileName(topic.title)}.md`;
     const content = formatTopicForObsidian(topic, notes);
     huyenHocFolder?.file(cleanFileName, content);
   });
@@ -165,7 +185,7 @@ export async function generateObsidianVaultZip(
   // Add separate notes folder
   const notesFolder = zip.folder('Ghi-Chu');
   notes.forEach((note) => {
-    const cleanFileName = `${note.title.replace(/[/\\?%*:|"<>]/g, '-')}.md`;
+    const cleanFileName = `${sanitizeFileName(note.title)}.md`;
     const content = formatNoteForObsidian(note);
     notesFolder?.file(cleanFileName, content);
   });
