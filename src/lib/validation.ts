@@ -217,7 +217,7 @@ export const ResourceSchema = z.object({
     .default(() => new Date().toISOString()),
 });
 
-export const ResourceCreateSchema = z.object({
+export const ResourceCreateBaseSchema = z.object({
   topicId: z.string().min(1, "Topic ID không được để trống"),
   topicTitle: z.string().optional(),
   title: z.string().min(1, "Tiêu đề tài liệu không được để trống"),
@@ -228,7 +228,19 @@ export const ResourceCreateSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const ResourceUpdateSchema = ResourceCreateSchema.partial();
+export const ResourceCreateSchema = ResourceCreateBaseSchema.refine(
+  (data) => {
+    const hasUrl = Boolean(data.url && data.url.trim().length > 0);
+    const hasPath = Boolean(data.filePath && data.filePath.trim().length > 0);
+    return hasUrl || hasPath;
+  },
+  {
+    message: "Tài liệu phải có ít nhất một nguồn tham chiếu: URL hoặc filePath",
+    path: ["url"],
+  },
+);
+
+export const ResourceUpdateSchema = ResourceCreateBaseSchema.partial();
 
 // ==========================================
 // 9. IMPORT / EXPORT / HYDRATE PAYLOAD SCHEMA
@@ -294,44 +306,291 @@ export const SyncSessionSchema = z.object({
 });
 
 // ==========================================
-// 12. BACKUP SNAPSHOT & RESTORE SCHEMAS (PHASE 2B)
+// 12. BACKUP SNAPSHOT & RESTORE SCHEMAS (PHASE 2B / 2C)
 // ==========================================
 
-export function calculateBackupChecksum(data: {
-  categories: unknown[];
-  topics: unknown[];
-  notes: unknown[];
-  resources: unknown[];
-  tags: unknown[];
-}): string {
-  const canonicalData = {
-    categories: data.categories,
-    topics: data.topics,
-    notes: data.notes,
-    resources: data.resources,
-    tags: data.tags,
+/**
+ * Sắp xếp đệ quy tất cả khóa đối tượng theo thứ tự bảng chữ cái để đảm bảo JSON chuẩn tất định.
+ * Cần thiết vì Zod's safeParse() có thể sắp xếp lại thứ tự khóa theo định nghĩa schema,
+ * khiến JSON.stringify() tạo ra chuỗi khác nhau cho cùng một dữ liệu về mặt ngữ nghĩa.
+ */
+function sortKeysRecursive(obj: unknown): unknown {
+  if (Array.isArray(obj)) return obj.map(sortKeysRecursive);
+  if (obj !== null && typeof obj === "object") {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(obj as Record<string, unknown>).sort()) {
+      sorted[key] = sortKeysRecursive((obj as Record<string, unknown>)[key]);
+    }
+    return sorted;
+  }
+  return obj;
+}
+
+/**
+ * Chuẩn hóa tuần tự hóa dữ liệu Snapshot Backup theo thứ tự khóa tất định (Deterministic Canonical JSON)
+ * Luôn chỉ trích xuất 5 collections thực thể cốt lõi và bỏ qua trường checksum metadata.
+ * Sắp xếp tất cả khóa đối tượng theo thứ tự bảng chữ cái để đảm bảo kết quả không phụ thuộc
+ * vào thứ tự khóa đầu vào — kể cả sau khi Zod safeParse() tái cấu trúc thứ tự khóa.
+ */
+export function serializeCanonicalBackupData(data: unknown): string {
+  const src = (data && typeof data === "object" ? data : {}) as Record<
+    string,
+    unknown
+  >;
+  const canonical = {
+    categories: Array.isArray(src.categories) ? src.categories : [],
+    topics: Array.isArray(src.topics) ? src.topics : [],
+    notes: Array.isArray(src.notes) ? src.notes : [],
+    resources: Array.isArray(src.resources) ? src.resources : [],
+    tags: Array.isArray(src.tags) ? src.tags : [],
   };
-  const jsonString = JSON.stringify(canonicalData);
-  // Node.js crypto when in node runtime
-  if (
-    typeof globalThis !== "undefined" &&
-    (globalThis as any).process?.versions?.node
-  ) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const nodeCrypto = require("crypto");
-      return nodeCrypto.createHash("sha256").update(jsonString).digest("hex");
-    } catch {
-      // Fallback
+  return JSON.stringify(sortKeysRecursive(canonical));
+}
+
+/**
+ * Thuật toán băm SHA-256 thuần (Pure TypeScript SHA-256) tương thích chuẩn FIPS 180-4
+ * Hoạt động đồng bộ 100% trên cả Node.js, Web Browser, Web Worker và JSDOM mà không cần module ngoài
+ */
+export function sha256Sync(str: string): string {
+  const bytes: number[] = [];
+  for (let i = 0; i < str.length; i++) {
+    let code = str.charCodeAt(i);
+    if (code < 0x80) {
+      bytes.push(code);
+    } else if (code < 0x800) {
+      bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+    } else if (code < 0xd800 || code >= 0xe000) {
+      bytes.push(
+        0xe0 | (code >> 12),
+        0x80 | ((code >> 6) & 0x3f),
+        0x80 | (code & 0x3f),
+      );
+    } else {
+      // Surrogate pair
+      i++;
+      const nextCode = str.charCodeAt(i);
+      code = 0x10000 + (((code & 0x3ff) << 10) | (nextCode & 0x3ff));
+      bytes.push(
+        0xf0 | (code >> 18),
+        0x80 | ((code >> 12) & 0x3f),
+        0x80 | ((code >> 6) & 0x3f),
+        0x80 | (code & 0x3f),
+      );
     }
   }
-  let hash = 0;
-  for (let i = 0; i < jsonString.length; i++) {
-    const char = jsonString.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
+
+  const bitLength = bytes.length * 8;
+  bytes.push(0x80);
+  while ((bytes.length + 8) % 64 !== 0) {
+    bytes.push(0x00);
   }
-  return Math.abs(hash).toString(16).padStart(64, "0");
+
+  const hi = Math.floor(bitLength / 0x100000000);
+  const lo = bitLength >>> 0;
+  bytes.push(
+    (hi >>> 24) & 0xff,
+    (hi >>> 16) & 0xff,
+    (hi >>> 8) & 0xff,
+    hi & 0xff,
+    (lo >>> 24) & 0xff,
+    (lo >>> 16) & 0xff,
+    (lo >>> 8) & 0xff,
+    lo & 0xff,
+  );
+
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
+  const w = new Int32Array(64);
+
+  for (let i = 0; i < bytes.length; i += 64) {
+    for (let t = 0; t < 16; t++) {
+      const idx = i + t * 4;
+      w[t] =
+        (bytes[idx] << 24) |
+        (bytes[idx + 1] << 16) |
+        (bytes[idx + 2] << 8) |
+        bytes[idx + 3];
+    }
+    for (let t = 16; t < 64; t++) {
+      const s0 =
+        ((w[t - 15] >>> 7) | (w[t - 15] << 25)) ^
+        ((w[t - 15] >>> 18) | (w[t - 15] << 14)) ^
+        (w[t - 15] >>> 3);
+      const s1 =
+        ((w[t - 2] >>> 17) | (w[t - 2] << 15)) ^
+        ((w[t - 2] >>> 19) | (w[t - 2] << 13)) ^
+        (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+    }
+
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+
+    for (let t = 0; t < 64; t++) {
+      const S1 =
+        ((e >>> 6) | (e << 26)) ^
+        ((e >>> 11) | (e << 21)) ^
+        ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + K[t] + w[t]) | 0;
+      const S0 =
+        ((a >>> 2) | (a << 30)) ^
+        ((a >>> 13) | (a << 19)) ^
+        ((a >>> 22) | (a << 10));
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) | 0;
+
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) | 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) | 0;
+    }
+
+    h0 = (h0 + a) | 0;
+    h1 = (h1 + b) | 0;
+    h2 = (h2 + c) | 0;
+    h3 = (h3 + d) | 0;
+    h4 = (h4 + e) | 0;
+    h5 = (h5 + f) | 0;
+    h6 = (h6 + g) | 0;
+    h7 = (h7 + h) | 0;
+  }
+
+  const toHex = (val: number) => (val >>> 0).toString(16).padStart(8, "0");
+  return (
+    toHex(h0) +
+    toHex(h1) +
+    toHex(h2) +
+    toHex(h3) +
+    toHex(h4) +
+    toHex(h5) +
+    toHex(h6) +
+    toHex(h7)
+  ).toLowerCase();
+}
+
+/**
+ * Tính mã SHA-256 Checksum cho Snapshot Backup
+ */
+export function calculateBackupChecksum(data: unknown): string {
+  const jsonString = serializeCanonicalBackupData(data);
+  return sha256Sync(jsonString);
+}
+
+/**
+ * Tính toán SHA-256 bất đồng bộ sử dụng Web Crypto API với fallback đồng bộ
+ */
+export async function computeWebCryptoSHA256(
+  textOrPayload: string | unknown,
+): Promise<string> {
+  const jsonString =
+    typeof textOrPayload === "string"
+      ? textOrPayload
+      : serializeCanonicalBackupData(textOrPayload);
+
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    globalThis.crypto.subtle &&
+    typeof globalThis.crypto.subtle.digest === "function"
+  ) {
+    try {
+      const msgBuffer = new TextEncoder().encode(jsonString);
+      const hashBuffer = await globalThis.crypto.subtle.digest(
+        "SHA-256",
+        msgBuffer,
+      );
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")
+        .toLowerCase();
+    } catch {
+      // Fallback to pure JS sha256Sync
+    }
+  }
+
+  return sha256Sync(jsonString);
+}
+
+/**
+ * Kiểm tra tính hợp lệ sơ bộ của Snapshot Backup ở tầng Client (Pre-Validation Primitive)
+ */
+export function validateBackupSnapshotPreflight(rawSnapshot: unknown): {
+  valid: boolean;
+  error?: string;
+  checksumMatch?: boolean;
+  expectedChecksum?: string;
+  calculatedChecksum?: string;
+  counts?: {
+    categories: number;
+    topics: number;
+    notes: number;
+    resources: number;
+    tags: number;
+  };
+  snapshot?: ValidatedBackupSnapshot;
+} {
+  const parsed = BackupSnapshotSchema.safeParse(rawSnapshot);
+  if (!parsed.success) {
+    return {
+      valid: false,
+      error: parsed.error.issues.map((i) => i.message).join("; "),
+    };
+  }
+
+  const calculatedChecksum = calculateBackupChecksum(parsed.data.data);
+  const checksumMatch = parsed.data.checksum === calculatedChecksum;
+
+  if (!checksumMatch) {
+    return {
+      valid: false,
+      checksumMatch: false,
+      expectedChecksum: parsed.data.checksum,
+      calculatedChecksum,
+      error: "Mã băm SHA-256 Checksum không khớp với dữ liệu snapshot",
+    };
+  }
+
+  return {
+    valid: true,
+    checksumMatch: true,
+    expectedChecksum: parsed.data.checksum,
+    calculatedChecksum,
+    counts: parsed.data.counts,
+    snapshot: parsed.data,
+  };
 }
 
 export const BackupSnapshotSchema = z.object({

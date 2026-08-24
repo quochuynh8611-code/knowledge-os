@@ -129,10 +129,11 @@ interface DataContextType {
   };
   reviewQueue: Topic[];
 
-  // Export & Reset
+  // Export, Reset & Rehydration
   exportAllDataJSON: () => string;
   importAllDataJSON: (jsonString: string) => boolean;
   resetToDefaultData: () => void;
+  reloadAllData: () => Promise<boolean>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -232,6 +233,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Auto-sync to LocalStorage
   useEffect(() => {
     try {
+      const fullPayload = { categories, topics, notes, resources, tags };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
       localStorage.setItem(
         `${STORAGE_KEY}_categories`,
         JSON.stringify(categories),
@@ -263,7 +266,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
             return prev - 1;
           });
-          setTimerSeconds((prev) => prev + 1);
         }
       }, 1000);
     }
@@ -272,26 +274,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [isTimerRunning, timerMode]);
 
-  // Navigation Helpers
+  // Navigation Handlers
   const openTopicDetail = (topicId: string) => {
     setSelectedTopicId(topicId);
     setActiveTab("topics");
   };
 
-  // Topics CRUD
+  // Topics Handlers
   const addTopic = (
     topicData: Omit<
       Topic,
       "id" | "createdAt" | "updatedAt" | "studyProgress" | "links"
     >,
   ): string => {
-    const id = `topic-${Date.now()}`;
+    const newId = `topic-${Date.now()}`;
+    const now = new Date().toISOString();
     const newTopic: Topic = {
       ...topicData,
-      id,
+      id: newId,
+      slug:
+        topicData.slug ||
+        topicData.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
+      createdAt: now,
+      updatedAt: now,
       links: [],
       studyProgress: {
-        topicId: id,
+        topicId: newId,
         status: "not_started",
         progress: 0,
         interval: 0,
@@ -300,12 +311,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         totalNotes: 0,
         timeSpent: 0,
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
-    setTopics((prev) => [newTopic, ...prev]);
+    setTopics((prev) => [...prev, newTopic]);
     dataRepository.saveTopic(newTopic).catch(console.error);
-    return id;
+    return newId;
   };
 
   const updateTopic = (id: string, topicData: Partial<Topic>) => {
@@ -329,8 +338,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTopics((prev) => prev.filter((t) => t.id !== id));
     setNotes((prev) => prev.filter((n) => n.topicId !== id));
     setResources((prev) => prev.filter((r) => r.topicId !== id));
-    dataRepository.deleteTopic(id).catch(console.error);
     if (selectedTopicId === id) setSelectedTopicId(null);
+    dataRepository.deleteTopic(id).catch(console.error);
   };
 
   const updateTopicProgress = (
@@ -340,42 +349,44 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ) => {
     setTopics((prev) =>
       prev.map((t) => {
-        if (t.id !== topicId) return t;
-        let newStatus = status || t.studyProgress.status;
-        if (!status) {
-          if (progress >= 100) newStatus = "completed";
-          else if (progress > 0 && newStatus === "not_started")
-            newStatus = "in_progress";
+        if (t.id === topicId) {
+          const newStatus =
+            status ||
+            (progress >= 100
+              ? "completed"
+              : progress > 0
+                ? "in_progress"
+                : "not_started");
+          const updatedProgress: StudyProgress = {
+            ...t.studyProgress,
+            progress: Math.min(100, Math.max(0, progress)),
+            status: newStatus,
+            lastStudied: new Date().toISOString(),
+          };
+          const updatedTopic = {
+            ...t,
+            studyProgress: updatedProgress,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository
+            .saveStudyProgress(topicId, updatedProgress)
+            .catch(console.error);
+          return updatedTopic;
         }
-        const updatedProgress: StudyProgress = {
-          ...t.studyProgress,
-          progress: Math.min(100, Math.max(0, progress)),
-          status: newStatus,
-          endDate:
-            progress >= 100
-              ? new Date().toISOString()
-              : t.studyProgress.endDate,
-        };
-        const updatedTopic: Topic = {
-          ...t,
-          studyProgress: updatedProgress,
-          updatedAt: new Date().toISOString(),
-        };
-        dataRepository
-          .saveStudyProgress(topicId, updatedProgress)
-          .catch(console.error);
-        return updatedTopic;
+        return t;
       }),
     );
   };
 
   const addKnowledgeLink = (linkData: Omit<KnowledgeLink, "id">) => {
-    const id = `link-${Date.now()}`;
-    const newLink: KnowledgeLink = { ...linkData, id };
+    const newLink: KnowledgeLink = {
+      ...linkData,
+      id: `link-${Date.now()}`,
+    };
     setTopics((prev) =>
       prev.map((t) => {
         if (t.id === linkData.sourceId) {
-          const updated = { ...t, links: [...t.links, newLink] };
+          const updated = { ...t, links: [...(t.links || []), newLink] };
           dataRepository.saveTopic(updated).catch(console.error);
           return updated;
         }
@@ -387,50 +398,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const removeKnowledgeLink = (linkId: string) => {
     setTopics((prev) =>
       prev.map((t) => {
-        const updated = {
-          ...t,
-          links: t.links.filter((l) => l.id !== linkId),
-        };
-        dataRepository.saveTopic(updated).catch(console.error);
-        return updated;
+        if (t.links?.some((l) => l.id === linkId)) {
+          const updated = {
+            ...t,
+            links: t.links.filter((l) => l.id !== linkId),
+          };
+          dataRepository.saveTopic(updated).catch(console.error);
+          return updated;
+        }
+        return t;
       }),
     );
   };
 
-  // Notes CRUD
+  // Notes Handlers
   const addNote = (
     noteData: Omit<Note, "id" | "createdAt" | "updatedAt">,
   ): string => {
-    const id = `note-${Date.now()}`;
+    const newId = `note-${Date.now()}`;
+    const now = new Date().toISOString();
     const newNote: Note = {
       ...noteData,
-      id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      id: newId,
+      createdAt: now,
+      updatedAt: now,
     };
-    setNotes((prev) => [newNote, ...prev]);
+    setNotes((prev) => [...prev, newNote]);
     dataRepository.saveNote(newNote).catch(console.error);
-
-    // Update topic note count
-    if (noteData.topicId) {
-      setTopics((prev) =>
-        prev.map((t) => {
-          if (t.id === noteData.topicId) {
-            const updated = {
-              ...t,
-              studyProgress: {
-                ...t.studyProgress,
-                totalNotes: (t.studyProgress.totalNotes || 0) + 1,
-              },
-            };
-            dataRepository.saveTopic(updated).catch(console.error);
-            return updated;
-          }
-          return t;
-        }),
-      );
-    }
-    return id;
+    return newId;
   };
 
   const updateNote = (id: string, noteData: Partial<Note>) => {
@@ -451,40 +446,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteNote = (id: string) => {
-    const noteToDelete = notes.find((n) => n.id === id);
     setNotes((prev) => prev.filter((n) => n.id !== id));
     dataRepository.deleteNote(id).catch(console.error);
-    if (noteToDelete?.topicId) {
-      setTopics((prev) =>
-        prev.map((t) => {
-          if (t.id === noteToDelete.topicId) {
-            const updated = {
-              ...t,
-              studyProgress: {
-                ...t.studyProgress,
-                totalNotes: Math.max(0, (t.studyProgress.totalNotes || 1) - 1),
-              },
-            };
-            dataRepository.saveTopic(updated).catch(console.error);
-            return updated;
-          }
-          return t;
-        }),
-      );
-    }
   };
 
-  // Resources CRUD
-  const addResource = (resData: Omit<Resource, "id" | "createdAt">): string => {
-    const id = `res-${Date.now()}`;
-    const newResource: Resource = {
+  // Resources Handlers
+  const addResource = (
+    resData: Omit<Resource, "id" | "createdAt">,
+  ): string => {
+    const newId = `res-${Date.now()}`;
+    const newRes: Resource = {
       ...resData,
-      id,
+      id: newId,
       createdAt: new Date().toISOString(),
     };
-    setResources((prev) => [newResource, ...prev]);
-    dataRepository.saveResource(newResource).catch(console.error);
-    return id;
+    setResources((prev) => [...prev, newRes]);
+    dataRepository.saveResource(newRes).catch(console.error);
+    return newId;
   };
 
   const updateResource = (id: string, resData: Partial<Resource>) => {
@@ -505,51 +483,78 @@ export function DataProvider({ children }: { children: ReactNode }) {
     dataRepository.deleteResource(id).catch(console.error);
   };
 
-  // Spaced Repetition SM-2
+  // SM-2 Spaced Repetition Handlers
   const reviewTopicSM2 = (topicId: string, quality: number) => {
     setTopics((prev) =>
       prev.map((t) => {
-        if (t.id !== topicId) return t;
-        const currentProg = t.studyProgress;
-        const schedule = calculateNextReview(
-          currentProg.interval,
-          currentProg.easeFactor,
-          currentProg.repetitions,
-          quality,
-        );
-        const updatedProgress: StudyProgress = {
-          ...t.studyProgress,
-          ...schedule,
-          lastStudied: new Date().toISOString(),
-          status: t.studyProgress.progress >= 100 ? "completed" : "in_progress",
-        };
-        const updatedTopic: Topic = {
-          ...t,
-          studyProgress: updatedProgress,
-          updatedAt: new Date().toISOString(),
-        };
-        dataRepository
-          .saveStudyProgress(topicId, updatedProgress)
-          .catch(console.error);
-        return updatedTopic;
+        if (t.id === topicId) {
+          const currentProgress = t.studyProgress || {
+            topicId,
+            status: "not_started",
+            progress: 0,
+            interval: 0,
+            easeFactor: 2.5,
+            repetitions: 0,
+            totalNotes: 0,
+            timeSpent: 0,
+          };
+          const sm2Result = calculateNextReview(
+            currentProgress.interval,
+            currentProgress.easeFactor,
+            currentProgress.repetitions,
+            quality,
+          );
+          const updatedProgress: StudyProgress = {
+            ...currentProgress,
+            ...sm2Result,
+            lastStudied: new Date().toISOString(),
+            status: quality >= 3 ? "reviewing" : "in_progress",
+          };
+          const updatedTopic = {
+            ...t,
+            studyProgress: updatedProgress,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository
+            .saveStudyProgress(topicId, updatedProgress)
+            .catch(console.error);
+          return updatedTopic;
+        }
+        return t;
       }),
     );
   };
 
-  // Time tracking
   const logStudyTime = (topicId: string, minutes: number) => {
-    if (minutes <= 0) return;
     setTopics((prev) =>
       prev.map((t) => {
-        if (t.id !== topicId) return t;
-        return {
-          ...t,
-          studyProgress: {
-            ...t.studyProgress,
-            timeSpent: (t.studyProgress.timeSpent || 0) + minutes,
+        if (t.id === topicId) {
+          const currentProgress = t.studyProgress || {
+            topicId,
+            status: "not_started",
+            progress: 0,
+            interval: 0,
+            easeFactor: 2.5,
+            repetitions: 0,
+            totalNotes: 0,
+            timeSpent: 0,
+          };
+          const updatedProgress = {
+            ...currentProgress,
+            timeSpent: (currentProgress.timeSpent || 0) + minutes,
             lastStudied: new Date().toISOString(),
-          },
-        };
+          };
+          const updatedTopic = {
+            ...t,
+            studyProgress: updatedProgress,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository
+            .saveStudyProgress(topicId, updatedProgress)
+            .catch(console.error);
+          return updatedTopic;
+        }
+        return t;
       }),
     );
   };
@@ -560,8 +565,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   ) => {
     setActiveTimerTopicId(topicId);
     setTimerMode(mode);
-    setTimerSeconds(0);
-    setPomodoroTimeRemaining(25 * 60);
+    if (mode === "pomodoro") {
+      setPomodoroTimeRemaining(25 * 60);
+    } else {
+      setTimerSeconds(0);
+    }
     setIsTimerRunning(true);
   };
 
@@ -570,39 +578,49 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const stopAndSaveStudyTimer = () => {
-    if (activeTimerTopicId && timerSeconds > 0) {
-      const minutesSpent = Math.max(1, Math.round(timerSeconds / 60));
-      logStudyTime(activeTimerTopicId, minutesSpent);
-    }
     setIsTimerRunning(false);
+    if (activeTimerTopicId) {
+      const minutesSpent =
+        timerMode === "stopwatch"
+          ? Math.round(timerSeconds / 60)
+          : Math.round((25 * 60 - pomodoroTimeRemaining) / 60);
+      if (minutesSpent > 0) {
+        logStudyTime(activeTimerTopicId, minutesSpent);
+      }
+    }
     setActiveTimerTopicId(null);
     setTimerSeconds(0);
+    setPomodoroTimeRemaining(25 * 60);
   };
 
-  // Computed Review Queue
-  const reviewQueue = useMemo(() => getReviewQueue(topics), [topics]);
+  // Review Queue Computed
+  const reviewQueue = useMemo(() => {
+    return getReviewQueue(topics);
+  }, [topics]);
 
-  // Comprehensive Analytics
+  // Analytics Computed
   const stats = useMemo(() => {
     const phatHocList = topics.filter((t) => t.type === "phat-hoc");
     const huyenHocList = topics.filter((t) => t.type === "huyen-hoc");
 
-    const phatHocDoneSum = phatHocList.reduce(
-      (acc, t) => acc + (t.studyProgress?.progress || 0),
-      0,
-    );
+    const phatHocDone = phatHocList.filter(
+      (t) =>
+        t.studyProgress?.progress >= 100 ||
+        t.studyProgress.status === "completed",
+    ).length;
     const phatHocDonePercent =
       phatHocList.length > 0
-        ? Math.round(phatHocDoneSum / phatHocList.length)
+        ? Math.round((phatHocDone / phatHocList.length) * 100)
         : 0;
 
-    const huyenHocDoneSum = huyenHocList.reduce(
-      (acc, t) => acc + (t.studyProgress?.progress || 0),
-      0,
-    );
+    const huyenHocDone = huyenHocList.filter(
+      (t) =>
+        t.studyProgress?.progress >= 100 ||
+        t.studyProgress.status === "completed",
+    ).length;
     const huyenHocDonePercent =
       huyenHocList.length > 0
-        ? Math.round(huyenHocDoneSum / huyenHocList.length)
+        ? Math.round((huyenHocDone / huyenHocList.length) * 100)
         : 0;
 
     const studyingThisWeek = topics.filter(
@@ -705,6 +723,124 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTimerSeconds(0);
   };
 
+  // Rehydration Action (Phase 2C - Post Restore / Manual Sync)
+  const reloadAllData = async (): Promise<boolean> => {
+    try {
+      // Direct HTTP fetch when running in browser with ApiDataRepository
+      if (
+        typeof window !== "undefined" &&
+        window.location &&
+        window.location.origin &&
+        window.location.origin.startsWith("http")
+      ) {
+        const topicsRes = await fetch(`${window.location.origin}/api/topics`);
+        if (!topicsRes.ok) {
+          return false;
+        }
+        const topicsData = await topicsRes.json();
+        if (!Array.isArray(topicsData) || topicsData.length === 0) {
+          return false;
+        }
+        const notesRes = await fetch(
+          `${window.location.origin}/api/notes`,
+        ).catch(() => null);
+        const notesData =
+          notesRes && notesRes.ok ? await notesRes.json() : [];
+
+        const resourcesRes = await fetch(
+          `${window.location.origin}/api/resources`,
+        ).catch(() => null);
+        const resourcesData =
+          resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
+
+        setTopics(topicsData);
+        if (notesData) setNotes(notesData);
+        if (resourcesData) setResources(resourcesData);
+
+        try {
+          const fullPayload = {
+            categories,
+            topics: topicsData,
+            notes: notesData,
+            resources: resourcesData,
+            tags,
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
+          localStorage.setItem(
+            `${STORAGE_KEY}_topics`,
+            JSON.stringify(topicsData),
+          );
+          localStorage.setItem(
+            `${STORAGE_KEY}_notes`,
+            JSON.stringify(notesData),
+          );
+          localStorage.setItem(
+            `${STORAGE_KEY}_resources`,
+            JSON.stringify(resourcesData),
+          );
+        } catch {
+          // Ignore storage write errors
+        }
+
+        return true;
+      }
+
+      // Local / Offline fallback
+      const data = await dataRepository.loadInitialData();
+      if (!data || !Array.isArray(data.topics) || data.topics.length === 0) {
+        return false;
+      }
+      if (data.categories && data.categories.length > 0) {
+        setCategories(data.categories);
+      }
+      setTopics(data.topics);
+      if (data.notes) setNotes(data.notes);
+      if (data.resources) setResources(data.resources);
+      if (data.tags) setTags(data.tags);
+
+      try {
+        const fullPayload = {
+          categories: data.categories || [],
+          topics: data.topics,
+          notes: data.notes || [],
+          resources: data.resources || [],
+          tags: data.tags || [],
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
+        localStorage.setItem(
+          `${STORAGE_KEY}_categories`,
+          JSON.stringify(data.categories || []),
+        );
+        localStorage.setItem(
+          `${STORAGE_KEY}_topics`,
+          JSON.stringify(data.topics),
+        );
+        localStorage.setItem(
+          `${STORAGE_KEY}_notes`,
+          JSON.stringify(data.notes || []),
+        );
+        localStorage.setItem(
+          `${STORAGE_KEY}_resources`,
+          JSON.stringify(data.resources || []),
+        );
+        localStorage.setItem(
+          `${STORAGE_KEY}_tags`,
+          JSON.stringify(data.tags || []),
+        );
+      } catch {
+        // Ignore storage write errors
+      }
+
+      return true;
+    } catch (err) {
+      console.warn(
+        "reloadAllData failed, preserving previous in-memory state:",
+        err,
+      );
+      return false;
+    }
+  };
+
   return (
     <DataContext.Provider
       value={{
@@ -751,6 +887,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         exportAllDataJSON,
         importAllDataJSON,
         resetToDefaultData,
+        reloadAllData,
       }}
     >
       {children}

@@ -39,6 +39,89 @@ function getGenAI(): GoogleGenAI | null {
 }
 
 // ==========================================
+// RESILIENT GEMINI AI HELPERS (AUTO-RETRY & MULTI-MODEL FALLBACK)
+// ==========================================
+
+const CANDIDATE_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-3.7-flash",
+  "gemini-3.1-pro-preview",
+];
+
+export function isRetryableGeminiError(error: any): boolean {
+  const status = error?.status || error?.code || error?.error?.code;
+  const message = (error?.message || "").toLowerCase();
+
+  if (
+    status === 503 ||
+    status === 429 ||
+    status === "UNAVAILABLE" ||
+    status === "RESOURCE_EXHAUSTED"
+  ) {
+    return true;
+  }
+
+  return (
+    message.includes("high demand") ||
+    message.includes("overloaded") ||
+    message.includes("unavailable") ||
+    message.includes("rate limit") ||
+    message.includes("quota") ||
+    message.includes("resource has been exhausted") ||
+    message.includes("503") ||
+    message.includes("429")
+  );
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function generateContentWithResilience(
+  ai: GoogleGenAI,
+  params: {
+    contents: string;
+    config?: any;
+    primaryModel?: string;
+  },
+): Promise<{ text: string; modelUsed: string }> {
+  const primary = params.primaryModel || "gemini-3.6-flash";
+  const modelQueue = Array.from(new Set([primary, ...CANDIDATE_MODELS]));
+  let lastError: any = null;
+
+  for (const model of modelQueue) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+
+        const text = response.text || "";
+        return { text, modelUsed: model };
+      } catch (err: any) {
+        lastError = err;
+        console.warn(
+          `[Gemini AI Engine] Model '${model}' (Attempt ${attempt}/2) failed:`,
+          err?.message || err,
+        );
+
+        if (isRetryableGeminiError(err)) {
+          if (attempt < 2) {
+            await sleep(1500 * attempt);
+            continue;
+          }
+          break;
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+// ==========================================
 // BACKUP, RESTORE & HEALTH DOMAIN HELPERS (PHASE 2B)
 // ==========================================
 
@@ -646,8 +729,8 @@ Phong cách phản hồi:
         (contextNotes ? `Ghi chú ngữ cảnh: ${contextNotes}\n\n` : "") +
         `Yêu cầu nghiên cứu: ${prompt}`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+      const { text, modelUsed } = await generateContentWithResilience(ai, {
+        primaryModel: "gemini-3.6-flash",
         contents: promptContext,
         config: {
           systemInstruction,
@@ -656,14 +739,18 @@ Phong cách phản hồi:
       });
 
       res.json({
-        result: response.text || "Không có phản hồi từ mô hình AI.",
-        model: "gemini-3.7-flash",
+        result: text || "Không có phản hồi từ mô hình AI.",
+        model: modelUsed,
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
       console.error("Gemini Research API Error:", error);
+      const isOverloaded = isRetryableGeminiError(error);
+      const friendlyMsg = isOverloaded
+        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
+        : error.message || "Lỗi xử lý yêu cầu nghiên cứu từ Gemini API.";
       res.status(500).json({
-        error: error.message || "Lỗi xử lý yêu cầu nghiên cứu từ Gemini API.",
+        error: friendlyMsg,
       });
     }
   });
@@ -707,8 +794,8 @@ Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
   }
 ]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+      const { text } = await generateContentWithResilience(ai, {
+        primaryModel: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -719,7 +806,7 @@ Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
 
       let parsedLinks = [];
       try {
-        parsedLinks = JSON.parse(response.text || "[]");
+        parsedLinks = JSON.parse(text || "[]");
       } catch (e) {
         console.error("Error parsing links JSON:", e);
       }
@@ -727,9 +814,11 @@ Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
       res.json({ links: parsedLinks });
     } catch (error: any) {
       console.error("Semantic Link Error:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Lỗi phân tích liên kết tri thức." });
+      const isOverloaded = isRetryableGeminiError(error);
+      const friendlyMsg = isOverloaded
+        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
+        : error.message || "Lỗi phân tích liên kết tri thức.";
+      res.status(500).json({ error: friendlyMsg });
     }
   });
 
@@ -760,8 +849,8 @@ Yêu cầu định dạng JSON:
   }
 ]`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+      const { text } = await generateContentWithResilience(ai, {
+        primaryModel: "gemini-3.6-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -772,7 +861,7 @@ Yêu cầu định dạng JSON:
 
       let cards = [];
       try {
-        cards = JSON.parse(response.text || "[]");
+        cards = JSON.parse(text || "[]");
       } catch (e) {
         console.error("Error parsing cards JSON:", e);
       }
@@ -780,7 +869,11 @@ Yêu cầu định dạng JSON:
       res.json({ cards });
     } catch (error: any) {
       console.error("Generate Cards Error:", error);
-      res.status(500).json({ error: error.message || "Lỗi sinh thẻ ôn tập." });
+      const isOverloaded = isRetryableGeminiError(error);
+      const friendlyMsg = isOverloaded
+        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
+        : error.message || "Lỗi sinh thẻ ôn tập.";
+      res.status(500).json({ error: friendlyMsg });
     }
   });
 

@@ -3,6 +3,14 @@ import {
   ValidatedHydrateInput,
   ValidatedHydrateResponse,
   HydratePayloadSchema,
+  ValidatedBackupSnapshot,
+  ValidatedRestoreRequest,
+  ValidatedRestoreResponse,
+  ValidatedDbHealthResponse,
+  BackupSnapshotSchema,
+  RestoreRequestSchema,
+  RestoreResponseSchema,
+  DbHealthResponseSchema,
 } from "../lib/validation";
 
 export interface RepositorySyncResult {
@@ -41,6 +49,13 @@ export interface IDataRepository {
     topicId: string,
     progress: StudyProgress,
   ): Promise<StudyProgress>;
+
+  // 6. Disaster Recovery & Health Checks (Phase 2C - Option A)
+  exportBackupSnapshot(): Promise<ValidatedBackupSnapshot>;
+  restoreBackupSnapshot(
+    req: ValidatedRestoreRequest,
+  ): Promise<ValidatedRestoreResponse>;
+  getDbHealth(): Promise<ValidatedDbHealthResponse>;
 }
 
 /**
@@ -195,6 +210,26 @@ export class LocalStorageDataRepository implements IDataRepository {
       }
     }
     return progress;
+  }
+
+  async exportBackupSnapshot(): Promise<ValidatedBackupSnapshot> {
+    throw new Error(
+      "UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.",
+    );
+  }
+
+  async restoreBackupSnapshot(
+    _req: ValidatedRestoreRequest,
+  ): Promise<ValidatedRestoreResponse> {
+    throw new Error(
+      "UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.",
+    );
+  }
+
+  async getDbHealth(): Promise<ValidatedDbHealthResponse> {
+    throw new Error(
+      "UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.",
+    );
   }
 }
 
@@ -392,5 +427,59 @@ export class ApiDataRepository implements IDataRepository {
       }
     }
     return progress;
+  }
+
+  async exportBackupSnapshot(): Promise<ValidatedBackupSnapshot> {
+    const url =
+      this.getUrl("/backup/export") || `${this.apiBaseUrl}/backup/export`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(
+        errBody.message ||
+          errBody.error ||
+          `Export backup failed with status ${res.status}`,
+      );
+    }
+    const data = await res.json();
+    return BackupSnapshotSchema.parse(data);
+  }
+
+  async restoreBackupSnapshot(
+    req: ValidatedRestoreRequest,
+  ): Promise<ValidatedRestoreResponse> {
+    const validatedReq = RestoreRequestSchema.parse(req);
+    const url =
+      this.getUrl("/backup/restore") || `${this.apiBaseUrl}/backup/restore`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validatedReq),
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(
+        errBody.message ||
+          errBody.error ||
+          `Restore backup failed with status ${res.status}`,
+      );
+    }
+    const data = await res.json();
+    return RestoreResponseSchema.parse(data);
+  }
+
+  async getDbHealth(): Promise<ValidatedDbHealthResponse> {
+    const url = this.getUrl("/health/db") || `${this.apiBaseUrl}/health/db`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(
+        errBody.message ||
+          errBody.error ||
+          `Health check failed with status ${res.status}`,
+      );
+    }
+    const data = await res.json();
+    return DbHealthResponseSchema.parse(data);
   }
 }
