@@ -173,3 +173,50 @@
 - **Phân loại quyết định:**
   - _Two-way doors:_ Quy tắc phân loại ngưỡng `latencyMs` trong health check, tùy chọn format ngày tháng trong backup metadata.
   - _One-way doors:_ Checksum strategy (SHA-256 trên canonical JSON keys), contract của `BackupSnapshotSchema` Semver 2.x, và tính atomic của Restore transaction.
+
+---
+
+## ADR-009: Data Management UI, Server-Authoritative Disaster Recovery, and Real-Time Health Badge
+
+- **Trạng thái:** ACCEPTED / READY FOR INCREMENTAL TEST-FIRST EXECUTION (PHASE 2C)
+- **Bối cảnh:**
+  - Backend Phase 2B đã hoàn tất các endpoints: `GET /api/backup/export`, `POST /api/backup/restore` (replace/merge LWW với SHA-256 checksum), và `GET /api/health/db`.
+  - Cần xây dựng giao diện frontend quản lý dữ liệu sao lưu, phục hồi thảm họa an toàn, và theo dõi trạng thái cơ sở dữ liệu thời gian thực mà không làm gián đoạn trải nghiệm người dùng.
+- **Quyết định:**
+  1. **Repository Capability Scope (Option A - Server-Authoritative Disaster Recovery):**
+     - Các phương thức `exportBackupSnapshot()`, `restoreBackupSnapshot(req)`, và `getDbHealth()` là các khả năng phụ thuộc máy chủ (Server-Authoritative Capabilities).
+     - `ApiDataRepository` triển khai gọi trực tiếp các REST endpoints tương ứng (`/api/backup/export`, `/api/backup/restore`, `/api/health/db`).
+     - `LocalStorageDataRepository` từ chối các phương thức này một cách an toàn bằng việc throw/reject lỗi có định danh: `UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.` Không ghi đè bất kỳ key localStorage nào khi bị từ chối.
+  2. **Confirmation Gate cho Destructive Replace Mode:**
+     - Chế độ `replace` trên UI bắt buộc người dùng nhập chính xác chuỗi ký tự hoa `XÁC NHẬN THAY THẾ` (case-sensitive) trước khi mở khóa nút kích hoạt giao dịch.
+  3. **Cross-Runtime Checksum Canonicalization Parity:**
+     - Chuẩn hóa serializer JSON canonical độc lập với thứ tự key.
+     - Đảm bảo tính toán SHA-256 (64-character lowercase hex) trên trình duyệt bằng Web Crypto API (`window.crypto.subtle`) và trên máy chủ bằng Node.js `node:crypto` cho ra cùng một kết quả đồng nhất tuyệt đối (Bit-for-Bit Parity).
+     - Trường `checksum` trong header snapshot không được tự tham gia vào nội dung được hash.
+  4. **Post-Restore Rehydration Lifecycle & Error Isolation:**
+     - `DataContext` bổ sung action `reloadAllData(): Promise<boolean>`.
+     - Quy trình khôi phục được phân tách thành các trạng thái tường minh:
+       `idle` -> `parsing` -> (`invalid_file` | `checksum_invalid` | `snapshot_valid`) -> (`merge_confirmation` | `replace_confirmation`) -> `submitting` -> `success_server` -> `rehydrating` -> (`completed` | `rehydrate_failed`).
+     - Chỉ đồng bộ LocalStorage Cache sau khi `reloadAllData()` nạp thành công dữ liệu mới từ máy chủ.
+     - Nếu rehydration thất bại, UI chuyển sang `rehydrate_failed`, giữ nguyên 100% in-memory state cũ, không xóa state về mảng rỗng và không ghi cache mới.
+  5. **Resilient Health Polling:**
+     - `HealthBadge` polling định kỳ mỗi 30 giây bằng `GET /api/health/db`.
+     - Khi offline/unhealthy, tự động backoff theo chu kỳ 60s rồi 120s.
+     - Tạm dừng polling khi `document.hidden === true` (Page Visibility API) và dọn dẹp timer khi component unmount.
+- **Các phương án bị từ chối (Rejected Alternatives):**
+  - _Từ chối Option B (Dual-Engine Disaster Recovery):_ Không triển khai engine sao lưu/khôi phục độc lập trên `LocalStorageDataRepository` để tránh rủi ro phân kỳ dữ liệu (Data Divergence) và phân mảnh logic giữa Client LocalStorage và Server PostgreSQL.
+  - _Từ chối Auto-Restore / Background Mutation:_ Không tự động khôi phục dữ liệu mà không có xác nhận tương tác trực tiếp từ người dùng.
+- **Hệ quả & Đánh giá rủi ro:**
+  - _Tích cực:_
+    - Giữ trọn vẹn hợp đồng kiến trúc Client-Server PostgreSQL của Phase 2.
+    - Bảo vệ người dùng khỏi nguy cơ xóa nhầm dữ liệu cá nhân qua Confirmation Gate.
+    - Trạng thái UI phản ánh chính xác từng giai đoạn của giao dịch và làm tươi state không cần reload trình duyệt (Zero Page Reload).
+  - _Tiêu cực / Trade-offs:_
+    - Thao tác Replace đòi hỏi thêm bước gõ xác nhận ký tự, nhưng là bắt buộc cho tính an toàn dữ liệu.
+- **Phân loại quyết định:**
+  - _One-way doors:_ Chuỗi xác nhận `XÁC NHẬN THAY THẾ`, phạm vi Option A cho Repository Disaster Recovery, và cấu trúc trạng thái canonical của Restore State Machine.
+  - _Two-way doors:_ Tần suất polling (30s) và giao diện màu sắc của Health Badge.
+- **Chiến lược Rollback:**
+  - Mọi thay đổi trong Phase 2C là thuần Client/UI Layer, có thể revert độc lập bằng Git mà không làm ảnh hưởng đến database schema và server persistence đã hoàn thành ở Phase 2B.
+- **Open Questions:**
+  - Cần đánh giá hiệu năng parse JSON snapshot lớn trên thiết bị di động có cấu hình thấp ở các phase sau nếu dataset vượt quá 10MB.

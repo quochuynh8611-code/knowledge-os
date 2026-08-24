@@ -1,38 +1,49 @@
+# Feature: Dataset Canonicalization — 35 Topics SSOT Integrity
+# ADR: ADR-010 | Baseline: commit 405a5a1 (Phase 2B complete)
+# SSOT: src/data/initialData.ts
+# Tests: tests/unit/dataset-canonicalization.test.ts
+
 Feature: Dataset Canonicalization - 35 Topics SSOT Integrity
+  # Đảm bảo src/data/initialData.ts luôn là Single Source of Truth
+  # cho toàn bộ hệ thống: seeding, backup, restore, fallback LocalStorage.
 
   Background:
     Given src/data/initialData.ts là Single Source of Truth của toàn bộ hệ thống
+    And INITIAL_CATEGORIES gồm đúng 8 category với IDs chuẩn:
+      | cat-tam-tang | cat-abhidharma | cat-thien-dinh | cat-triet-hoc-phat-giao |
+      | cat-tam-thuc | cat-dich-hoc   | cat-phong-thuy | cat-tu-vi-tu-tru        |
+    And tập 12 canonical tags đã được đăng ký trong INITIAL_TAGS
 
-  Scenario: 1. Exact seed cardinalities (8 categories, 35 topics, 5 notes, 4 resources, 12 tags)
-    When Đọc các mảng export từ initialData.ts
+  # -------------------------------------------------------------------
+  Scenario: 1. INITIAL_TOPICS exports exact 35 canonical topics
+    When Đọc mảng INITIAL_TOPICS từ initialData.ts
     Then Mảng INITIAL_TOPICS có chính xác 35 phần tử
     And Mảng INITIAL_CATEGORIES có chính xác 8 phần tử
     And Mảng INITIAL_NOTES có chính xác 5 phần tử
     And Mảng INITIAL_RESOURCES có chính xác 4 phần tử
     And Mảng INITIAL_TAGS có chính xác 12 phần tử
 
-  Scenario: 2. Unique topic IDs and unique topic slugs
+  # -------------------------------------------------------------------
+  Scenario: 2. All 35 topics have unique ID and slug
     When Quét toàn bộ 35 phần tử trong INITIAL_TOPICS
-    Then Mọi topic.id là duy nhất trong toàn bộ mảng
-    And Mọi topic.slug là duy nhất trong toàn bộ mảng
+    Then Mọi topic.id là duy nhất — không có hai topic nào cùng ID
+    And Mọi topic.slug là duy nhất — không có hai topic nào cùng slug
+    And Tổng số ID duy nhất phải bằng đúng 35
 
-  Scenario: 3. Valid category IDs and matching topic/category types
-    When Duyệt từng Topic trong INITIAL_TOPICS
+  # -------------------------------------------------------------------
+  Scenario: 3. All topics reference valid category IDs
+    When Duyệt từng Topic trong INITIAL_TOPICS để kiểm tra categoryId
     Then topic.categoryId phải tồn tại trong tập 8 ID của INITIAL_CATEGORIES
-    And topic.type ("phat-hoc" hoặc "huyen-hoc") phải khớp chính xác với category.type tương ứng
+    And Không topic nào được trỏ tới categoryId không tồn tại trong SSOT
 
-  Scenario: 4. Valid knowledge links, correct source IDs, no self-links and no duplicates
+  # -------------------------------------------------------------------
+  Scenario: 4. All KnowledgeLink target IDs resolve to existing topics
     When Duyệt qua từng KnowledgeLink trong thuộc tính links của mọi Topic
     Then link.targetId phải trỏ tới một Topic ID hợp lệ trong INITIAL_TOPICS
-    And link.sourceId phải khớp chính xác với topic.id của Topic chứa nó
-    And Không tồn tại self-link (link.sourceId khác link.targetId)
-    And Không có duplicate targetId trong cùng một topic
+    And link.sourceId phải khớp chính xác với topic.id của Topic chứa link đó
 
-  Scenario: 5. Canonical topic tags only
-    When Quét mảng tags của tất cả các Topic
-    Then Mọi tag name phải thuộc tập 12 tags chuẩn mực trong INITIAL_TAGS
-
-  Scenario: 6. StudyProgress canonical defaults for every topic
+  # -------------------------------------------------------------------
+  Scenario: 5. All topics have valid initialized studyProgress
     When Kiểm tra studyProgress của từng Topic trong INITIAL_TOPICS
     Then studyProgress.topicId phải khớp chính xác với topic.id
     And studyProgress.status là "not_started"
@@ -43,11 +54,38 @@ Feature: Dataset Canonicalization - 35 Topics SSOT Integrity
     And studyProgress.totalNotes là 0
     And studyProgress.timeSpent là 0
 
-  Scenario: 7. Notes and resources topic foreign-key integrity and legacy preservation
-    When Kiểm tra trường topicId của tất cả phần tử trong INITIAL_NOTES và INITIAL_RESOURCES
-    Then Mọi topicId đều phải trỏ tới một Topic ID tồn tại trong INITIAL_TOPICS
-    And 5 Notes legacy và 4 Resources legacy giữ nguyên topicId ban đầu
+  # -------------------------------------------------------------------
+  Scenario: 6. Existing notes and resources maintain valid foreign keys
+    When Kiểm tra trường topicId của tất cả phần tử trong INITIAL_NOTES
+    Then Mọi note.topicId đều phải trỏ tới một Topic ID tồn tại trong INITIAL_TOPICS
+    When Kiểm tra trường topicId của tất cả phần tử trong INITIAL_RESOURCES
+    Then Mọi resource.topicId đều phải trỏ tới một Topic ID tồn tại trong INITIAL_TOPICS
+    And 5 Notes legacy và 4 Resources legacy giữ nguyên topicId ban đầu không đổi
 
-  Scenario: 8. TopicSchema.safeParse() succeeds for every topic
+  # -------------------------------------------------------------------
+  Scenario: 7. All topic tags belong to INITIAL_TAGS
+    When Quét mảng tags của tất cả 35 Topics
+    Then Mọi tag name phải thuộc tập 12 tên tags chuẩn mực trong INITIAL_TAGS
+    And Không topic nào được sử dụng tag ngoài danh sách 12 canonical tags
+
+  # -------------------------------------------------------------------
+  Scenario: 8. Topic type matches category type
+    When Duyệt từng Topic và tra cứu category tương ứng qua categoryId
+    Then topic.type phải bằng chính xác category.type của category tương ứng
+    And Topic thuộc Phật Học phải có type "phat-hoc"
+    And Topic thuộc Huyền Học phải có type "huyen-hoc"
+
+  # -------------------------------------------------------------------
+  Scenario: 9. No topic has self-link or duplicate link target
+    When Duyệt qua từng KnowledgeLink trong links của mọi Topic
+    Then Không tồn tại self-link: link.targetId phải khác link.sourceId
+    And Không có duplicate targetId trong cùng một topic.links
+    And Mọi link phải là quan hệ giữa hai topic phân biệt
+
+  # -------------------------------------------------------------------
+  Scenario: 10. TopicSchema.safeParse() succeeds for every topic
+    # Đảm bảo dữ liệu runtime khớp với Zod schema định nghĩa trong validation.ts
     When Thực thi TopicSchema.safeParse() trên từng phần tử trong INITIAL_TOPICS
     Then Kết quả trả về success = true cho toàn bộ 35 topics
+    And Không có topic nào bị lỗi schema validation
+
