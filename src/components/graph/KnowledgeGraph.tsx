@@ -8,13 +8,20 @@ import {
   Filter,
   Sparkles,
   Compass,
-  FileText,
-  Library,
-  BookOpen,
   ArrowRight,
   Info,
+  Layers,
 } from 'lucide-react';
 import { Topic, Note, Resource } from '../../types';
+import {
+  buildAdjacencyGraph,
+  getDirectNeighbors,
+  traverseMultiHop,
+  filterSubgraph,
+  GraphNodeType,
+  SemanticEdgeType,
+  KnowledgeGraphData,
+} from '../../lib/knowledgeGraph';
 
 interface GraphNode {
   id: string;
@@ -39,19 +46,24 @@ interface GraphLink {
 }
 
 export function KnowledgeGraph() {
-  const { topics, notes, resources, openTopicDetail, categories, tags } = useData();
+  const { topics, notes, resources, openTopicDetail, tags } = useData();
 
   // Filters
   const [domainFilter, setDomainFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc'>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [semanticEdgeFilter, setSemanticEdgeFilter] = useState<
+    'all' | 'related' | 'prerequisite' | 'advanced' | 'contradicts'
+  >('all');
   const [nodeTypeFilter, setNodeTypeFilter] = useState<{ topic: boolean; note: boolean; resource: boolean }>({
     topic: true,
     note: true,
     resource: true,
   });
 
-  // Selected node inspection
+  // Selected node inspection & Focus Mode
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [traversalDepth, setTraversalDepth] = useState<number>(2);
 
   // Canvas / SVG Transform
   const [zoom, setZoom] = useState(1);
@@ -62,124 +74,168 @@ export function KnowledgeGraph() {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-  // Generate Nodes & Links
+  // 1. Build master adjacency graph safely using pure core engine
+  const masterGraph: KnowledgeGraphData = useMemo(() => {
+    return buildAdjacencyGraph({ topics, notes, resources });
+  }, [topics, notes, resources]);
+
+  // 2. Generate Active Subgraph & Layout Nodes/Links
   const { initialNodes, initialLinks } = useMemo(() => {
+    const nodeTypes: GraphNodeType[] = [];
+    if (nodeTypeFilter.topic) nodeTypes.push('topic');
+    if (nodeTypeFilter.note) nodeTypes.push('note');
+    if (nodeTypeFilter.resource) nodeTypes.push('resource');
+
+    const edgeTypes: SemanticEdgeType[] | undefined =
+      semanticEdgeFilter === 'all'
+        ? undefined
+        : [semanticEdgeFilter as SemanticEdgeType, 'has_note', 'has_resource'];
+
+    let subgraph;
+    if (isFocusMode && selectedNode) {
+      subgraph = traverseMultiHop(masterGraph, {
+        startNodeId: selectedNode.id,
+        maxDepth: traversalDepth,
+        nodeTypes,
+        edgeTypes,
+        maxNodesLimit: 200,
+      });
+    } else {
+      subgraph = filterSubgraph(masterGraph, {
+        nodeTypes,
+        edgeTypes,
+      });
+    }
+
+    // Filter topics by domain & tag if not in focus mode
+    let filteredNodes = subgraph.nodes;
+    if (!isFocusMode) {
+      filteredNodes = filteredNodes.filter((n) => {
+        if (n.type === 'topic') {
+          if (domainFilter !== 'all' && n.domain !== domainFilter) return false;
+          if (selectedTag !== 'all' && n.tags && !n.tags.includes(selectedTag)) return false;
+        }
+        return true;
+      });
+    }
+
+    const visibleNodeIdSet = new Set(filteredNodes.map((n) => n.id));
+    const filteredEdges = subgraph.edges.filter(
+      (e) => visibleNodeIdSet.has(e.source) && visibleNodeIdSet.has(e.target)
+    );
+
+    // Build layout positions (preserve circular cluster layout)
+    const topicNodes = filteredNodes.filter((n) => n.type === 'topic');
+    const noteNodes = filteredNodes.filter((n) => n.type === 'note');
+    const resNodes = filteredNodes.filter((n) => n.type === 'resource');
+
     const nodeList: GraphNode[] = [];
-    const linkList: GraphLink[] = [];
+    const topicPosMap = new Map<string, { x: number; y: number; domain: string }>();
 
-    // Filter topics
-    const validTopics = topics.filter((t) => {
-      if (domainFilter !== 'all' && t.type !== domainFilter) return false;
-      if (selectedTag !== 'all' && !t.tags.includes(selectedTag)) return false;
-      return true;
-    });
+    topicNodes.forEach((nodeMeta, idx) => {
+      const angle = (idx / (topicNodes.length || 1)) * 2 * Math.PI;
+      const radiusDist = nodeMeta.domain === 'phat-hoc' ? 240 : 270;
+      const clusterOffsetX = nodeMeta.domain === 'phat-hoc' ? -120 : 120;
+      const posX = 450 + Math.cos(angle) * radiusDist + clusterOffsetX;
+      const posY = 350 + Math.sin(angle) * radiusDist;
 
-    const topicIds = new Set(validTopics.map((t) => t.id));
+      topicPosMap.set(nodeMeta.id, { x: posX, y: posY, domain: String(nodeMeta.domain) });
 
-    // Calculate circular cluster layout for initial node positions
-    validTopics.forEach((topic, idx) => {
-      const angle = (idx / (validTopics.length || 1)) * 2 * Math.PI;
-      const radiusDist = topic.type === 'phat-hoc' ? 240 : 270;
-      const clusterOffsetX = topic.type === 'phat-hoc' ? -120 : 120;
+      const originalTopic = topics.find((t) => t.id === nodeMeta.id);
 
       nodeList.push({
-        id: topic.id,
-        title: topic.title,
+        id: nodeMeta.id,
+        title: nodeMeta.title,
         type: 'topic',
-        domain: topic.type,
-        category: topic.categoryName,
-        x: 450 + Math.cos(angle) * radiusDist + clusterOffsetX,
-        y: 350 + Math.sin(angle) * radiusDist,
+        domain: nodeMeta.domain === 'phat-hoc' ? 'phat-hoc' : nodeMeta.domain === 'huyen-hoc' ? 'huyen-hoc' : 'other',
+        category: nodeMeta.category,
+        x: posX,
+        y: posY,
         vx: 0,
         vy: 0,
         radius: 24,
-        progress: topic.studyProgress.progress,
-        originalData: topic,
-      });
-
-      // Links between topics
-      topic.links.forEach((link) => {
-        if (topicIds.has(link.targetId)) {
-          linkList.push({
-            source: topic.id,
-            target: link.targetId,
-            linkType: link.linkType,
-            strength: link.strength,
-          });
-        }
+        progress: nodeMeta.progress,
+        originalData: originalTopic || ({ id: nodeMeta.id, title: nodeMeta.title, description: '' } as any),
       });
     });
 
-    // Notes attached to visible topics
-    if (nodeTypeFilter.note) {
-      notes.forEach((note, idx) => {
-        if (topicIds.has(note.topicId)) {
-          const parentTopic = nodeList.find((n) => n.id === note.topicId);
-          const angle = idx * 1.3;
-          const dist = 60 + (idx % 3) * 20;
-          nodeList.push({
-            id: note.id,
-            title: note.title,
-            type: 'note',
-            domain: parentTopic?.domain || 'other',
-            category: `Ghi chú (${note.type})`,
-            x: (parentTopic?.x || 450) + Math.cos(angle) * dist,
-            y: (parentTopic?.y || 350) + Math.sin(angle) * dist,
-            vx: 0,
-            vy: 0,
-            radius: 14,
-            originalData: note,
-          });
+    noteNodes.forEach((noteMeta, idx) => {
+      const originalNote = notes.find((n) => n.id === noteMeta.id);
+      const parentTopicId = originalNote?.topicId || '';
+      const parentPos = topicPosMap.get(parentTopicId) || { x: 450, y: 350, domain: 'other' };
+      const angle = idx * 1.3;
+      const dist = 60 + (idx % 3) * 20;
 
-          linkList.push({
-            source: note.topicId,
-            target: note.id,
-            linkType: 'has_note',
-            strength: 2,
-          });
-        }
+      nodeList.push({
+        id: noteMeta.id,
+        title: noteMeta.title,
+        type: 'note',
+        domain: (parentPos.domain === 'phat-hoc' || parentPos.domain === 'huyen-hoc') ? (parentPos.domain as any) : 'other',
+        category: `Ghi chú (${originalNote?.type || 'study'})`,
+        x: parentPos.x + Math.cos(angle) * dist,
+        y: parentPos.y + Math.sin(angle) * dist,
+        vx: 0,
+        vy: 0,
+        radius: 14,
+        originalData: originalNote || ({ id: noteMeta.id, title: noteMeta.title, content: '' } as any),
       });
-    }
+    });
 
-    // Resources attached to visible topics
-    if (nodeTypeFilter.resource) {
-      resources.forEach((res, idx) => {
-        if (topicIds.has(res.topicId)) {
-          const parentTopic = nodeList.find((n) => n.id === res.topicId);
-          const angle = idx * 1.7 + 0.8;
-          const dist = 65 + (idx % 3) * 25;
-          nodeList.push({
-            id: res.id,
-            title: res.title,
-            type: 'resource',
-            domain: parentTopic?.domain || 'other',
-            category: `Tài liệu (${res.type.toUpperCase()})`,
-            x: (parentTopic?.x || 450) + Math.cos(angle) * dist,
-            y: (parentTopic?.y || 350) + Math.sin(angle) * dist,
-            vx: 0,
-            vy: 0,
-            radius: 14,
-            originalData: res,
-          });
+    resNodes.forEach((resMeta, idx) => {
+      const originalRes = resources.find((r) => r.id === resMeta.id);
+      const parentTopicId = originalRes?.topicId || '';
+      const parentPos = topicPosMap.get(parentTopicId) || { x: 450, y: 350, domain: 'other' };
+      const angle = idx * 1.7 + 0.8;
+      const dist = 65 + (idx % 3) * 25;
 
-          linkList.push({
-            source: res.topicId,
-            target: res.id,
-            linkType: 'has_resource',
-            strength: 2,
-          });
-        }
+      nodeList.push({
+        id: resMeta.id,
+        title: resMeta.title,
+        type: 'resource',
+        domain: (parentPos.domain === 'phat-hoc' || parentPos.domain === 'huyen-hoc') ? (parentPos.domain as any) : 'other',
+        category: `Tài liệu (${originalRes?.type?.toUpperCase() || 'BOOK'})`,
+        x: parentPos.x + Math.cos(angle) * dist,
+        y: parentPos.y + Math.sin(angle) * dist,
+        vx: 0,
+        vy: 0,
+        radius: 14,
+        originalData: originalRes || ({ id: resMeta.id, title: resMeta.title, notes: '' } as any),
       });
-    }
+    });
+
+    const linkList: GraphLink[] = filteredEdges.map((e) => ({
+      source: e.source,
+      target: e.target,
+      linkType: e.type,
+      strength: e.strength,
+    }));
 
     return { initialNodes: nodeList, initialLinks: linkList };
-  }, [topics, notes, resources, domainFilter, selectedTag, nodeTypeFilter]);
+  }, [
+    masterGraph,
+    isFocusMode,
+    selectedNode,
+    traversalDepth,
+    nodeTypeFilter,
+    semanticEdgeFilter,
+    domainFilter,
+    selectedTag,
+    topics,
+    notes,
+    resources,
+  ]);
 
   const [nodes, setNodes] = useState<GraphNode[]>(initialNodes);
 
   useEffect(() => {
     setNodes(initialNodes);
   }, [initialNodes]);
+
+  // Selected node neighborhood calculation for degree display
+  const selectedNodeNeighbors = useMemo(() => {
+    if (!selectedNode) return null;
+    return getDirectNeighbors(masterGraph, selectedNode.id);
+  }, [masterGraph, selectedNode]);
 
   // Node Dragging Handling
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {
@@ -238,7 +294,7 @@ export function KnowledgeGraph() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      {/* Header (Matching Page 6 Wireframe) */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1">
@@ -253,7 +309,7 @@ export function KnowledgeGraph() {
           </p>
         </div>
 
-        {/* Legend pills (Matching Page 6: Legend: ● Topic ● Note ● Resource) */}
+        {/* Legend pills */}
         <div className="flex items-center gap-3 bg-white p-2 px-3.5 border border-stone-200 rounded-xl text-xs font-medium shadow-2xs">
           <span className="text-stone-400 text-[11px]">Chú thích:</span>
           <span className="flex items-center gap-1.5 text-stone-700">
@@ -271,7 +327,7 @@ export function KnowledgeGraph() {
         </div>
       </div>
 
-      {/* Filter Toolbar (Matching Page 6: Filter: [Phật học ▼] [Huyền học ▼] [Tất cả tags ▼]) */}
+      {/* Filter Toolbar */}
       <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
@@ -323,6 +379,20 @@ export function KnowledgeGraph() {
               </option>
             ))}
           </select>
+
+          {/* Semantic Edge selector */}
+          <select
+            aria-label="semantic-edge-filter"
+            value={semanticEdgeFilter}
+            onChange={(e) => setSemanticEdgeFilter(e.target.value as any)}
+            className="px-3 py-1 bg-stone-100 border border-stone-200 rounded-xl text-xs font-medium text-stone-800"
+          >
+            <option value="all">Tất cả liên kết (Semantic Edges)</option>
+            <option value="prerequisite">Tiên quyết (prerequisite)</option>
+            <option value="advanced">Nâng cao (advanced)</option>
+            <option value="contradicts">Đối lập (contradicts)</option>
+            <option value="related">Tương quan (related)</option>
+          </select>
         </div>
 
         {/* Node Type Toggles */}
@@ -348,12 +418,16 @@ export function KnowledgeGraph() {
         </div>
       </div>
 
-      {/* Main Interactive Graph Visualizer Stage (Page 6 & Page 15-16 wireframe) */}
+      {/* Main Interactive Graph Visualizer Stage */}
       <div className="relative bg-stone-900 rounded-3xl border border-stone-800 overflow-hidden shadow-2xl h-[620px] select-none">
         {/* Instruction overlay */}
         <div className="absolute top-4 left-4 z-10 bg-stone-800/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] text-stone-300 border border-stone-700/80 pointer-events-none flex items-center gap-2">
           <Info className="w-3.5 h-3.5 text-amber-400" />
-          <span>Kéo thả node • Cuộn/Zoom để mở rộng • Nhấp node để xem thông tin</span>
+          <span>
+            {isFocusMode
+              ? `Chế độ Khảo cứu lân cận (${traversalDepth}-hop)`
+              : 'Kéo thả node • Cuộn/Zoom để mở rộng • Nhấp node để xem thông tin'}
+          </span>
         </div>
 
         {/* Zoom & Canvas Controls */}
@@ -538,7 +612,10 @@ export function KnowledgeGraph() {
                 {selectedNode.type.toUpperCase()} • {selectedNode.category}
               </span>
               <button
-                onClick={() => setSelectedNode(null)}
+                onClick={() => {
+                  setSelectedNode(null);
+                  setIsFocusMode(false);
+                }}
                 className="text-stone-400 hover:text-white text-xs font-bold"
               >
                 ✕
@@ -554,6 +631,45 @@ export function KnowledgeGraph() {
                   ? (selectedNode.originalData as Note).content
                   : (selectedNode.originalData as Resource).notes || 'Tài liệu tham khảo'}
               </p>
+            </div>
+
+            {/* Degree & Traversal Explorer Controls */}
+            <div className="pt-2 border-t border-stone-800 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs text-stone-300">
+                <span>
+                  Bậc kết nối: <strong className="text-amber-400">{selectedNodeNeighbors?.degree ?? 0}</strong>
+                </span>
+                <button
+                  onClick={() => setIsFocusMode((prev) => !prev)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
+                    isFocusMode
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                  }`}
+                >
+                  <Layers className="w-3 h-3" />
+                  {isFocusMode ? 'Đang khảo cứu lân cận' : 'Khảo cứu lân cận'}
+                </button>
+              </div>
+
+              {isFocusMode && (
+                <div className="flex items-center justify-between bg-stone-800/80 p-2 rounded-xl text-xs">
+                  <label htmlFor="traversal-depth-select" className="text-stone-300">
+                    Độ sâu duyệt:
+                  </label>
+                  <select
+                    id="traversal-depth-select"
+                    aria-label="Độ sâu duyệt"
+                    value={traversalDepth}
+                    onChange={(e) => setTraversalDepth(Number(e.target.value))}
+                    className="px-2 py-0.5 bg-stone-900 border border-stone-700 text-stone-200 rounded-lg text-xs font-medium"
+                  >
+                    <option value="1">1-hop (Trực tiếp)</option>
+                    <option value="2">2-hop (Mở rộng)</option>
+                    <option value="3">3-hop (Toàn cảnh)</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             {selectedNode.type === 'topic' && (
