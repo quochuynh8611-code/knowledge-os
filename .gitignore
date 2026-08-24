@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Backup Snapshots
+backups/*.json
+backups/*.tmp
+!backups/.gitkeep

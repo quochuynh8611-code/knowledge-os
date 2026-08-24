@@ -12,7 +12,11 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "snapshot:create": "tsx scripts/backup-snapshot.ts",
+    "snapshot:dry-run": "tsx scripts/backup-snapshot.ts --dry-run",
+    "snapshot:verify": "tsx scripts/backup-snapshot.ts --verify",
+    "snapshot:prune": "tsx scripts/backup-snapshot.ts --prune"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
