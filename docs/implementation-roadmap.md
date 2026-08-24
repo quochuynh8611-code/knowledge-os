@@ -1,7 +1,7 @@
 # LỘ TRÌNH TRIỂN KHAI TỔNG THỂ (MASTER IMPLEMENTATION ROADMAP)
 ## Dashboard Nghiên Cứu Phật Học & Huyền Học (Knowledge OS)
 
-> **Ghi chú đồng bộ:** Lộ trình dưới đây phản ánh cấu trúc 5 Phase thực tế của dự án, đồng bộ 100% với [`docs/PROJECT_STATUS.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/PROJECT_STATUS.md).
+> **Ghi chú đồng bộ:** Lộ trình dưới đây phản ánh cấu trúc canonical của dự án, đồng bộ 100% với [`docs/PROJECT_STATUS.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/PROJECT_STATUS.md).
 
 ---
 
@@ -10,16 +10,17 @@
 ```
 [BƯỚC 1: AUDIT & ARCHITECTURE] (Hoàn thành)
        │
-[BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-013)
+[BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 26 test suites)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 26 test suites / 186 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
-       ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012)
-       ├── PHASE 2A: Obsidian Open / Export UX Flow (obsidian://, ZIP export)
-       ├── PHASE 2B: Google NotebookLM Studio & Source Packaging
-       ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn)
-       └── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013)
+       ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
+       ├── PHASE 2A: Obsidian Open / Export UX Flow (obsidian://, ZIP export) [VERIFIED]
+       ├── PHASE 2B: Google NotebookLM Studio & Source Packaging [VERIFIED]
+       ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
+       ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
+       └── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [PLANNING ONLY]
 ```
 
 ---
@@ -59,8 +60,32 @@
 
 ---
 
+### 🔹 PHASE 5: Evolution Planning & Operational Expansion (PLANNING ONLY)
+- **Mã ADR:** ADR-014 (Status: PROPOSED)
+- **Mục tiêu:** Định hình lộ trình tiến hóa dài hạn cho Knowledge OS từ góc nhìn học giả nghiên cứu chuyên sâu, tối ưu hóa năng suất tra cứu, phân tích liên kết đa chiều và tự động hóa vận hành mà không phá vỡ các rào chắn bất biến hiện có.
+- **Ứng viên phạm vi (Candidate Scope Workstreams):**
+  1. *Workstream 5A — Advanced Knowledge Graph & Multi-Hop Traversal Explorer:* Nâng cấp trực quan hóa đồ thị liên kết, lọc liên kết theo trọng số/loại quan hệ (`prerequisite`, `contradicts`), phát hiện đường dẫn tri thức bắc cầu giữa Phật học và Huyền học.
+  2. *Workstream 5B — Spaced Repetition (SM-2) Study Session Analytics:* Thống kê trực quan đường cong lãng quên Ebbinghaus, tỷ lệ duy trì trí nhớ, biểu đồ nhiệt (Heatmap) ngày học, dự báo lịch ôn tập tối ưu.
+  3. *Workstream 5C — Automated Snapshot Maintenance & Headless Backup Script:* Xây dựng kịch bản CLI/cron định kỳ xuất snapshot sao lưu với SHA-256 integrity check tự động, phục vụ bảo vệ dữ liệu ngoại tuyến.
+  4. *Workstream 5D — Scholar Search & Fast Fuzzy Metadata Filter:* Tối ưu hóa bộ lọc tìm kiếm tức thời trên 35 topics canonical và hàng trăm ghi chú/tài liệu tham khảo mà không phụ thuộc external search cluster.
+- **Non-Goals Tuyệt Đối (Phạm vi loại trừ):**
+  - KHÔNG triển khai đồng bộ 2 chiều (two-way sync) với Obsidian.
+  - KHÔNG gọi private API không chính thức của NotebookLM hoặc Antigravity.
+  - KHÔNG nhúng binary vào database, state hoặc handoff bundle (Zero Binary Ingestion).
+  - KHÔNG thay đổi schema database hoặc phá vỡ tính tương thích ngược của snapshot Semver 2.x mà không có migration script an toàn.
+  - KHÔNG triển khai Authentication/Multi-tenancy phức tạp làm mất tính độc lập offline của người dùng cá nhân.
+- **Đánh dấu các quyết định Một Chiều (One-Way / Irreversible Decisions cần ADR riêng):**
+  - [!] *Database Schema Migration:* Bất kỳ việc thêm bảng/cột mới nào vào `prisma/schema.prisma` đều là quyết định một chiều $\rightarrow$ bắt buộc có ADR riêng và migration idempotent.
+  - [!] *External Auth/Cloud Sync Provider:* Thay đổi mô hình bảo mật cục bộ sang cloud auth là quyết định một chiều $\rightarrow$ cần phân tích đánh đổi rủi ro riêng biệt.
+- **Quality Gates cho Phase 5:**
+  - 100% Spec & ADR được phê duyệt thủ công trước khi viết code.
+  - Gherkin Scenarios và Failing Tests được tạo trước cho từng Workstream.
+  - Đảm bảo 186/186 tests hiện có duy trì trạng thái 100% PASS.
+
+---
+
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** 26 / 26 test files PASS — 186 / 186 tests PASS (100% GREEN).
+- **Toàn bộ Test Suite:** 26 / 26 test files PASS — 186 / 186 tests PASS (100% GREEN in 7.83s).
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
