@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
 import { Resource, ResourceType } from '../../types';
-import { X, FileText, Book, Video, Headphones, Globe, Link } from 'lucide-react';
+import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen } from 'lucide-react';
 
 interface ResourceFormModalProps {
   isOpen: boolean;
@@ -12,12 +12,15 @@ interface ResourceFormModalProps {
 
 export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTopicId }: ResourceFormModalProps) {
   const { topics, addResource, updateResource } = useData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [topicId, setTopicId] = useState('');
   const [title, setTitle] = useState('');
   const [type, setType] = useState<ResourceType>('pdf');
   const [author, setAuthor] = useState('');
+  const [sourceMode, setSourceMode] = useState<'web' | 'local'>('web');
   const [url, setUrl] = useState('');
+  const [filePath, setFilePath] = useState('');
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
@@ -26,17 +29,60 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
       setTitle(initialResource.title);
       setType(initialResource.type);
       setAuthor(initialResource.author || '');
+      if (initialResource.filePath && !initialResource.url) {
+        setSourceMode('local');
+      } else {
+        setSourceMode('web');
+      }
       setUrl(initialResource.url || '');
+      setFilePath(initialResource.filePath || '');
       setNotes(initialResource.notes || '');
     } else {
       setTopicId(defaultTopicId || topics[0]?.id || '');
       setTitle('');
       setType('pdf');
       setAuthor('');
+      setSourceMode('web');
       setUrl('https://');
+      setFilePath('');
       setNotes('');
     }
   }, [initialResource, defaultTopicId, topics, isOpen]);
+
+  const detectTypeAndTitle = (fileName: string): { detectedType?: ResourceType; suggestedTitle: string } => {
+    const cleanName = fileName.replace(/\.[^/.]+$/, '');
+    const suggestedTitle = cleanName.replace(/[-_.]+/g, ' ').trim();
+    const ext = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+
+    let detectedType: ResourceType | undefined;
+    if (['.pdf'].includes(ext)) {
+      detectedType = 'pdf';
+    } else if (['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac'].includes(ext)) {
+      detectedType = 'audio';
+    } else if (['.mp4', '.mkv', '.avi', '.mov', '.webm'].includes(ext)) {
+      detectedType = 'video';
+    } else if (['.epub', '.mobi', '.azw3', '.djvu', '.doc', '.docx'].includes(ext)) {
+      detectedType = 'book';
+    }
+
+    return { detectedType, suggestedTitle };
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFilePath(file.name);
+    const { detectedType, suggestedTitle } = detectTypeAndTitle(file.name);
+
+    if (detectedType) {
+      setType(detectedType);
+    }
+
+    if (!title.trim() && suggestedTitle) {
+      setTitle(suggestedTitle);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,25 +90,32 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
     const currentTopic = topics.find((t) => t.id === topicId);
 
+    const finalUrl = sourceMode === 'web' && url.trim() ? url.trim() : undefined;
+    const finalPath = sourceMode === 'local' && filePath.trim() ? filePath.trim() : undefined;
+
+    if (!finalUrl && !finalPath) return;
+
     if (initialResource) {
       updateResource(initialResource.id, {
         topicId,
         topicTitle: currentTopic?.title || initialResource.topicTitle,
-        title,
+        title: title.trim(),
         type,
-        author,
-        url,
-        notes,
+        author: author.trim() || undefined,
+        url: finalUrl,
+        filePath: finalPath,
+        notes: notes.trim() || undefined,
       });
     } else {
       addResource({
         topicId,
         topicTitle: currentTopic?.title || 'Chủ đề',
-        title,
+        title: title.trim(),
         type,
-        author,
-        url,
-        notes,
+        author: author.trim() || undefined,
+        url: finalUrl,
+        filePath: finalPath,
+        notes: notes.trim() || undefined,
       });
     }
     onClose();
@@ -143,6 +196,47 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
             </div>
           </div>
 
+          {/* Source Mode Switcher */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              Nguồn tài liệu *
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceMode('web');
+                  if (!url) setUrl('https://');
+                  setFilePath('');
+                }}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                  sourceMode === 'web'
+                    ? 'bg-indigo-100 border-indigo-400 text-indigo-950 shadow-2xs font-bold'
+                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Đường dẫn Web</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSourceMode('local');
+                  setUrl('');
+                }}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+                  sourceMode === 'local'
+                    ? 'bg-indigo-100 border-indigo-400 text-indigo-950 shadow-2xs font-bold'
+                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Tệp trên máy</span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
               Tiêu đề tài liệu *
@@ -173,15 +267,49 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
-                Đường dẫn liên kết (URL)
+                {sourceMode === 'web' ? 'Đường dẫn liên kết (URL) *' : 'Đường dẫn tệp cục bộ (filePath) *'}
               </label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm"
-              />
+              {sourceMode === 'web' ? (
+                <input
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+                />
+              ) : (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept=".pdf,.epub,.mobi,.azw3,.doc,.docx,.mp4,.mkv,.avi,.mov,.webm,.mp3,.wav,.m4a,.aac,.ogg,.flac,.txt,.md"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-300 flex items-center gap-1.5 transition shrink-0"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Duyệt tệp trên máy</span>
+                    </button>
+                    <input
+                      type="text"
+                      required
+                      value={filePath}
+                      onChange={(e) => setFilePath(e.target.value)}
+                      placeholder="Đường dẫn tệp (/Users/.../KinhDien.pdf)..."
+                      className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+                    />
+                  </div>
+                  <p className="text-[11px] text-stone-500 leading-tight">
+                    * Trình duyệt bảo mật không đọc được đường dẫn tuyệt đối (C:\ hoặc /Users/...). Đã tự động điền tên tệp; bạn có thể chỉnh sửa hoặc thêm tiền tố thư mục nếu cần.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
