@@ -15,10 +15,21 @@ import {
   BackupSnapshotSchema,
   RestoreRequestSchema,
   DbHealthResponseSchema,
+  GeminiResearchInputSchema,
   calculateBackupChecksum,
   ValidatedBackupSnapshot,
   ValidatedDbHealthResponse,
 } from "./src/lib/validation";
+import {
+  isRetryableGeminiError,
+  generateContentWithResilience,
+  checkDbHealth,
+} from "./src/lib/resilience";
+import {
+  createRateLimiter,
+  createRateLimitMiddleware,
+  logStructuredEvent,
+} from "./src/lib/security";
 
 dotenv.config();
 
@@ -39,119 +50,8 @@ function getGenAI(): GoogleGenAI | null {
 }
 
 // ==========================================
-// RESILIENT GEMINI AI HELPERS (AUTO-RETRY & MULTI-MODEL FALLBACK)
+// BACKUP & RESTORE DOMAIN HELPERS (PHASE 2B)
 // ==========================================
-
-const CANDIDATE_MODELS = [
-  "gemini-3.6-flash",
-  "gemini-3.7-flash",
-  "gemini-3.1-pro-preview",
-];
-
-export function isRetryableGeminiError(error: any): boolean {
-  const status = error?.status || error?.code || error?.error?.code;
-  const message = (error?.message || "").toLowerCase();
-
-  if (
-    status === 503 ||
-    status === 429 ||
-    status === "UNAVAILABLE" ||
-    status === "RESOURCE_EXHAUSTED"
-  ) {
-    return true;
-  }
-
-  return (
-    message.includes("high demand") ||
-    message.includes("overloaded") ||
-    message.includes("unavailable") ||
-    message.includes("rate limit") ||
-    message.includes("quota") ||
-    message.includes("resource has been exhausted") ||
-    message.includes("503") ||
-    message.includes("429")
-  );
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export async function generateContentWithResilience(
-  ai: GoogleGenAI,
-  params: {
-    contents: string;
-    config?: any;
-    primaryModel?: string;
-  },
-): Promise<{ text: string; modelUsed: string }> {
-  const primary = params.primaryModel || "gemini-3.6-flash";
-  const modelQueue = Array.from(new Set([primary, ...CANDIDATE_MODELS]));
-  let lastError: any = null;
-
-  for (const model of modelQueue) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: params.contents,
-          config: params.config,
-        });
-
-        const text = response.text || "";
-        return { text, modelUsed: model };
-      } catch (err: any) {
-        lastError = err;
-        console.warn(
-          `[Gemini AI Engine] Model '${model}' (Attempt ${attempt}/2) failed:`,
-          err?.message || err,
-        );
-
-        if (isRetryableGeminiError(err)) {
-          if (attempt < 2) {
-            await sleep(1500 * attempt);
-            continue;
-          }
-          break;
-        } else {
-          throw err;
-        }
-      }
-    }
-  }
-
-  throw lastError;
-}
-
-// ==========================================
-// BACKUP, RESTORE & HEALTH DOMAIN HELPERS (PHASE 2B)
-// ==========================================
-
-export async function checkDbHealth(
-  db: typeof prisma,
-): Promise<ValidatedDbHealthResponse> {
-  const start = Date.now();
-  try {
-    await db.$queryRawUnsafe("SELECT 1");
-    const latencyMs = Date.now() - start;
-    const status =
-      latencyMs < 100 ? "healthy" : latencyMs < 1000 ? "degraded" : "unhealthy";
-    return DbHealthResponseSchema.parse({
-      status,
-      latencyMs,
-      database: "postgresql",
-      connected: true,
-      timestamp: new Date().toISOString(),
-    });
-  } catch {
-    const latencyMs = Date.now() - start;
-    return DbHealthResponseSchema.parse({
-      status: "unhealthy",
-      latencyMs: Math.max(0, latencyMs),
-      database: "postgresql",
-      connected: false,
-      timestamp: new Date().toISOString(),
-    });
-  }
-}
 
 export async function buildBackupSnapshotFromDb(
   db: typeof prisma,
@@ -668,7 +568,27 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "15mb" }));
+
+  // Rate limiters for sensitive endpoints (Phase 4 Security Guardrails)
+  const geminiRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: 10,
+  });
+
+  const restoreRateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: 5,
+  });
+
+  // Apply rate limiting to all /api/gemini endpoints
+  app.use(
+    "/api/gemini",
+    createRateLimitMiddleware(
+      geminiRateLimiter,
+      "Quá nhiều yêu cầu nghiên cứu AI (tối đa 10 req/phút). Vui lòng thử lại sau.",
+    ),
+  );
 
   // Health check endpoint (App & Gemini Key status)
   app.get("/api/health", (req, res) => {
@@ -679,7 +599,7 @@ async function startServer() {
     });
   });
 
-  // Database Health check endpoint (Phase 2B)
+  // Database Health check endpoint (Phase 2B / Phase 4)
   app.get("/api/health/db", async (_req, res) => {
     const health = await checkDbHealth(prisma);
     res.json(health);
@@ -687,6 +607,17 @@ async function startServer() {
 
   // Antigravity & Gemini Research Scholar Endpoint
   app.post("/api/gemini/research", async (req, res) => {
+    const parsedInput = GeminiResearchInputSchema.safeParse(req.body);
+    if (!parsedInput.success) {
+      logStructuredEvent("warn", "GEMINI_RESEARCH_VALIDATION_ERROR", {
+        errors: parsedInput.error.issues,
+      });
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        details: parsedInput.error.issues,
+      });
+    }
+
     try {
       const {
         prompt,
@@ -694,11 +625,7 @@ async function startServer() {
         category,
         contextNotes,
         mode = "scholar_analysis",
-      } = req.body;
-
-      if (!prompt) {
-        return res.status(400).json({ error: "Prompt is required" });
-      }
+      } = parsedInput.data;
 
       const ai = getGenAI();
       if (!ai) {
@@ -744,7 +671,9 @@ Phong cách phản hồi:
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error("Gemini Research API Error:", error);
+      logStructuredEvent("error", "GEMINI_RESEARCH_API_ERROR", {
+        error: error?.message || String(error),
+      });
       const isOverloaded = isRetryableGeminiError(error);
       const friendlyMsg = isOverloaded
         ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
@@ -1355,51 +1284,73 @@ Yêu cầu định dạng JSON:
   });
 
   // ==========================================
-  // BACKUP SNAPSHOT RESTORE ENDPOINT (PHASE 2B)
+  // BACKUP SNAPSHOT RESTORE ENDPOINT (PHASE 2B / PHASE 4)
   // ==========================================
-  app.post("/api/backup/restore", async (req, res) => {
-    const parsed = RestoreRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: "VALIDATION_ERROR",
-        details: parsed.error.issues,
-      });
-    }
+  app.post(
+    "/api/backup/restore",
+    createRateLimitMiddleware(
+      restoreRateLimiter,
+      "Quá nhiều yêu cầu phục hồi dữ liệu (tối đa 5 req/phút). Vui lòng thử lại sau.",
+    ),
+    async (req, res) => {
+      const parsed = RestoreRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        logStructuredEvent("warn", "BACKUP_RESTORE_VALIDATION_ERROR", {
+          errors: parsed.error.issues,
+        });
+        return res.status(400).json({
+          error: "VALIDATION_ERROR",
+          details: parsed.error.issues,
+        });
+      }
 
-    const { snapshot, mode } = parsed.data;
+      const { snapshot, mode } = parsed.data;
 
-    // 1. Verify SHA-256 Checksum Integrity (Fail-Fast)
-    const calculatedChecksum = calculateBackupChecksum(snapshot.data);
-    if (snapshot.checksum !== calculatedChecksum) {
-      return res.status(400).json({
-        error: "CHECKSUM_MISMATCH",
-        message:
-          "Checksum verification failed: payload has been modified or corrupted",
-      });
-    }
+      // 1. Verify SHA-256 Checksum Integrity (Fail-Fast)
+      const calculatedChecksum = calculateBackupChecksum(snapshot.data);
+      if (snapshot.checksum !== calculatedChecksum) {
+        logStructuredEvent("warn", "BACKUP_RESTORE_CHECKSUM_MISMATCH", {
+          expectedChecksum: snapshot.checksum,
+          calculatedChecksum,
+        });
+        return res.status(400).json({
+          error: "CHECKSUM_MISMATCH",
+          message:
+            "Checksum verification failed: payload has been modified or corrupted",
+        });
+      }
 
-    try {
-      await prisma.$transaction(async (tx) => {
-        if (mode === "replace") {
-          await executeReplaceRestore(tx, snapshot.data);
-        } else {
-          await executeMergeRestore(tx, snapshot.data);
-        }
-      });
+      try {
+        await prisma.$transaction(async (tx) => {
+          if (mode === "replace") {
+            await executeReplaceRestore(tx, snapshot.data);
+          } else {
+            await executeMergeRestore(tx, snapshot.data);
+          }
+        });
 
-      res.json({
-        success: true,
-        mode,
-        restoredAt: new Date().toISOString(),
-        restoredCounts: snapshot.counts,
-      });
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Restore transaction failed";
-      console.error("Backup Restore Error:", err);
-      res.status(500).json({ error: msg });
-    }
-  });
+        logStructuredEvent("info", "BACKUP_RESTORE_SUCCESS", {
+          mode,
+          restoredCounts: snapshot.counts,
+        });
+
+        res.json({
+          success: true,
+          mode,
+          restoredAt: new Date().toISOString(),
+          restoredCounts: snapshot.counts,
+        });
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error ? err.message : "Restore transaction failed";
+        logStructuredEvent("error", "BACKUP_RESTORE_TRANSACTION_FAILED", {
+          error: msg,
+          mode,
+        });
+        res.status(500).json({ error: msg });
+      }
+    },
+  );
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {
@@ -1417,6 +1368,12 @@ Yêu cầu định dạng JSON:
   }
 
   app.listen(PORT, "0.0.0.0", () => {
+    logStructuredEvent("info", "SERVER_STARTUP", {
+      port: PORT,
+      nodeEnv: process.env.NODE_ENV || "development",
+      hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+      url: `http://localhost:${PORT}`,
+    });
     console.log(`Knowledge OS Server running on http://localhost:${PORT}`);
   });
 }

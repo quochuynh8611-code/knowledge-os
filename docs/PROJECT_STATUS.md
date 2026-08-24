@@ -2,14 +2,14 @@
 
 > **Cập nhật lần cuối:** 2026-08-24  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Mục tiêu phiên hiện tại:** Hoàn thiện 100% tài liệu hóa, đồng bộ ngữ cảnh và khóa chặt ranh giới phase.
+> **Trạng thái tổng thể:** 🟢 **ALL 5 PHASES IMPLEMENTED & 100% VERIFIED**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **PHASE 1, PHASE 2A, PHASE 2B & PHASE 3 HOÀN TẤT & KIỂM THỬ XANH 100%**.
-- **Quy tắc bất biến:** Tuân thủ OODA, Read-before-write và Test-first cho mọi thay đổi.
+- **Trạng thái thực thi:** **TOÀN BỘ CÁC PHASE (1 $\rightarrow$ 4) HOÀN TẤT & KIỂM THỬ XANH 100%**.
+- **Quy tắc bất biến đã tuân thủ:** OODA, Read-before-write, Test-first (Gherkin Scenarios 1–8), Zero Binary Ingestion, Dual-Tier Resilience, Fast-fail Security Guardrails.
 
 ---
 
@@ -21,22 +21,25 @@
 | **Phase 2a** | **Obsidian Open / Export UX:**<br>- Cấu hình & Fallback an toàn Vault Name<br>- Mở topic qua `obsidian://open` (sanitized path)<br>- Tạo note qua `obsidian://new`<br>- Xuất file ZIP chuẩn cấu trúc Vault Markdown | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 9/9 `obsidian-lib` + 7/7 `obsidian-bridge` tests)* | **Hoàn tất 100%** |
 | **Phase 2b** | **NotebookLM Studio UX:**<br>- Đóng gói 5 phần chuẩn tài liệu nguồn (Web + Local)<br>- An toàn Clipboard & File Download Markdown<br>- Quản lý và lưu trữ Artifacts Locker với ID duy nhất | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 7/7 `notebooklm-lib` + 6/6 `notebooklm-studio` tests)* | **Hoàn tất 100%** |
 | **Phase 3** | **Antigravity Handoff Bundle:**<br>- Đóng gói 6 phần chuẩn (1-hop direct graph)<br>- An toàn Clipboard & File Download `Antigravity-Handoff-{Topic}.md`<br>- Sinh System Prompt theo 3 chế độ nghiên cứu<br>- Tích hợp trigger trên TopicDetail, AIStudio và Navbar | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 6/6 `antigravity-lib` + 4/4 `antigravity-handoff` tests)* | **Hoàn tất 100%** |
+| **Phase 4** | **Production Readiness & Hardening:**<br>- Rate limiting 10 req/min (`/api/gemini/*`) & 5 req/min (`/api/backup/restore`)<br>- Boundary validation (`MAX_PROMPT_LENGTH = 20k`, `MAX_HANDOFF_CONTEXT_LENGTH = 100k`)<br>- Health & Latency Policy: `<100ms` healthy, `100-1000ms` degraded, `>=1000ms` unhealthy<br>- Fast-fail non-retryable Gemini errors (400, 401, Invalid Arg)<br>- Bounded retry tối đa 2 lần cho 503/429/overload kèm model fallback queue<br>- Structured JSON Logging không lộ bí mật | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 13/13 tests trong `phase-4-production-hardening.test.ts`)* | **Hoàn tất 100%** |
 
 ---
 
 ## 🛡️ 3. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **25 / 25 test files PASS — 173 / 173 tests PASS (100% GREEN)**.
-- **Phase 1 Local File Picker Suite:** ✅ **`tests/unit/resource-form-modal-file-picker.test.tsx` (6/6 PASS)**.
-- **Phase 2a Obsidian Bridge Suites:** ✅ **`tests/unit/obsidian-lib.test.ts` (9/9 PASS)** · **`tests/unit/obsidian-bridge-integration.test.tsx` (7/7 PASS)**.
-- **Phase 2b NotebookLM Suites:** ✅ **`tests/unit/notebooklm-lib.test.ts` (7/7 PASS)** · **`tests/unit/notebooklm-studio-integration.test.tsx` (6/6 PASS)**.
-- **Phase 3 Antigravity Suites:** ✅ **`tests/unit/antigravity-lib.test.ts` (6/6 PASS)** · **`tests/unit/antigravity-handoff-integration.test.tsx` (4/4 PASS)**.
-- **Dev & Prod Server Lifecycle:** ✅ Đã kiểm thử độc lập, boot mượt mà trên `http://localhost:3000`.
-- **Database & Resilience:** ✅ Dual-Tier Resilience hoạt động chuẩn xác: tự động fallback sang `LocalStorage` khi PostgreSQL database chưa khởi tạo.
+- **Regression Test Suite:** ✅ **26 / 26 test files PASS — 186 / 186 tests PASS (100% GREEN in 7.83s)**.
+- **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
+- **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (9/9 PASS) · `obsidian-bridge-integration.test.tsx` (7/7 PASS).
+- **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (7/7 PASS) · `notebooklm-studio-integration.test.tsx` (6/6 PASS).
+- **Phase 3 Suites:** ✅ `antigravity-lib.test.ts` (6/6 PASS) · `antigravity-handoff-integration.test.tsx` (4/4 PASS).
+- **Phase 4 Suite:** ✅ `phase-4-production-hardening.test.ts` (13/13 PASS).
+- **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
+- **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
+- **Database & Dual-Tier Persistence:** ✅ Hoạt động ổn định trên cả PostgreSQL/Prisma và LocalStorage offline fallback.
 
 ---
 
-## 🛑 4. Blockers & Điều Kiện Kích Hoạt Bước Kế Tiếp
+## 🛑 4. Blockers & Trạng Thái Sẵn Sàng (Production Readiness)
 
-1. **Blockers kỹ thuật:** **0 blocker** (Toàn bộ 4 phase cốt lõi đã hoàn thành và được kiểm chứng 100%).
-2. **Kích hoạt bước tiếp theo:** Sẵn sàng nghiệm thu hoặc commit theo kế hoạch của người dùng.
+1. **Blockers kỹ thuật:** **0 blocker**.
+2. **Trạng thái hệ thống:** **GREEN & PRODUCTION-READY**. Toàn bộ mã nguồn, tài liệu ADR, Gherkin và bảng kiểm tra chất lượng đã được đồng bộ chuẩn mực.

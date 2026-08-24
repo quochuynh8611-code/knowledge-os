@@ -653,6 +653,36 @@ export const DbHealthResponseSchema = z.object({
   timestamp: z.string().datetime(),
 });
 
+// ==========================================
+// 14. AI RESEARCH & BOUNDARY GUARD SCHEMAS (PHASE 4)
+// ==========================================
+
+export const MAX_PROMPT_LENGTH = 20_000;
+export const MAX_HANDOFF_CONTEXT_LENGTH = 100_000;
+
+export const GeminiResearchInputSchema = z.object({
+  prompt: z
+    .string()
+    .min(1, "Yêu cầu nghiên cứu (prompt) không được để trống")
+    .max(
+      MAX_PROMPT_LENGTH,
+      `Yêu cầu nghiên cứu quá dài (tối đa ${MAX_PROMPT_LENGTH.toLocaleString()} ký tự)`,
+    ),
+  topicTitle: z.string().optional(),
+  category: z.string().optional(),
+  contextNotes: z
+    .string()
+    .max(
+      MAX_HANDOFF_CONTEXT_LENGTH,
+      `Ghi chú ngữ cảnh quá dài (tối đa ${MAX_HANDOFF_CONTEXT_LENGTH.toLocaleString()} ký tự)`,
+    )
+    .optional(),
+  mode: z
+    .enum(["scholar_analysis", "pali_sanskrit_exegesis", "cross_domain_link"])
+    .optional()
+    .default("scholar_analysis"),
+});
+
 export type ValidatedTopic = z.infer<typeof TopicSchema>;
 export type ValidatedTopicCreate = z.infer<typeof TopicCreateSchema>;
 export type ValidatedNote = z.infer<typeof NoteSchema>;
@@ -673,3 +703,6 @@ export type ValidatedBackupSnapshot = z.infer<typeof BackupSnapshotSchema>;
 export type ValidatedRestoreRequest = z.infer<typeof RestoreRequestSchema>;
 export type ValidatedRestoreResponse = z.infer<typeof RestoreResponseSchema>;
 export type ValidatedDbHealthResponse = z.infer<typeof DbHealthResponseSchema>;
+export type ValidatedGeminiResearchInput = z.infer<
+  typeof GeminiResearchInputSchema
+>;
