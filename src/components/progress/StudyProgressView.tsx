@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import {
   TrendingUp,
@@ -14,9 +14,11 @@ import {
   Award,
   ChevronRight,
   Filter,
+  CalendarDays,
 } from 'lucide-react';
 import { Topic, TopicStatus } from '../../types';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
+import { calculateRetentionMetrics, calculateReviewForecast } from '../../lib/studyAnalytics';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
 import { StudyTimerModal } from '../modals/StudyTimerModal';
 import {
@@ -41,13 +43,17 @@ export function StudyProgressView() {
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
 
+  // 1. Compute in-memory retention metrics and review forecast safely
+  const retentionMetrics = useMemo(() => calculateRetentionMetrics(topics), [topics]);
+  const reviewForecast = useMemo(() => calculateReviewForecast(topics, 7), [topics]);
+
   // Filtered topics
   const filteredTopics = topics.filter((t) => {
     if (statusFilter === 'all') return true;
     return t.studyProgress.status === statusFilter;
   });
 
-  // Dynamic weekly study data reflecting actual logged study time
+  // Dynamic weekly study data reflecting logged study time
   const totalPhatHocTime = topics
     .filter((t) => t.type === 'phat-hoc')
     .reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0);
@@ -82,7 +88,7 @@ export function StudyProgressView() {
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-7">
-      {/* Header (Matching Page 6 Wireframe: Tiến độ học tập) */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1">
@@ -93,7 +99,7 @@ export function StudyProgressView() {
             Tiến Độ Học Tập &amp; Spaced Repetition (SM-2)
           </h1>
           <p className="text-xs text-stone-600 mt-0.5">
-            Quản lý nhịp độ ôn tập ngắt quãng và đo lường thời gian nghiên cứu thực tế
+            Quản lý nhịp độ ôn tập ngắt quãng và phân tích khả năng ghi nhớ dự phóng theo mô hình SM-2
           </p>
         </div>
 
@@ -108,37 +114,125 @@ export function StudyProgressView() {
         )}
       </div>
 
-      {/* Thống kê (Statistics Summary Box matching Page 6 wireframe) */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs">
-        <div className="flex items-center gap-2 text-stone-900 font-bold text-sm mb-3">
-          <BarChart2 className="w-4 h-4 text-amber-700" />
-          <span>Thống kê tổng hợp nghiên cứu</span>
+      {/* Thống kê KPI Dự Phóng (Memory & Retention Analytics Summary Box) */}
+      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+          <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
+            <BarChart2 className="w-4 h-4 text-amber-700" />
+            <span>Phân tích trí nhớ &amp; Thống kê nghiên cứu</span>
+          </div>
+          <span className="text-[11px] text-stone-400 font-medium">
+            Mô hình Spaced Repetition SM-2 &amp; Ebbinghaus
+          </span>
         </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* KPI 1: Estimated Retention Rate */}
+          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+            <span className="text-xs text-stone-500 block">Tỷ lệ ghi nhớ dự phóng</span>
+            <span className="text-xl font-bold font-mono text-amber-900">
+              {retentionMetrics.estimatedRetentionRate}%
+            </span>
+            <span className="text-[10px] text-stone-400 block mt-0.5">
+              Ước tính suy giảm theo chu kỳ
+            </span>
+          </div>
+
+          {/* KPI 2: Mastery Distribution */}
+          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
+            <span className="text-xs text-stone-500 block">Mức độ thuần thục</span>
+            <span className="text-xl font-bold font-mono text-emerald-800">
+              {retentionMetrics.masteredCount} / {topics.length} thuần thục
+            </span>
+            <span className="text-[10px] text-stone-500 block mt-0.5">
+              {retentionMetrics.consolidatingCount} đang củng cố • {retentionMetrics.learningCount} đang học
+            </span>
+          </div>
+
+          {/* KPI 3: Total Study Time */}
           <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
             <span className="text-xs text-stone-500 block">Tổng thời gian học</span>
-            <span className="text-lg font-bold font-mono text-stone-900">
-              {stats.totalTimeSpentMinutes} phút ({formatMinutesToHours(stats.totalTimeSpentMinutes)})
+            <span className="text-xl font-bold font-mono text-stone-900">
+              {stats.totalTimeSpentMinutes} phút
+            </span>
+            <span className="text-[10px] text-stone-500 block mt-0.5">
+              {formatMinutesToHours(stats.totalTimeSpentMinutes)} ({retentionMetrics.totalStudiedTopics} topics)
             </span>
           </div>
+
+          {/* KPI 4: Due Reviews Today */}
           <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Topics hoàn thành</span>
-            <span className="text-lg font-bold font-mono text-emerald-800">
-              {stats.completedTopicsCount} / {stats.totalTopics}
+            <span className="text-xs text-stone-500 block">Hàng đợi hôm nay</span>
+            <span className="text-xl font-bold font-mono text-rose-800">
+              {reviewForecast[0]?.totalCount ?? stats.dueReviewsCount} mục cần ôn
+            </span>
+            <span className="text-[10px] text-stone-400 block mt-0.5">
+              Đến hạn ôn tập ngắt quãng
             </span>
           </div>
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Ghi chú đã tạo</span>
-            <span className="text-lg font-bold font-mono text-amber-800">
-              {stats.totalNotesCount} notes
+        </div>
+      </div>
+
+      {/* 7-Day Review Queue Forecast Bar Chart */}
+      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-2 gap-2">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-amber-700" />
+            <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
+              Dự báo hàng đợi ôn tập 7 ngày
+            </h3>
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1 text-amber-800 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block" /> Phật Học
+            </span>
+            <span className="flex items-center gap-1 text-indigo-800 font-medium">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" /> Huyền Học
             </span>
           </div>
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Hàng đợi ôn tập hôm nay</span>
-            <span className="text-lg font-bold font-mono text-rose-800">
-              {stats.dueReviewsCount} mục cần ôn
-            </span>
-          </div>
+        </div>
+
+        {/* Forecast Days Summary Badges */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1 pb-2">
+          {reviewForecast.map((f, idx) => (
+            <div
+              key={`forecast-badge-${idx}`}
+              className={`p-2 rounded-xl border text-center transition ${
+                idx === 0
+                  ? 'bg-amber-50/80 border-amber-300'
+                  : 'bg-stone-50 border-stone-200/80'
+              }`}
+            >
+              <span className="text-[11px] font-semibold text-stone-600 block">
+                {f.dayLabel}
+              </span>
+              <span
+                className={`text-sm font-bold font-mono ${
+                  f.totalCount > 0
+                    ? idx === 0
+                      ? 'text-rose-700'
+                      : 'text-amber-900'
+                    : 'text-stone-400'
+                }`}
+              >
+                {f.totalCount} mục
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="h-52 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={reviewForecast}>
+              <XAxis dataKey="dayLabel" tick={{ fontSize: 11, fill: '#78716C' }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#78716C' }} unit=" mục" />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
+              />
+              <Bar dataKey="phatHocCount" name="Phật Học" fill="#D97706" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="huyenHocCount" name="Huyền Học" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -214,7 +308,7 @@ export function StudyProgressView() {
         </div>
       </div>
 
-      {/* Filter Tabs (Matching Page 6: Bộ lọc: [Tất cả ▼] [Đang học ▼] [Hoặc thành ▼]) */}
+      {/* Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 border border-stone-200/90 rounded-2xl shadow-2xs">
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-stone-500 font-semibold mr-1">Bộ lọc tiến độ:</span>
@@ -243,7 +337,7 @@ export function StudyProgressView() {
         </span>
       </div>
 
-      {/* Topic Progress Cards (Matching Page 6 wireframe layout) */}
+      {/* Topic Progress Cards */}
       <div className="space-y-4">
         {filteredTopics.map((topic) => {
           const isOverdue =
@@ -293,7 +387,7 @@ export function StudyProgressView() {
                 </div>
               </div>
 
-              {/* Progress and Stats Row (Matching Page 6: [████████░░] 80% | 15 ngày | ⏱️ 420 phút | Next review: 2 ngày nữa) */}
+              {/* Progress and Stats Row */}
               <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
                 <div className="flex flex-wrap items-center justify-between text-xs gap-2">
                   <div className="flex items-center gap-3 font-mono text-stone-700">
