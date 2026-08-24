@@ -24,7 +24,7 @@ export function getStoredArtifacts(): NotebookLMArtifact[] {
 export function saveArtifact(artifact: Omit<NotebookLMArtifact, 'id' | 'createdAt'>): NotebookLMArtifact {
   const newArtifact: NotebookLMArtifact = {
     ...artifact,
-    id: `artifact-${Date.now()}`,
+    id: `artifact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
   };
   const list = getStoredArtifacts();
@@ -49,9 +49,13 @@ export function deleteArtifact(id: string): void {
 /**
  * Package a topic into a dense, clean Source Document ready for NotebookLM Upload
  */
-export function packageSourceForNotebookLM(topic: Topic, notes: Note[], resources: Resource[]): string {
-  const topicNotes = notes.filter((n) => n.topicId === topic.id);
-  const topicResources = resources.filter((r) => r.topicId === topic.id);
+export function packageSourceForNotebookLM(
+  topic: Topic,
+  notes: Note[] = [],
+  resources: Resource[] = []
+): string {
+  const topicNotes = (notes || []).filter((n) => n.topicId === topic.id);
+  const topicResources = (resources || []).filter((r) => r.topicId === topic.id);
 
   let doc = `================================================================================\n`;
   doc += `TÀI LIỆU NGUỒN KHẢO CỨU (NOTEBOOKLM SOURCE DOCUMENT)\n`;
@@ -87,7 +91,8 @@ export function packageSourceForNotebookLM(topic: Topic, notes: Note[], resource
   if (topicResources.length > 0) {
     doc += `[PHẦN 5: THƯ TỊCH THAM KHẢO & NGUỒN TRÍCH DẪN]\n`;
     topicResources.forEach((res, idx) => {
-      doc += `${idx + 1}. ${res.title} [${res.type.toUpperCase()}] ${res.author ? `(Tác giả: ${res.author})` : ''} ${res.url ? `- ${res.url}` : ''}\n`;
+      const sourceRef = res.url ? `- ${res.url}` : res.filePath ? `- [Tệp: ${res.filePath}]` : '';
+      doc += `${idx + 1}. ${res.title} [${res.type.toUpperCase()}] ${res.author ? `(Tác giả: ${res.author})` : ''} ${sourceRef}\n`;
       if (res.notes) doc += `   Ghi chú tài liệu: ${res.notes}\n`;
     });
     doc += '\n';

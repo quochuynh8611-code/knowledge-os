@@ -21,6 +21,7 @@ import {
   deleteArtifact,
   NotebookLMArtifact,
 } from '../../lib/notebooklm';
+import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
 
 interface NotebookLMStudioModalProps {
@@ -54,10 +55,16 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     ? packageSourceForNotebookLM(currentTopic, notes, resources)
     : '';
 
-  const handleCopySource = () => {
-    navigator.clipboard.writeText(sourceDocument);
-    setCopiedSource(true);
-    setTimeout(() => setCopiedSource(false), 2000);
+  const handleCopySource = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(sourceDocument);
+      }
+      setCopiedSource(true);
+      setTimeout(() => setCopiedSource(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy source to clipboard', err);
+    }
   };
 
   const handleDownloadSourceFile = () => {
@@ -66,7 +73,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `NotebookLM-Source-${currentTopic.title.replace(/[/\\?%*:|"<>]/g, '-')}.md`;
+    a.download = `NotebookLM-Source-${sanitizeFileName(currentTopic.title)}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
