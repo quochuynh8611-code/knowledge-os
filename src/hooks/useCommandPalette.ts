@@ -15,6 +15,7 @@ import {
   Moon,
   Download,
 } from "lucide-react";
+import { normalizeScholarText } from "../lib/scholarSearch";
 
 export interface CommandPaletteItem {
   id: string;
@@ -188,17 +189,19 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
     return items;
   }, [options]);
 
-  // Filter Items based on Query
+  // Filter Items based on Query using Scholar Search normalization
   const filteredItems = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    if (!q) return baseItems;
+    const normQ = normalizeScholarText(query);
+    if (!normQ) return baseItems;
 
     return baseItems.filter((item) => {
-      const matchTitle = item.title.toLowerCase().includes(q);
-      const matchDesc = item.description?.toLowerCase().includes(q);
-      const matchCategory = item.category.toLowerCase().includes(q);
+      const matchTitle = normalizeScholarText(item.title).includes(normQ);
+      const matchDesc = item.description
+        ? normalizeScholarText(item.description).includes(normQ)
+        : false;
+      const matchCategory = normalizeScholarText(item.category).includes(normQ);
       const matchKeywords = item.keywords?.some((k) =>
-        k.toLowerCase().includes(q),
+        normalizeScholarText(k).includes(normQ),
       );
       return matchTitle || matchDesc || matchCategory || matchKeywords;
     });

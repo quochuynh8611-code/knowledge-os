@@ -17,6 +17,7 @@ import {
   formatMinutesToHours,
   formatTimeAgo,
 } from "../../lib/spaced-repetition";
+import { searchScholarCollections } from "../../lib/scholarSearch";
 
 export function AdvancedSearch() {
   const {
@@ -42,74 +43,56 @@ export function AdvancedSearch() {
 
   const q = searchQuery.toLowerCase().trim();
 
-  const matchedTopics = useMemo(() => {
-    return topics.filter((t) => {
-      // Domain filter
-      if (filters.domain !== "all" && t.type !== filters.domain) return false;
-      // Category filter
-      if (filters.categoryId && t.categoryId !== filters.categoryId)
-        return false;
-      // Status filter
-      if (
-        filters.status !== "all" &&
-        t.studyProgress?.status !== filters.status
-      )
-        return false;
-      // Tag filter
-      if (filters.tag && !t.tags?.includes(filters.tag)) return false;
-
-      // Query text match
-      if (!q) return true;
-      const mTitle = t.title.toLowerCase().includes(q);
-      const mDesc = t.description?.toLowerCase().includes(q);
-      const mContent = t.content?.toLowerCase().includes(q);
-      const mTags = t.tags?.some((tg) => tg.toLowerCase().includes(q));
-      return mTitle || mDesc || mContent || mTags;
+  const searchResults = useMemo(() => {
+    return searchScholarCollections({
+      query: searchQuery,
+      topics,
+      notes,
+      resources,
+      filters: {
+        domain: filters.domain,
+        categoryId: filters.categoryId,
+        tag: filters.tag,
+        status: filters.status,
+      },
     });
-  }, [topics, q, filters]);
+  }, [topics, notes, resources, searchQuery, filters]);
 
-  const matchedNotes = useMemo(() => {
-    return notes.filter((n) => {
-      // Tag filter
-      if (filters.tag && !n.tags?.includes(filters.tag)) return false;
+  const matchedTopics = useMemo(
+    () => searchResults.topics.map((t) => t.item),
+    [searchResults],
+  );
+  const matchedNotes = useMemo(
+    () => searchResults.notes.map((n) => n.item),
+    [searchResults],
+  );
+  const matchedResources = useMemo(
+    () => searchResults.resources.map((r) => r.item),
+    [searchResults],
+  );
 
-      // Query text match
-      if (!q) return true;
-      const mTitle = n.title.toLowerCase().includes(q);
-      const mContent = n.content.toLowerCase().includes(q);
-      const mTags = n.tags?.some((tg) => tg.toLowerCase().includes(q));
-      return mTitle || mContent || mTags;
-    });
-  }, [notes, q, filters]);
-
-  const matchedResources = useMemo(() => {
-    return resources.filter((r) => {
-      if (!q) return true;
-      const mTitle = r.title.toLowerCase().includes(q);
-      const mAuthor = r.author?.toLowerCase().includes(q);
-      const mNotes = r.notes?.toLowerCase().includes(q);
-      return mTitle || mAuthor || mNotes;
-    });
-  }, [resources, q]);
-
-  const totalResultsCount =
-    matchedTopics.length + matchedNotes.length + matchedResources.length;
+  const totalResultsCount = searchResults.totalCount;
 
   const highlightMatch = (text: string) => {
     if (!q) return text;
-    const parts = text.split(new RegExp(`(${q})`, "gi"));
-    return parts.map((part, i) =>
-      part.toLowerCase() === q ? (
-        <mark
-          key={i}
-          className="bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold px-0.5 rounded"
-        >
-          {part}
-        </mark>
-      ) : (
-        part
-      ),
-    );
+    try {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+      return parts.map((part, i) =>
+        part.toLowerCase() === q ? (
+          <mark
+            key={i}
+            className="bg-amber-200 dark:bg-amber-800 text-amber-950 dark:text-amber-100 font-semibold px-0.5 rounded"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        ),
+      );
+    } catch {
+      return text;
+    }
   };
 
   return (
