@@ -12,17 +12,29 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NotebookLMStudioModal } from '../../src/components/integrations/NotebookLMStudioModal';
 import * as notebooklmLib from '../../src/lib/notebooklm';
 
-const mockTopics = [
+import { Topic, Note, Resource } from '../../src/types';
+
+const mockTopics: Topic[] = [
   {
     id: 'topic-ky-mon',
     title: 'Kỳ Môn Độn Giáp Toàn Thư',
     slug: 'ky-mon-don-giap',
-    type: 'huyen-hoc' as const,
+    type: 'huyen-hoc',
     categoryId: 'cat-dich-hoc',
     categoryName: 'Dịch Học',
     description: 'Khoa thuật số định vị thời không.',
     content: 'Cấu trúc Bát Môn, Cửu Tinh, Bát Thần.',
     tags: ['Kỳ Môn'],
+    studyProgress: {
+      topicId: 'topic-ky-mon',
+      status: 'in_progress',
+      progress: 50,
+      interval: 3,
+      easeFactor: 2.5,
+      repetitions: 2,
+      totalNotes: 1,
+      timeSpent: 30,
+    },
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
     links: [],
@@ -31,42 +43,52 @@ const mockTopics = [
     id: 'topic-vi-dieu-phap',
     title: 'Vi Diệu Pháp Toàn Tập',
     slug: 'vi-dieu-phap-toan-tap',
-    type: 'phat-hoc' as const,
+    type: 'phat-hoc',
     categoryId: 'cat-abhidharma',
     categoryName: 'Vi Diệu Pháp',
     description: 'Khảo luận chi tiết 89/121 Tâm.',
     content: 'Tâm là thực tại nhận biết cảnh.',
     tags: ['Abhidharma'],
+    studyProgress: {
+      topicId: 'topic-vi-dieu-phap',
+      status: 'not_started',
+      progress: 0,
+      interval: 1,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
     links: [],
   },
 ];
 
-const mockNotes = [
+const mockNotes: Note[] = [
   {
     id: 'note-km-1',
     topicId: 'topic-ky-mon',
     topicTitle: 'Kỳ Môn Độn Giáp Toàn Thư',
     title: 'Sinh Môn và Khai Môn',
     content: 'Ứng dụng thực tiễn của Sinh Môn trong trạch cát...',
-    type: 'insight' as const,
+    type: 'insight',
+    isPrivate: false,
     tags: ['Sinh Môn'],
     createdAt: '2026-08-21T10:00:00Z',
     updatedAt: '2026-08-22T10:00:00Z',
   },
 ];
 
-const mockResources = [
+const mockResources: Resource[] = [
   {
     id: 'res-local-1',
     topicId: 'topic-ky-mon',
     topicTitle: 'Kỳ Môn Độn Giáp Toàn Thư',
     title: 'KyMonBiKip.pdf',
-    type: 'pdf' as const,
+    type: 'pdf',
     filePath: 'KyMonBiKip.pdf',
     createdAt: '2026-08-20T10:00:00Z',
-    updatedAt: '2026-08-20T10:00:00Z',
   },
 ];
 

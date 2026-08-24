@@ -64,11 +64,21 @@ Sau khi hoàn thành tính năng lưu trữ tham chiếu tệp cục bộ (`file
 - **Ranh giới**: Không gọi API ngầm không chính thức của NotebookLM; chỉ hỗ trợ đóng gói và lưu trữ artifact.
 
 ### 🔹 Phase 3: Antigravity Research Scholar Handoff Bundle
-- **Mục tiêu**: Sinh gói bàn giao prompt & context có cấu trúc (Handoff Package) chuẩn bị cho Antigravity AI:
-  - Bối cảnh chủ đề, câu hỏi nghiên cứu mở, các liên kết tri thức kèm trọng số, danh mục thư tịch trích dẫn.
-  - Định dạng chuẩn Markdown tối ưu hóa cho reasoning model.
-
----
+- **Mục tiêu**: Sinh gói bàn giao prompt & context có cấu trúc (Handoff Package) client-side chuẩn bị cho Antigravity AI & Reasoning Agents:
+  - Bối cảnh chủ đề, siêu dữ liệu canonical, luận thuyết kinh điển.
+  - **1-Hop Knowledge Graph Topology**: Liệt kê đồ thị liên kết trực tiếp 1-hop từ topic hiện tại (targetId, linkType `related`/`prerequisite`/`advanced`/`contradicts`, strength, notes).
+  - Phân loại toàn bộ ghi chú khảo cứu (`insight`, `question`, `study`, `summary`).
+  - Thư mục tài liệu tham chiếu (Web URL và Local `filePath` với Zero Binary Ingestion).
+  - Định rõ 6 Section chuẩn cố định:
+    1. `## 1. System Directive & Academic Persona`
+    2. `## 2. Topic Exegesis & Canonical Metadata`
+    3. `## 3. Multi-Hop Knowledge Graph Topology`
+    4. `## 4. User Notes & Open Inquiries`
+    5. `## 5. Annotated Bibliography & Local References`
+    6. `## 6. Reasoning Directives & Rigor Invariants`
+  - Nếu section không có dữ liệu, luôn hiển thị `None recorded.`
+  - Hỗ trợ 1-click Copy Bundle, Tải file `.md` (`Antigravity-Handoff-{topic}.md`) và Copy Prompt chuyên sâu theo 3 chế độ khảo cứu.
+- **Ranh giới bảo mật & hiệu năng**: Hoàn toàn Client-side, Zero Binary Ingestion, không tự động gửi toàn bộ dữ liệu ra ngoài.
 
 ## 4. Kế Hoạch Test-First cho Phase 1
 

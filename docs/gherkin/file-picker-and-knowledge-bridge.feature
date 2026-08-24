@@ -103,9 +103,38 @@ Feature: Bộ chọn Tệp Cục bộ (File Picker) và Cầu nối Hệ Tri th�
     And Kho kết quả Artifacts tự động lọc hiển thị đúng các mục của chủ đề được chọn
 
   # -------------------------------------------------------------------
-  # Phase 3: Antigravity Research Scholar Handoff
+  # Phase 3: Antigravity Research Scholar Handoff Bundle
   # -------------------------------------------------------------------
-  Scenario: 8. Tạo gói bàn giao nghiên cứu cho Antigravity Scholar
-    Given Chủ đề khảo cứu cần phân tích liên ngành
-    When Người dùng kích hoạt gói bàn giao Antigravity Handoff Bundle
-    Then Hệ thống tổng hợp đầy đủ bối cảnh, trọng số liên kết, luận thuyết và câu hỏi nghiên cứu
+  Scenario: 8a. Đóng gói gói bàn giao chuẩn 6 phần với 1-hop graph cho Antigravity Scholar
+    Given Chủ đề 'Vi Diệu Pháp Toàn Tập' có các liên kết tri thức, ghi chú và tài liệu tham khảo
+    When Người dùng mở modal 'Antigravity Handoff Bundle'
+    Then Hệ thống sinh gói Markdown gồm đúng 6 section cố định:
+      | 1 | System Directive & Academic Persona |
+      | 2 | Topic Exegesis & Canonical Metadata |
+      | 3 | Multi-Hop Knowledge Graph Topology  |
+      | 4 | User Notes & Open Inquiries         |
+      | 5 | Annotated Bibliography & Local References |
+      | 6 | Reasoning Directives & Rigor Invariants   |
+    And Section 3 hiển thị chính xác đồ thị 1-hop trực tiếp gồm targetTitle, linkType, strength và notes
+    And Không suy diễn thêm link ngoài dữ liệu thực tế
+
+  Scenario: 8b. Render 'None recorded.' khi section không có dữ liệu
+    Given Một chủ đề mới chưa có liên kết tri thức, ghi chú hay tài liệu tham khảo nào
+    When Hệ thống đóng gói Antigravity Handoff Bundle cho chủ đề này
+    Then Section 3, Section 4 và Section 5 đều hiển thị 'None recorded.'
+    And Không bỏ qua bất kỳ tiêu đề section nào trong 6 section
+
+  Scenario: 8c. Sao chép và tải về tệp Handoff Bundle (.md) an toàn
+    Given Modal Antigravity Handoff đang hiển thị nội dung gói bàn giao
+    When Người dùng bấm 'Sao chép Handoff Bundle' hoặc 'Tải Tệp Handoff (.md)'
+    Then Nội dung gói bàn giao được sao chép vào clipboard an toàn hoặc tải xuống dưới dạng tệp Markdown
+    And Tên tệp tải xuống được làm sạch theo dạng 'Antigravity-Handoff-{TopicTitle}.md'
+
+  Scenario: 8d. Sinh prompt chuyên sâu theo 3 chế độ khảo cứu
+    When Người dùng chọn chế độ khảo cứu 'scholar_analysis', 'pali_sanskrit_exegesis' hoặc 'cross_domain_link'
+    Then Khung System Prompt tự động cập nhật cấu trúc chỉ thị học thuật tương ứng
+    And Người dùng có thể sao chép nhanh Prompt Chuyên Sâu này vào clipboard
+
+  Scenario: 8e. Tích hợp nút kích hoạt Antigravity Handoff trên giao diện
+    When Người dùng xem màn hình Chi tiết Chủ đề (TopicDetail) hoặc AI Studio (AIResearchStudio)
+    Then Có nút kích hoạt mở Antigravity Handoff Modal cho chủ đề hiện tại

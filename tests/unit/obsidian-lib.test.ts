@@ -45,14 +45,16 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
       easeFactor: 2.5,
       interval: 4,
       repetitions: 2,
-      reviewCount: 3,
-      history: [],
+      totalNotes: 1,
+      timeSpent: 45,
     },
     links: [
       {
-        targetTopicId: 'topic-tu-niem-xu',
+        id: 'link-vdp-1',
+        sourceId: 'topic-vi-dieu-phap',
+        targetId: 'topic-tu-niem-xu',
         targetTitle: 'Tứ Niệm Xứ',
-        linkType: 'supports',
+        linkType: 'prerequisite',
         strength: 5,
         notes: 'Nền tảng thiền quán',
       },
@@ -69,6 +71,17 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
     description: 'Phương pháp định vị thời không.',
     content: 'Tam kỳ lục nghi và cửu tinh.',
     tags: ['Kỳ Môn', 'Trận Đồ'],
+    studyProgress: {
+      topicId: 'topic-ky-mon',
+      status: 'not_started',
+      progress: 0,
+      interval: 1,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
+    links: [],
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
   };
@@ -81,6 +94,7 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
       title: 'Tâm Sở Bất Thiện',
       content: '14 tâm sở bất thiện gồm si, vô tàm, vô úy...',
       type: 'insight',
+      isPrivate: false,
       tags: ['Tâm Sở', 'Khảo Cứu'],
       createdAt: '2026-08-21T10:00:00Z',
       updatedAt: '2026-08-22T10:00:00Z',
@@ -97,7 +111,6 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
       author: 'HT. Thích Minh Châu',
       filePath: 'Thang-Phap.pdf',
       createdAt: '2026-08-20T10:00:00Z',
-      updatedAt: '2026-08-20T10:00:00Z',
     },
   ];
 
@@ -105,6 +118,7 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
     {
       id: 'cat-abhidharma',
       name: 'Vi Diệu Pháp',
+      slug: 'vi-dieu-phap',
       type: 'phat-hoc',
       description: 'Luận tạng Phật giáo',
       icon: 'Book',

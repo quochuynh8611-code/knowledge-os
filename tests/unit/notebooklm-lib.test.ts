@@ -34,9 +34,21 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
     tags: ['Kỳ Môn', 'Bát Trận'],
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
+    studyProgress: {
+      topicId: 'topic-ky-mon',
+      status: 'in_progress',
+      progress: 50,
+      interval: 3,
+      easeFactor: 2.5,
+      repetitions: 2,
+      totalNotes: 1,
+      timeSpent: 30,
+    },
     links: [
       {
-        targetTopicId: 'topic-chu-dich',
+        id: 'link-km-1',
+        sourceId: 'topic-ky-mon',
+        targetId: 'topic-chu-dich',
         targetTitle: 'Kinh Dịch - Đạo Biến Dịch',
         linkType: 'prerequisite',
         strength: 5,
@@ -53,6 +65,7 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
       title: 'Ứng Dụng Sinh Môn & Khai Môn',
       content: 'Sinh Môn thuộc Thổ phương Đông Bắc, Khai Môn thuộc Kim phương Tây Bắc...',
       type: 'insight',
+      isPrivate: false,
       tags: ['Bát Môn'],
       createdAt: '2026-08-21T10:00:00Z',
       updatedAt: '2026-08-22T10:00:00Z',
@@ -70,7 +83,6 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
       url: 'https://ctext.org/qimen',
       notes: 'Bản dịch chữ Hán đối chiếu',
       createdAt: '2026-08-20T10:00:00Z',
-      updatedAt: '2026-08-20T10:00:00Z',
     },
     {
       id: 'res-local-2',
@@ -82,7 +94,6 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
       filePath: 'KyMonBiKip.pdf',
       notes: 'Bản scan thư viện cá nhân',
       createdAt: '2026-08-20T10:00:00Z',
-      updatedAt: '2026-08-20T10:00:00Z',
     },
   ];
 

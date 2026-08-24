@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Topic } from '../../types';
+import { AntigravityHandoffModal } from '../integrations/AntigravityHandoffModal';
 
 interface AIResearchStudioProps {
   currentTopic?: Topic;
@@ -31,6 +32,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [savedAsNote, setSavedAsNote] = useState(false);
+  const [showHandoffModal, setShowHandoffModal] = useState(false);
 
   const activeTopic = topics.find((t) => t.id === selectedTopicId) || currentTopic || topics[0];
   const topicNotes = notes.filter((n) => n.topicId === activeTopic?.id);
@@ -138,14 +140,25 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
             </p>
           </div>
         </div>
-        {onClose && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="text-stone-300 hover:text-white px-2.5 py-1 rounded-lg bg-stone-800/60 hover:bg-stone-800 text-xs font-semibold"
+            type="button"
+            onClick={() => setShowHandoffModal(true)}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-400/30 text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+            title="Đóng gói Handoff Bundle 6 phần cho Reasoning AI"
           >
-            Đóng
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">Gói Bàn Giao Handoff</span>
           </button>
-        )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-stone-300 hover:text-white px-2.5 py-1 rounded-lg bg-stone-800/60 hover:bg-stone-800 text-xs font-semibold"
+            >
+              Đóng
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Control Panel */}
@@ -324,6 +337,12 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
           </button>
         </form>
       </div>
+
+      <AntigravityHandoffModal
+        isOpen={showHandoffModal}
+        onClose={() => setShowHandoffModal(false)}
+        topic={activeTopic}
+      />
     </div>
   );
 }

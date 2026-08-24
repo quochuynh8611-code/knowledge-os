@@ -12,17 +12,29 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ObsidianBridgeModal } from '../../src/components/integrations/ObsidianBridgeModal';
 import * as obsidianLib from '../../src/lib/obsidian';
 
-const mockTopics = [
+import { Topic, Note, Resource, Category } from '../../src/types';
+
+const mockTopics: Topic[] = [
   {
     id: 'topic-vi-dieu-phap',
     title: 'Vi Diệu Pháp Toàn Tập',
     slug: 'vi-dieu-phap-toan-tap',
-    type: 'phat-hoc' as const,
+    type: 'phat-hoc',
     categoryId: 'cat-abhidharma',
     categoryName: 'Vi Diệu Pháp',
     description: 'Khảo luận chi tiết 89/121 Tâm và 52 Tâm sở.',
     content: 'Tâm là thực tại nhận biết đối tượng.',
     tags: ['Abhidharma'],
+    studyProgress: {
+      topicId: 'topic-vi-dieu-phap',
+      status: 'in_progress',
+      progress: 65,
+      interval: 4,
+      easeFactor: 2.5,
+      repetitions: 2,
+      totalNotes: 1,
+      timeSpent: 45,
+    },
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
     links: [],
@@ -31,50 +43,61 @@ const mockTopics = [
     id: 'topic-ky-mon',
     title: 'Kỳ Môn Độn Giáp',
     slug: 'ky-mon-don-giap',
-    type: 'huyen-hoc' as const,
+    type: 'huyen-hoc',
     categoryId: 'cat-dich-hoc',
     categoryName: 'Dịch Học',
     description: 'Thuật số định vị thời không.',
     content: 'Tam kỳ lục nghi cửu tinh.',
     tags: ['Kỳ Môn'],
+    studyProgress: {
+      topicId: 'topic-ky-mon',
+      status: 'not_started',
+      progress: 0,
+      interval: 1,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-24T10:00:00Z',
     links: [],
   },
 ];
 
-const mockNotes = [
+const mockNotes: Note[] = [
   {
     id: 'note-1',
     topicId: 'topic-vi-dieu-phap',
     topicTitle: 'Vi Diệu Pháp Toàn Tập',
     title: 'Tâm Sở Tịnh Hảo',
     content: '25 tâm sở tịnh hảo...',
-    type: 'insight' as const,
+    type: 'insight',
+    isPrivate: false,
     tags: ['Tâm Sở'],
     createdAt: '2026-08-21T10:00:00Z',
     updatedAt: '2026-08-22T10:00:00Z',
   },
 ];
 
-const mockResources = [
+const mockResources: Resource[] = [
   {
     id: 'res-1',
     topicId: 'topic-vi-dieu-phap',
     topicTitle: 'Vi Diệu Pháp Toàn Tập',
     title: 'Thắng Pháp Tập Yếu',
-    type: 'pdf' as const,
+    type: 'pdf',
     filePath: 'ThangPhap.pdf',
     createdAt: '2026-08-20T10:00:00Z',
-    updatedAt: '2026-08-20T10:00:00Z',
   },
 ];
 
-const mockCategories = [
+const mockCategories: Category[] = [
   {
     id: 'cat-abhidharma',
     name: 'Vi Diệu Pháp',
-    type: 'phat-hoc' as const,
+    slug: 'vi-dieu-phap',
+    type: 'phat-hoc',
     description: 'Luận tạng Phật giáo',
     icon: 'Book',
   },

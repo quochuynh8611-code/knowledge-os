@@ -30,6 +30,7 @@ import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
 import { ObsidianBridgeModal } from "../integrations/ObsidianBridgeModal";
 import { NotebookLMStudioModal } from "../integrations/NotebookLMStudioModal";
+import { AntigravityHandoffModal } from "../integrations/AntigravityHandoffModal";
 import { AIResearchStudio } from "../ai/AIResearchStudio";
 import { Breadcrumbs } from "../layout/Breadcrumbs";
 import { EmptyState } from "../ui/EmptyState";
@@ -64,6 +65,7 @@ export function TopicDetail() {
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showObsidianModal, setShowObsidianModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
+  const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -190,6 +192,15 @@ export function TopicDetail() {
             className="px-3 py-1.5 bg-gradient-to-r from-amber-800 to-stone-900 hover:from-amber-900 hover:to-black text-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Antigravity AI
+          </button>
+
+          {/* Antigravity Handoff Bundle trigger */}
+          <button
+            onClick={() => setShowAntigravityModal(true)}
+            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+            title="Đóng gói Handoff Bundle cho Antigravity AI"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-700" /> Handoff Bundle
           </button>
 
           {/* Obsidian Bridge trigger */}
@@ -819,6 +830,12 @@ export function TopicDetail() {
       <NotebookLMStudioModal
         isOpen={showNotebookLMModal}
         onClose={() => setShowNotebookLMModal(false)}
+        topic={topic}
+      />
+
+      <AntigravityHandoffModal
+        isOpen={showAntigravityModal}
+        onClose={() => setShowAntigravityModal(false)}
         topic={topic}
       />
 

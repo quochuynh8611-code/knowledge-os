@@ -23,6 +23,7 @@ import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ObsidianBridgeModal } from "../integrations/ObsidianBridgeModal";
 import { NotebookLMStudioModal } from "../integrations/NotebookLMStudioModal";
+import { AntigravityHandoffModal } from "../integrations/AntigravityHandoffModal";
 
 export interface NavbarProps {
   onOpenCommandPalette?: () => void;
@@ -53,6 +54,7 @@ export function Navbar({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showObsidianModal, setShowObsidianModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
+  const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
 
   const activeTopic = topics.find((t) => t.id === activeTimerTopicId);
@@ -174,6 +176,16 @@ export function Navbar({
               <span>NotebookLM</span>
             </button>
 
+            {/* Antigravity Handoff trigger */}
+            <button
+              onClick={() => setShowAntigravityModal(true)}
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800 rounded-xl text-xs font-semibold transition"
+              title="Đóng gói Antigravity AI Handoff Bundle"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-600"></span>
+              <span>Handoff</span>
+            </button>
+
             {/* Dark / Light Theme Toggle */}
             <ThemeToggle />
 
@@ -278,6 +290,10 @@ export function Navbar({
       <NotebookLMStudioModal
         isOpen={showNotebookLMModal}
         onClose={() => setShowNotebookLMModal(false)}
+      />
+      <AntigravityHandoffModal
+        isOpen={showAntigravityModal}
+        onClose={() => setShowAntigravityModal(false)}
       />
       <StudyTimerModal
         isOpen={showTimerModal}
