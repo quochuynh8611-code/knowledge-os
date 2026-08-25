@@ -13,6 +13,9 @@ import {
   saveArtifact,
   deleteArtifact,
   NOTEBOOKLM_STORAGE_KEY,
+  generateNotebookLMTaskPrompt,
+  validateArtifactImportInput,
+  parseArtifactMarkdownFile,
 } from '../../src/lib/notebooklm';
 import { Topic, Note, Resource } from '../../src/types';
 
@@ -213,5 +216,88 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
   it('7. getStoredArtifacts handles corrupted JSON in localStorage safely', () => {
     localStorage.setItem(NOTEBOOKLM_STORAGE_KEY, 'invalid-non-json{[');
     expect(getStoredArtifacts()).toEqual([]);
+  });
+
+  // ---------------------------------------------------------------------------
+  // 5. Antigravity 2.0 Task Prompt Generation for NotebookLM Skill
+  // ---------------------------------------------------------------------------
+  it('8. generateNotebookLMTaskPrompt generates structured instructions for Antigravity 2.0 NotebookLM skill', () => {
+    const prompt = generateNotebookLMTaskPrompt(mockTopic, 'study_guide', 'Tập trung vào 64 quẻ');
+
+    expect(prompt).toContain('[Chỉ thị Antigravity 2.0: Sử dụng NotebookLM Skill]');
+    expect(prompt).toContain('Chủ đề: "Kỳ Môn Độn Giáp Toàn Thư"');
+    expect(prompt).toContain('Mục tiêu: Tạo Study Guide / Giáo trình khảo cứu có cấu trúc');
+    expect(prompt).toContain('Yêu cầu cấu trúc đầu ra:');
+    expect(prompt).toContain('Chỉ dẫn bổ sung: Tập trung vào 64 quẻ');
+    expect(prompt).toContain('Target Skill: notebooklm');
+    expect(prompt).not.toContain('direct sync API');
+  });
+
+  it('9. saveArtifact persists explicit metadata (source, target, status) with safe defaults', () => {
+    const saved = saveArtifact({
+      topicId: 'topic-ky-mon',
+      type: 'study_guide',
+      title: 'Giáo trình Kỳ Môn Độn Giáp',
+      content: '# Giáo trình\nNội dung chi tiết...',
+    });
+
+    expect(saved.source).toBe('antigravity-2.0');
+    expect(saved.target).toBe('notebooklm');
+    expect(saved.status).toBe('imported');
+
+    const list = getStoredArtifacts();
+    expect(list[0].source).toBe('antigravity-2.0');
+    expect(list[0].target).toBe('notebooklm');
+    expect(list[0].status).toBe('imported');
+  });
+
+  // ---------------------------------------------------------------------------
+  // 6. Artifact Import Validation & Invariant Guardrails
+  // ---------------------------------------------------------------------------
+  it('10. validateArtifactImportInput rejects empty or whitespace-only content with specific error', () => {
+    const result = validateArtifactImportInput({
+      topicId: 'topic-ky-mon',
+      title: 'Tiêu đề hợp lệ',
+      content: '   ',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('Nội dung artifact không được để trống');
+  });
+
+  it('11. validateArtifactImportInput rejects invalid notebook URL with specific protocol error', () => {
+    const result = validateArtifactImportInput({
+      topicId: 'topic-ky-mon',
+      title: 'Tiêu đề hợp lệ',
+      content: 'Nội dung bài viết',
+      notebookUrl: 'ftp://notebooklm.google.com/123',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('URL NotebookLM phải bắt đầu bằng http:// hoặc https://');
+  });
+
+  it('12. validateArtifactImportInput accepts valid input with valid http/https URL and trims fields', () => {
+    const result = validateArtifactImportInput({
+      topicId: 'topic-ky-mon',
+      title: '  Báo cáo Tóm tắt  ',
+      content: '  Nội dung tóm tắt chi tiết  ',
+      notebookUrl: 'https://notebooklm.google.com/notebook/abc-123',
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(result.sanitized?.title).toBe('Báo cáo Tóm tắt');
+    expect(result.sanitized?.content).toBe('Nội dung tóm tắt chi tiết');
+    expect(result.sanitized?.notebookUrl).toBe('https://notebooklm.google.com/notebook/abc-123');
+  });
+
+  it('13. parseArtifactMarkdownFile extracts title and content from raw Markdown text', () => {
+    const rawMarkdown = `# Tóm Tắt Audio Overview: Luận Về Bát Môn\n\nĐây là phần tóm tắt chi tiết từ podcast 2 hosts...`;
+    const parsed = parseArtifactMarkdownFile(rawMarkdown, 'topic-ky-mon');
+
+    expect(parsed.title).toBe('Tóm Tắt Audio Overview: Luận Về Bát Môn');
+    expect(parsed.content).toContain('Đây là phần tóm tắt chi tiết');
+    expect(parsed.type).toBe('audio_overview_summary');
   });
 });

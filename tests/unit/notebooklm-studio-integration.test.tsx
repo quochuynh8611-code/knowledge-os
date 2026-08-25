@@ -209,4 +209,84 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     expect(screen.getByText(/CHỦ ĐỀ: VI DIỆU PHÁP TOÀN TẬP/i)).toBeInTheDocument();
   });
+
+  // ---------------------------------------------------------------------------
+  // 6. Antigravity 2.0 Task Prompt Generator & Copy Flow
+  // ---------------------------------------------------------------------------
+  it('7. Renders Antigravity 2.0 Task Prompt generator and copies prompt to clipboard', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    });
+
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    expect(screen.getByText(/Task Prompt Cho Antigravity 2.0/i)).toBeInTheDocument();
+
+    const copyPromptBtn = screen.getByRole('button', { name: /Sao chép Task Prompt/i });
+    fireEvent.click(copyPromptBtn);
+
+    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    const copiedPrompt = writeTextMock.mock.calls[0][0];
+    expect(copiedPrompt).toContain('[Chỉ thị Antigravity 2.0: Sử dụng NotebookLM Skill]');
+    expect(copiedPrompt).toContain('Kỳ Môn Độn Giáp Toàn Thư');
+  });
+
+  // ---------------------------------------------------------------------------
+  // 7. Validation Alerts & Error Feedback on Import
+  // ---------------------------------------------------------------------------
+  it('8. Displays validation error alerts when submitting empty content or invalid URL', async () => {
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    const toggleButton = screen.getByRole('button', { name: /Thêm Kết Quả/i });
+    fireEvent.click(toggleButton);
+
+    const titleInput = screen.getByPlaceholderText(/Ví dụ: Tóm tắt Podcast 2 Hosts/i);
+    fireEvent.change(titleInput, { target: { value: 'Tiêu đề' } });
+
+    const urlInput = screen.getByPlaceholderText(/https:\/\/notebooklm\.google\.com\/notebook/i);
+    fireEvent.change(urlInput, { target: { value: 'ftp://invalid-url' } });
+
+    const saveButton = screen.getByRole('button', { name: /Lưu Kết Quả/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/URL NotebookLM phải bắt đầu bằng http:\/\/ hoặc https:\/\//i)).toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 8. Metadata Badges & Mediated Workflow Disclaimer
+  // ---------------------------------------------------------------------------
+  it('9. Renders metadata badges (antigravity-2.0, notebooklm) on stored artifact cards', () => {
+    localStorage.setItem(
+      notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'art-test-1',
+          topicId: 'topic-ky-mon',
+          type: 'study_guide',
+          title: 'Study Guide Bát Trận',
+          content: 'Nội dung chi tiết...',
+          source: 'antigravity-2.0',
+          target: 'notebooklm',
+          status: 'imported',
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    );
+
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    expect(screen.getByText('Study Guide Bát Trận')).toBeInTheDocument();
+    expect(screen.getByText('antigravity-2.0')).toBeInTheDocument();
+    expect(screen.getByText('notebooklm')).toBeInTheDocument();
+  });
+
+  it('10. Displays mediated workflow disclaimer stating no direct API sync is performed', () => {
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    expect(screen.getByText(/Mediated Workflow via Antigravity 2.0/i)).toBeInTheDocument();
+    expect(screen.getByText(/100% Client-side/i)).toBeInTheDocument();
+  });
 });

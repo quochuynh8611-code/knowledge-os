@@ -12,14 +12,21 @@ import {
   Sparkles,
   Plus,
   Trash2,
-  Layers,
+  AlertCircle,
+  UploadCloud,
+  Terminal,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   packageSourceForNotebookLM,
+  generateNotebookLMTaskPrompt,
+  validateArtifactImportInput,
+  parseArtifactMarkdownFile,
   getStoredArtifacts,
   saveArtifact,
   deleteArtifact,
   NotebookLMArtifact,
+  NotebookLMArtifactType,
 } from '../../lib/notebooklm';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
@@ -34,18 +41,27 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
   const { topics, notes, resources } = useData();
   const [selectedTopicId, setSelectedTopicId] = useState<string>(topic?.id || topics[0]?.id || '');
   const [copiedSource, setCopiedSource] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  // Task Prompt states
+  const [promptArtifactType, setPromptArtifactType] = useState<NotebookLMArtifactType>('study_guide');
+  const [customInstructions, setCustomInstructions] = useState('');
+
+  // Artifact Locker states
   const [artifacts, setArtifacts] = useState<NotebookLMArtifact[]>([]);
   const [showAddArtifact, setShowAddArtifact] = useState(false);
-  const [artifactType, setArtifactType] = useState<'study_guide' | 'audio_overview_summary' | 'briefing_doc'>('audio_overview_summary');
+  const [artifactType, setArtifactType] = useState<NotebookLMArtifactType>('audio_overview_summary');
   const [artifactTitle, setArtifactTitle] = useState('');
   const [artifactContent, setArtifactContent] = useState('');
   const [notebookUrl, setNotebookUrl] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const currentTopic = topics.find((t) => t.id === selectedTopicId) || topic || topics[0];
 
   useEffect(() => {
     if (isOpen) {
       setArtifacts(getStoredArtifacts());
+      setValidationError(null);
     }
   }, [isOpen]);
 
@@ -53,6 +69,10 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
 
   const sourceDocument = currentTopic
     ? packageSourceForNotebookLM(currentTopic, notes, resources)
+    : '';
+
+  const taskPrompt = currentTopic
+    ? generateNotebookLMTaskPrompt(currentTopic, promptArtifactType, customInstructions)
     : '';
 
   const handleCopySource = async () => {
@@ -67,6 +87,18 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     }
   };
 
+  const handleCopyPrompt = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(taskPrompt);
+      }
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy prompt to clipboard', err);
+    }
+  };
+
   const handleDownloadSourceFile = () => {
     if (!currentTopic) return;
     const blob = new Blob([sourceDocument], { type: 'text/markdown;charset=utf-8' });
@@ -78,16 +110,52 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     URL.revokeObjectURL(url);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentTopic) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        const parsed = parseArtifactMarkdownFile(text, currentTopic.id);
+        setArtifactTitle(parsed.title);
+        setArtifactContent(parsed.content);
+        setArtifactType(parsed.type);
+        setShowAddArtifact(true);
+        setValidationError(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleSaveNewArtifact = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!artifactTitle.trim() || !artifactContent.trim() || !currentTopic) return;
+    if (!currentTopic) return;
+
+    const validation = validateArtifactImportInput({
+      topicId: currentTopic.id,
+      title: artifactTitle,
+      content: artifactContent,
+      notebookUrl: notebookUrl || undefined,
+    });
+
+    if (!validation.valid) {
+      setValidationError(validation.error || 'Dữ liệu không hợp lệ.');
+      return;
+    }
+
+    setValidationError(null);
 
     const saved = saveArtifact({
       topicId: currentTopic.id,
       type: artifactType,
-      title: artifactTitle.trim(),
-      content: artifactContent.trim(),
-      notebookUrl: notebookUrl.trim() || undefined,
+      title: validation.sanitized!.title,
+      content: validation.sanitized!.content,
+      notebookUrl: validation.sanitized!.notebookUrl,
+      source: 'antigravity-2.0',
+      target: 'notebooklm',
+      status: 'imported',
     });
 
     setArtifacts((prev) => [saved, ...prev]);
@@ -106,7 +174,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
           <div className="flex items-center gap-3">
@@ -119,11 +187,11 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                   Google NotebookLM Research Hub
                 </h2>
                 <span className="text-[10px] font-mono uppercase bg-blue-100 text-blue-900 font-bold px-2 py-0.5 rounded-full">
-                  Official Bridge
+                  Mediated via Antigravity 2.0
                 </span>
               </div>
               <p className="text-xs text-stone-600">
-                Đóng gói Source Data 1 chạm, đồng bộ Audio Overview &amp; Study Guide
+                Đóng gói Source Data &bull; Sinh Task Prompt &bull; Nhập kết quả Grounded Artifacts
               </p>
             </div>
           </div>
@@ -164,7 +232,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
             </a>
           </div>
 
-          {/* Source Document Packager Section */}
+          {/* Section 1: Source Document Packager */}
           <div className="bg-blue-50/70 border border-blue-200/80 p-5 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-xs text-blue-950">
@@ -174,14 +242,14 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
               <div className="flex gap-2">
                 <button
                   onClick={handleCopySource}
-                  className="px-2.5 py-1.5 bg-white hover:bg-stone-100 text-stone-800 rounded-lg font-medium border border-stone-300 flex items-center gap-1.5 transition"
+                  className="px-2.5 py-1.5 bg-white hover:bg-stone-100 text-stone-800 rounded-lg font-medium border border-stone-300 flex items-center gap-1.5 transition cursor-pointer"
                 >
                   {copiedSource ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedSource ? 'Đã sao chép!' : 'Sao chép nguồn'}</span>
                 </button>
                 <button
                   onClick={handleDownloadSourceFile}
-                  className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium flex items-center gap-1.5 transition shadow-2xs"
+                  className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-medium flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Tải File Nguồn (.md)</span>
@@ -198,39 +266,140 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
             </div>
           </div>
 
-          {/* NotebookLM Artifacts Locker */}
+          {/* Section 2: Task Prompt Generator for Antigravity 2.0 */}
+          <div className="bg-amber-50/70 border border-amber-200/80 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-xs text-amber-950">
+                <Terminal className="w-4 h-4 text-amber-700" />
+                <span>Task Prompt Cho Antigravity 2.0 (Target: NotebookLM Skill)</span>
+              </div>
+              <button
+                onClick={handleCopyPrompt}
+                className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+              >
+                {copiedPrompt ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedPrompt ? 'Đã sao chép Prompt!' : 'Sao chép Task Prompt'}</span>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                  Loại Artifact Mục Tiêu Cho Antigravity 2.0:
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(
+                    [
+                      { id: 'study_guide', label: 'Study Guide' },
+                      { id: 'audio_overview_summary', label: 'Audio Overview' },
+                      { id: 'briefing_doc', label: 'Briefing Doc' },
+                      { id: 'faq', label: 'FAQ' },
+                      { id: 'source_pack', label: 'Source Pack' },
+                    ] as const
+                  ).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setPromptArtifactType(item.id)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        promptArtifactType === item.id
+                          ? 'bg-amber-800 text-white shadow-2xs'
+                          : 'bg-white text-stone-700 border border-amber-200 hover:bg-amber-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                  Chỉ Dẫn Bổ Sung (Tùy chọn):
+                </label>
+                <input
+                  type="text"
+                  value={customInstructions}
+                  onChange={(e) => setCustomInstructions(e.target.value)}
+                  placeholder="Ví dụ: Chú trọng đối chiếu Abhidhamma và Thiền Quán..."
+                  className="w-full p-2 bg-white border border-amber-300 rounded-xl text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-36 overflow-y-auto p-3 bg-white border border-amber-200 rounded-xl font-mono text-[11px] text-stone-800 whitespace-pre-wrap">
+              {taskPrompt}
+            </div>
+          </div>
+
+          {/* Section 3: NotebookLM Artifacts Locker */}
           <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-xs text-stone-900">
                 <Headphones className="w-4 h-4 text-amber-700" />
                 <span>Kho Kết Quả Từ NotebookLM (Audio Overview &amp; Study Guides)</span>
               </div>
-              <button
-                onClick={() => setShowAddArtifact(!showAddArtifact)}
-                className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Thêm Kết Quả</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer">
+                  <UploadCloud className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Nạp Tệp Markdown</span>
+                  <input
+                    type="file"
+                    accept=".md,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                <button
+                  onClick={() => setShowAddArtifact(!showAddArtifact)}
+                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Thêm Kết Quả</span>
+                </button>
+              </div>
             </div>
+
+            {/* Validation Error Alert */}
+            {validationError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{validationError}</span>
+              </div>
+            )}
 
             {/* Add Artifact Form */}
             {showAddArtifact && (
-              <form onSubmit={handleSaveNewArtifact} className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
+              <form onSubmit={handleSaveNewArtifact} noValidate className="p-4 bg-stone-50 border border-stone-200 rounded-xl space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-700 mb-1">
                       Loại kết quả NotebookLM:
                     </label>
-                    <select
-                      value={artifactType}
-                      onChange={(e) => setArtifactType(e.target.value as any)}
-                      className="w-full p-2 bg-white border border-stone-300 rounded-lg text-xs"
-                    >
-                      <option value="audio_overview_summary">Tóm tắt Audio Overview (Podcast AI)</option>
-                      <option value="study_guide">Study Guide / Giáo trình khảo cứu</option>
-                      <option value="briefing_doc">Briefing Doc / Báo cáo tổng kết</option>
-                    </select>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(
+                        [
+                          { id: 'audio_overview_summary', label: 'Audio Summary' },
+                          { id: 'study_guide', label: 'Study Guide' },
+                          { id: 'briefing_doc', label: 'Briefing Doc' },
+                          { id: 'faq', label: 'FAQ' },
+                          { id: 'source_pack', label: 'Source Pack' },
+                        ] as const
+                      ).map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setArtifactType(item.id)}
+                          className={`px-2 py-1 rounded-lg text-xs font-medium transition cursor-pointer ${
+                            artifactType === item.id
+                              ? 'bg-blue-700 text-white shadow-2xs'
+                              : 'bg-white text-stone-700 border border-stone-300 hover:bg-stone-100'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-stone-700 mb-1">
@@ -238,7 +407,6 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                     </label>
                     <input
                       type="text"
-                      required
                       value={artifactTitle}
                       onChange={(e) => setArtifactTitle(e.target.value)}
                       placeholder="Ví dụ: Tóm tắt Podcast 2 Hosts về 89 Tâm Abhidharma"
@@ -266,7 +434,6 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                   </label>
                   <textarea
                     rows={4}
-                    required
                     value={artifactContent}
                     onChange={(e) => setArtifactContent(e.target.value)}
                     placeholder="Dán nội dung tóm lược từ NotebookLM vào đây..."
@@ -277,14 +444,17 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddArtifact(false)}
-                    className="px-3 py-1.5 bg-stone-200 text-stone-700 rounded-lg text-xs"
+                    onClick={() => {
+                      setShowAddArtifact(false);
+                      setValidationError(null);
+                    }}
+                    className="px-3 py-1.5 bg-stone-200 text-stone-700 rounded-lg text-xs cursor-pointer"
                   >
                     Hủy
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold"
+                    className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-semibold cursor-pointer"
                   >
                     Lưu Kết Quả
                   </button>
@@ -300,7 +470,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                     key={art.id}
                     className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-2 relative"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 font-bold text-xs text-stone-900">
                         {art.type === 'audio_overview_summary' ? (
                           <Headphones className="w-3.5 h-3.5 text-amber-700" />
@@ -310,6 +480,13 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                         <span>{art.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Metadata badges */}
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 border border-stone-300">
+                          {art.source || 'antigravity-2.0'}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                          {art.target || 'notebooklm'}
+                        </span>
                         {art.notebookUrl && (
                           <a
                             href={art.notebookUrl}
@@ -322,7 +499,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                         )}
                         <button
                           onClick={() => handleDeleteArtifact(art.id)}
-                          className="text-stone-400 hover:text-rose-600 p-1"
+                          className="text-stone-400 hover:text-rose-600 p-1 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -340,6 +517,22 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
               </div>
             )}
           </div>
+        </div>
+
+        {/* Footer Disclaimer & Guidance */}
+        <div className="px-6 py-3 bg-stone-100 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-stone-500 text-[11px]">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>
+              <strong>Mediated Workflow via Antigravity 2.0</strong> &bull; 100% Client-side Privacy &bull; No direct cloud sync required
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-3 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-lg font-semibold transition cursor-pointer"
+          >
+            Đóng
+          </button>
         </div>
       </div>
     </div>
