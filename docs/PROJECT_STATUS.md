@@ -15,6 +15,12 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6g Micro-Increment: Operator Restore Drill Readiness:**
+    - **Mục tiêu:** Chuẩn hóa toàn diện 5 giai đoạn trong hành trình diễn tập của người vận hành (Operator Journey), kiểm chứng 4 rào chắn an toàn (Gate 1 Checksum & Schema, Gate 2 In-Memory Dry Run, Gate 3 Confirmation Phrase, Gate 4 Rehydration State Preserving), và cung cấp helper thuần túy `evaluateRestoreDrillReadiness` để tự động tổng hợp chứng chỉ đánh giá mức độ sẵn sàng diễn tập kèm bản ghi bằng chứng có thể tái lập.
+    - **Giải pháp kỹ thuật:**
+      - Module thuần túy `src/lib/backupVerification.ts`: Bổ sung interface `OperatorDrillReadinessReport` và helper `evaluateRestoreDrillReadiness(payload, currentState, options)`.
+      - Kiểm chứng 100% tính bất biến (Immutability) của live state: Hàm `runRestoreDrill` và `evaluateRestoreDrillReadiness` không gây ra bất kỳ tác dụng phụ (side-effects) nào lên bộ nhớ ứng dụng hay storage.
+    - **Kiểm thử:** 7/7 tests PASS trong test suite mới `operator-restore-drill-readiness.test.ts`.
   - **Post-Phase 6f Micro-Increment: Restore Evidence Pack & Operator Runbook:**
     - **Mục tiêu:** Đóng gói toàn diện quy trình sao lưu và phục hồi thành Gói Bằng Chứng Khôi Phục (**Restore Evidence Pack**) chuẩn hóa gồm 4 fixture JSON (`valid-snapshot.json`, `legacy-snapshot.json`, `malformed-snapshot.json`, `manifest-mixed-statuses.json`) và Sổ Tay Vận Hành (**Operator Runbook**) chi tiết bằng tiếng Việt (`docs/runbooks/backup-restore-operator-runbook.vi.md`) kèm checklist ký xác nhận.
     - **Giải pháp kỹ thuật:**

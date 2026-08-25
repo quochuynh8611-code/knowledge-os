@@ -258,6 +258,14 @@
   - Bảo đảm cách ly tuyệt đối: Fixtures không bao giờ bị import vào mã nguồn runtime production (`src/`).
 - **Kiểm chứng:** 11/11 tests PASS (4/4 `restore-evidence-fixtures.test.ts` + 2/2 `manifest-status-fixtures.test.ts` + 5/5 `operator-runbook-contract.test.ts`).
 
+### 🔹 POST-PHASE 6G MICRO-INCREMENT: Operator Restore Drill Readiness (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6g-operator-restore-drill-readiness.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6g-operator-restore-drill-readiness.md) · [`docs/gherkin/post-phase6g-operator-restore-drill-readiness.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6g-operator-restore-drill-readiness.feature)
+- **Trọng tâm:**
+  - Chuẩn hóa 5 giai đoạn Operator Journey và 4 Safety Gates (Gate 1 Checksum, Gate 2 In-Memory Dry Run, Gate 3 Confirmation Phrase, Gate 4 Rehydration Preserving).
+  - Bổ sung interface `OperatorDrillReadinessReport` và helper `evaluateRestoreDrillReadiness` trong `src/lib/backupVerification.ts` để tổng hợp báo cáo đánh giá mức độ sẵn sàng kèm bản ghi bằng chứng.
+  - Bảo đảm tính bất biến (Immutability): 100% không làm biến đổi hay ghi đè live state khi chạy diễn tập khôi phục.
+- **Kiểm chứng:** 7/7 tests PASS trong `operator-restore-drill-readiness.test.ts`.
+
 ---
 
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
@@ -273,6 +281,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **62 / 62 test files PASS — 372 / 372 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite:** ✅ **63 / 63 test files PASS — 379 / 379 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

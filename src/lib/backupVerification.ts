@@ -127,6 +127,26 @@ export interface RestoreDrillResult {
   error?: string;
 }
 
+export interface OperatorDrillReadinessReport {
+  isDrillReady: boolean;
+  gate1Validation: {
+    passed: boolean;
+    format: RestoreValidationResult['format'];
+    checksumMatch?: boolean;
+    error?: string;
+  };
+  gate2DryRun: RestoreDrillResult;
+  gate3Confirmation: {
+    isDestructiveReplace: boolean;
+    requiredPhrase: string;
+  };
+  evidenceRecord: {
+    snapshotChecksum?: string;
+    simulatedImpact: RestoreDrillResult['simulatedImpact'];
+    timestamp: string;
+  };
+}
+
 /**
  * Inspects a snapshot payload, validating format, entity presence, and confirming exclusion of binary files.
  */
@@ -500,6 +520,42 @@ export function runRestoreDrill(
       notes: simulatedNotes,
       resources: simulatedResources,
       tags: simulatedTags,
+    },
+  };
+}
+
+/**
+ * Aggregates Gate 1 (Validation), Gate 2 (In-Memory Dry Run), and Gate 3 (Confirmation Requirements)
+ * into a standardized Operator Drill Readiness certificate report without mutating live state.
+ */
+export function evaluateRestoreDrillReadiness(
+  payload: unknown,
+  currentState: AppDataState,
+  options: { mode: 'merge' | 'replace' } = { mode: 'merge' }
+): OperatorDrillReadinessReport {
+  const candidateVal = validateRestoreCandidate(payload);
+  const drillResult = runRestoreDrill(payload, currentState, options);
+  const isDestructiveReplace = options.mode === 'replace';
+
+  const isDrillReady = candidateVal.isValid && drillResult.drillSuccess;
+
+  return {
+    isDrillReady,
+    gate1Validation: {
+      passed: candidateVal.isValid,
+      format: candidateVal.format,
+      checksumMatch: candidateVal.checksumMatch,
+      error: candidateVal.error,
+    },
+    gate2DryRun: drillResult,
+    gate3Confirmation: {
+      isDestructiveReplace,
+      requiredPhrase: 'XÁC NHẬN THAY THẾ',
+    },
+    evidenceRecord: {
+      snapshotChecksum: (payload as any)?.checksum,
+      simulatedImpact: drillResult.simulatedImpact,
+      timestamp: new Date().toISOString(),
     },
   };
 }
