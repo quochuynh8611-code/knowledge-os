@@ -28,6 +28,14 @@ import {
   NotebookLMArtifact,
   NotebookLMArtifactType,
 } from '../../lib/notebooklm';
+import {
+  createAntigravityHandoffJob,
+  buildAntigravityCLICommand,
+  getStoredHandoffJobs,
+  saveHandoffJob,
+  deleteHandoffJob,
+  AntigravityHandoffJob,
+} from '../../lib/antigravityPipeline';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
 
@@ -47,6 +55,11 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
   const [promptArtifactType, setPromptArtifactType] = useState<NotebookLMArtifactType>('study_guide');
   const [customInstructions, setCustomInstructions] = useState('');
 
+  // Antigravity Pipeline states
+  const [handoffJobs, setHandoffJobs] = useState<AntigravityHandoffJob[]>([]);
+  const [activeJob, setActiveJob] = useState<AntigravityHandoffJob | null>(null);
+  const [copiedCliCommand, setCopiedCliCommand] = useState(false);
+
   // Artifact Locker states
   const [artifacts, setArtifacts] = useState<NotebookLMArtifact[]>([]);
   const [showAddArtifact, setShowAddArtifact] = useState(false);
@@ -61,6 +74,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
   useEffect(() => {
     if (isOpen) {
       setArtifacts(getStoredArtifacts());
+      setHandoffJobs(getStoredHandoffJobs());
       setValidationError(null);
     }
   }, [isOpen]);
@@ -108,6 +122,43 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     a.download = `NotebookLM-Source-${sanitizeFileName(currentTopic.title)}.md`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrepareHandoff = () => {
+    if (!currentTopic) return;
+    const { job } = createAntigravityHandoffJob(
+      currentTopic,
+      promptArtifactType,
+      customInstructions,
+      notes,
+      resources
+    );
+    saveHandoffJob(job);
+    setActiveJob(job);
+    setHandoffJobs(getStoredHandoffJobs());
+  };
+
+  const handleCopyCLICommand = async (jobToCopy?: AntigravityHandoffJob) => {
+    const target = jobToCopy || activeJob || handoffJobs[0];
+    if (!target) return;
+    const cmd = buildAntigravityCLICommand(target);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(cmd);
+      }
+      setCopiedCliCommand(true);
+      setTimeout(() => setCopiedCliCommand(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy CLI command', err);
+    }
+  };
+
+  const handleDeleteJob = (jobId: string) => {
+    deleteHandoffJob(jobId);
+    setHandoffJobs(getStoredHandoffJobs());
+    if (activeJob?.jobId === jobId) {
+      setActiveJob(null);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,18 +319,30 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
 
           {/* Section 2: Task Prompt Generator for Antigravity 2.0 */}
           <div className="bg-amber-50/70 border border-amber-200/80 p-5 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-bold text-xs text-amber-950">
                 <Terminal className="w-4 h-4 text-amber-700" />
                 <span>Task Prompt Cho Antigravity 2.0 (Target: NotebookLM Skill)</span>
               </div>
-              <button
-                onClick={handleCopyPrompt}
-                className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
-              >
-                {copiedPrompt ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedPrompt ? 'Đã sao chép Prompt!' : 'Sao chép Task Prompt'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  data-testid="btn-prepare-antigravity-handoff"
+                  onClick={handlePrepareHandoff}
+                  className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-200" />
+                  <span>Chuẩn bị Handoff Antigravity</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs"
+                >
+                  {copiedPrompt ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedPrompt ? 'Đã sao chép Prompt!' : 'Sao chép Task Prompt'}</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -330,6 +393,78 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
             <div className="max-h-36 overflow-y-auto p-3 bg-white border border-amber-200 rounded-xl font-mono text-[11px] text-stone-800 whitespace-pre-wrap">
               {taskPrompt}
             </div>
+
+            {/* Antigravity CLI Command & Tracker Panel */}
+            {(activeJob || handoffJobs.length > 0) && (
+              <div className="p-4 bg-stone-900 text-stone-100 rounded-xl space-y-3 border border-stone-800 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
+                    <Terminal className="w-4 h-4" />
+                    <span>Lệnh Antigravity CLI Headless (agy -p):</span>
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="btn-copy-handoff-cli"
+                    onClick={() => handleCopyCLICommand(activeJob || handoffJobs[0])}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    {copiedCliCommand ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Đã sao chép lệnh CLI</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Sao chép lệnh CLI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div
+                  data-testid="handoff-cli-command-preview"
+                  className="p-3 bg-stone-950 rounded-lg font-mono text-[11px] text-amber-200 break-all border border-stone-800 selection:bg-amber-900 selection:text-white"
+                >
+                  {buildAntigravityCLICommand(activeJob || handoffJobs[0])}
+                </div>
+
+                {/* Tracker list */}
+                <div data-testid="handoff-jobs-tracker-list" className="pt-2 border-t border-stone-800 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-stone-400">
+                    Lịch sử Pipeline Handoff ({handoffJobs.length}):
+                  </div>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {handoffJobs.map((job) => (
+                      <div
+                        key={job.jobId}
+                        data-testid="handoff-job-item"
+                        className="flex items-center justify-between p-2 bg-stone-800/80 rounded-lg text-[11px] text-stone-300"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-stone-400">{job.jobId}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                            {job.status}
+                          </span>
+                          <span className="text-stone-400">({job.artifactType})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            data-testid="btn-delete-handoff-job"
+                            onClick={() => handleDeleteJob(job.jobId)}
+                            className="text-stone-500 hover:text-rose-400 p-1 transition cursor-pointer"
+                            title="Xóa job"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 3: NotebookLM Artifacts Locker */}
