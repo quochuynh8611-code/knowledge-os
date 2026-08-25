@@ -61,6 +61,7 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
   const [activeTab, setActiveTab] = useState<'export' | 'import' | 'markdown' | 'manifest' | 'reset'>('export');
   const [copied, setCopied] = useState(false);
   const [manifestCopied, setManifestCopied] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [libraryRootPath, setLibraryRootPath] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('knowledge_os_library_root_path') || '';
@@ -555,50 +556,97 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
                 </div>
               </div>
 
-              {/* Canonical Library Root Config */}
-              <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2">
+              {/* Recommended Folder Structure Guidance */}
+              <div className="p-4 bg-stone-100/80 border border-stone-200 rounded-xl space-y-2.5">
+                <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-indigo-700" />
+                  Cấu trúc thư mục đề xuất trên máy (Knowledge-Library)
+                </h4>
+                <p className="text-[11px] text-stone-600">
+                  Để thuận tiện cho việc kiểm toán và sao lưu toàn diện, bạn nên tổ chức các tệp theo cấu trúc chuẩn:
+                </p>
+                <div className="bg-white p-3 rounded-lg border border-stone-200 font-mono text-[11px] text-stone-800 space-y-1">
+                  <div className="font-bold text-indigo-900">Knowledge-Library/</div>
+                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-rose-700">PDF/</span> (Sách, giáo trình, bài báo học thuật, luận văn PDF)</div>
+                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-amber-700">Notes/</span> (Bản dịch thô, trích yếu, tệp Markdown ghi chép ngoài)</div>
+                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-sky-700">Attachments/</span> (Biểu đồ, hình ảnh minh họa, tệp âm thanh/video bài giảng)</div>
+                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-stone-600">Inbox/</span> (Tài liệu mới thu thập chờ phân loại và gắn vào topic)</div>
+                  <div className="pl-4 text-stone-700">└── <span className="font-semibold text-emerald-700">Exports/</span> (Nơi lưu trữ các tệp Snapshot JSON và File Manifest JSON)</div>
+                </div>
+              </div>
+
+              {/* Canonical Library Root Config Form */}
+              <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3">
                 <label className="block text-xs font-semibold text-stone-800 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
                     <FolderOpen className="w-3.5 h-3.5 text-stone-600" /> Thư Mục Thư Viện Gốc Chuẩn (Canonical Library Root)
                   </span>
                   <span className="text-[10px] text-stone-500 font-normal">Tùy chọn</span>
                 </label>
-                <input
-                  type="text"
-                  value={libraryRootPath}
-                  onChange={(e) => handleLibraryRootChange(e.target.value)}
-                  placeholder="/Users/username/KnowledgeLibrary hoặc D:\KnowledgeOS_Library"
-                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono focus:bg-white focus:ring-2 focus:ring-indigo-600"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={libraryRootPath}
+                    onChange={(e) => handleLibraryRootChange(e.target.value)}
+                    placeholder="/Users/username/Knowledge-Library hoặc D:\Knowledge-Library"
+                    className="flex-1 px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono focus:bg-white focus:ring-2 focus:ring-indigo-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleLibraryRootChange(libraryRootPath.trim());
+                      setSaveFeedback('Đã lưu cấu hình thư viện!');
+                      setTimeout(() => setSaveFeedback(null), 2500);
+                    }}
+                    className="px-3 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-medium transition shrink-0"
+                  >
+                    Lưu cấu hình
+                  </button>
+                </div>
+
+                {saveFeedback && (
+                  <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{saveFeedback}</span>
+                  </div>
+                )}
+
                 <p className="text-[11px] text-stone-500">
                   Dùng để phát hiện các tệp nằm rải rác ngoài thư mục chính để gom gọn khi sao lưu.
                 </p>
               </div>
 
               {/* Audit Summary Metrics Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <div className="p-3 bg-stone-100 rounded-xl border border-stone-200 text-center">
-                  <div className="text-xl font-bold text-stone-900">{auditResult.summary.totalWithLocalPath}</div>
-                  <div className="text-[11px] text-stone-600 font-medium mt-0.5">Tệp có đường dẫn</div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+                <div className="p-2.5 bg-stone-100 rounded-xl border border-stone-200">
+                  <div className="text-lg font-bold text-stone-900">{auditResult.summary.totalWithLocalPath}</div>
+                  <div className="text-[10px] text-stone-600 font-medium">Có đường dẫn</div>
                 </div>
-                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
-                  <div className="text-xl font-bold text-emerald-800">
-                    {auditResult.summary.existingCount > 0
-                      ? auditResult.summary.existingCount
-                      : auditResult.summary.unverifiedCount}
-                  </div>
-                  <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
-                    {auditResult.summary.existingCount > 0 ? 'Tệp hợp lệ' : 'Đã kê khai'}
-                  </div>
+                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                  <div className="text-lg font-bold text-emerald-800">{auditResult.summary.existingCount}</div>
+                  <div className="text-[10px] text-emerald-700 font-medium">Đã xác minh</div>
                 </div>
-                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-center">
-                  <div className="text-xl font-bold text-rose-800">{auditResult.summary.missingCount}</div>
-                  <div className="text-[11px] text-rose-700 font-medium mt-0.5">Tệp thất lạc (Missing)</div>
+                <div className="p-2.5 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <div className="text-lg font-bold text-indigo-800">{auditResult.summary.unverifiedCount}</div>
+                  <div className="text-[10px] text-indigo-700 font-medium">Chưa xác minh</div>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-center">
-                  <div className="text-xl font-bold text-amber-800">{auditResult.summary.outsideLibraryCount}</div>
-                  <div className="text-[11px] text-amber-700 font-medium mt-0.5">Ngoài thư viện gốc</div>
+                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200">
+                  <div className="text-lg font-bold text-rose-800">{auditResult.summary.missingCount}</div>
+                  <div className="text-[10px] text-rose-700 font-medium">Thất lạc</div>
                 </div>
+                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                  <div className="text-lg font-bold text-amber-800">{auditResult.summary.outsideLibraryCount}</div>
+                  <div className="text-[10px] text-amber-700 font-medium">Ngoài thư viện</div>
+                </div>
+              </div>
+
+              {/* Browser Security Notice */}
+              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl flex items-center gap-2 text-[11px] text-stone-600">
+                <AlertCircle className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span>
+                  Trình duyệt chạy trong sandbox bảo mật nên hiển thị "Chưa xác minh" dựa trên chuỗi đường dẫn và không tự ý quét ổ đĩa thật.
+                </span>
               </div>
 
               {/* Manifest Export Action Buttons */}

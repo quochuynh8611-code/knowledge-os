@@ -15,6 +15,12 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6b Micro-Increment: Operational File Library Setup & Backup Readiness:**
+    - **Mục tiêu:** Cung cấp cho học giả cấu trúc thư mục lưu trữ vật lý tiêu chuẩn (`Knowledge-Library/` $\rightarrow$ `PDF/`, `Notes/`, `Attachments/`, `Inbox/`, `Exports/`), hoàn thiện form lưu cấu hình thư mục gốc `canonicalLibraryRoot` với phản hồi trực quan, phân định rõ ràng 5 chỉ số kiểm toán, và hoàn thiện Checklist quy trình sao lưu 3 Trụ Cột + Vault Obsidian với cảnh báo nghiêm ngặt khi chưa sao lưu thư mục tệp thật.
+    - **Giải pháp kỹ thuật:**
+      - Module lõi thuần túy `src/lib/fileLibraryAudit.ts`: Bổ sung `getRecommendedLibraryStructure`, `validateLibraryRootPath`.
+      - Giao diện `ExportImportModal.tsx`: Hiển thị cây thư mục chuẩn, nút "Lưu cấu hình", cảnh báo minh bạch giới hạn sandbox trình duyệt web (không báo `exists` giả mạo), và checklist sao lưu toàn diện.
+    - **Kiểm thử:** 17/17 tests PASS (11 test cases unit & UI từ Phase 6a + 6 test cases mới từ Phase 6b).
   - **Post-Phase 6 Micro-Phase: File Library & Backup Architecture for PDF / Notes / Resource Path Audit (ADR-017):**
     - **Mục tiêu:** Thiết lập kiến trúc quản lý kiểm toán đường dẫn tệp vật lý (**File Library & Path Audit Engine**) và xuất bảng kê sao lưu (**File Library Manifest**), phân định rõ ràng 3 Trụ Cột Sao Lưu (App Snapshot JSON + File Manifest JSON + Thư mục tệp vật lý) theo mô hình Filesystem-First + Metadata Catalog.
     - **Giải pháp kỹ thuật:**

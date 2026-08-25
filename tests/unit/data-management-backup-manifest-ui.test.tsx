@@ -36,7 +36,7 @@ describe('Post-Phase 6: Data Management Modal - File Library Audit & Backup Mani
     const manifestTab = screen.getByRole('button', { name: /Kiểm toán tệp & Manifest|Thư viện tệp/i });
     fireEvent.click(manifestTab);
 
-    const input = screen.getByPlaceholderText(/\/Users\/username\/KnowledgeLibrary/i) as HTMLInputElement;
+    const input = screen.getByPlaceholderText(/\/Users\/username\/Knowledge-Library/i) as HTMLInputElement;
     expect(input).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: '/Users/researcher/KnowledgeLibrary' } });

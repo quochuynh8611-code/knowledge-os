@@ -50,6 +50,42 @@ export interface AuditFileReferencesOptions {
   auditedAt?: string;
 }
 
+export interface RecommendedSubdirectory {
+  name: string;
+  description: string;
+}
+
+export interface RecommendedLibraryStructure {
+  rootName: string;
+  subdirectories: RecommendedSubdirectory[];
+}
+
+/**
+ * Returns the canonical recommended folder hierarchy for local research assets.
+ */
+export function getRecommendedLibraryStructure(): RecommendedLibraryStructure {
+  return {
+    rootName: 'Knowledge-Library',
+    subdirectories: [
+      { name: 'PDF', description: 'Sách, giáo trình, bài báo học thuật, luận văn PDF' },
+      { name: 'Notes', description: 'Bản dịch thô, trích yếu, tệp Markdown ghi chép ngoài' },
+      { name: 'Attachments', description: 'Biểu đồ, hình ảnh minh họa, tệp âm thanh/video bài giảng' },
+      { name: 'Inbox', description: 'Tài liệu mới thu thập chờ phân loại và gắn vào topic' },
+      { name: 'Exports', description: 'Nơi lưu trữ các tệp Snapshot JSON và File Manifest JSON' },
+    ],
+  };
+}
+
+/**
+ * Validates a user-entered library root path.
+ */
+export function validateLibraryRootPath(path?: string): { valid: boolean; error?: string } {
+  if (!path || typeof path !== 'string' || !path.trim()) {
+    return { valid: false, error: 'Đường dẫn thư mục gốc không được để trống' };
+  }
+  return { valid: true };
+}
+
 /**
  * Normalizes file paths:
  * - Trims whitespace

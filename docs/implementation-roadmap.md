@@ -123,6 +123,16 @@
 
 ---
 
+### 🔹 POST-PHASE 6B MICRO-INCREMENT: Operational File Library Setup & Backup Readiness (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6b-operational-file-library-setup.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6b-operational-file-library-setup.md) · [`docs/gherkin/post-phase6b-operational-file-library-setup.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6b-operational-file-library-setup.feature)
+- **Trọng tâm:**
+  - Cung cấp cho học giả bản thiết kế cấu trúc thư mục lưu trữ vật lý tiêu chuẩn (`Knowledge-Library/` với `PDF/`, `Notes/`, `Attachments/`, `Inbox/`, `Exports/`).
+  - Module lõi thuần túy [`src/lib/fileLibraryAudit.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/fileLibraryAudit.ts): Bổ sung `getRecommendedLibraryStructure`, `validateLibraryRootPath`.
+  - Giao diện [`ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx): Tích hợp ô hiển thị cấu trúc thư mục chuẩn, nút "Lưu cấu hình" lưu trữ bền vững `knowledge_os_library_root_path` kèm phản hồi trực quan, phân định rõ ràng 5 chỉ số kiểm toán (Có đường dẫn, Đã xác minh, Chưa xác minh trên máy, Thất lạc, Ngoài thư viện), minh bạch giới hạn sandbox trình duyệt web, và hoàn thiện Checklist quy trình sao lưu 3 Trụ Cột + Vault Obsidian.
+- **Kiểm chứng:** 17/17 tests PASS (8/8 `file-library-audit.test.ts` + 3/3 `operational-file-library-setup.test.ts` + 3/3 `data-management-backup-manifest-ui.test.tsx` + 3/3 `file-library-backup-checklist-ui.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 6 MICRO-PHASE: File Library & Backup Architecture for PDF / Notes / Resource Path Audit (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/adr-017-file-library-backup-architecture.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-017-file-library-backup-architecture.md) · [`docs/specs/post-phase6-file-library-backup-architecture.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6-file-library-backup-architecture.md) · [`docs/gherkin/post-phase6-file-library-backup-architecture.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6-file-library-backup-architecture.feature)
 - **Trọng tâm:**
