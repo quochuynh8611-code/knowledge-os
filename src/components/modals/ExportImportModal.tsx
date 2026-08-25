@@ -170,6 +170,15 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
     };
   }, [isOpen, repo]);
 
+  // Restore Drill In-Memory Simulation recalculation
+  useEffect(() => {
+    if (parsedSnapshot) {
+      const currentAppState = { categories, topics, notes, resources, tags };
+      const drill = runRestoreDrill(parsedSnapshot, currentAppState, { mode: restoreMode });
+      setDrillResult(drill);
+    }
+  }, [restoreMode, parsedSnapshot, categories, topics, notes, resources, tags]);
+
   if (!isOpen) return null;
 
   // ---------------------------------------------------------------------------
@@ -313,14 +322,6 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
       setParseError('Không thể đọc file JSON hoặc tệp không hợp lệ.');
     }
   };
-
-  useEffect(() => {
-    if (parsedSnapshot) {
-      const currentAppState = { categories, topics, notes, resources, tags };
-      const drill = runRestoreDrill(parsedSnapshot, currentAppState, { mode: restoreMode });
-      setDrillResult(drill);
-    }
-  }, [restoreMode, parsedSnapshot, categories, topics, notes, resources, tags]);
 
   // ---------------------------------------------------------------------------
   // Restore Submission & Rehydration Lifecycle
