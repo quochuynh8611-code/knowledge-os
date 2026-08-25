@@ -147,6 +147,38 @@ export interface OperatorDrillReadinessReport {
   };
 }
 
+export interface RestoreDrillEvidenceCaptureOptions {
+  evidenceId?: string;
+  operatorSignOffStatus?: 'pending' | 'signed_off' | 'rejected';
+  operatorNotes?: string;
+  timestamp?: string;
+}
+
+export interface RestoreDrillEvidenceRecord {
+  evidenceId: string;
+  snapshotChecksum?: string;
+  snapshotFormat: RestoreValidationResult['format'];
+  validationStatus: 'valid' | 'invalid';
+  dryRunStatus: 'simulated_success' | 'simulated_failed';
+  simulatedMode: 'merge' | 'replace';
+  simulatedImpact: {
+    categoriesDelta: number;
+    topicsDelta: number;
+    notesDelta: number;
+    resourcesDelta: number;
+    tagsDelta: number;
+  };
+  gateSummary: {
+    gate1Passed: boolean;
+    gate2Passed: boolean;
+    gate3Required: boolean;
+    overallDrillReady: boolean;
+  };
+  timestamp: string;
+  operatorSignOffStatus: 'pending' | 'signed_off' | 'rejected';
+  operatorNotes?: string;
+}
+
 /**
  * Inspects a snapshot payload, validating format, entity presence, and confirming exclusion of binary files.
  */
@@ -558,4 +590,64 @@ export function evaluateRestoreDrillReadiness(
       timestamp: new Date().toISOString(),
     },
   };
+}
+
+/**
+ * Captures an immutable RestoreDrillEvidenceRecord from an OperatorDrillReadinessReport
+ * for audit logging, dry-run tracking, and operator sign-off without mutating live state.
+ */
+export function captureRestoreDrillEvidence(
+  readinessReport: OperatorDrillReadinessReport,
+  options?: RestoreDrillEvidenceCaptureOptions
+): RestoreDrillEvidenceRecord {
+  const timestamp =
+    options?.timestamp ||
+    readinessReport.evidenceRecord?.timestamp ||
+    new Date().toISOString();
+
+  const evidenceId =
+    options?.evidenceId ||
+    `drill-ev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const validationStatus: 'valid' | 'invalid' = readinessReport.gate1Validation.passed
+    ? 'valid'
+    : 'invalid';
+
+  const dryRunStatus: 'simulated_success' | 'simulated_failed' = readinessReport.gate2DryRun.drillSuccess
+    ? 'simulated_success'
+    : 'simulated_failed';
+
+  const simulatedImpact = {
+    categoriesDelta: readinessReport.gate2DryRun.simulatedImpact.categoriesDelta,
+    topicsDelta: readinessReport.gate2DryRun.simulatedImpact.topicsDelta,
+    notesDelta: readinessReport.gate2DryRun.simulatedImpact.notesDelta,
+    resourcesDelta: readinessReport.gate2DryRun.simulatedImpact.resourcesDelta,
+    tagsDelta: readinessReport.gate2DryRun.simulatedImpact.tagsDelta,
+  };
+
+  const gateSummary = {
+    gate1Passed: Boolean(readinessReport.gate1Validation.passed),
+    gate2Passed: Boolean(readinessReport.gate2DryRun.drillSuccess),
+    gate3Required: Boolean(readinessReport.gate3Confirmation.isDestructiveReplace),
+    overallDrillReady: Boolean(readinessReport.isDrillReady),
+  };
+
+  const record: RestoreDrillEvidenceRecord = {
+    evidenceId,
+    snapshotChecksum: readinessReport.evidenceRecord.snapshotChecksum,
+    snapshotFormat: readinessReport.gate1Validation.format,
+    validationStatus,
+    dryRunStatus,
+    simulatedMode: readinessReport.gate2DryRun.simulatedMode,
+    simulatedImpact,
+    gateSummary,
+    timestamp,
+    operatorSignOffStatus: options?.operatorSignOffStatus || 'pending',
+  };
+
+  if (options?.operatorNotes !== undefined) {
+    record.operatorNotes = options.operatorNotes;
+  }
+
+  return record;
 }
