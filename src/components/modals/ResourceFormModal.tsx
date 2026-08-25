@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import { Resource, ResourceType } from '../../types';
 import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen, AlertTriangle, AlertCircle } from 'lucide-react';
 import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
+import { safeGetLocalStorageItem } from '../../lib/storage';
 
 interface ResourceFormModalProps {
   isOpen: boolean;
@@ -25,9 +26,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const canonicalLibraryRoot = typeof window !== 'undefined'
-    ? localStorage.getItem('knowledge_os_library_root_path') || ''
-    : '';
+  const canonicalLibraryRoot = safeGetLocalStorageItem('knowledge_os_library_root_path') || '';
 
   useEffect(() => {
     setFormError(null);

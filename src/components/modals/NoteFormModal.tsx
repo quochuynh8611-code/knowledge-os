@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import { Note, NoteType } from '../../types';
 import { X, FileText, Lightbulb, HelpCircle, Bookmark, Tag as TagIcon, Folder, AlertTriangle } from 'lucide-react';
 import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
+import { safeGetLocalStorageItem } from '../../lib/storage';
 
 interface NoteFormModalProps {
   isOpen: boolean;
@@ -23,9 +24,7 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
   const [tags, setTags] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
 
-  const canonicalLibraryRoot = typeof window !== 'undefined'
-    ? localStorage.getItem('knowledge_os_library_root_path') || ''
-    : '';
+  const canonicalLibraryRoot = safeGetLocalStorageItem('knowledge_os_library_root_path') || '';
 
   useEffect(() => {
     if (initialNote) {
