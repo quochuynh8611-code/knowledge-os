@@ -12,7 +12,7 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 35 test suites / 264 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 37 test suites / 275 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
@@ -22,7 +22,7 @@
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
        ├── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
-       └── POST-PHASE 5: Scholar Citation Generator (Resource Focus) [VERIFIED]
+       └── POST-PHASE 5: Scholar Citation & Batch Export Generators (Resource Focus) [VERIFIED]
 ```
 
 ---
@@ -103,6 +103,17 @@
 
 ---
 
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Batch Citation Export for Filtered Resources (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-batch-citation-export.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-batch-citation-export.md) · [`docs/gherkin/post-phase5-batch-citation-export.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-batch-citation-export.feature)
+- **Trọng tâm:**
+  - Mở rộng [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) với hàm `generateBatchCitations(resources, format)` xuất hàng loạt theo 3 định dạng: **APA 7th** (sắp xếp tất định ABC theo tác giả/tiêu đề), **BibTeX** (nối khối `@book`, `@misc`, `@article` bằng `\n\n`), và **Markdown Footnotes** (đánh số thứ tự liên tục `[^1]..[^N]`).
+  - Tải tệp tin độc lập client-side: `getBatchCitationDownloadFilename` sinh tên tệp cố định `references.bib`, `references.txt`, `references.md`.
+  - Hộp thoại giao diện [`src/components/modals/BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) với 3 tab định dạng, ô xem trước mono, nút "Sao chép toàn bộ" (inline feedback) và "Tải tệp".
+  - Điểm chạm Toolbar tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx): Nút "Xuất danh mục ({count})" kèm rào chắn `disabled` khi `filteredResources.length === 0`.
+- **Kiểm chứng:** 11/11 tests PASS (5/5 `citation-batch-generator.test.ts` + 6/6 `batch-citation-modal-ui.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 5 MICRO-INCREMENT: Scholar Citation Generator (Resource Focus) (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase5-scholar-citation-generator.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-scholar-citation-generator.md) · [`docs/gherkin/post-phase5-scholar-citation-generator.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-scholar-citation-generator.feature)
 - **Trọng tâm:**
@@ -128,6 +139,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **35 / 35 test files PASS — 264 / 264 tests PASS (100% GREEN in 14.85s)**.
+- **Toàn bộ Test Suite:** ✅ **37 / 37 test files PASS — 275 / 275 tests PASS (100% GREEN in 9.62s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

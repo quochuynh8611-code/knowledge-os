@@ -15,10 +15,12 @@ import {
   Calendar,
   Sparkles,
   Quote,
+  FileDown,
 } from 'lucide-react';
 import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
+import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 
 export function ResourcesManager() {
@@ -30,6 +32,7 @@ export function ResourcesManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [citingResource, setCitingResource] = useState<Resource | null>(null);
+  const [showBatchModal, setShowBatchModal] = useState(false);
 
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
@@ -111,9 +114,17 @@ export function ResourcesManager() {
             </select>
           </div>
 
-          {/* Count indicator */}
-          <div className="flex items-center justify-end text-xs text-stone-500 font-mono">
-            Hiển thị {filteredResources.length} / {resources.length} tài liệu
+          {/* Count indicator & Batch Export Button */}
+          <div className="flex flex-wrap items-center justify-end gap-2.5 text-xs text-stone-500 font-mono">
+            <span>Hiển thị {filteredResources.length} / {resources.length} tài liệu</span>
+            <button
+              disabled={filteredResources.length === 0}
+              onClick={() => setShowBatchModal(true)}
+              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200"
+              title="Xuất danh mục trích dẫn danh sách đang lọc"
+            >
+              <FileDown className="w-3.5 h-3.5 text-amber-700" /> Xuất danh mục ({filteredResources.length})
+            </button>
           </div>
         </div>
 
@@ -236,6 +247,7 @@ export function ResourcesManager() {
       <ResourceFormModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
       <ResourceViewerModal resource={viewingResource} onClose={() => setViewingResource(null)} />
       <CitationModal isOpen={!!citingResource} onClose={() => setCitingResource(null)} resource={citingResource} />
+      <BatchCitationModal isOpen={showBatchModal} onClose={() => setShowBatchModal(false)} resources={filteredResources} />
     </div>
   );
 }

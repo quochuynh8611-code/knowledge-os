@@ -162,3 +162,46 @@ export function generateAllCitations(resource: Resource): {
     markdown: generateMarkdownFootnote(resource),
   };
 }
+
+/**
+ * Trả về tên tệp tải về tương ứng cho từng định dạng trích dẫn
+ */
+export function getBatchCitationDownloadFilename(format: 'apa' | 'bibtex' | 'markdown'): string {
+  switch (format) {
+    case 'bibtex':
+      return 'references.bib';
+    case 'apa':
+      return 'references.txt';
+    case 'markdown':
+      return 'references.md';
+  }
+}
+
+/**
+ * Sinh trích dẫn hàng loạt cho tập danh sách tài liệu
+ */
+export function generateBatchCitations(
+  resources: Resource[],
+  format: 'apa' | 'bibtex' | 'markdown'
+): string {
+  if (!resources || resources.length === 0) return '';
+
+  switch (format) {
+    case 'bibtex': {
+      return resources.map((r) => generateBibTeXCitation(r)).join('\n\n');
+    }
+    case 'apa': {
+      const sorted = [...resources].sort((a, b) => {
+        const keyA = (a.author || a.title).trim().toLowerCase();
+        const keyB = (b.author || b.title).trim().toLowerCase();
+        return keyA.localeCompare(keyB, 'vi');
+      });
+      return sorted.map((r) => generateAPACitation(r)).join('\n\n');
+    }
+    case 'markdown': {
+      return resources
+        .map((r, idx) => generateMarkdownFootnote(r, idx + 1))
+        .join('\n');
+    }
+  }
+}

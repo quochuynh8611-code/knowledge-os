@@ -2,25 +2,27 @@
 
 > **Cập nhật lần cuối:** 2026-08-25
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · SCHOLAR CITATION GENERATOR (POST-PHASE 5 MICRO-INCREMENT) VERIFIED**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · SCHOLAR CITATION & BATCH EXPORT (POST-PHASE 5 MICRO-INCREMENTS) VERIFIED**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (264 TESTS GREEN 100%)**.
+- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (275 TESTS GREEN 100%)**.
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
-  - **Post-Phase 5 Micro-Increment: Scholar Citation Generator (Resource Focus):**
-    - Module thuần túy `src/lib/citationGenerator.ts` sinh trích dẫn học thuật tự động theo chuẩn **APA 7th**, **BibTeX** (`@book`, `@article`, `@misc`), và **Markdown Footnote** (`[^1]`).
-    - Quy tắc Fallback linh hoạt: Tự động trích xuất năm từ `notes`/`title`/`createdAt` (hoặc `n.d.`), chuyển tiêu đề lên đầu khi thiếu tác giả trong APA, và gán `author = {[Khuyết danh]}` trong BibTeX.
-    - Citation Key tất định: Sinh slug key chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.
-    - Điểm chạm UI tinh gọn: Nút "Trích dẫn" (icon Quote) trên từng thẻ tài liệu trong `ResourcesManager.tsx` mở `CitationModal.tsx` với 3 tab định dạng và nút sao chép có phản hồi tức thì tại chỗ (inline feedback, không dùng toast system ngoài).
-    - Kiểm thử: 12/12 tests PASS (8/8 lib + 4/4 UI modal).
+  - **Post-Phase 5 Micro-Increment: Batch Citation Export for Filtered Resources:**
+    - Hàm thuần túy `generateBatchCitations(resources, format)` trong `src/lib/citationGenerator.ts` xuất hàng loạt cho danh sách đang lọc theo 3 định dạng: **APA 7th** (tự động sort ABC tác giả/tiêu đề), **BibTeX** (nối khối entry `.bib`), và **Markdown Footnotes** (đánh số thứ tự tăng dần `[^1]..[^N]`).
+    - Tải tệp tin độc lập qua Blob: `getBatchCitationDownloadFilename` ánh xạ cố định `references.bib`, `references.txt`, `references.md`.
+    - Hộp thoại [`src/components/modals/BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) hiển thị preview gộp, nút "Sao chép toàn bộ" (inline feedback) và "Tải tệp".
+    - Điểm chạm Toolbar trong `ResourcesManager.tsx`: Nút "Xuất danh mục ({count})" kèm rào chắn `disabled` khi `filteredResources.length === 0`.
+    - Kiểm thử: 11/11 tests PASS (5/5 lib + 6/6 UI modal).
+  - **Post-Phase 5 Micro-Increment: Scholar Citation Generator (Resource Focus, Commit `36265bb`):**
+    - Module thuần túy `src/lib/citationGenerator.ts` sinh trích dẫn học thuật đơn lẻ, fallback metadata an toàn, BibTeX key tất định và modal `CitationModal.tsx` (12/12 tests PASS).
   - **Capability vs Connectivity Error Separation (Post-Phase 2C.4 Hardening, Commit `b0c20e0`):** Phân định rành mạch giữa lỗi năng lực thiết kế ngoại tuyến (`isOfflineCapability` kích hoạt khi lỗi chứa `UNSUPPORTED_OFFLINE_OPERATION`) và lỗi mất kết nối máy chủ / runtime (`connectionError` kèm Health Badge `unhealthy` *"PostgreSQL Mất Kết Nối"*), không đánh đồng sự cố mạng với kho lưu trữ LocalStorage.
   - **Obsidian URI Integration Fix (Commit `521291d`, doc `36b1ea9`):** Chuẩn hóa định danh Vault Identifier (hỗ trợ cả tên Vault và đường dẫn tuyệt đối macOS/Windows), bảo vệ chống nhầm thư mục con `01_Inbox`, làm sạch legacy LocalStorage, và chuẩn hóa relative file path.
   - **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):** Mở rộng Phase 2b thành quy trình làm việc có điều phối qua Antigravity 2.0; sinh Task Prompt chuyên dụng cho NotebookLM skill, làm giàu metadata artifact, hỗ trợ parse tệp Markdown tự động.
@@ -56,7 +58,7 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **35 / 35 test files PASS — 264 / 264 tests PASS (100% GREEN in 14.85s)**.
+- **Regression Test Suite:** ✅ **37 / 37 test files PASS — 275 / 275 tests PASS (100% GREEN in 9.62s)**.
 - **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
 - **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (15/15 PASS) · `obsidian-bridge-integration.test.tsx` (8/8 PASS).
 - **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (13/13 PASS) · `notebooklm-studio-integration.test.tsx` (10/10 PASS).
@@ -67,7 +69,7 @@
 - **Phase 5A Suites:** ✅ `knowledge-graph-lib.test.ts` (6/6 PASS) · `knowledge-graph-ui-integration.test.tsx` (4/4 PASS).
 - **Phase 5B Suites:** ✅ `study-analytics-lib.test.ts` (6/6 PASS) · `study-analytics-ui-integration.test.tsx` (4/4 PASS).
 - **Phase 5C Suite:** ✅ `snapshot-maintenance.test.ts` (10/10 PASS).
-- **Scholar Citation Generator Suites (Post-Phase 5 Micro-Increment):** ✅ `citation-generator-lib.test.ts` (8/8 PASS) · `citation-modal-ui.test.tsx` (4/4 PASS) *(Tổng 12/12 PASS)*.
+- **Scholar Citation Generator & Batch Export Suites (Post-Phase 5 Micro-Increments):** ✅ `citation-generator-lib.test.ts` (8/8 PASS) · `citation-modal-ui.test.tsx` (4/4 PASS) · `citation-batch-generator.test.ts` (5/5 PASS) · `batch-citation-modal-ui.test.tsx` (6/6 PASS) *(Tổng 23/23 PASS)*.
 - **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
 - **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
 - **Git Diff & Whitespace Check:** ✅ `git diff --check` đạt **0 issues**.
@@ -77,7 +79,12 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
+1. **Batch Citation Export for Filtered Resources (Post-Phase 5 Micro-Increment):**
+   - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) bổ sung `generateBatchCitations` gộp danh mục theo 3 định dạng chuẩn: APA 7th (tự động sắp xếp ABC theo tác giả/tiêu đề), BibTeX (nối khối `@book`, `@misc`, `@article` bằng `\n\n`), và Markdown (đánh số thứ tự footnote liên tục `[^1]..[^N]`).
+   - **Tải Xuống Tệp Độc Lập:** Hàm `getBatchCitationDownloadFilename` ánh xạ tên tệp cố định `references.bib`, `references.txt`, `references.md` tương ứng từng tab định dạng qua cơ chế HTML5 Blob client-side.
+   - **Giao Diện Hộp Thoại Hàng Loạt:** [`src/components/modals/BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) hiển thị số lượng tài liệu đang xuất, 3 tab định dạng, ô xem trước mono, nút "Sao chép toàn bộ" (inline feedback) và "Tải tệp".
+   - **Điểm Chạm Toolbar:** Nút "Xuất danh mục ({count})" tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx) tích hợp sẵn rào chắn `disabled` khi `filteredResources.length === 0`.
+2. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
    - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) định dạng trích dẫn theo 3 chuẩn: APA 7th Edition, BibTeX (`@book`, `@article`, `@misc`), và Markdown Footnote (`[^1]`).
    - **Xử Lý Fallback Chuẩn Mực:** Trích xuất năm thông minh từ `notes`/`title`/`createdAt`, đẩy `title` lên trước khi khuyết tác giả trong APA, và gán placeholder `[Khuyết danh]` trong BibTeX.
    - **Citation Key Tất Định:** Hàm `generateBibTeXKey` sinh slug chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.
