@@ -651,3 +651,188 @@ export function captureRestoreDrillEvidence(
 
   return record;
 }
+
+export interface SerializeEvidenceOptions {
+  pretty?: boolean;
+}
+
+export type EvidenceValidationResult =
+  | { valid: true; evidence: RestoreDrillEvidenceRecord; error?: undefined }
+  | { valid: false; evidence?: undefined; error: string };
+
+/**
+ * Serializes a RestoreDrillEvidenceRecord into a deterministic, formatted JSON string.
+ */
+export function serializeRestoreDrillEvidenceJSON(
+  evidence: RestoreDrillEvidenceRecord,
+  options: SerializeEvidenceOptions = { pretty: true }
+): string {
+  const ordered: Record<string, unknown> = {
+    evidenceId: evidence.evidenceId,
+    snapshotChecksum: evidence.snapshotChecksum,
+    snapshotFormat: evidence.snapshotFormat,
+    validationStatus: evidence.validationStatus,
+    dryRunStatus: evidence.dryRunStatus,
+    simulatedMode: evidence.simulatedMode,
+    simulatedImpact: {
+      categoriesDelta: evidence.simulatedImpact.categoriesDelta,
+      topicsDelta: evidence.simulatedImpact.topicsDelta,
+      notesDelta: evidence.simulatedImpact.notesDelta,
+      resourcesDelta: evidence.simulatedImpact.resourcesDelta,
+      tagsDelta: evidence.simulatedImpact.tagsDelta,
+    },
+    gateSummary: {
+      gate1Passed: evidence.gateSummary.gate1Passed,
+      gate2Passed: evidence.gateSummary.gate2Passed,
+      gate3Required: evidence.gateSummary.gate3Required,
+      overallDrillReady: evidence.gateSummary.overallDrillReady,
+    },
+    timestamp: evidence.timestamp,
+    operatorSignOffStatus: evidence.operatorSignOffStatus,
+  };
+
+  if (evidence.operatorNotes !== undefined) {
+    ordered.operatorNotes = evidence.operatorNotes;
+  }
+
+  const space = options.pretty !== false ? 2 : undefined;
+  return JSON.stringify(ordered, null, space);
+}
+
+/**
+ * Generates a safe export filename for RestoreDrillEvidenceRecord with path traversal protection.
+ */
+export function formatRestoreDrillEvidenceFilename(
+  evidence: RestoreDrillEvidenceRecord
+): string {
+  const dateStr =
+    (evidence.timestamp && evidence.timestamp.slice(0, 10)) ||
+    new Date().toISOString().slice(0, 10);
+
+  const safeId = (evidence.evidenceId || 'record')
+    .replace(/\.\./g, '-')
+    .replace(/[\\/:*?"<>|]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return `knowledge-os-restore-drill-evidence-${dateStr}-${safeId || 'record'}.json`;
+}
+
+/**
+ * Validates a raw JSON string or object against the RestoreDrillEvidenceRecord contract.
+ * Returns an isolated deep-copy on success.
+ */
+export function validateRestoreDrillEvidenceJSON(
+  rawInput: unknown
+): EvidenceValidationResult {
+  let parsed: unknown = rawInput;
+
+  if (typeof rawInput === 'string') {
+    try {
+      parsed = JSON.parse(rawInput);
+    } catch (err) {
+      return {
+        valid: false,
+        error: `JSON syntax error: ${(err as Error).message}`,
+      };
+    }
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      valid: false,
+      error: 'Bản ghi bằng chứng phải là một đối tượng JSON hợp lệ',
+    };
+  }
+
+  const obj = parsed as Record<string, unknown>;
+
+  if (typeof obj.evidenceId !== 'string' || obj.evidenceId.trim().length === 0) {
+    return { valid: false, error: 'Trường evidenceId không được để trống' };
+  }
+
+  const validFormats = ['snapshot_v2', 'legacy_json', 'unknown'];
+  if (!validFormats.includes(obj.snapshotFormat as string)) {
+    return { valid: false, error: 'Trường snapshotFormat không hợp lệ' };
+  }
+
+  const validValidationStatuses = ['valid', 'invalid'];
+  if (!validValidationStatuses.includes(obj.validationStatus as string)) {
+    return { valid: false, error: 'Trường validationStatus không hợp lệ' };
+  }
+
+  const validDryRunStatuses = ['simulated_success', 'simulated_failed'];
+  if (!validDryRunStatuses.includes(obj.dryRunStatus as string)) {
+    return { valid: false, error: 'Trường dryRunStatus không hợp lệ' };
+  }
+
+  const validModes = ['merge', 'replace'];
+  if (!validModes.includes(obj.simulatedMode as string)) {
+    return { valid: false, error: 'Trường simulatedMode không hợp lệ' };
+  }
+
+  if (!obj.simulatedImpact || typeof obj.simulatedImpact !== 'object') {
+    return { valid: false, error: 'Trường simulatedImpact không hợp lệ' };
+  }
+
+  const impact = obj.simulatedImpact as Record<string, unknown>;
+  const deltaFields = ['categoriesDelta', 'topicsDelta', 'notesDelta', 'resourcesDelta', 'tagsDelta'];
+  for (const field of deltaFields) {
+    if (typeof impact[field] !== 'number' || isNaN(impact[field] as number)) {
+      return { valid: false, error: `simulatedImpact.${field} phải là số hợp lệ` };
+    }
+  }
+
+  if (!obj.gateSummary || typeof obj.gateSummary !== 'object') {
+    return { valid: false, error: 'Trường gateSummary không hợp lệ' };
+  }
+
+  const gates = obj.gateSummary as Record<string, unknown>;
+  const gateFields = ['gate1Passed', 'gate2Passed', 'gate3Required', 'overallDrillReady'];
+  for (const field of gateFields) {
+    if (typeof gates[field] !== 'boolean') {
+      return { valid: false, error: `gateSummary.${field} phải là boolean hợp lệ` };
+    }
+  }
+
+  if (typeof obj.timestamp !== 'string' || isNaN(Date.parse(obj.timestamp))) {
+    return { valid: false, error: 'Trường timestamp phải là chuỗi ngày giờ ISO 8601 hợp lệ' };
+  }
+
+  const validSignOffStatuses = ['pending', 'signed_off', 'rejected'];
+  if (!validSignOffStatuses.includes(obj.operatorSignOffStatus as string)) {
+    return { valid: false, error: 'Trường operatorSignOffStatus không hợp lệ' };
+  }
+
+  const evidenceRecord: RestoreDrillEvidenceRecord = {
+    evidenceId: obj.evidenceId as string,
+    snapshotChecksum: typeof obj.snapshotChecksum === 'string' ? obj.snapshotChecksum : undefined,
+    snapshotFormat: obj.snapshotFormat as RestoreValidationResult['format'],
+    validationStatus: obj.validationStatus as 'valid' | 'invalid',
+    dryRunStatus: obj.dryRunStatus as 'simulated_success' | 'simulated_failed',
+    simulatedMode: obj.simulatedMode as 'merge' | 'replace',
+    simulatedImpact: {
+      categoriesDelta: impact.categoriesDelta as number,
+      topicsDelta: impact.topicsDelta as number,
+      notesDelta: impact.notesDelta as number,
+      resourcesDelta: impact.resourcesDelta as number,
+      tagsDelta: impact.tagsDelta as number,
+    },
+    gateSummary: {
+      gate1Passed: Boolean(gates.gate1Passed),
+      gate2Passed: Boolean(gates.gate2Passed),
+      gate3Required: Boolean(gates.gate3Required),
+      overallDrillReady: Boolean(gates.overallDrillReady),
+    },
+    timestamp: obj.timestamp as string,
+    operatorSignOffStatus: obj.operatorSignOffStatus as 'pending' | 'signed_off' | 'rejected',
+  };
+
+  if (typeof obj.operatorNotes === 'string') {
+    evidenceRecord.operatorNotes = obj.operatorNotes;
+  }
+
+  return {
+    valid: true,
+    evidence: evidenceRecord,
+  };
+}
