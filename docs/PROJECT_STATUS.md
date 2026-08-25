@@ -8,14 +8,27 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (295 TESTS GREEN 100%)**.
+- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (303 TESTS GREEN 100%)**.
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
-  - **Post-Phase 5 Micro-Increment: Automated Antigravity NotebookLM Handoff Pipeline:**
+  - **Post-Phase 5 Micro-Increment: Antigravity Result Ingestion & Tracker Completion Polish:**
+    - **Mục tiêu:** Khép kín vòng quay kết quả nghiên cứu từ Antigravity/NotebookLM quay về app khi người dùng nạp (ingest) Artifact vào Artifacts Locker.
+    - **Logic nghiệp vụ:**
+      - Hàm thuần túy `completeMatchingHandoffJob` tự động chuyển trạng thái Job đang chờ sang `status: 'success'` khi nạp thành công Artifact hợp lệ.
+      - Cơ chế ưu tiên: Khớp chính xác theo `jobId` nếu được cung cấp, hoặc fallback khớp theo `(topicId + artifactType)` với pending job (`queued` | `processing`) gần nhất.
+    - **Rào chắn & Minh bạch ngữ nghĩa (Guardrails & Invariants):**
+      - `success` trong Job Tracker biểu thị chính xác rằng **"Đã nạp kết quả vào app"** (result ingested into app).
+      - Tuyệt đối **KHÔNG** đồng nghĩa với auto-dispatch CLI `agy -p` từ runtime.
+      - Tuyệt đối **KHÔNG** đồng nghĩa với end-to-end cloud NotebookLM automation.
+      - Tuyệt đối **KHÔNG** có local API bridge, browser automation, hay direct NotebookLM API integration.
+      - Thao tác bấm "Chuẩn bị Handoff" hoặc "Sao chép lệnh CLI" giữ nguyên 100% trạng thái `queued`.
+      - Dữ liệu nạp bị lỗi xác thực hoặc mismatch không làm bẩn tracker state.
+    - **Kiểm thử:** 8/8 tests PASS (5/5 pure lib + 3/3 UI integration).
+  - **Post-Phase 5 Micro-Increment: Automated Antigravity NotebookLM Handoff Pipeline (Commit `958a222`):**
     - **Mục tiêu:** Giảm thiểu tối đa thao tác tay khi bàn giao bối cảnh khảo cứu từ NotebookLM Studio sang Antigravity 2.0.
     - **Kiến trúc đã chọn (ADR-015):** File Manifest + CLI Headless Protocol (`agy -p` + JSON manifest + Markdown files) theo phân loại Two-Way Door (Reversible Decision).
     - **Thành phần triển khai:**
@@ -70,7 +83,7 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **41 / 41 test files PASS — 295 / 295 tests PASS (100% GREEN in 12.92s)**.
+- **Regression Test Suite:** ✅ **43 / 43 test files PASS — 303 / 303 tests PASS (100% GREEN in 10.53s)**.
 - **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
 - **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (15/15 PASS) · `obsidian-bridge-integration.test.tsx` (8/8 PASS).
 - **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (13/13 PASS) · `notebooklm-studio-integration.test.tsx` (10/10 PASS).
@@ -83,6 +96,7 @@
 - **Phase 5C Suite:** ✅ `snapshot-maintenance.test.ts` (10/10 PASS).
 - **Scholar Citation Generator, Batch Export & Preference Suites (Post-Phase 5 Micro-Increments):** ✅ `citation-generator-lib.test.ts` (8/8 PASS) · `citation-modal-ui.test.tsx` (4/4 PASS) · `citation-batch-generator.test.ts` (5/5 PASS) · `batch-citation-modal-ui.test.tsx` (6/6 PASS) · `citation-format-preference.test.ts` (5/5 PASS) · `citation-modal-preference-ui.test.tsx` (6/6 PASS) *(Tổng 34/34 PASS)*.
 - **Automated Antigravity NotebookLM Handoff Pipeline Suites (Post-Phase 5 Micro-Increment):** ✅ `antigravity-pipeline-lib.test.ts` (5/5 PASS) · `notebooklm-antigravity-pipeline-ui.test.tsx` (4/4 PASS) *(Tổng 9/9 PASS)*.
+- **Antigravity Result Ingestion & Completion Suites (Post-Phase 5 Micro-Increment):** ✅ `antigravity-result-ingestion.test.ts` (5/5 PASS) · `notebooklm-result-ingestion-ui.test.tsx` (3/3 PASS) *(Tổng 8/8 PASS)*.
 - **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
 - **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
 - **Git Diff & Whitespace Check:** ✅ `git diff --check` đạt **0 issues**.
@@ -92,22 +106,26 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Automated Antigravity NotebookLM Handoff Pipeline (Post-Phase 5 Micro-Increment):**
+1. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
+   - **Hàm Hoàn Tất Khớp Nối Phân Cấp:** Hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job gần nhất (`queued` hoặc `processing`).
+   - **Tích Hợp Nạp Artifact An Toàn:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) tự động gọi `completeMatchingHandoffJob` khi lưu thành công Artifact mới (qua upload tệp Markdown hoặc form thủ công) và cập nhật giao diện tracker.
+   - **Minh Bạch Ngữ Nghĩa Trạng Thái:** Huy hiệu `success` (emerald) được giải thích rõ là *"Đã nạp kết quả vào app"*, hoàn toàn không tuyên bố tự động hóa nền hai chiều qua cloud hay auto-dispatch `agy -p`.
+2. **Automated Antigravity NotebookLM Handoff Pipeline (Post-Phase 5 Micro-Increment):**
    - **Đóng Gói & Sinh Tệp Handoff Chuẩn Hóa:** Module lõi thuần túy [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) tích hợp `createAntigravityHandoffJob` tự động sinh mã Job (`job-nlm-...`), cấu trúc source document Markdown, task prompt Markdown và tệp manifest JSON (`*-manifest.json`) làm inter-process artifact trong thư mục `.agents/handoffs/`.
    - **Sinh Lệnh CLI Headless Động:** Hàm thuần túy `buildAntigravityCLICommand` tổng hợp câu lệnh `agy -p "..."` động khi hiển thị hoặc sao chép, không lưu cứng chuỗi command vào đối tượng Job nhằm giữ cấu trúc dữ liệu tinh gọn và nhất quán.
    - **Tách Biệt Hai Tầng Lưu Trữ (ADR-015):** Phân định rạch ròi giữa tệp Manifest JSON (trao đổi giữa các tiến trình) và LocalStorage `phat_hoc_antigravity_handoff_jobs_v1` (lưu trữ UI Tracker State cho người dùng theo dõi và quản lý danh sách Job).
    - **Tích Hợp Giao Diện Trực Quan:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) bổ sung nút **"Chuẩn bị Handoff Antigravity"**, ô xem trước lệnh CLI với nút sao chép 1-click (inline feedback) và bảng theo dõi danh sách Job với huy hiệu trạng thái `queued` và nút xóa bản ghi.
-2. **Citation Format Preference Hardening (Post-Phase 5 Micro-Increment):**
+3. **Citation Format Preference Hardening (Post-Phase 5 Micro-Increment):**
    - **Tách Biệt Trách Nhiệm Kiến Trúc:** Module riêng [`src/lib/citationPreferences.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationPreferences.ts) quản lý tùy chọn định dạng học thuật người dùng ưu tiên độc lập hoàn toàn khỏi logic sinh văn bản trích dẫn.
    - **Cơ Chế Lưu Trữ Phía Client:** Sử dụng LocalStorage key `knowledge_os_citation_format_pref` với 3 định dạng hợp lệ: `'apa'`, `'bibtex'`, `'markdown'`.
    - **Phòng Vệ Trạng Thái Ngoại Tuyến & Lỗi:** Mọi trường hợp dữ liệu rỗng, không hợp lệ, hoặc môi trường không hỗ trợ storage đều được xử lý với silent fail và fallback an toàn tuyệt đối về `DEFAULT_CITATION_FORMAT = 'apa'`.
    - **Đồng Bộ Trải Nghiệm Học Giả:** [`CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) và [`BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) tự động đồng bộ trạng thái tab qua lại mà không yêu cầu thay đổi `DataContext` hay API backend.
-3. **Batch Citation Export for Filtered Resources (Post-Phase 5 Micro-Increment):**
+4. **Batch Citation Export for Filtered Resources (Post-Phase 5 Micro-Increment):**
    - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) bổ sung `generateBatchCitations` gộp danh mục theo 3 định dạng chuẩn: APA 7th (tự động sắp xếp ABC theo tác giả/tiêu đề), BibTeX (nối khối `@book`, `@misc`, `@article` bằng `\n\n`), và Markdown (đánh số thứ tự footnote liên tục `[^1]..[^N]`).
    - **Tải Xuống Tệp Độc Lập:** Hàm `getBatchCitationDownloadFilename` ánh xạ tên tệp cố định `references.bib`, `references.txt`, `references.md` tương ứng từng tab định dạng qua cơ chế HTML5 Blob client-side.
    - **Giao Diện Hộp Thoại Hàng Loạt:** [`src/components/modals/BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) hiển thị số lượng tài liệu đang xuất, 3 tab định dạng, ô xem trước mono, nút "Sao chép toàn bộ" (inline feedback) và "Tải tệp".
    - **Điểm Chạm Toolbar:** Nút "Xuất danh mục ({count})" tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx) tích hợp sẵn rào chắn `disabled` khi `filteredResources.length === 0`.
-4. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
+5. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
    - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) định dạng trích dẫn theo 3 chuẩn: APA 7th Edition, BibTeX (`@book`, `@article`, `@misc`), và Markdown Footnote (`[^1]`).
    - **Xử Lý Fallback Chuẩn Mực:** Trích xuất năm thông minh từ `notes`/`title`/`createdAt`, đẩy `title` lên trước khi khuyết tác giả trong APA, và gán placeholder `[Khuyết danh]` trong BibTeX.
    - **Citation Key Tất Định:** Hàm `generateBibTeXKey` sinh slug chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.

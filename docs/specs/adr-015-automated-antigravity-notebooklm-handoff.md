@@ -51,3 +51,14 @@ Chúng tôi quyết định chọn **Phương án A: File & CLI-Based Handoff Pr
   - Phù hợp hoàn hảo với thói quen làm việc của học giả kỹ thuật (terminal & editor).
 - **Kế hoạch mở rộng tương lai (Future Evolution):**
   - Khi cần nâng cấp lên kết nối tự động trực tiếp, schema `AntigravityHandoffJob` sẽ được tái sử dụng 100% làm payload cho Local API Bridge mà không cần đổi contract UI.
+
+---
+
+## 🔄 5. PHỤ LỤC: QUY TẮC HOÀN TẤT JOB KHI NẠP KẾT QUẢ (RESULT INGESTION ADDENDUM)
+
+1. **Điều kiện Hoàn tất (Completion Invariant):**
+   - Một Job chỉ chuyển trạng thái từ `queued` hoặc `processing` sang `success` khi một Artifact kết quả hợp lệ được nạp (ingested) vào Knowledge OS khớp với `topicId` và `artifactType` (hoặc `jobId` tường minh).
+   - Thao tác bấm nút "Chuẩn bị Handoff" hoặc "Sao chép lệnh CLI" **TUYỆT ĐỐI KHÔNG** làm thay đổi trạng thái Job sang `success`.
+2. **Khớp nối An toàn (Deterministic Safe Matching):**
+   - Hàm thuần túy `completeMatchingHandoffJob({ topicId, artifactType?, jobId? })` xác định duy nhất Job đang chờ gần nhất để hoàn tất.
+   - Nếu không tìm thấy Job phù hợp, kết quả Artifact vẫn được lưu trữ bình thường mà không làm biến dạng các Job của chủ đề khác.

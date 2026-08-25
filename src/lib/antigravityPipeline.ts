@@ -174,3 +174,50 @@ export function deleteHandoffJob(jobId: string): void {
     // Silent fail
   }
 }
+
+/**
+ * Hoàn tất Job trong UI Tracker khi nạp kết quả Artifact trở lại Knowledge OS
+ * Quy tắc:
+ * 1. Ưu tiên tìm chính xác theo `jobId` nếu được cung cấp và kiểm tra `topicId` trùng khớp.
+ * 2. Fallback: Nếu không có `jobId`, tìm Job đang chờ gần nhất (`queued` | `processing`) có cùng `topicId` và `artifactType` (nếu được truyền).
+ * 3. Cập nhật `status = 'success'` và `updatedAt = ISO timestamp`.
+ * 4. Trả về đối tượng Job đã hoàn tất, hoặc `null` nếu không tìm thấy Job phù hợp.
+ */
+export function completeMatchingHandoffJob(params: {
+  topicId: string;
+  artifactType?: NotebookLMArtifactType;
+  jobId?: string;
+}): AntigravityHandoffJob | null {
+  if (typeof localStorage === 'undefined' || !params || !params.topicId) return null;
+  try {
+    const list = getStoredHandoffJobs();
+    if (!list || list.length === 0) return null;
+
+    let targetIndex = -1;
+
+    if (params.jobId) {
+      // Ưu tiên 1: Tìm chính xác theo jobId
+      targetIndex = list.findIndex(
+        (item) => item.jobId === params.jobId && item.topicId === params.topicId
+      );
+    } else {
+      // Ưu tiên 2: Fallback tìm pending job (queued hoặc processing) gần nhất khớp topicId và artifactType
+      targetIndex = list.findIndex((item) => {
+        if (item.topicId !== params.topicId) return false;
+        if (params.artifactType && item.artifactType !== params.artifactType) return false;
+        return item.status === 'queued' || item.status === 'processing';
+      });
+    }
+
+    if (targetIndex === -1) return null;
+
+    const target = list[targetIndex];
+    target.status = 'success';
+    target.updatedAt = new Date().toISOString();
+
+    localStorage.setItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY, JSON.stringify(list));
+    return target;
+  } catch {
+    return null;
+  }
+}

@@ -34,7 +34,9 @@ import {
   getStoredHandoffJobs,
   saveHandoffJob,
   deleteHandoffJob,
+  completeMatchingHandoffJob,
   AntigravityHandoffJob,
+  AntigravityJobStatus,
 } from '../../lib/antigravityPipeline';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
@@ -208,6 +210,17 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
       target: 'notebooklm',
       status: 'imported',
     });
+
+    const completedJob = completeMatchingHandoffJob({
+      topicId: currentTopic.id,
+      artifactType,
+    });
+    if (completedJob) {
+      setHandoffJobs(getStoredHandoffJobs());
+      if (activeJob?.jobId === completedJob.jobId) {
+        setActiveJob(completedJob);
+      }
+    }
 
     setArtifacts((prev) => [saved, ...prev]);
     setShowAddArtifact(false);
@@ -435,32 +448,53 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                     Lịch sử Pipeline Handoff ({handoffJobs.length}):
                   </div>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                    {handoffJobs.map((job) => (
-                      <div
-                        key={job.jobId}
-                        data-testid="handoff-job-item"
-                        className="flex items-center justify-between p-2 bg-stone-800/80 rounded-lg text-[11px] text-stone-300"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-stone-400">{job.jobId}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-950 text-amber-300 border border-amber-800">
-                            {job.status}
-                          </span>
-                          <span className="text-stone-400">({job.artifactType})</span>
+                    {handoffJobs.map((job) => {
+                      const getJobStatusBadgeClass = (status: AntigravityJobStatus) => {
+                        switch (status) {
+                          case 'success':
+                            return 'bg-emerald-950 text-emerald-300 border-emerald-800';
+                          case 'processing':
+                            return 'bg-blue-950 text-blue-300 border-blue-800';
+                          case 'failed':
+                            return 'bg-rose-950 text-rose-300 border-rose-800';
+                          case 'queued':
+                          default:
+                            return 'bg-amber-950 text-amber-300 border-amber-800';
+                        }
+                      };
+
+                      return (
+                        <div
+                          key={job.jobId}
+                          data-testid="handoff-job-item"
+                          className="flex items-center justify-between p-2 bg-stone-800/80 rounded-lg text-[11px] text-stone-300"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-stone-400">{job.jobId}</span>
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${getJobStatusBadgeClass(
+                                job.status
+                              )}`}
+                              title={job.status === 'success' ? 'Đã nạp kết quả vào app' : job.status}
+                            >
+                              {job.status}
+                            </span>
+                            <span className="text-stone-400">({job.artifactType})</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              data-testid="btn-delete-handoff-job"
+                              onClick={() => handleDeleteJob(job.jobId)}
+                              className="text-stone-500 hover:text-rose-400 p-1 transition cursor-pointer"
+                              title="Xóa job"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            data-testid="btn-delete-handoff-job"
-                            onClick={() => handleDeleteJob(job.jobId)}
-                            className="text-stone-500 hover:text-rose-400 p-1 transition cursor-pointer"
-                            title="Xóa job"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

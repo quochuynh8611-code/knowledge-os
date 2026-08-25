@@ -12,7 +12,7 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 41 test suites / 295 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 43 test suites / 303 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
@@ -22,7 +22,7 @@
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
        ├── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
-       └── POST-PHASE 5: Scholar Citation, Batch Export, Preference & Antigravity Pipeline [VERIFIED]
+       └── POST-PHASE 5: Scholar Citation, Batch Export, Preference, Antigravity Pipeline & Result Ingestion [VERIFIED]
 ```
 
 ---
@@ -103,6 +103,16 @@
 
 ---
 
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Antigravity Result Ingestion & Tracker Completion Polish (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-antigravity-result-ingestion-tracker-completion.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-antigravity-result-ingestion-tracker-completion.md) · [`docs/gherkin/post-phase5-antigravity-result-ingestion-tracker-completion.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-antigravity-result-ingestion-tracker-completion.feature) · [`docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md)
+- **Trọng tâm:**
+  - Khép kín vòng quay kết quả nghiên cứu: Khi người dùng nạp (ingest) Artifact vào Artifacts Locker, hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) tự động chuyển trạng thái Job sang `status: 'success'`.
+  - Khớp nối có phân cấp: Ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job (`queued` hoặc `processing`) gần nhất.
+  - Minh bạch ngữ nghĩa: `success` trong Job Tracker biểu thị chính xác "Đã nạp kết quả vào app", hoàn toàn không claim rằng đã auto-dispatch `agy -p` hay chạy ngầm 2 chiều qua cloud. Thao tác sao chép lệnh CLI giữ nguyên 100% trạng thái `queued`.
+- **Kiểm chứng:** 8/8 tests PASS (5/5 `antigravity-result-ingestion.test.ts` + 3/3 `notebooklm-result-ingestion-ui.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 5 MICRO-INCREMENT: Automated Antigravity NotebookLM Handoff Pipeline (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase5-automated-antigravity-notebooklm-handoff.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-automated-antigravity-notebooklm-handoff.md) · [`docs/gherkin/post-phase5-automated-antigravity-notebooklm-handoff.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-automated-antigravity-notebooklm-handoff.feature) · [`docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md)
 - **Trọng tâm:**
@@ -160,6 +170,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **41 / 41 test files PASS — 295 / 295 tests PASS (100% GREEN in 12.92s)**.
+- **Toàn bộ Test Suite:** ✅ **43 / 43 test files PASS — 303 / 303 tests PASS (100% GREEN in 10.53s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
