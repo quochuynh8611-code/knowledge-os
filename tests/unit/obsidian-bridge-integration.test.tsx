@@ -221,4 +221,19 @@ describe('ADR-012 Phase 2a: Obsidian Bridge Modal Integration Tests', () => {
     // The open link must encode the sanitized path 'Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận.md' or 'Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận' without unescaped slashes inside filename
     expect(decodeURIComponent(href)).toContain('file=Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận');
   });
+
+  it('8. When user enters absolute path in vault input, URI links normalize to vault name without /Users/', () => {
+    render(<ObsidianBridgeModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    const vaultInput = screen.getByDisplayValue('Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    fireEvent.change(vaultInput, { target: { value: '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian' } });
+
+    const openLink = screen.getByRole('link', { name: /Tạo \/ Mở Ngay trong Obsidian App/i });
+    const href = openLink.getAttribute('href') || '';
+
+    const params = new URLSearchParams(href.replace(/^obsidian:\/\/open\?/, ''));
+    expect(params.get('vault')).toBe('Phat-Hoc-Obsidian');
+    expect(href).not.toContain('/Users/');
+    expect(href).not.toContain('%2FUsers%2F');
+  });
 });

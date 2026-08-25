@@ -77,6 +77,29 @@ Feature: Bộ chọn Tệp Cục bộ (File Picker) và Cầu nối Hệ Tri th�
     Then Tên Vault được lưu tức thì vào LocalStorage với khóa 'obsidian_vault_name_pref'
     And Nếu người dùng xóa trống hoặc nhập toàn khoảng trắng, hệ thống tự động fallback về 'Khao-Cuu-Phat-Hoc-Huyen-Hoc'
 
+  Scenario: 6f. Chuẩn hóa đường dẫn tuyệt đối thành Vault Name hợp lệ
+    Given Đầu vào Vault là một đường dẫn tuyệt đối '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian'
+    When Hệ thống sinh URI mở topic trong Obsidian
+    Then Tham số truy vấn 'vault' phải là 'Phat-Hoc-Obsidian'
+    And URI không được chứa tiền tố hệ thống '/Users/' hoặc '%2FUsers%2F'
+
+  Scenario: 6g. Ngăn chặn thư mục con 01_Inbox trở thành Vault Identifier
+    Given Đầu vào Vault trỏ vào thư mục con '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian/01_Inbox'
+    When Hệ thống sinh URI mở topic trong Obsidian
+    Then Tham số truy vấn 'vault' không được phép là '01_Inbox'
+    And Tham số truy vấn 'vault' không được chứa đường dẫn tuyệt đối
+
+  Scenario: 6h. Tự động làm sạch giá trị bẩn trong LocalStorage
+    Given LocalStorage đang lưu trữ chuỗi đường dẫn '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian'
+    When Hàm đọc tên Vault được gọi
+    Then Kết quả trả về phải được tự động làm sạch thành 'Phat-Hoc-Obsidian'
+
+  Scenario: 6i. Tính nhất quán giữa open URI và new-note URI
+    Given Cùng một cấu hình Vault và chủ đề nghiên cứu
+    When Hệ thống sinh cả hai URI obsidian://open và obsidian://new
+    Then Cả hai URI phải sử dụng cùng một định danh Vault đã được chuẩn hóa
+    And Đường dẫn file phải là đường dẫn tương đối không có dấu gạch chéo đầu dòng
+
   # -------------------------------------------------------------------
   # Phase 2b: NotebookLM Source Packaging & Artifact Studio
   # -------------------------------------------------------------------

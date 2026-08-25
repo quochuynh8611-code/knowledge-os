@@ -212,6 +212,65 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
   });
 
   // ---------------------------------------------------------------------------
+  // 4b. Strict Obsidian URI Normalization & Semantic Contracts
+  // ---------------------------------------------------------------------------
+  it('10. getObsidianOpenUri normalizes absolute macOS filesystem path to vault name', () => {
+    const absolutePath = '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian';
+    const uri = getObsidianOpenUri(absolutePath, 'Phat-Hoc/Vi Diệu Pháp');
+
+    const params = new URLSearchParams(uri.replace(/^obsidian:\/\/open\?/, ''));
+    expect(params.get('vault')).toBe('Phat-Hoc-Obsidian');
+    expect(uri).not.toContain('/Users/');
+    expect(uri).not.toContain('%2FUsers%2F');
+  });
+
+  it('11. getObsidianOpenUri prevents 01_Inbox child directory from becoming vault identifier', () => {
+    const childDirPath = '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian/01_Inbox';
+    const uri = getObsidianOpenUri(childDirPath, 'Phat-Hoc/Vi Diệu Pháp');
+
+    const params = new URLSearchParams(uri.replace(/^obsidian:\/\/open\?/, ''));
+    expect(params.get('vault')).not.toBe('01_Inbox');
+    expect(params.get('vault')).not.toContain('01_Inbox');
+    expect(params.get('vault')).toBe('Phat-Hoc-Obsidian');
+  });
+
+  it('12. getStoredVaultName automatically sanitizes legacy dirty localStorage absolute paths', () => {
+    localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian');
+    expect(getStoredVaultName()).toBe('Phat-Hoc-Obsidian');
+  });
+
+  it('13. getObsidianOpenUri strips leading slashes from file path for relative vault resolution', () => {
+    const uri = getObsidianOpenUri('Phat-Hoc-Obsidian', '/Phat-Hoc/Abhidharma - Vi Diệu Pháp Toàn Tập');
+    const params = new URLSearchParams(uri.replace(/^obsidian:\/\/open\?/, ''));
+
+    expect(params.get('file')).toBe('Phat-Hoc/Abhidharma - Vi Diệu Pháp Toàn Tập');
+    expect(params.get('file')?.startsWith('/')).toBe(false);
+  });
+
+  it('14. getObsidianOpenUri and getObsidianNewNoteUri maintain 100% vault normalization consistency', () => {
+    const rawInput = '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian';
+    const openUri = getObsidianOpenUri(rawInput, 'Phat-Hoc/Topic');
+    const newUri = getObsidianNewNoteUri(rawInput, 'Topic', '# Content');
+
+    const openParams = new URLSearchParams(openUri.replace(/^obsidian:\/\/open\?/, ''));
+    const newParams = new URLSearchParams(newUri.replace(/^obsidian:\/\/new\?/, ''));
+
+    expect(openParams.get('vault')).toBe('Phat-Hoc-Obsidian');
+    expect(newParams.get('vault')).toBe('Phat-Hoc-Obsidian');
+    expect(openParams.get('vault')).toBe(newParams.get('vault'));
+  });
+
+  it('15. getObsidianOpenUri correctly encodes and preserves Vietnamese titles and spaces', () => {
+    const title = 'Phat-Hoc/Abhidharma - Vi Diệu Pháp Toàn Tập';
+    const uri = getObsidianOpenUri('Phat-Hoc-Obsidian', title);
+    const params = new URLSearchParams(uri.replace(/^obsidian:\/\/open\?/, ''));
+
+    expect(params.get('vault')).toBe('Phat-Hoc-Obsidian');
+    expect(params.get('file')).toBe(title);
+    expect(uri).toContain('Phat-Hoc%2FAbhidharma%20-%20Vi%20Di%E1%BB%87u%20Ph%C3%A1p%20To%C3%A0n%20T%E1%BA%ADp');
+  });
+
+  // ---------------------------------------------------------------------------
   // 5. Vault ZIP Generator & Structure Sanitization
   // ---------------------------------------------------------------------------
   it('9. generateObsidianVaultZip produces a valid zip containing 00_Map_Of_Content.md and folder structure', async () => {

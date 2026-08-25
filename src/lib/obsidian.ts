@@ -5,6 +5,75 @@ export const DEFAULT_OBSIDIAN_VAULT_KEY = 'obsidian_vault_name_pref';
 export const DEFAULT_OBSIDIAN_VAULT_NAME = 'Khao-Cuu-Phat-Hoc-Huyen-Hoc';
 
 /**
+ * Common child folder patterns inside Obsidian vaults to avoid confusing as the vault root
+ */
+export const OBSIDIAN_CHILD_DIR_PATTERNS = [
+  /^0\d_.*$/i,       // 01_Inbox, 00_Meta, 02_Cards, etc.
+  /^_.*$/i,           // _inbox, _templates, etc.
+  /^\.obsidian$/i,    // .obsidian config directory
+  /^inbox$/i,
+  /^templates$/i,
+  /^attachments$/i,
+  /^assets$/i,
+];
+
+/**
+ * Normalizes vault identifier from plain string or full filesystem path (macOS/Linux/Windows).
+ * Handles subfolder paths like 01_Inbox by extracting parent vault folder.
+ */
+export function normalizeObsidianVaultIdentifier(input?: string | null): string {
+  if (!input || typeof input !== 'string') {
+    return DEFAULT_OBSIDIAN_VAULT_NAME;
+  }
+
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return DEFAULT_OBSIDIAN_VAULT_NAME;
+  }
+
+  // Check if input looks like a filesystem path (contains / or \)
+  if (trimmed.includes('/') || trimmed.includes('\\')) {
+    const normalizedPath = trimmed.replace(/\\/g, '/');
+    const segments = normalizedPath
+      .split('/')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && s !== '.');
+
+    if (segments.length === 0) {
+      return DEFAULT_OBSIDIAN_VAULT_NAME;
+    }
+
+    let targetSegment = segments[segments.length - 1];
+    if (segments.length > 1 && OBSIDIAN_CHILD_DIR_PATTERNS.some((p) => p.test(targetSegment))) {
+      targetSegment = segments[segments.length - 2];
+    }
+
+    if (targetSegment && !/^(users|home|root|var|etc|c:|d:|e:)$/i.test(targetSegment)) {
+      return targetSegment;
+    }
+
+    return targetSegment || DEFAULT_OBSIDIAN_VAULT_NAME;
+  }
+
+  return trimmed;
+}
+
+/**
+ * Normalizes relative file paths for Obsidian URI protocol, stripping leading slashes.
+ */
+export function normalizeObsidianFilePath(filePath: string): string {
+  if (!filePath || typeof filePath !== 'string') {
+    return '';
+  }
+
+  let cleaned = filePath.trim().replace(/\\/g, '/');
+  cleaned = cleaned.replace(/^\/+/, '');
+  cleaned = cleaned.replace(/\/+/g, '/');
+
+  return cleaned;
+}
+
+/**
  * Sanitize title into valid filename across OS and ZIP structures
  */
 export function sanitizeFileName(title: string): string {
@@ -15,7 +84,7 @@ export function getStoredVaultName(): string {
   try {
     const stored = localStorage.getItem(DEFAULT_OBSIDIAN_VAULT_KEY);
     if (stored && stored.trim().length > 0) {
-      return stored.trim();
+      return normalizeObsidianVaultIdentifier(stored);
     }
     return DEFAULT_OBSIDIAN_VAULT_NAME;
   } catch {
@@ -27,7 +96,8 @@ export function setStoredVaultName(name: string): void {
   try {
     const trimmed = name.trim();
     if (trimmed.length > 0) {
-      localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, trimmed);
+      const normalized = normalizeObsidianVaultIdentifier(trimmed);
+      localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, normalized);
     } else {
       localStorage.removeItem(DEFAULT_OBSIDIAN_VAULT_KEY);
     }
@@ -117,16 +187,17 @@ export function formatNoteForObsidian(note: Note): string {
  * Generate deep link to open Obsidian
  */
 export function getObsidianOpenUri(vaultName: string, filePath: string): string {
-  const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
-  return `obsidian://open?vault=${encodeURIComponent(cleanVault)}&file=${encodeURIComponent(filePath)}`;
+  const cleanVault = normalizeObsidianVaultIdentifier(vaultName);
+  const cleanFilePath = normalizeObsidianFilePath(filePath);
+  return `obsidian://open?vault=${encodeURIComponent(cleanVault)}&file=${encodeURIComponent(cleanFilePath)}`;
 }
 
 /**
  * Generate URI to create note in Obsidian
  */
 export function getObsidianNewNoteUri(vaultName: string, noteName: string, content: string): string {
-  const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
-  return `obsidian://new?vault=${encodeURIComponent(cleanVault)}&name=${encodeURIComponent(noteName)}&content=${encodeURIComponent(content)}`;
+  const cleanVault = normalizeObsidianVaultIdentifier(vaultName);
+  return `obsidian://new?vault=${encodeURIComponent(cleanVault)}&name=${encodeURIComponent(noteName.trim())}&content=${encodeURIComponent(content)}`;
 }
 
 /**

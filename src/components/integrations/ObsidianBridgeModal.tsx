@@ -145,7 +145,7 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
               </span>
             </div>
             <p className="text-[11px] text-stone-500">
-              Khớp với tên thư mục Vault bạn đã mở trong phần mềm Obsidian trên máy tính / điện thoại.
+              Nhập tên Vault (ví dụ: <span className="font-mono text-stone-700">Phat-Hoc-Obsidian</span>) hoặc dán đường dẫn thư mục Vault trên máy tính.
             </p>
           </div>
 
