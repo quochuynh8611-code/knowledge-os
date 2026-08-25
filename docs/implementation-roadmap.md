@@ -266,6 +266,24 @@
   - Bảo đảm tính bất biến (Immutability): 100% không làm biến đổi hay ghi đè live state khi chạy diễn tập khôi phục.
 - **Kiểm chứng:** 7/7 tests PASS trong `operator-restore-drill-readiness.test.ts`.
 
+### 🔹 POST-PHASE 6H MICRO-INCREMENT: Restore Drill Evidence Capture (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6h-restore-drill-evidence-capture.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6h-restore-drill-evidence-capture.md) · [`docs/gherkin/post-phase6h-restore-drill-evidence-capture.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6h-restore-drill-evidence-capture.feature)
+- **Commit:** `4973acc`
+- **Trọng tâm:**
+  - Cung cấp pure helper `captureRestoreDrillEvidence(readinessReport, options)` và interface `RestoreDrillEvidenceRecord`, `RestoreDrillEvidenceCaptureOptions` trong `src/lib/backupVerification.ts`.
+  - Đóng gói bằng chứng kiểm toán bất biến, phân loại trạng thái ký duyệt (`operatorSignOffStatus`: `pending` / `signed_off` / `rejected`), ghi chú vận hành (`operatorNotes`) và đảm bảo cách ly tham chiếu (Deep Copy).
+  - 100% không làm thay đổi live state, không có tác dụng phụ DB/API/storage và không kích hoạt live restore.
+- **Kiểm chứng:** 11/11 tests PASS trong [`tests/unit/restore-drill-evidence-capture.test.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/tests/unit/restore-drill-evidence-capture.test.ts).
+
+### 🔹 POST-PHASE 6I MICRO-INCREMENT: Restore Drill Evidence Serialization & Audit Validation (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6i-restore-drill-evidence-serialization-audit-validation.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6i-restore-drill-evidence-serialization-audit-validation.md) · [`docs/gherkin/post-phase6i-restore-drill-evidence-serialization-audit-validation.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6i-restore-drill-evidence-serialization-audit-validation.feature)
+- **Commit:** `5490ac4`
+- **Trọng tâm:**
+  - Cung cấp pure helpers trong `src/lib/backupVerification.ts`: `serializeRestoreDrillEvidenceJSON`, `formatRestoreDrillEvidenceFilename`, `validateRestoreDrillEvidenceJSON`.
+  - Tuần tự hóa JSON tất định (deterministic key ordering) với chế độ formatted và compact; sinh tên file an toàn chống tấn công Path Traversal (`knowledge-os-restore-drill-evidence-YYYY-MM-DD-<safeId>.json`).
+  - Thẩm định tính toàn vẹn của tệp bằng chứng JSON cũ độc lập, an toàn trước chuỗi JSON hỏng hoặc sai schema mà không gây side-effects.
+- **Kiểm chứng:** 9/9 tests PASS trong [`tests/unit/restore-drill-evidence-serialization.test.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/tests/unit/restore-drill-evidence-serialization.test.ts).
+
 ---
 
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
@@ -281,6 +299,7 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **63 / 63 test files PASS — 379 / 379 tests PASS (100% GREEN)**.
+- **Baseline lịch sử (trước Phase 6j):** 65 / 65 test files PASS — 399 / 399 tests PASS (100% GREEN).
+- **Toàn bộ Test Suite hiện hành:** ✅ **66 / 66 test files PASS — 409 / 409 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

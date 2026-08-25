@@ -2,19 +2,31 @@
 
 > **Cập nhật lần cuối:** 2026-08-25
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · SCHOLAR CITATION, BATCH EXPORT, PREFERENCE & ANTIGRAVITY PIPELINE (POST-PHASE 5 MICRO-INCREMENTS) VERIFIED**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–6 FULLY IMPLEMENTED & PRODUCTION-READY · 3-LAYER BACKUP, RESTORE DRILL, RUNBOOK & EVIDENCE AUDIT VERIFIED**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (311 TESTS GREEN 100%)**.
+- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 6 ĐÃ HOÀN TẤT & HỆ THỐNG SAO LƯU 3 LỚP / KIỂM TOÁN DIỄN TẬP KHÔI PHỤC ĐƯỢC KIỂM CHỨNG (66 / 66 TEST FILES PASS — 409 / 409 TESTS PASS 100% GREEN)**.
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6i Micro-Increment: Restore Drill Evidence Serialization & Audit Validation (Commit `5490ac4`):**
+    - **Mục tiêu:** Tuần tự hóa bản ghi bằng chứng diễn tập khôi phục (`RestoreDrillEvidenceRecord`) thành chuỗi JSON chuẩn hóa, tất định; sinh tên tệp an toàn chống tấn công Path Traversal; và cung cấp helper thuần túy kiểm toán độc lập để xác minh tính toàn vẹn của tệp bằng chứng JSON cũ mà không làm biến đổi bất kỳ dữ liệu thật nào.
+    - **Giải pháp kỹ thuật:**
+      - Module thuần túy `src/lib/backupVerification.ts`: Bổ sung 3 pure helpers `serializeRestoreDrillEvidenceJSON`, `formatRestoreDrillEvidenceFilename`, `validateRestoreDrillEvidenceJSON`.
+      - Bảo đảm 100% Zero DB / API / Storage / Live-Restore side effects và Zero Binary Ingestion.
+    - **Kiểm thử:** 9/9 tests PASS trong test suite `restore-drill-evidence-serialization.test.ts`.
+  - **Post-Phase 6h Micro-Increment: Restore Drill Evidence Capture (Commit `4973acc`):**
+    - **Mục tiêu:** Đóng gói bản ghi bằng chứng diễn tập khôi phục bất biến (`RestoreDrillEvidenceRecord`) từ báo cáo `OperatorDrillReadinessReport` phục vụ lưu vết kiểm toán, theo dõi trạng thái ký duyệt của người vận hành (`operatorSignOffStatus`) và ghi chú vận hành (`operatorNotes`) hoàn toàn trong bộ nhớ.
+    - **Giải pháp kỹ thuật:**
+      - Module thuần túy `src/lib/backupVerification.ts`: Bổ sung interface `RestoreDrillEvidenceRecord`, `RestoreDrillEvidenceCaptureOptions` và pure helper `captureRestoreDrillEvidence`.
+      - Bảo đảm 100% Zero DB / API / Storage / Live-Restore side effects và cách ly tham chiếu (Deep Copy).
+    - **Kiểm thử:** 11/11 tests PASS trong test suite `restore-drill-evidence-capture.test.ts`.
   - **Post-Phase 6g Micro-Increment: Operator Restore Drill Readiness:**
     - **Mục tiêu:** Chuẩn hóa toàn diện 5 giai đoạn trong hành trình diễn tập của người vận hành (Operator Journey), kiểm chứng 4 rào chắn an toàn (Gate 1 Checksum & Schema, Gate 2 In-Memory Dry Run, Gate 3 Confirmation Phrase, Gate 4 Rehydration State Preserving), và cung cấp helper thuần túy `evaluateRestoreDrillReadiness` để tự động tổng hợp chứng chỉ đánh giá mức độ sẵn sàng diễn tập kèm bản ghi bằng chứng có thể tái lập.
     - **Giải pháp kỹ thuật:**
