@@ -40,6 +40,10 @@ import {
   buildRestorePreview,
   RestoreDrillResult,
 } from '../../lib/backupVerification';
+import {
+  safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+} from '../../lib/storage';
 
 const defaultRepo: IDataRepository =
   typeof window !== 'undefined'
@@ -75,10 +79,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
   const [manifestCopied, setManifestCopied] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [libraryRootPath, setLibraryRootPath] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('knowledge_os_library_root_path') || '';
-    }
-    return '';
+    return safeGetLocalStorageItem('knowledge_os_library_root_path') || '';
   });
 
   useEffect(() => {
@@ -89,9 +90,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
   const handleLibraryRootChange = (newPath: string) => {
     setLibraryRootPath(newPath);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('knowledge_os_library_root_path', newPath);
-    }
+    safeSetLocalStorageItem('knowledge_os_library_root_path', newPath);
   };
 
   const auditResult = useMemo(() => {
