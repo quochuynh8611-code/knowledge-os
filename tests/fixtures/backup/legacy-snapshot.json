@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "exportedAt": "2026-01-01T00:00:00.000Z",
+  "categories": [
+    {
+      "id": "cat-legacy-1",
+      "name": "Kinh Điển Cổ",
+      "slug": "kinh-dien-co"
+    }
+  ],
+  "topics": [
+    {
+      "id": "top-legacy-1",
+      "title": "Bát Nhã Tâm Kinh",
+      "slug": "bat-nha-tam-kinh",
+      "categoryId": "cat-legacy-1",
+      "type": "phat-hoc",
+      "description": "Bản dịch cổ",
+      "content": "Quán Tự Tại Bồ Tát...",
+      "tags": ["Legacy"],
+      "links": []
+    }
+  ],
+  "notes": [
+    {
+      "id": "note-legacy-1",
+      "topicId": "top-legacy-1",
+      "title": "Ghi chú dịch thuật",
+      "content": "Khảo sát dị bản chữ Hán",
+      "type": "insight",
+      "tags": ["DichThuat"]
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-legacy-1",
+      "topicId": "top-legacy-1",
+      "title": "Ban Nha Cuoc Giai PDF",
+      "type": "pdf",
+      "filePath": "/Users/researcher/Documents/bat-nha.pdf"
+    }
+  ],
+  "tags": [
+    {
+      "id": "tag-legacy-1",
+      "name": "Legacy",
+      "slug": "legacy",
+      "color": "#6b7280"
+    }
+  ]
+}

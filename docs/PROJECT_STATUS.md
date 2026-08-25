@@ -15,6 +15,13 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6f Micro-Increment: Restore Evidence Pack & Operator Runbook:**
+    - **Mục tiêu:** Đóng gói toàn diện quy trình sao lưu và phục hồi thành Gói Bằng Chứng Khôi Phục (**Restore Evidence Pack**) chuẩn hóa gồm 4 fixture JSON (`valid-snapshot.json`, `legacy-snapshot.json`, `malformed-snapshot.json`, `manifest-mixed-statuses.json`) và Sổ Tay Vận Hành (**Operator Runbook**) chi tiết bằng tiếng Việt (`docs/runbooks/backup-restore-operator-runbook.vi.md`) kèm checklist ký xác nhận.
+    - **Giải pháp kỹ thuật:**
+      - Thiết lập thư mục fixture kiểm thử độc lập tại `tests/fixtures/backup/` kèm tài liệu hướng dẫn `README.md`.
+      - Biên soạn Runbook vận hành chuẩn mực `backup-restore-operator-runbook.vi.md` phân định rành mạch 3 lớp sao lưu, quy trình diễn tập Restore Drill, rào chắn an toàn và kế hoạch rollback.
+      - Kiểm chứng hợp đồng kỹ thuật và bảo đảm cách ly hoàn toàn khỏi production bundle (`src/` không import fixtures).
+    - **Kiểm thử:** 11/11 tests PASS trong 3 test suites mới (`restore-evidence-fixtures.test.ts`, `manifest-status-fixtures.test.ts`, `operator-runbook-contract.test.ts`).
   - **Post-Phase 6e Micro-Increment: Backup Verification & Restore Drill:**
     - **Mục tiêu:** Thẩm định tính đầy đủ của bộ sao lưu 3 lớp (App Snapshot JSON, File Manifest JSON, Physical File Set), cung cấp cơ chế diễn tập khôi phục mô phỏng thuần túy trong bộ nhớ (**Restore Drill - In-Memory Dry Run**) không làm biến đổi hay ghi đè dữ liệu thật, hỗ trợ xem trước tác động thực thể và gia cố rào chắn xác nhận tường minh trước khi nạp dữ liệu.
     - **Giải pháp kỹ thuật:**

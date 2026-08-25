@@ -1,0 +1,131 @@
+{
+  "version": "2.0.0",
+  "exportedAt": "2026-08-25T10:00:00.000Z",
+  "checksum": "69da0aca4ed05f3a63e257f38a1ec23f5a37d4e8c673ecdabc054b990185acd2",
+  "counts": {
+    "categories": 2,
+    "topics": 2,
+    "notes": 2,
+    "resources": 2,
+    "tags": 3
+  },
+  "data": {
+    "categories": [
+      {
+        "id": "cat-phat-hoc",
+        "name": "Phật Học",
+        "slug": "phat-hoc"
+      },
+      {
+        "id": "cat-huyen-hoc",
+        "name": "Huyền Học",
+        "slug": "huyen-hoc"
+      }
+    ],
+    "topics": [
+      {
+        "id": "top-tu-dieu-de",
+        "title": "Tứ Diệu Đế",
+        "slug": "tu-dieu-de",
+        "categoryId": "cat-phat-hoc",
+        "type": "phat-hoc",
+        "description": "Khảo cứu Tứ Thánh Đế",
+        "content": "Nội dung Tứ Diệu Đế...",
+        "tags": ["CanBan", "PhatHoc"],
+        "links": [],
+        "createdAt": "2026-08-01T00:00:00.000Z",
+        "updatedAt": "2026-08-01T00:00:00.000Z",
+        "studyProgress": {
+          "topicId": "top-tu-dieu-de",
+          "status": "in_progress",
+          "retentionScore": 85,
+          "stability": 2.5,
+          "difficulty": 0.3,
+          "intervalDays": 3,
+          "repetitions": 2,
+          "lapses": 0,
+          "lastStudied": "2026-08-20T00:00:00.000Z",
+          "nextReviewDate": "2026-08-23T00:00:00.000Z",
+          "reviewHistory": []
+        }
+      },
+      {
+        "id": "top-kinh-dich",
+        "title": "Kinh Dịch Nhập Môn",
+        "slug": "kinh-dich-nhap-mon",
+        "categoryId": "cat-huyen-hoc",
+        "type": "huyen-hoc",
+        "description": "Khảo cứu Kinh Dịch",
+        "content": "Nội dung Kinh Dịch...",
+        "tags": ["KinhDich"],
+        "links": [],
+        "createdAt": "2026-08-01T00:00:00.000Z",
+        "updatedAt": "2026-08-01T00:00:00.000Z"
+      }
+    ],
+    "notes": [
+      {
+        "id": "note-1",
+        "topicId": "top-tu-dieu-de",
+        "title": "Ghi chú Khổ Đế",
+        "content": "Chi tiết về Khổ Thánh Đế",
+        "sourcePath": "/Users/researcher/Knowledge-Library/Notes/kho-de.md",
+        "type": "insight",
+        "isPrivate": false,
+        "tags": ["GhiChu"],
+        "createdAt": "2026-08-01T00:00:00.000Z",
+        "updatedAt": "2026-08-01T00:00:00.000Z"
+      },
+      {
+        "id": "note-2",
+        "topicId": "top-kinh-dich",
+        "title": "Ghi chú Bát Quái",
+        "content": "Khảo sát 8 quẻ đơn",
+        "sourcePath": "/Users/researcher/Knowledge-Library/Notes/bat-quai.md",
+        "type": "summary",
+        "isPrivate": false,
+        "tags": ["DichHoc"],
+        "createdAt": "2026-08-01T00:00:00.000Z",
+        "updatedAt": "2026-08-01T00:00:00.000Z"
+      }
+    ],
+    "resources": [
+      {
+        "id": "res-1",
+        "topicId": "top-tu-dieu-de",
+        "title": "Kinh Chuyển Pháp Luân PDF",
+        "type": "pdf",
+        "filePath": "/Users/researcher/Knowledge-Library/PDF/kinh-chuyen-phap-luan.pdf",
+        "createdAt": "2026-08-01T00:00:00.000Z"
+      },
+      {
+        "id": "res-2",
+        "topicId": "top-kinh-dich",
+        "title": "Chu Dịch Toàn Tập PDF",
+        "type": "pdf",
+        "filePath": "/Users/researcher/Knowledge-Library/PDF/chu-dich-toan-tap.pdf",
+        "createdAt": "2026-08-01T00:00:00.000Z"
+      }
+    ],
+    "tags": [
+      {
+        "id": "tag-can-ban",
+        "name": "CanBan",
+        "slug": "can-ban",
+        "color": "#3b82f6"
+      },
+      {
+        "id": "tag-phat-hoc",
+        "name": "PhatHoc",
+        "slug": "phat-hoc",
+        "color": "#10b981"
+      },
+      {
+        "id": "tag-kinh-dich",
+        "name": "KinhDich",
+        "slug": "kinh-dich",
+        "color": "#f59e0b"
+      }
+    ]
+  }
+}

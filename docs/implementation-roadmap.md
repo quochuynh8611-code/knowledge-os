@@ -249,6 +249,15 @@
   - Tích hợp giao diện tại [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx): Thẻ diễn tập khôi phục xem trước biến động thực thể (`simulatedImpact`) cùng rào chắn xác nhận tường minh trước khi nạp dữ liệu.
 - **Kiểm chứng:** 10/10 tests PASS (3/3 `backup-readiness.test.ts` + 5/5 `restore-drill.test.ts` + 2/2 `restore-preview-ui.test.tsx`).
 
+### 🔹 POST-PHASE 6F MICRO-INCREMENT: Restore Evidence Pack & Operator Runbook (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6f-restore-evidence-pack-and-operator-runbook.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6f-restore-evidence-pack-and-operator-runbook.md) · [`docs/gherkin/post-phase6f-restore-evidence-pack-and-operator-runbook.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6f-restore-evidence-pack-and-operator-runbook.feature)
+- **Sổ tay vận hành:** [`docs/runbooks/backup-restore-operator-runbook.vi.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/runbooks/backup-restore-operator-runbook.vi.md)
+- **Trọng tâm:**
+  - Bộ fixtures kiểm thử độc lập tại `tests/fixtures/backup/` gồm: `valid-snapshot.json` (Semver 2.x checksum chính xác), `legacy-snapshot.json` (tương thích ngược v1.x), `malformed-snapshot.json` (từ chối an toàn), và `manifest-mixed-statuses.json` (đầy đủ 4 trạng thái).
+  - Sổ tay vận hành chuẩn mực bằng tiếng Việt `backup-restore-operator-runbook.vi.md` hướng dẫn chi tiết quy trình sao lưu 3 lớp, diễn tập khôi phục trong bộ nhớ (Restore Drill), rào chắn an toàn, xử lý bất thường và checklist ký xác nhận.
+  - Bảo đảm cách ly tuyệt đối: Fixtures không bao giờ bị import vào mã nguồn runtime production (`src/`).
+- **Kiểm chứng:** 11/11 tests PASS (4/4 `restore-evidence-fixtures.test.ts` + 2/2 `manifest-status-fixtures.test.ts` + 5/5 `operator-runbook-contract.test.ts`).
+
 ---
 
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
@@ -264,6 +273,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **59 / 59 test files PASS — 361 / 361 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite:** ✅ **62 / 62 test files PASS — 372 / 372 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

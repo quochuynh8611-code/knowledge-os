@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "exportedAt": "2026-08-25T10:00:00.000Z",
+  "checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "counts": {
+    "categories": 1,
+    "topics": 1,
+    "notes": 1,
+    "resources": 1,
+    "tags": 1
+  },
+  "data": {
+    "categories": [
+      {
+        "id": "cat-corrupted",
+        "name": "Danh mục hỏng",
+        "slug": "danh-muc-hong"
+      }
+    ],
+    "topics": [
+      {
+        "id": "top-corrupted",
+        "title": "Chủ đề hỏng",
+        "slug": "chu-de-hong",
+        "categoryId": "cat-corrupted",
+        "type": "phat-hoc",
+        "description": "Dữ liệu bị sửa đổi trái phép",
+        "content": "Nội dung...",
+        "tags": [],
+        "links": []
+      }
+    ],
+    "notes": [],
+    "resources": [],
+    "tags": []
+  }
+}

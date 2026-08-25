@@ -1,0 +1,44 @@
+{
+  "manifestVersion": "1.0.0",
+  "generatedAt": "2026-08-25T10:00:00.000Z",
+  "canonicalLibraryRoot": "/Users/researcher/Knowledge-Library",
+  "summary": {
+    "totalReferences": 4,
+    "validReferences": 1,
+    "unverifiedReferences": 1,
+    "missingReferences": 1,
+    "outsideLibraryReferences": 1,
+    "resourceCount": 3,
+    "noteCount": 1
+  },
+  "entries": [
+    {
+      "id": "res-1",
+      "sourceType": "resource",
+      "title": "Kinh Chuyển Pháp Luân PDF",
+      "path": "/Users/researcher/Knowledge-Library/PDF/kinh-chuyen-phap-luan.pdf",
+      "status": "exists"
+    },
+    {
+      "id": "res-2",
+      "sourceType": "resource",
+      "title": "Abhidhamma Audio Giảng Giải",
+      "path": "/Users/researcher/Knowledge-Library/Audio/abhidhamma.mp3",
+      "status": "unverified"
+    },
+    {
+      "id": "res-3",
+      "sourceType": "resource",
+      "title": "Tài liệu thất lạc",
+      "path": "/Users/researcher/Knowledge-Library/PDF/missing-document.pdf",
+      "status": "missing"
+    },
+    {
+      "id": "note-1",
+      "sourceType": "note",
+      "title": "Ghi chú tạm ngoài thư viện",
+      "path": "/Users/researcher/Desktop/note-temp.md",
+      "status": "outside_library"
+    }
+  ]
+}
