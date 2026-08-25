@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { DataProvider, useData } from "./context/DataContext";
+import { AppErrorBoundary } from "./components/error/AppErrorBoundary";
 import { Navbar } from "./components/layout/Navbar";
 import { Sidebar } from "./components/layout/Sidebar";
 import { DashboardHome } from "./components/dashboard/DashboardHome";
@@ -192,9 +193,11 @@ function AppContent() {
 
 export function App() {
   return (
-    <DataProvider>
-      <AppContent />
-    </DataProvider>
+    <AppErrorBoundary>
+      <DataProvider>
+        <AppContent />
+      </DataProvider>
+    </AppErrorBoundary>
   );
 }
 
