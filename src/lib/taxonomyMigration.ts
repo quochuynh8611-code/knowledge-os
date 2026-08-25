@@ -201,6 +201,46 @@ export function countTopicsForRootCategory(
   return topics.filter((t) => topicBelongsToRootCategory(t, categories, rootId)).length;
 }
 
+export interface RootCategoryStats {
+  totalTopics: number;
+  completedTopics: number;
+  donePercent: number;
+}
+
+/**
+ * Computes topic count and progress metrics for a root category and all its descendants.
+ */
+export function calculateRootCategoryStats(
+  topics: Topic[],
+  categories: Category[],
+  rootId: string
+): RootCategoryStats {
+  if (!Array.isArray(topics) || !rootId) {
+    return { totalTopics: 0, completedTopics: 0, donePercent: 0 };
+  }
+
+  const activeTopics = topics.filter(
+    (t) => t.visibility !== 'hidden' && topicBelongsToRootCategory(t, categories, rootId)
+  );
+
+  const completed = activeTopics.filter(
+    (t) =>
+      (t.studyProgress?.progress || 0) >= 100 ||
+      t.studyProgress?.status === 'completed'
+  ).length;
+
+  const donePercent =
+    activeTopics.length > 0
+      ? Math.round((completed / activeTopics.length) * 100)
+      : 0;
+
+  return {
+    totalTopics: activeTopics.length,
+    completedTopics: completed,
+    donePercent,
+  };
+}
+
 /**
  * Generates an ASCII URL-friendly slug from a title or category name.
  */

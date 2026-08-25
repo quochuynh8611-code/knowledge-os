@@ -132,6 +132,17 @@
   - Rào chắn: Không persist thuộc tính `command`, tách biệt rõ rệt UI tracker state vs inter-process manifest, không tự động chạy command trực tiếp từ app browser runtime ở increment này.
 - **Kiểm chứng:** 9/9 tests PASS (5/5 `antigravity-pipeline-lib.test.ts` + 4/4 `notebooklm-antigravity-pipeline-ui.test.tsx`).
 
+### 🔹 POST-PHASE 5 MICRO-FIX: Dynamic Dashboard Domain Cards for Root Categories (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-dynamic-dashboard-root-domain-cards.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-dynamic-dashboard-root-domain-cards.md) · [`docs/gherkin/post-phase5-dynamic-dashboard-root-domain-cards.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-dynamic-dashboard-root-domain-cards.feature)
+- **Trọng tâm:**
+  - Đồng bộ hiển thị động các ô thẻ lĩnh vực (Domain Cards) trên Dashboard Home từ danh sách Root Categories (`Category.parentId === null`), thay thế cho block hardcode 2 thẻ cũ ("Phật học" & "Huyền học").
+  - Tích hợp hàm thuần túy `calculateRootCategoryStats` để tính chính xác số chủ đề và % hoàn thành cho từng root domain.
+  - Khi click thẻ lĩnh vực, tự động chuyển `activeTab = 'topics'` và lọc đúng `selectedCategoryFilter = root.id`.
+  - Bảo lưu nguyên vẹn thẻ hệ thống "Đang học" (Tiến độ học trong tuần & thời gian tích lũy).
+- **Kiểm chứng:** 5/5 tests PASS trong `tests/unit/dashboard-root-domain-cards.test.tsx`.
+
+---
+
 ### 🔹 POST-PHASE 5 MICRO-FIX: Dynamic Root Taxonomy – Root Topic Filter & Add Domain CTA (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase5-root-topic-filter-and-add-domain-cta-fix.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-root-topic-filter-and-add-domain-cta-fix.md) · [`docs/gherkin/post-phase5-root-topic-filter-and-add-domain-cta-fix.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-root-topic-filter-and-add-domain-cta-fix.feature)
 - **Trọng tâm:**

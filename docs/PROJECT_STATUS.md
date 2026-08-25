@@ -15,6 +15,14 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 5 Micro-Fix: Dynamic Dashboard Domain Cards for Root Categories:**
+    - **Mục tiêu:** Đồng bộ hiển thị động các ô thẻ lĩnh vực (Domain Cards) trên Dashboard Home từ danh sách Root Categories (`Category.parentId === null`), thay thế cho block hardcode 2 thẻ cũ ("Phật học" & "Huyền học").
+    - **Giải pháp kỹ thuật:**
+      - Sử dụng hàm thuần túy `calculateRootCategoryStats` trong `src/lib/taxonomyMigration.ts` để tính số lượng chủ đề và % hoàn thành cho mỗi root domain theo toàn bộ danh mục con cháu.
+      - Render động `.map()` trên `getRootCategories(categories)` trong `DashboardHome.tsx`.
+      - Khi click thẻ lĩnh vực, tự động chuyển `activeTab = 'topics'` và thiết lập `selectedCategoryFilter = root.id`.
+      - Bảo lưu thẻ hệ thống "Đang học" (System Progress) như một thẻ tổng quan riêng biệt.
+    - **Kiểm thử:** 5/5 tests PASS trong `tests/unit/dashboard-root-domain-cards.test.tsx`.
   - **Post-Phase 5 Micro-Fix: Dynamic Root Taxonomy – Root Topic Filter & Add Domain CTA:**
     - **Mục tiêu:** Khắc phục triệt để hiện tượng Root categories (Phật Học, Huyền Học) hiển thị 0 chủ đề do các chủ đề nằm ở các danh mục con cháu (`cat-tam-tang`, `cat-abhidharma`, `cat-tam-thuc`...), chuẩn hóa lọc và đếm chủ đề theo quan hệ `Category.parentId` đệ quy, đồng thời bổ sung CTA "+ Thêm lĩnh vực" rõ ràng ngay tại giao diện Cây Chủ Đề (`TopicTree`).
     - **Giải pháp kỹ thuật:**

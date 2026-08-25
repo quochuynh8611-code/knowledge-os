@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
+import { Category } from '../../types';
 import {
   Sparkles,
   Compass,
@@ -16,20 +17,28 @@ import {
   Calendar,
   Layers,
   ChevronRight,
+  Folder,
 } from 'lucide-react';
 import { formatMinutesToHours, formatTimeAgo } from '../../lib/spaced-repetition';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
 import { StudyTimerModal } from '../modals/StudyTimerModal';
+import {
+  getRootCategories,
+  getChildCategories,
+  calculateRootCategoryStats,
+} from '../../lib/taxonomyMigration';
 
 export function DashboardHome() {
   const {
     stats,
     topics,
+    categories,
     notes,
     resources,
     openTopicDetail,
     setActiveTab,
     setSearchQuery,
+    setSelectedCategoryFilter,
     reviewQueue,
     startStudyTimer,
   } = useData();
@@ -37,6 +46,50 @@ export function DashboardHome() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
+
+  const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
+
+  const getDomainStyle = (root: Category) => {
+    if (root.slug === 'phat-hoc' || root.type === 'phat-hoc') {
+      return {
+        icon: Sparkles,
+        iconBg: 'bg-amber-100 text-amber-800',
+        hoverBorder: 'hover:border-amber-400',
+        progressBar: 'bg-amber-600',
+        percentText: 'text-amber-800',
+        actionText: 'text-amber-700',
+        arrowHover: 'group-hover:text-amber-700',
+      };
+    }
+    if (root.slug === 'huyen-hoc' || root.type === 'huyen-hoc') {
+      return {
+        icon: Compass,
+        iconBg: 'bg-indigo-100 text-indigo-800',
+        hoverBorder: 'hover:border-indigo-400',
+        progressBar: 'bg-indigo-600',
+        percentText: 'text-indigo-800',
+        actionText: 'text-indigo-700',
+        arrowHover: 'group-hover:text-indigo-700',
+      };
+    }
+    return {
+      icon: Folder,
+      iconBg: 'bg-sky-100 text-sky-800',
+      hoverBorder: 'hover:border-sky-400',
+      progressBar: 'bg-sky-600',
+      percentText: 'text-sky-800',
+      actionText: 'text-sky-700',
+      arrowHover: 'group-hover:text-sky-700',
+    };
+  };
+
+  const getDomainSubtitle = (root: Category) => {
+    const childCats = getChildCategories(categories, root.id);
+    if (childCats.length > 0) {
+      return childCats.slice(0, 4).map((c) => c.name).join(', ');
+    }
+    return root.description || 'Khảo sát chuyên sâu';
+  };
 
   // In-progress topics for "Tiến độ tuần này"
   const inProgressTopics = topics
@@ -102,81 +155,58 @@ export function DashboardHome() {
         )}
       </div>
 
-      {/* 3 Main Stat Cards (Matching PDF Page 5) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
-        {/* Card 1: Phật Học */}
-        <div
-          onClick={() => setActiveTab('topics')}
-          className="bg-white border border-stone-200/90 rounded-2xl p-5 hover:border-amber-400 hover:shadow-md transition cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <span className="font-semibold text-stone-900 text-sm">Phật học</span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-amber-700 transition" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-serif-title text-stone-900">{stats.phatHocTopics}</span>
-            <span className="text-xs text-stone-500 font-medium">chủ đề (topics)</span>
-          </div>
-          <div className="mt-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-stone-500">Mức độ hoàn thành</span>
-              <span className="font-bold text-amber-800">{stats.phatHocDonePercent}% done</span>
-            </div>
-            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-amber-600 h-full rounded-full transition-all duration-700"
-                style={{ width: `${stats.phatHocDonePercent}%` }}
-              />
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
-            <span>Abhidharma, Tam Tạng, Thiền</span>
-            <span className="text-amber-700 font-medium">Khảo sát →</span>
-          </div>
-        </div>
+      {/* Dynamic Root Domain Cards + System Stat Card */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+        {/* Dynamic Root Category Cards */}
+        {rootCategories.map((root) => {
+          const style = getDomainStyle(root);
+          const domainStat = calculateRootCategoryStats(topics, categories, root.id);
+          const Icon = style.icon;
+          const subtitle = getDomainSubtitle(root);
 
-        {/* Card 2: Huyền Học */}
-        <div
-          onClick={() => setActiveTab('topics')}
-          className="bg-white border border-stone-200/90 rounded-2xl p-5 hover:border-indigo-400 hover:shadow-md transition cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
-                <Compass className="w-4 h-4" />
+          return (
+            <div
+              key={root.id}
+              onClick={() => {
+                setSelectedCategoryFilter(root.id);
+                setActiveTab('topics');
+              }}
+              className={`bg-white border border-stone-200/90 rounded-2xl p-5 ${style.hoverBorder} hover:shadow-md transition cursor-pointer relative overflow-hidden group`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg ${style.iconBg} flex items-center justify-center font-bold`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <span className="font-semibold text-stone-900 text-sm">{root.name}</span>
+                </div>
+                <ArrowUpRight className={`w-4 h-4 text-stone-400 ${style.arrowHover} transition`} />
               </div>
-              <span className="font-semibold text-stone-900 text-sm">Huyền học</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold font-serif-title text-stone-900">{domainStat.totalTopics}</span>
+                <span className="text-xs text-stone-500 font-medium">chủ đề (topics)</span>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-stone-500">Mức độ hoàn thành</span>
+                  <span className={`font-bold ${style.percentText}`}>{domainStat.donePercent}% done</span>
+                </div>
+                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`${style.progressBar} h-full rounded-full transition-all duration-700`}
+                    style={{ width: `${domainStat.donePercent}%` }}
+                  />
+                </div>
+              </div>
+              <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
+                <span className="truncate pr-2">{subtitle}</span>
+                <span className={`${style.actionText} font-medium shrink-0`}>Khảo sát →</span>
+              </div>
             </div>
-            <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-indigo-700 transition" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-serif-title text-stone-900">{stats.huyenHocTopics}</span>
-            <span className="text-xs text-stone-500 font-medium">chủ đề (topics)</span>
-          </div>
-          <div className="mt-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-stone-500">Mức độ hoàn thành</span>
-              <span className="font-bold text-indigo-800">{stats.huyenHocDonePercent}% done</span>
-            </div>
-            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-indigo-600 h-full rounded-full transition-all duration-700"
-                style={{ width: `${stats.huyenHocDonePercent}%` }}
-              />
-            </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
-            <span>Kỳ Môn, Thái Ất, Dịch, Tử Vi</span>
-            <span className="text-indigo-700 font-medium">Khảo sát →</span>
-          </div>
-        </div>
+          );
+        })}
 
-        {/* Card 3: Đang học / Tiến độ */}
+        {/* System Card: Đang học / Tiến độ */}
         <div
           onClick={() => setActiveTab('progress')}
           className="bg-white border border-stone-200/90 rounded-2xl p-5 hover:border-emerald-400 hover:shadow-md transition cursor-pointer relative overflow-hidden group"
