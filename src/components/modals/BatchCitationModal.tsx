@@ -4,6 +4,11 @@ import {
   generateBatchCitations,
   getBatchCitationDownloadFilename,
 } from '../../lib/citationGenerator';
+import {
+  CitationFormat,
+  getStoredCitationFormat,
+  setStoredCitationFormat,
+} from '../../lib/citationPreferences';
 import { X, Copy, Check, FileDown, BookOpen, Code, FileText, Library } from 'lucide-react';
 
 interface BatchCitationModalProps {
@@ -12,10 +17,8 @@ interface BatchCitationModalProps {
   resources: Resource[];
 }
 
-type CitationFormat = 'apa' | 'bibtex' | 'markdown';
-
 export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitationModalProps) {
-  const [format, setFormat] = useState<CitationFormat>('apa');
+  const [format, setFormat] = useState<CitationFormat>(getStoredCitationFormat);
   const [copied, setCopied] = useState(false);
 
   const batchContent = useMemo(() => {
@@ -27,6 +30,12 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
   }, [format]);
 
   if (!isOpen) return null;
+
+  const handleFormatChange = (newFormat: CitationFormat) => {
+    setFormat(newFormat);
+    setStoredCitationFormat(newFormat);
+    setCopied(false);
+  };
 
   const handleCopyAll = async () => {
     try {
@@ -87,7 +96,7 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
         <div className="flex border-b border-stone-200 px-6 bg-stone-100/50">
           <button
             data-testid="batch-tab-apa"
-            onClick={() => { setFormat('apa'); setCopied(false); }}
+            onClick={() => handleFormatChange('apa')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'apa'
                 ? 'border-amber-700 text-amber-900'
@@ -98,7 +107,7 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
           </button>
           <button
             data-testid="batch-tab-bibtex"
-            onClick={() => { setFormat('bibtex'); setCopied(false); }}
+            onClick={() => handleFormatChange('bibtex')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'bibtex'
                 ? 'border-amber-700 text-amber-900'
@@ -109,7 +118,7 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
           </button>
           <button
             data-testid="batch-tab-markdown"
-            onClick={() => { setFormat('markdown'); setCopied(false); }}
+            onClick={() => handleFormatChange('markdown')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'markdown'
                 ? 'border-amber-700 text-amber-900'

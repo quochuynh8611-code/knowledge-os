@@ -37,6 +37,7 @@ vi.mock('../../src/context/DataContext', () => ({
 
 describe('Scholar Citation Modal UI Integration', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     Object.assign(navigator, {
       clipboard: {

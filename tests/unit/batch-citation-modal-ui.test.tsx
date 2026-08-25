@@ -52,6 +52,7 @@ vi.mock('../../src/context/DataContext', () => ({
 
 describe('Scholar Batch Citation Modal UI Integration', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     mockCurrentResources = sampleResources;
     Object.assign(navigator, {

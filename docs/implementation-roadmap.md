@@ -12,7 +12,7 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 37 test suites / 275 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 39 test suites / 286 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
@@ -22,7 +22,7 @@
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
        ├── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
-       └── POST-PHASE 5: Scholar Citation & Batch Export Generators (Resource Focus) [VERIFIED]
+       └── POST-PHASE 5: Scholar Citation, Batch Export & Preference Hardening (Resource Focus) [VERIFIED]
 ```
 
 ---
@@ -103,6 +103,16 @@
 
 ---
 
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Citation Format Preference Hardening (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-citation-format-preference.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-citation-format-preference.md) · [`docs/gherkin/post-phase5-citation-format-preference.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-citation-format-preference.feature)
+- **Trọng tâm:**
+  - Tách riêng module [`src/lib/citationPreferences.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationPreferences.ts) quản lý cấu hình client-side (`knowledge_os_citation_format_pref`) với 3 định dạng `apa` | `bibtex` | `markdown`.
+  - Cơ chế phòng vệ tự động: Mọi giá trị rỗng, không hợp lệ hoặc parse lỗi từ LocalStorage đều tự động chuyển về `'apa'` mà không ném exception.
+  - Đồng bộ hai chiều mượt mà giữa [`CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) và [`BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx), chuyển tab ở modal này được lưu và áp dụng ngay khi mở modal kia.
+- **Kiểm chứng:** 11/11 tests PASS (5/5 `citation-format-preference.test.ts` + 6/6 `citation-modal-preference-ui.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 5 MICRO-INCREMENT: Batch Citation Export for Filtered Resources (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase5-batch-citation-export.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-batch-citation-export.md) · [`docs/gherkin/post-phase5-batch-citation-export.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-batch-citation-export.feature)
 - **Trọng tâm:**
@@ -139,6 +149,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **37 / 37 test files PASS — 275 / 275 tests PASS (100% GREEN in 9.62s)**.
+- **Toàn bộ Test Suite:** ✅ **39 / 39 test files PASS — 286 / 286 tests PASS (100% GREEN in 8.54s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

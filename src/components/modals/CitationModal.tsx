@@ -1,6 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Resource } from '../../types';
 import { generateAllCitations } from '../../lib/citationGenerator';
+import {
+  CitationFormat,
+  getStoredCitationFormat,
+  setStoredCitationFormat,
+} from '../../lib/citationPreferences';
 import { X, Copy, Check, Quote, BookOpen, Code, FileText } from 'lucide-react';
 
 interface CitationModalProps {
@@ -9,10 +14,8 @@ interface CitationModalProps {
   resource: Resource | null;
 }
 
-type CitationFormat = 'apa' | 'bibtex' | 'markdown';
-
 export function CitationModal({ isOpen, onClose, resource }: CitationModalProps) {
-  const [format, setFormat] = useState<CitationFormat>('apa');
+  const [format, setFormat] = useState<CitationFormat>(getStoredCitationFormat);
   const [copied, setCopied] = useState(false);
 
   const citations = useMemo(() => {
@@ -23,6 +26,12 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
   if (!isOpen || !resource || !citations) return null;
 
   const currentCitation = citations[format];
+
+  const handleFormatChange = (newFormat: CitationFormat) => {
+    setFormat(newFormat);
+    setStoredCitationFormat(newFormat);
+    setCopied(false);
+  };
 
   const handleCopy = async () => {
     try {
@@ -67,7 +76,7 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
         <div className="flex border-b border-stone-200 px-6 bg-stone-100/50">
           <button
             data-testid="tab-citation-apa"
-            onClick={() => { setFormat('apa'); setCopied(false); }}
+            onClick={() => handleFormatChange('apa')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'apa'
                 ? 'border-amber-700 text-amber-900'
@@ -78,7 +87,7 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
           </button>
           <button
             data-testid="tab-citation-bibtex"
-            onClick={() => { setFormat('bibtex'); setCopied(false); }}
+            onClick={() => handleFormatChange('bibtex')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'bibtex'
                 ? 'border-amber-700 text-amber-900'
@@ -89,7 +98,7 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
           </button>
           <button
             data-testid="tab-citation-markdown"
-            onClick={() => { setFormat('markdown'); setCopied(false); }}
+            onClick={() => handleFormatChange('markdown')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
               format === 'markdown'
                 ? 'border-amber-700 text-amber-900'
