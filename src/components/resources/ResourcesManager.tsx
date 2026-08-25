@@ -14,9 +14,11 @@ import {
   Eye,
   Calendar,
   Sparkles,
+  Quote,
 } from 'lucide-react';
 import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
+import { CitationModal } from '../modals/CitationModal';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 
 export function ResourcesManager() {
@@ -27,6 +29,7 @@ export function ResourcesManager() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
+  const [citingResource, setCitingResource] = useState<Resource | null>(null);
 
   const filteredResources = useMemo(() => {
     return resources.filter((r) => {
@@ -180,12 +183,21 @@ export function ResourcesManager() {
             </div>
 
             <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-              <button
-                onClick={() => setViewingResource(res)}
-                className="px-3 py-1.5 bg-stone-100 hover:bg-indigo-50 text-indigo-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition"
-              >
-                <Eye className="w-3.5 h-3.5 text-indigo-700" /> Xem trước
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setViewingResource(res)}
+                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-indigo-50 text-indigo-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition"
+                >
+                  <Eye className="w-3.5 h-3.5 text-indigo-700" /> Xem trước
+                </button>
+                <button
+                  onClick={() => setCitingResource(res)}
+                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-amber-50 text-amber-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition"
+                  title="Trích dẫn tài liệu"
+                >
+                  <Quote className="w-3.5 h-3.5 text-amber-700" /> Trích dẫn
+                </button>
+              </div>
 
               <div className="flex items-center gap-1">
                 {res.url && (
@@ -223,6 +235,7 @@ export function ResourcesManager() {
       {/* Modals */}
       <ResourceFormModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
       <ResourceViewerModal resource={viewingResource} onClose={() => setViewingResource(null)} />
+      <CitationModal isOpen={!!citingResource} onClose={() => setCitingResource(null)} resource={citingResource} />
     </div>
   );
 }

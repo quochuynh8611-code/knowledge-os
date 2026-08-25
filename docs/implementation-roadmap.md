@@ -12,7 +12,7 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 33 test suites / 252 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 35 test suites / 264 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
@@ -21,7 +21,8 @@
        ├── PHASE 2C: Data Management Modal & Confirmation Gate UI (ADR-009 & Error Separation) [VERIFIED]
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
-       └── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
+       ├── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
+       └── POST-PHASE 5: Scholar Citation Generator (Resource Focus) [VERIFIED]
 ```
 
 ---
@@ -98,7 +99,19 @@
 - **Quality Gates cho Phase 5:**
   - 100% Spec & ADR được phê duyệt thủ công trước khi viết code.
   - Gherkin Scenarios và Failing Tests được tạo trước cho từng Workstream.
-  - Đảm bảo toàn bộ 33 test files duy trì trạng thái 100% PASS.
+  - Đảm bảo toàn bộ test files duy trì trạng thái 100% PASS.
+
+---
+
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Scholar Citation Generator (Resource Focus) (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-scholar-citation-generator.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-scholar-citation-generator.md) · [`docs/gherkin/post-phase5-scholar-citation-generator.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-scholar-citation-generator.feature)
+- **Trọng tâm:**
+  - Module tiện ích thuần túy [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) sinh trích dẫn học thuật đa định dạng: **APA 7th Edition**, **BibTeX** (`@book`, `@article`, `@misc`), và **Markdown Footnote** (`[^1]`).
+  - Xử lý Fallback thông minh: Tự động phát hiện năm từ `notes`/`title`/`createdAt`, đẩy `title` lên trước khi khuyết tác giả trong APA, và gán `[Khuyết danh]` trong BibTeX.
+  - Sinh Citation Key tất định không dấu chuẩn ASCII: `${authorSlug}_${year}_${titleSlug}`.
+  - Hộp thoại giao diện [`src/components/modals/CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) với 3 tab định dạng, ô xem trước mono và nút Sao Chép phản hồi tại chỗ tức thì (inline feedback, không dùng toast system ngoài).
+  - Điểm chạm kích hoạt tinh gọn: Nút "Trích dẫn" (icon Quote) tích hợp trực tiếp trên thẻ tài liệu tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx).
+- **Kiểm chứng:** 12/12 tests PASS (8/8 `citation-generator-lib.test.ts` + 4/4 `citation-modal-ui.test.tsx`).
 
 ---
 
@@ -115,6 +128,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **33 / 33 test files PASS — 252 / 252 tests PASS (100% GREEN in 8.67s)**.
+- **Toàn bộ Test Suite:** ✅ **35 / 35 test files PASS — 264 / 264 tests PASS (100% GREEN in 14.85s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

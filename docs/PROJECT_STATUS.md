@@ -2,23 +2,29 @@
 
 > **Cập nhật lần cuối:** 2026-08-25
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · DATA MANAGEMENT & ERROR TAXONOMY (PHASE 2C.4 & 2C.4B) VERIFIED**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · SCHOLAR CITATION GENERATOR (POST-PHASE 5 MICRO-INCREMENT) VERIFIED**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & KIỂM THỬ XANH 100%**.
+- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (264 TESTS GREEN 100%)**.
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
-- **Gia Cố Giao Thức & Quản Lý Dữ Liệu An Toàn (Recent Hardening Checkpoints):**
+- **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 5 Micro-Increment: Scholar Citation Generator (Resource Focus):**
+    - Module thuần túy `src/lib/citationGenerator.ts` sinh trích dẫn học thuật tự động theo chuẩn **APA 7th**, **BibTeX** (`@book`, `@article`, `@misc`), và **Markdown Footnote** (`[^1]`).
+    - Quy tắc Fallback linh hoạt: Tự động trích xuất năm từ `notes`/`title`/`createdAt` (hoặc `n.d.`), chuyển tiêu đề lên đầu khi thiếu tác giả trong APA, và gán `author = {[Khuyết danh]}` trong BibTeX.
+    - Citation Key tất định: Sinh slug key chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.
+    - Điểm chạm UI tinh gọn: Nút "Trích dẫn" (icon Quote) trên từng thẻ tài liệu trong `ResourcesManager.tsx` mở `CitationModal.tsx` với 3 tab định dạng và nút sao chép có phản hồi tức thì tại chỗ (inline feedback, không dùng toast system ngoài).
+    - Kiểm thử: 12/12 tests PASS (8/8 lib + 4/4 UI modal).
+  - **Capability vs Connectivity Error Separation (Post-Phase 2C.4 Hardening, Commit `b0c20e0`):** Phân định rành mạch giữa lỗi năng lực thiết kế ngoại tuyến (`isOfflineCapability` kích hoạt khi lỗi chứa `UNSUPPORTED_OFFLINE_OPERATION`) và lỗi mất kết nối máy chủ / runtime (`connectionError` kèm Health Badge `unhealthy` *"PostgreSQL Mất Kết Nối"*), không đánh đồng sự cố mạng với kho lưu trữ LocalStorage.
   - **Obsidian URI Integration Fix (Commit `521291d`, doc `36b1ea9`):** Chuẩn hóa định danh Vault Identifier (hỗ trợ cả tên Vault và đường dẫn tuyệt đối macOS/Windows), bảo vệ chống nhầm thư mục con `01_Inbox`, làm sạch legacy LocalStorage, và chuẩn hóa relative file path.
-  - **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):** Mở rộng Phase 2b thành quy trình làm việc có điều phối (mediated workflow) qua Antigravity 2.0; sinh Task Prompt chuyên dụng cho NotebookLM skill, làm giàu metadata artifact (`source: "antigravity-2.0"`, `target: "notebooklm"`, `status: "imported"`), hỗ trợ tải tệp Markdown tự động parse, kiểm tra tính hợp lệ đầu vào và tuyên bố rõ ràng không thực hiện direct sync API.
-  - **Data Management Modal & Confirmation Gate UI (Phase 2C.4 - ADR-009, Commit `e012537`):** Hoàn tất giao diện quản lý dữ liệu sao lưu & phục hồi thảm họa máy chủ trong `ExportImportModal.tsx`; tích hợp Health Badge thời gian thực, xuất snapshot máy chủ Semver 2.x có SHA-256 Checksum, bộ đọc tệp Snapshot phía Client kiểm tra Schema/Checksum, bộ chọn chế độ Merge/Replace, Confirmation Gate với chuỗi ký tự hoa `XÁC NHẬN THAY THẾ`, cơ chế nạp lại dữ liệu `reloadAllData` và cô lập lỗi `rehydrate_failed` bảo toàn in-memory state cũ.
-  - **Capability vs Connectivity Error Separation (Post-Phase 2C.4 Hardening):** Phân định rành mạch giữa lỗi năng lực thiết kế ngoại tuyến (`isOfflineCapability` kích hoạt khi lỗi chứa `UNSUPPORTED_OFFLINE_OPERATION`) và lỗi mất kết nối máy chủ / runtime (`connectionError` kèm Health Badge `unhealthy` *"PostgreSQL Mất Kết Nối"*), không đánh đồng sự cố mạng với kho lưu trữ LocalStorage.
+  - **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):** Mở rộng Phase 2b thành quy trình làm việc có điều phối qua Antigravity 2.0; sinh Task Prompt chuyên dụng cho NotebookLM skill, làm giàu metadata artifact, hỗ trợ parse tệp Markdown tự động.
+  - **Data Management Modal & Confirmation Gate UI (Phase 2C.4 - ADR-009, Commit `e012537`):** Hoàn tất giao diện quản lý dữ liệu sao lưu & phục hồi thảm họa máy chủ trong `ExportImportModal.tsx`.
 - **Quy tắc bất biến đã tuân thủ:** OODA, Read-before-write, Test-first, Zero Binary Ingestion, Dual-Tier Resilience, Fast-fail Security Guardrails.
 
 ---
@@ -50,7 +56,7 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **33 / 33 test files PASS — 252 / 252 tests PASS (100% GREEN in 8.67s)**.
+- **Regression Test Suite:** ✅ **35 / 35 test files PASS — 264 / 264 tests PASS (100% GREEN in 14.85s)**.
 - **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
 - **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (15/15 PASS) · `obsidian-bridge-integration.test.tsx` (8/8 PASS).
 - **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (13/13 PASS) · `notebooklm-studio-integration.test.tsx` (10/10 PASS).
@@ -61,6 +67,7 @@
 - **Phase 5A Suites:** ✅ `knowledge-graph-lib.test.ts` (6/6 PASS) · `knowledge-graph-ui-integration.test.tsx` (4/4 PASS).
 - **Phase 5B Suites:** ✅ `study-analytics-lib.test.ts` (6/6 PASS) · `study-analytics-ui-integration.test.tsx` (4/4 PASS).
 - **Phase 5C Suite:** ✅ `snapshot-maintenance.test.ts` (10/10 PASS).
+- **Scholar Citation Generator Suites (Post-Phase 5 Micro-Increment):** ✅ `citation-generator-lib.test.ts` (8/8 PASS) · `citation-modal-ui.test.tsx` (4/4 PASS) *(Tổng 12/12 PASS)*.
 - **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
 - **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
 - **Git Diff & Whitespace Check:** ✅ `git diff --check` đạt **0 issues**.
@@ -70,36 +77,42 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Scholar Search Engine (5D):** Module thuần túy tại [`src/lib/scholarSearch.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/scholarSearch.ts) thực thi chuẩn hóa chuỗi tiếng Việt/IAST, tính điểm trọng số và tìm kiếm hợp nhất 3 collections. Tích hợp trong `useCommandPalette.ts` và `AdvancedSearch.tsx`.
-2. **Knowledge Graph & Traversal Explorer (5A):** Module thuần túy tại [`src/lib/knowledgeGraph.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/knowledgeGraph.ts) thực thi dựng đồ thị in-memory, duyệt đa tầng BFS có giới hạn an toàn (`maxDepth`, `maxNodesLimit`), chống vòng lặp vô tận, tự động loại bỏ dangling edges và lọc theo quan hệ ngữ nghĩa/cấu trúc. Tích hợp trực tiếp trong `KnowledgeGraph.tsx` với bộ lọc Semantic Edge, tính bậc kết nối (Degree) và chế độ khảo cứu Focus Mode.
-3. **Study Session Analytics & Retention Dashboard (5B):** Module thuần túy tại [`src/lib/studyAnalytics.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/studyAnalytics.ts) thực thi phân tích trí nhớ dự phóng Ebbinghaus ($R = e^{-\Delta t / S} \times 100\%$), phân loại 4 giai đoạn thuần thục kiến thức, dự báo hàng đợi ôn tập 7 ngày và đường cong quên dự phóng 30 ngày. Tích hợp trực tiếp trong `StudyProgressView.tsx` với 4 thẻ KPI dự phóng, hàng huy hiệu tóm tắt và biểu đồ Recharts BarChart.
-4. **Snapshot Maintenance & Headless CLI Engine (5C):** Module thuần túy tại [`src/lib/snapshotManager.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/snapshotManager.ts) và kịch bản dòng lệnh [`scripts/backup-snapshot.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/scripts/backup-snapshot.ts):
+1. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
+   - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) định dạng trích dẫn theo 3 chuẩn: APA 7th Edition, BibTeX (`@book`, `@article`, `@misc`), và Markdown Footnote (`[^1]`).
+   - **Xử Lý Fallback Chuẩn Mực:** Trích xuất năm thông minh từ `notes`/`title`/`createdAt`, đẩy `title` lên trước khi khuyết tác giả trong APA, và gán placeholder `[Khuyết danh]` trong BibTeX.
+   - **Citation Key Tất Định:** Hàm `generateBibTeXKey` sinh slug chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.
+   - **Giao Diện Hộp Thoại Trích Dẫn:** [`src/components/modals/CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) cung cấp 3 tab chuyển đổi mượt mà, khung xem trước kiểu mono và nút Sao Chép phản hồi tại chỗ tức thì (inline feedback).
+   - **Điểm Chạm Kích Hoạt:** Tích hợp trực tiếp trên thẻ tài liệu tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx).
+2. **Scholar Search Engine (5D):** Module thuần túy tại [`src/lib/scholarSearch.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/scholarSearch.ts) thực thi chuẩn hóa chuỗi tiếng Việt/IAST, tính điểm trọng số và tìm kiếm hợp nhất 3 collections. Tích hợp trong `useCommandPalette.ts` và `AdvancedSearch.tsx`.
+3. **Knowledge Graph & Traversal Explorer (5A):** Module thuần túy tại [`src/lib/knowledgeGraph.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/knowledgeGraph.ts) thực thi dựng đồ thị in-memory, duyệt đa tầng BFS có giới hạn an toàn (`maxDepth`, `maxNodesLimit`), chống vòng lặp vô tận, tự động loại bỏ dangling edges và lọc theo quan hệ ngữ nghĩa/cấu trúc. Tích hợp trực tiếp trong `KnowledgeGraph.tsx` với bộ lọc Semantic Edge, tính bậc kết nối (Degree) và chế độ khảo cứu Focus Mode.
+4. **Study Session Analytics & Retention Dashboard (5B):** Module thuần túy tại [`src/lib/studyAnalytics.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/studyAnalytics.ts) thực thi phân tích trí nhớ dự phóng Ebbinghaus ($R = e^{-\Delta t / S} \times 100\%$), phân loại 4 giai đoạn thuần thục kiến thức, dự báo hàng đợi ôn tập 7 ngày và đường cong quên dự phóng 30 ngày. Tích hợp trực tiếp trong `StudyProgressView.tsx` với 4 thẻ KPI dự phóng, hàng huy hiệu tóm tắt và biểu đồ Recharts BarChart.
+5. **Snapshot Maintenance & Headless CLI Engine (5C):** Module thuần túy tại [`src/lib/snapshotManager.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/snapshotManager.ts) và kịch bản dòng lệnh [`scripts/backup-snapshot.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/scripts/backup-snapshot.ts):
    - **Tạo Snapshot An Toàn:** Tự động trích xuất 5 collections, tính SHA-256 Checksum tất định và đóng gói header `BackupSnapshotSchema` Semver 2.x.
    - **Ghi Nguyên Tử (Atomic Write):** Ghi ra `.snapshot-*.tmp` $\rightarrow$ `fs.renameSync`, tự xóa tệp tạm nếu có sự cố (Zero Partial File).
    - **Xác Minh 2 Lớp:** Kiểm tra cấu trúc Schema và khớp SHA-256 Checksum, phân biệt rõ `VALID`, `INVALID_SCHEMA`, `INVALID_CHECKSUM`.
    - **Dọn Dẹp Tự Động (Retention Pruning):** Lọc theo regex tên file `snapshot-*.json`, giữ $N$ bản ghi mới nhất, bảo toàn tuyệt đối các file ngoài lề (`.txt`, `.gitkeep`).
    - **NPM Scripts:** Cung cấp `npm run snapshot:create`, `npm run snapshot:dry-run`, `npm run snapshot:verify`, `npm run snapshot:prune`.
-5. **Obsidian URI Protocol & Path Resolution Hardening (Commit `521291d`, doc `36b1ea9`):**
+6. **Obsidian URI Protocol & Path Resolution Hardening (Commit `521291d`, doc `36b1ea9`):**
    - **Chuẩn Hóa Vault Identifier:** Hàm thuần túy `normalizeObsidianVaultIdentifier` trong [`src/lib/obsidian.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/obsidian.ts) tự động trích xuất tên Vault từ cả plain string, đường dẫn tuyệt đối macOS/Linux (`/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian` $\rightarrow$ `Phat-Hoc-Obsidian`), hoặc Windows (`C:\...`).
    - **Rào Chắn Thư Mục Con (Child Folder Guardrail):** Sử dụng regex `OBSIDIAN_CHILD_DIR_PATTERNS` để ngăn chặn các đường dẫn trỏ vào thư mục con (như `01_Inbox`, `_inbox`, `.obsidian`) bị gán nhầm làm tên Vault; tự động truy xuất thư mục cha là Vault Root.
    - **Làm Sạch Đường Dẫn Tương Đối:** Hàm `normalizeObsidianFilePath` loại bỏ leading slashes và chuẩn hóa dấu phân cách, đảm bảo URI query parameter `file` là đường dẫn tương đối chính xác từ Vault Root.
    - **Tự Động Làm Sạch Legacy LocalStorage:** Hàm `getStoredVaultName()` và `setStoredVaultName()` tự động khử bỏ các chuỗi đường dẫn tuyệt đối cũ lưu trong LocalStorage khi đọc/ghi.
    - **Tính Nhất Quán Giao Thức:** Cả hai giao thức `obsidian://open` và `obsidian://new` đều chia sẻ 100% normalization contract.
    - **Giới Hạn Phạm Vi & Bảo Toàn:** Không làm thay đổi database schema, backend API, hay logic xuất ZIP của Vault.
-6. **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):**
+7. **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):**
    - **Task Prompt Generator:** Hàm `generateNotebookLMTaskPrompt` trong [`src/lib/notebooklm.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/notebooklm.ts) sinh prompt chỉ thị rõ ràng cho Antigravity 2.0 kích hoạt NotebookLM skill theo 5 loại artifact (`study_guide`, `audio_overview_summary`, `briefing_doc`, `faq`, `source_pack`).
    - **Metadata Nguồn/Đích Rõ Ràng:** Mở rộng `NotebookLMArtifact` với `source: "antigravity-2.0"`, `target: "notebooklm"`, `status: "imported"`. Tự động gán và phục hồi an toàn cho các artifact cũ trong LocalStorage.
    - **Bộ Lọc Hợp Lệ & Invariants:** Hàm `validateArtifactImportInput` từ chối nội dung rỗng và yêu cầu `notebookUrl` phải bắt đầu bằng `http://` hoặc `https://`.
    - **Nạp & Phân Tích Cú Pháp Markdown:** Hàm `parseArtifactMarkdownFile` tự động trích xuất tiêu đề H1 và suy luận phân loại artifact khi người dùng nạp tệp `.md`/`.txt`.
    - **Giao Diện & Minh Bạch Kiến Trúc:** `NotebookLMStudioModal.tsx` hiển thị thông điệp cam kết bảo mật `Mediated Workflow via Antigravity 2.0 • 100% Client-side Privacy • No direct cloud sync required`, không gây ngộ nhận về kết nối trực tiếp hai chiều.
-7. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
+8. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
    - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
    - **Tách Biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (khi gặp lỗi `UNSUPPORTED_OFFLINE_OPERATION` từ kho lưu trữ LocalStorage) vs `connectionError` (khi gặp lỗi mạng/server 500 ném trạng thái `unhealthy` đỏ *"PostgreSQL Mất Kết Nối"*), xóa bỏ hoàn toàn sự nhập nhằng trong trải nghiệm người dùng.
    - **Server-Authoritative Snapshot Export:** Tải về snapshot máy chủ hoàn chỉnh với định dạng JSON Semver 2.x có mã băm SHA-256 tất định.
    - **Client-Side Schema & Checksum Verification:** Khi người dùng chọn tệp snapshot, modal kiểm tra cấu trúc schema bằng `BackupSnapshotSchema` và tính toán SHA-256 Checksum bằng `calculateBackupChecksum`, chặn đứng tệp hỏng/bị sửa đổi trước khi gửi lên máy chủ.
    - **Confirmation Gate An Toàn:** Chế độ `replace` bắt buộc người dùng gõ chính xác 100% chuỗi ký tự hoa `XÁC NHẬN THAY THẾ` để mở khóa nút thực thi.
    - **Rehydration Lifecycle & Error Isolation:** Sau khi khôi phục thành công trên server, modal gọi `reloadAllData()` làm tươi dữ liệu in-memory; nếu bước rehydration thất bại, trạng thái chuyển sang `rehydrate_failed` và bảo toàn nguyên vẹn dữ liệu cũ, không xóa state.
-8. **Tính Toàn Vẹn Hệ Thống:**
+9. **Tính Toàn Vẹn Hệ Thống:**
    - [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
