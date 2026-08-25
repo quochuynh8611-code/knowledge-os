@@ -36,6 +36,7 @@ export interface Note {
   topicTitle?: string;
   title: string;
   content: string; // Markdown formatted
+  sourcePath?: string; // Optional local Markdown / Obsidian file path
   type: NoteType;
   isPrivate: boolean;
   tags: string[];

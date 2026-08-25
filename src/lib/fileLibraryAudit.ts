@@ -264,9 +264,14 @@ export function auditFileReferences(
         }
       }
     } else {
-      // In browser or environments without direct filesystem access, mark as unverified
-      unverifiedCount++;
+      // In browser or environments without direct filesystem access
       const pathClass = classifyPathRelativeToRoot(normPath, libraryRootPath);
+      const isOutside = pathClass === 'outside';
+      if (isOutside) {
+        outsideLibraryCount++;
+      } else {
+        unverifiedCount++;
+      }
       entries.push({
         id: resource.id,
         sourceType: 'resource',
@@ -276,18 +281,15 @@ export function auditFileReferences(
         rawPath,
         resolvedPath: normPath,
         relativeToRoot: computeRelativePath(normPath, libraryRootPath),
-        status: pathClass === 'outside' ? 'outside_library' : 'unverified',
+        status: isOutside ? 'outside_library' : 'unverified',
         lastCheckedAt: auditedAt,
       });
-      if (pathClass === 'outside') {
-        outsideLibraryCount++;
-      }
     }
   }
 
   // 2. Audit Notes (if note has sourcePath metadata)
   for (const note of notes) {
-    const rawPath = (note as any).sourcePath as string | undefined;
+    const rawPath = note.sourcePath;
     const normPath = normalizeFilePath(rawPath);
 
     if (!normPath) {
@@ -360,8 +362,13 @@ export function auditFileReferences(
         }
       }
     } else {
-      unverifiedCount++;
       const pathClass = classifyPathRelativeToRoot(normPath, libraryRootPath);
+      const isOutside = pathClass === 'outside';
+      if (isOutside) {
+        outsideLibraryCount++;
+      } else {
+        unverifiedCount++;
+      }
       entries.push({
         id: note.id,
         sourceType: 'note',
@@ -371,12 +378,9 @@ export function auditFileReferences(
         rawPath,
         resolvedPath: normPath,
         relativeToRoot: computeRelativePath(normPath, libraryRootPath),
-        status: pathClass === 'outside' ? 'outside_library' : 'unverified',
+        status: isOutside ? 'outside_library' : 'unverified',
         lastCheckedAt: auditedAt,
       });
-      if (pathClass === 'outside') {
-        outsideLibraryCount++;
-      }
     }
   }
 

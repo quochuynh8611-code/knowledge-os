@@ -28,6 +28,7 @@ export function NotesManager() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
 
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
@@ -226,6 +227,30 @@ export function NotesManager() {
                 <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
                   {renderWikiLinks(note.content)}
                 </div>
+
+                {/* Source Path Display */}
+                {note.sourcePath && (
+                  <div className="p-2 bg-stone-50 border border-stone-200 rounded-xl flex items-center justify-between text-[11px] font-mono text-stone-700 mt-2">
+                    <span className="truncate flex-1 mr-2" title={note.sourcePath}>
+                      📄 {note.sourcePath}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                            navigator.clipboard.writeText(note.sourcePath!).catch(() => {});
+                          }
+                          setCopiedNoteId(note.id);
+                          setTimeout(() => setCopiedNoteId(null), 2000);
+                        }}
+                        className="px-2 py-0.5 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded text-[10px] font-sans font-medium transition cursor-pointer"
+                        title="Sao chép đường dẫn tệp"
+                      >
+                        {copiedNoteId === note.id ? 'Đã chép!' : 'Chép path'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-xs">
@@ -243,7 +268,7 @@ export function NotesManager() {
                       setEditingNote(note);
                       setShowAddModal(true);
                     }}
-                    className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition"
+                    className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition cursor-pointer"
                     title="Sửa ghi chú"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -252,7 +277,7 @@ export function NotesManager() {
                     onClick={() => {
                       if (window.confirm('Xóa ghi chú này?')) deleteNote(note.id);
                     }}
-                    className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                    className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                     title="Xóa ghi chú"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

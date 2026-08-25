@@ -15,6 +15,15 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6d Micro-Increment: Note Source Path Consistency & Unified Reference Audit:**
+    - **Mục tiêu:** Đưa quản lý đường dẫn tệp nguồn ghi chú (`Note.sourcePath`) lên cùng chuẩn vận hành với tài liệu (`Resource.filePath`), tích hợp kiểm toán tệp hợp nhất trong Bảng Kê Manifest và bổ sung tiện ích hiển thị/sao chép đường dẫn trên thẻ ghi chú.
+    - **Giải pháp kỹ thuật:**
+      - `src/types/index.ts`: Mở rộng thuộc tính tùy chọn `sourcePath?: string` trên interface `Note` đảm bảo tương thích ngược 100%.
+      - `src/components/modals/NoteFormModal.tsx`: Thêm trường nhập `sourcePath`, chuẩn hóa qua `normalizeFilePath`, cảnh báo thời gian thực khi tệp nằm ngoài `canonicalLibraryRoot`.
+      - `src/components/notes/NotesManager.tsx`: Hiển thị đường dẫn tệp nguồn mono trên thẻ ghi chú kèm nút sao chép 1-click `Chép path` (`copiedNoteId`).
+      - `src/lib/fileLibraryAudit.ts`: Duyệt kiểm toán ghi chú nhất quán, không tính trùng `unverifiedCount` khi `outsideLibraryCount` được ghi nhận trong browser sandbox mode.
+      - `src/components/modals/ExportImportModal.tsx`: Tăng cường callout phân định rõ: App Snapshot JSON bảo toàn toàn bộ nội dung ghi chú trong ứng dụng, trong khi tệp `.md` trên ổ đĩa vật lý cần sao chép cùng thư mục tệp.
+    - **Kiểm thử:** 5/5 tests PASS trong 3 test suites mới (`note-source-path-normalization.test.ts`, `unified-reference-manifest.test.ts`, `note-reference-ui.test.tsx`).
   - **Post-Phase 6c Micro-Increment: Resource Path Normalization & Guided Backup UX Hardening:**
     - **Mục tiêu:** Tự động chuẩn hóa đường dẫn tệp cục bộ (`filePath`) khi lưu tài liệu, xác thực chặt chẽ chống đường dẫn rỗng ở chế độ tệp trên máy, cảnh báo sớm khi tệp nằm ngoài thư viện gốc `canonicalLibraryRoot`, bổ sung khối hiển thị đường dẫn tệp chuẩn hóa kèm nút sao chép 1-click trong `ResourceViewerModal`, và tăng cường thông báo phân định rõ ràng trên giao diện xuất Snapshot JSON.
     - **Giải pháp kỹ thuật:**

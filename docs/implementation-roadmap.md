@@ -229,6 +229,18 @@
 
 ---
 
+### 🔹 POST-PHASE 6D MICRO-INCREMENT: Note Source Path Consistency & Unified Reference Audit (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6d-note-source-path-consistency-and-unified-reference-audit.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6d-note-source-path-consistency-and-unified-reference-audit.md) · [`docs/gherkin/post-phase6d-note-source-path-consistency-and-unified-reference-audit.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6d-note-source-path-consistency-and-unified-reference-audit.feature)
+- **Trọng tâm:**
+  - Bổ sung `sourcePath?: string` vào mô hình `Note` đảm bảo tương thích ngược 100%.
+  - Tích hợp chuẩn hóa `normalizeFilePath` và cảnh báo ngoài thư viện gốc `canonicalLibraryRoot` trong `NoteFormModal.tsx`.
+  - Hiển thị đường dẫn tệp nguồn và nút 1-click copy path (`Chép path`) trên thẻ ghi chú trong `NotesManager.tsx`.
+  - Hợp nhất kiểm toán trong Bảng Kê Manifest gồm cả `resource` và `note` theo cùng định dạng chuẩn hóa.
+  - Tăng cường thông điệp phân định phạm vi sao lưu Snapshot JSON vs tệp Markdown (.md) trên ổ đĩa vật lý trong `ExportImportModal.tsx`.
+- **Kiểm chứng:** 5/5 tests PASS (2/2 `note-source-path-normalization.test.ts` + 1/1 `unified-reference-manifest.test.ts` + 2/2 `note-reference-ui.test.tsx`).
+
+---
+
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
 
 1. **Duy Trì & Giám Sát Vận Hành (Operational Maintenance):**
@@ -242,6 +254,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **45 / 45 test files PASS — 311 / 311 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite:** ✅ **56 / 56 test files PASS — 351 / 351 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

@@ -477,9 +477,9 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
               <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Lưu ý quan trọng về bản sao lưu Snapshot: </span>
+                  <span className="font-bold">Lưu ý phân định bản sao lưu: </span>
                   <span>
-                    Bản sao lưu này chỉ chứa dữ liệu logic và metadata (chủ đề, ghi chú, tiến độ SM-2). <strong>Không bao gồm các tệp PDF/Audio thật</strong>. Để sao lưu toàn diện, vui lòng sao chép cả thư mục tệp vật lý (<code className="font-mono text-[11px]">Knowledge-Library/</code>) và Bảng Kê Manifest.
+                    Bản sao lưu này bảo toàn toàn bộ dữ liệu ứng dụng và nội dung ghi chú (<code className="font-mono text-[11px]">Note.content</code>). <strong>Tuy nhiên không bao gồm các tệp PDF/Media và tệp Markdown (.md) ngoài ổ đĩa</strong>. Để sao lưu toàn diện, vui lòng sao chép cả thư mục tệp vật lý (<code className="font-mono text-[11px]">Knowledge-Library/</code>) và Bảng Kê Manifest.
                   </span>
                 </div>
               </div>

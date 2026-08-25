@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { Note, NoteType } from '../../types';
-import { X, FileText, Lightbulb, HelpCircle, Bookmark, Tag as TagIcon } from 'lucide-react';
+import { X, FileText, Lightbulb, HelpCircle, Bookmark, Tag as TagIcon, Folder, AlertTriangle } from 'lucide-react';
+import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
 
 interface NoteFormModalProps {
   isOpen: boolean;
@@ -16,16 +17,22 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
   const [topicId, setTopicId] = useState('');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [sourcePath, setSourcePath] = useState('');
   const [type, setType] = useState<NoteType>('study');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
+
+  const canonicalLibraryRoot = typeof window !== 'undefined'
+    ? localStorage.getItem('knowledge_os_library_root_path') || ''
+    : '';
 
   useEffect(() => {
     if (initialNote) {
       setTopicId(initialNote.topicId);
       setTitle(initialNote.title);
       setContent(initialNote.content);
+      setSourcePath(initialNote.sourcePath || '');
       setType(initialNote.type);
       setTags(initialNote.tags || []);
       setIsPrivate(initialNote.isPrivate || false);
@@ -33,11 +40,18 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
       setTopicId(defaultTopicId || topics[0]?.id || '');
       setTitle('');
       setContent('');
+      setSourcePath('');
       setType('study');
       setTags([]);
       setIsPrivate(false);
     }
   }, [initialNote, defaultTopicId, topics, isOpen]);
+
+  const isPathOutsideRoot = Boolean(
+    sourcePath.trim() &&
+    canonicalLibraryRoot.trim() &&
+    classifyPathRelativeToRoot(normalizeFilePath(sourcePath), canonicalLibraryRoot) === 'outside'
+  );
 
   const handleAddTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
@@ -59,13 +73,15 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
     if (!title.trim() || !content.trim()) return;
 
     const currentTopic = topics.find((t) => t.id === topicId);
+    const finalSourcePath = sourcePath.trim() ? normalizeFilePath(sourcePath) : undefined;
 
     if (initialNote) {
       updateNote(initialNote.id, {
         topicId,
         topicTitle: currentTopic?.title || initialNote.topicTitle,
-        title,
-        content,
+        title: title.trim(),
+        content: content.trim(),
+        sourcePath: finalSourcePath,
         type,
         tags,
         isPrivate,
@@ -74,8 +90,9 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
       addNote({
         topicId,
         topicTitle: currentTopic?.title || 'Chủ đề',
-        title,
-        content,
+        title: title.trim(),
+        content: content.trim(),
+        sourcePath: finalSourcePath,
         type,
         tags,
         isPrivate,
@@ -223,6 +240,39 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               placeholder="Nhập nội dung suy ngẫm, dẫn chứng hoặc liên kết đến [[Tên chủ đề khác]]..."
               className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm font-sans focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
             />
+          </div>
+
+          {/* Optional Source Path (Markdown / Obsidian File Reference) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-stone-600" /> Đường dẫn tệp Markdown nguồn (sourcePath)
+              </span>
+              <span className="text-[10px] text-stone-500 font-normal">Tùy chọn</span>
+            </label>
+            <input
+              type="text"
+              value={sourcePath}
+              onChange={(e) => setSourcePath(e.target.value)}
+              placeholder="Đường dẫn tệp Markdown nguồn (/Users/.../Notes/study.md hoặc D:\...)..."
+              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-xs font-mono focus:ring-2 focus:ring-emerald-600"
+            />
+
+            {isPathOutsideRoot && (
+              <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Cảnh báo sao lưu: </span>
+                  <span>
+                    Tệp ghi chú này nằm ngoài thư mục thư viện gốc (<code className="font-mono">{canonicalLibraryRoot}</code>). Khi sao lưu thư viện, tệp này có thể bị bỏ sót nếu không được gom vào thư mục chuẩn.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[11px] text-stone-500">
+              * Dùng để liên kết ghi chú này với tệp .md trong thư mục Knowledge-Library/Notes/ hoặc Obsidian Vault cục bộ.
+            </p>
           </div>
 
           {/* Tags */}
