@@ -53,7 +53,8 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
 
   // Health State
   const [dbHealth, setDbHealth] = useState<ValidatedDbHealthResponse | null>(null);
-  const [isOfflineRepo, setIsOfflineRepo] = useState(false);
+  const [isOfflineCapability, setIsOfflineCapability] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   // Snapshot Import / Restore State Machine
   const [parsedSnapshot, setParsedSnapshot] = useState<ValidatedBackupSnapshot | null>(null);
@@ -79,13 +80,27 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
       .then((health) => {
         if (isActive) {
           setDbHealth(health);
-          setIsOfflineRepo(false);
+          setIsOfflineCapability(false);
+          setConnectionError(null);
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         if (isActive) {
-          setDbHealth(null);
-          setIsOfflineRepo(true);
+          if (err?.message?.includes('UNSUPPORTED_OFFLINE_OPERATION')) {
+            setDbHealth(null);
+            setIsOfflineCapability(true);
+            setConnectionError(null);
+          } else {
+            setIsOfflineCapability(false);
+            setConnectionError('Không thể kết nối tới cơ sở dữ liệu máy chủ. Vui lòng kiểm tra đường truyền mạng.');
+            setDbHealth({
+              status: 'unhealthy',
+              latencyMs: 0,
+              database: 'postgresql',
+              connected: false,
+              timestamp: new Date().toISOString(),
+            });
+          }
         }
       });
 
@@ -112,7 +127,7 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
       URL.revokeObjectURL(url);
     } catch (err: any) {
       if (err?.message?.includes('UNSUPPORTED_OFFLINE_OPERATION')) {
-        setIsOfflineRepo(true);
+        setIsOfflineCapability(true);
       }
       // Fallback to local export
       handleDownloadLocalJSON();
@@ -244,7 +259,7 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
       }
     } catch (err: any) {
       if (err?.message?.includes('UNSUPPORTED_OFFLINE_OPERATION')) {
-        setIsOfflineRepo(true);
+        setIsOfflineCapability(true);
       }
       setRestoreStatus('error');
     } finally {
@@ -293,7 +308,7 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-semibold text-stone-900">Quản Lý &amp; Sao Lưu Dữ Liệu</h2>
-                {dbHealth && (
+                {dbHealth && !isOfflineCapability && (
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                       dbHealth.status === 'healthy'
@@ -317,12 +332,22 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
           </button>
         </div>
 
-        {/* Offline Notice Banner */}
-        {isOfflineRepo && (
+        {/* Offline Capability Notice Banner */}
+        {isOfflineCapability && (
           <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-800 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              Chế độ ngoại tuyến (Offline): Các tác vụ phục hồi máy chủ chỉ hỗ trợ khi có kết nối máy chủ hoạt động.
+              Kho lưu trữ cục bộ (LocalStorage): Tính năng sao lưu máy chủ &amp; kiểm tra trạng thái không được hỗ trợ ở chế độ offline.
+            </span>
+          </div>
+        )}
+
+        {/* Connection Error Banner */}
+        {connectionError && !isOfflineCapability && (
+          <div className="bg-rose-50 border-b border-rose-200 px-6 py-2 text-xs text-rose-800 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>
+              {connectionError}
             </span>
           </div>
         )}

@@ -12,13 +12,13 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 33 test suites / 250 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 33 test suites / 252 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
        ├── PHASE 2A: Obsidian Open / Export UX Flow (obsidian://, ZIP export) [VERIFIED]
        ├── PHASE 2B: Google NotebookLM Studio & Antigravity 2.0 Mediated Workflow [VERIFIED]
-       ├── PHASE 2C: Data Management Modal & Confirmation Gate UI (ADR-009) [VERIFIED]
+       ├── PHASE 2C: Data Management Modal & Confirmation Gate UI (ADR-009 & Error Separation) [VERIFIED]
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
        └── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
@@ -57,8 +57,8 @@
   - Bộ chọn chế độ khôi phục: **Gộp dữ liệu (Merge - LWW)** vs **Thay thế toàn bộ (Replace - Destructive)**.
   - **Confirmation Gate:** Bắt buộc nhập chính xác 100% chuỗi ký tự hoa `XÁC NHẬN THAY THẾ` để mở khóa nút Replace.
   - Quy trình khôi phục: Gọi `restoreBackupSnapshot` $\rightarrow$ `reloadAllData()` $\rightarrow$ Xử lý lỗi `rehydrate_failed` bảo toàn in-memory state cũ.
-  - Cảnh báo an toàn cho kho lưu trữ ngoại tuyến LocalStorage (`UNSUPPORTED_OFFLINE_OPERATION`).
-- **Kiểm chứng:** 28/28 tests PASS (9/9 `phase2c-data-management-modal-component.test.tsx` + 6/6 `phase2c-data-management-ui.test.tsx` + 8/8 `phase2c-repository-methods.test.ts` + 5/5 `phase2c-health-badge.test.tsx`).
+  - **Tách biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (`UNSUPPORTED_OFFLINE_OPERATION`) vs `connectionError` (lỗi kết nối máy chủ / `unhealthy`).
+- **Kiểm chứng:** 30/30 tests PASS (11/11 `phase2c-data-management-modal-component.test.tsx` + 6/6 `phase2c-data-management-ui.test.tsx` + 8/8 `phase2c-repository-methods.test.ts` + 5/5 `phase2c-health-badge.test.tsx`).
 
 ### 🔹 PHASE 3: Antigravity Research Scholar Handoff Bundle (ĐÃ HOÀN THÀNH)
 - **Mã ADR:** ADR-012 (Phase 3)
@@ -115,6 +115,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **33 / 33 test files PASS — 250 / 250 tests PASS (100% GREEN in 9.83s)**.
+- **Toàn bộ Test Suite:** ✅ **33 / 33 test files PASS — 252 / 252 tests PASS (100% GREEN in 8.67s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

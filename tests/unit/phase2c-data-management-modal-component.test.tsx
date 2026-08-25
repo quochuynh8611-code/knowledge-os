@@ -313,7 +313,48 @@ describe('Phase 2C.4: Data Management Modal Component Tests', () => {
     render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={offlineRepo} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/ngoại tuyến|offline|chỉ hỗ trợ khi có máy chủ/i)).toBeInTheDocument();
+      expect(screen.getByText(/ngoại tuyến|offline|chỉ hỗ trợ khi có máy chủ|kho lưu trữ cục bộ/i)).toBeInTheDocument();
     });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 10: Capability Error distinctly identifies UNSUPPORTED_OFFLINE_OPERATION
+  // ---------------------------------------------------------------------------
+  it('10. Capability Error hiển thị thông báo kho lưu trữ cục bộ không hỗ trợ disaster recovery', async () => {
+    const customOfflineRepo: IDataRepository = {
+      ...mockRepository,
+      getDbHealth: vi.fn().mockRejectedValue(
+        new Error('UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.')
+      ),
+    };
+
+    render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={customOfflineRepo} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/kho lưu trữ cục bộ|không được hỗ trợ ở chế độ offline/i)).toBeInTheDocument();
+    });
+
+    // Health badge is not rendered for unsupported offline capability
+    expect(screen.queryByText(/Đang Kết Nối/i)).not.toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 11: Connectivity/Runtime Error displays server connection failure, not offline repo
+  // ---------------------------------------------------------------------------
+  it('11. Connectivity Error hiển thị trạng thái mất kết nối máy chủ, không giả thành LocalStorage unsupported', async () => {
+    const networkFailRepo: IDataRepository = {
+      ...mockRepository,
+      getDbHealth: vi.fn().mockRejectedValue(new Error('Failed to fetch: Connection refused (ECONNREFUSED)')),
+    };
+
+    render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={networkFailRepo} />);
+
+    // Should display PostgreSQL Mất Kết Nối badge or server connection error banner
+    await waitFor(() => {
+      expect(screen.getByText(/Mất Kết Nối|Lỗi kết nối máy chủ/i)).toBeInTheDocument();
+    });
+
+    // MUST NOT display the LocalStorage offline capability banner
+    expect(screen.queryByText(/Kho lưu trữ cục bộ/i)).not.toBeInTheDocument();
   });
 });
