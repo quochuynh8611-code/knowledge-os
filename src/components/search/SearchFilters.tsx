@@ -10,7 +10,11 @@ import {
   Folder,
 } from "lucide-react";
 import { Category, Tag, CategoryType, TopicStatus } from "../../types";
-import { getRootCategories } from "../../lib/taxonomyMigration";
+import {
+  getRootCategories,
+  getDescendantCategoryIds,
+  resolveCategoryFilterToRootId,
+} from "../../lib/taxonomyMigration";
 
 export interface SearchFiltersState {
   domain: "all" | CategoryType;
@@ -55,15 +59,10 @@ export function SearchFilters({
 
   const filteredCategories = categories.filter((cat) => {
     if (filters.domain === "all") return true;
-    const selectedRoot = rootCategories.find(
-      (r) => r.slug === filters.domain || r.type === filters.domain || r.id === filters.domain
-    );
-    return (
-      cat.type === filters.domain ||
-      cat.slug === filters.domain ||
-      cat.id === filters.domain ||
-      (selectedRoot && cat.parentId === selectedRoot.id)
-    );
+    const selectedRootId = resolveCategoryFilterToRootId(categories, filters.domain);
+    if (!selectedRootId) return true;
+    const descendantIds = new Set(getDescendantCategoryIds(categories, selectedRootId));
+    return descendantIds.has(cat.id);
   });
 
   return (

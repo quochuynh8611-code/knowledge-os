@@ -132,6 +132,24 @@
   - Rào chắn: Không persist thuộc tính `command`, tách biệt rõ rệt UI tracker state vs inter-process manifest, không tự động chạy command trực tiếp từ app browser runtime ở increment này.
 - **Kiểm chứng:** 9/9 tests PASS (5/5 `antigravity-pipeline-lib.test.ts` + 4/4 `notebooklm-antigravity-pipeline-ui.test.tsx`).
 
+### 🔹 POST-PHASE 5 MICRO-FIX: Dynamic Root Taxonomy – Root Topic Filter & Add Domain CTA (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-root-topic-filter-and-add-domain-cta-fix.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-root-topic-filter-and-add-domain-cta-fix.md) · [`docs/gherkin/post-phase5-root-topic-filter-and-add-domain-cta-fix.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-root-topic-filter-and-add-domain-cta-fix.feature)
+- **Trọng tâm:**
+  - Chuẩn hóa toàn diện logic đếm và lọc chủ đề theo quan hệ phân cấp `Category.parentId` đệ quy qua các pure helpers: `getDescendantCategoryIds`, `resolveRootCategory`, `resolveCategoryFilterToRootId`, `topicBelongsToRootCategory`, `countTopicsForRootCategory`.
+  - Khắc phục triệt để hiện tượng Root category hiển thị 0 chủ đề do các chủ đề nằm ở các danh mục con cháu (`cat-tam-tang`, `cat-abhidharma`, `cat-tam-thuc`...).
+  - Bổ sung nút CTA "+ Thêm lĩnh vực" rõ ràng ngay tại Header và Filter Toolbar của [`TopicTree.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/TopicTree.tsx).
+- **Kiểm chứng:** 14/14 tests PASS (7/7 `dynamic-taxonomy-lib.test.ts` + 7/7 `dynamic-taxonomy-ui.test.tsx`).
+
+---
+
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Dynamic Root Taxonomy & Soft Topic Visibility (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/adr-016-dynamic-root-taxonomy-and-topic-visibility.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-016-dynamic-root-taxonomy-and-topic-visibility.md) · [`docs/specs/post-phase5-dynamic-root-categories-and-topic-visibility.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-dynamic-root-categories-and-topic-visibility.md) · [`docs/gherkin/post-phase5-dynamic-root-categories-and-topic-visibility.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-dynamic-root-categories-and-topic-visibility.feature)
+- **Trọng tâm:**
+  - Xóa bỏ hardcode 2 lĩnh vực ở tầng 1, cho phép người dùng thêm lĩnh vực gốc mới trực tiếp từ giao diện.
+  - Tách bạch cấu trúc danh mục theo `Category.parentId` làm trục phân cấp duy nhất.
+  - Hỗ trợ ẩn/khôi phục chủ đề (`visibility: 'active' | 'hidden'`) an toàn tuyệt đối, bảo toàn 100% `notes`, `resources`, `links`, và `studyProgress`.
+- **Kiểm chứng:** 14/14 tests PASS (7/7 `dynamic-taxonomy-lib.test.ts` + 7/7 `dynamic-taxonomy-ui.test.tsx`).
+
 ---
 
 ### 🔹 POST-PHASE 5 MICRO-INCREMENT: Citation Format Preference Hardening (ĐÃ HOÀN THÀNH)

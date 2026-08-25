@@ -15,6 +15,14 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 5 Micro-Fix: Dynamic Root Taxonomy – Root Topic Filter & Add Domain CTA:**
+    - **Mục tiêu:** Khắc phục triệt để hiện tượng Root categories (Phật Học, Huyền Học) hiển thị 0 chủ đề do các chủ đề nằm ở các danh mục con cháu (`cat-tam-tang`, `cat-abhidharma`, `cat-tam-thuc`...), chuẩn hóa lọc và đếm chủ đề theo quan hệ `Category.parentId` đệ quy, đồng thời bổ sung CTA "+ Thêm lĩnh vực" rõ ràng ngay tại giao diện Cây Chủ Đề (`TopicTree`).
+    - **Giải pháp kỹ thuật:**
+      - Hàm thuần túy trong `src/lib/taxonomyMigration.ts`: `getDescendantCategoryIds`, `resolveRootCategory`, `resolveCategoryFilterToRootId`, `topicBelongsToRootCategory`, `countTopicsForRootCategory`.
+      - Đồng bộ `selectedCategoryFilter` sử dụng canonical `rootId`, loại bỏ phụ thuộc vào `type` hoặc `categorySlug`.
+      - Cây phân cấp `TopicTree.tsx` render chính xác các danh mục và chủ đề thuộc lĩnh vực được chọn, loại bỏ hiển thị thẻ danh mục rỗng (0 chủ đề) khi các danh mục con đã chứa chủ đề.
+      - Thêm nút CTA "+ Thêm lĩnh vực" tại Header và Toolbar của `TopicTree.tsx` kết nối trực tiếp với flow `addCategory`.
+    - **Kiểm thử:** 14/14 tests PASS (7/7 pure lib + 7/7 UI integration).
   - **Post-Phase 5 Micro-Increment: Dynamic Root Taxonomy & Soft Topic Visibility (ADR-016):**
     - **Mục tiêu:** Mở rộng linh hoạt hệ thống phân loại tri thức, xóa bỏ hoàn toàn hardcode 2 lĩnh vực "Phật học" & "Huyền học" ở tầng 1, cho phép thêm lĩnh vực tùy biến động, đồng thời trang bị tính năng Ẩn/Khôi phục chủ đề (Soft Hide/Restore) an toàn tuyệt đối mà không mất dữ liệu liên quan.
     - **Kiến trúc & Giải pháp triển khai:**
@@ -27,7 +35,7 @@
         - Topic Form [`src/components/modals/TopicFormModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/TopicFormModal.tsx) cho phép chọn danh mục phân cấp động theo nhóm lĩnh vực.
         - Cây chủ đề [`src/components/topics/TopicTree.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/TopicTree.tsx) tích hợp bộ lọc trạng thái hiển thị (Chủ đề hoạt động / Đã ẩn / Tất cả) và nút Ẩn/Khôi phục 1-click.
         - Bộ lọc tìm kiếm [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) hỗ trợ chọn lĩnh vực gốc động và danh mục tương ứng.
-    - **Kiểm thử:** 8/8 tests PASS (4/4 pure lib + 4/4 UI integration).
+    - **Kiểm thử:** 14/14 tests PASS.
   - **Post-Phase 5 Micro-Increment: Antigravity Result Ingestion & Tracker Completion Polish:**
     - **Mục tiêu:** Khép kín vòng quay kết quả nghiên cứu từ Antigravity/NotebookLM quay về app khi người dùng nạp (ingest) Artifact vào Artifacts Locker.
     - **Logic nghiệp vụ:**

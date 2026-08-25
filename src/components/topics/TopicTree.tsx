@@ -21,10 +21,19 @@ import {
   Eye,
   EyeOff,
   Folder,
+  FolderPlus,
+  X,
 } from 'lucide-react';
 import { TopicFormModal } from '../modals/TopicFormModal';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
-import { getRootCategories } from '../../lib/taxonomyMigration';
+import {
+  getRootCategories,
+  getChildCategories,
+  getDescendantCategoryIds,
+  resolveCategoryFilterToRootId,
+  topicBelongsToRootCategory,
+  countTopicsForRootCategory,
+} from '../../lib/taxonomyMigration';
 
 export function TopicTree() {
   const {
@@ -38,12 +47,16 @@ export function TopicTree() {
     deleteTopic,
     hideTopic,
     restoreTopic,
+    addCategory,
     tags,
   } = useData();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [visibilityFilter, setVisibilityFilter] = useState<'active' | 'hidden' | 'all'>('active');
+  const [isAddingDomain, setIsAddingDomain] = useState(false);
+  const [newDomainName, setNewDomainName] = useState('');
+
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     categories.forEach((c) => {
@@ -56,6 +69,10 @@ export function TopicTree() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
+
+  const canonicalFilterRootId = useMemo(() => {
+    return resolveCategoryFilterToRootId(categories, selectedCategoryFilter);
+  }, [categories, selectedCategoryFilter]);
 
   const toggleCategory = (catId: string) => {
     setExpandedCategories((prev) => ({ ...prev, [catId]: !prev[catId] }));
@@ -73,6 +90,22 @@ export function TopicTree() {
     setExpandedCategories({});
   };
 
+  const handleCreateDomain = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newDomainName.trim()) return;
+
+    const newId = addCategory({
+      name: newDomainName.trim(),
+      slug: '',
+      parentId: null,
+      color: '#475569',
+    });
+
+    setNewDomainName('');
+    setIsAddingDomain(false);
+    setSelectedCategoryFilter(newId);
+  };
+
   // Filter topics
   const filteredTopics = useMemo(() => {
     return topics.filter((t) => {
@@ -81,31 +114,45 @@ export function TopicTree() {
       if (visibilityFilter === 'hidden' && t.visibility !== 'hidden') return false;
 
       // Domain filter
-      if (selectedCategoryFilter) {
-        const cat = categories.find((c) => c.id === t.categoryId);
-        const matchRoot =
-          t.type === selectedCategoryFilter ||
-          t.categorySlug === selectedCategoryFilter ||
-          cat?.parentId === selectedCategoryFilter ||
-          cat?.id === selectedCategoryFilter;
-        if (!matchRoot) return false;
+      if (canonicalFilterRootId) {
+        if (!topicBelongsToRootCategory(t, categories, canonicalFilterRootId)) {
+          return false;
+        }
       }
 
       // Status filter
-      if (statusFilter !== 'all' && t.studyProgress.status !== statusFilter) return false;
+      if (statusFilter !== 'all' && t.studyProgress?.status !== statusFilter) return false;
       // Tag filter
-      if (selectedTagFilter && !t.tags.includes(selectedTagFilter)) return false;
+      if (selectedTagFilter && !t.tags?.includes(selectedTagFilter)) return false;
       // Search
       if (search.trim()) {
         const q = search.toLowerCase();
-        const matchTitle = t.title.toLowerCase().includes(q);
+        const matchTitle = t.title?.toLowerCase().includes(q);
         const matchDesc = t.description?.toLowerCase().includes(q);
         const matchTag = t.tags?.some((tg) => tg.toLowerCase().includes(q));
         if (!matchTitle && !matchDesc && !matchTag) return false;
       }
       return true;
     });
-  }, [topics, categories, selectedCategoryFilter, statusFilter, selectedTagFilter, visibilityFilter, search]);
+  }, [topics, categories, canonicalFilterRootId, statusFilter, selectedTagFilter, visibilityFilter, search]);
+
+  // Categories to render in tree hierarchy
+  const categoriesToRender = useMemo(() => {
+    let list = categories;
+    if (canonicalFilterRootId) {
+      const descendantIds = new Set(getDescendantCategoryIds(categories, canonicalFilterRootId));
+      list = list.filter((c) => descendantIds.has(c.id));
+    }
+    // Filter out pure root containers that have 0 direct topics and have subcategories
+    return list.filter((cat) => {
+      const directTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
+      const children = getChildCategories(categories, cat.id);
+      if (directTopics.length === 0 && children.length > 0) {
+        return false;
+      }
+      return true;
+    });
+  }, [categories, canonicalFilterRootId, filteredTopics]);
 
   const getStatusBadge = (status: TopicStatus) => {
     switch (status) {
@@ -139,6 +186,12 @@ export function TopicTree() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsAddingDomain(true)}
+            className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+          >
+            <FolderPlus className="w-4 h-4 text-amber-700" /> Thêm Lĩnh Vực
+          </button>
+          <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
           >
@@ -163,11 +216,11 @@ export function TopicTree() {
           </div>
 
           {/* Dynamic Domain Filter */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => setSelectedCategoryFilter(null)}
               className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold transition ${
-                !selectedCategoryFilter
+                !canonicalFilterRootId
                   ? 'bg-stone-800 text-white'
                   : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
               }`}
@@ -175,25 +228,33 @@ export function TopicTree() {
               Tất cả
             </button>
             {rootCategories.map((root) => {
-              const rootKey = root.slug || root.type || root.id;
-              const isSelected =
-                selectedCategoryFilter === root.id ||
-                selectedCategoryFilter === root.slug ||
-                selectedCategoryFilter === root.type;
+              const isSelected = canonicalFilterRootId === root.id;
+              const rootTopicCount = countTopicsForRootCategory(
+                topics.filter((t) => t.visibility !== 'hidden'),
+                categories,
+                root.id
+              );
+
               return (
                 <button
                   key={root.id}
-                  onClick={() => setSelectedCategoryFilter(isSelected ? null : rootKey)}
+                  onClick={() => setSelectedCategoryFilter(isSelected ? null : root.id)}
                   className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1 ${
                     isSelected
                       ? 'bg-amber-700 text-white shadow-2xs'
                       : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                   }`}
                 >
-                  <Folder className="w-3 h-3" /> {root.name}
+                  <Folder className="w-3 h-3" /> {root.name} ({rootTopicCount})
                 </button>
               );
             })}
+            <button
+              onClick={() => setIsAddingDomain(true)}
+              className="py-1.5 px-2.5 rounded-xl text-xs font-medium border border-dashed border-stone-300 text-stone-600 hover:text-stone-900 hover:border-stone-400 hover:bg-stone-50 transition flex items-center gap-1"
+            >
+              <Plus className="w-3 h-3" /> Thêm lĩnh vực
+            </button>
           </div>
 
           {/* Status & Visibility Filters */}
@@ -221,6 +282,42 @@ export function TopicTree() {
             </select>
           </div>
         </div>
+
+        {/* Inline Add Domain Form */}
+        {isAddingDomain && (
+          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center gap-2 animate-fadeIn">
+            <FolderPlus className="w-4 h-4 text-amber-800 shrink-0" />
+            <input
+              type="text"
+              autoFocus
+              value={newDomainName}
+              onChange={(e) => setNewDomainName(e.target.value)}
+              placeholder="Tên lĩnh vực mới (VD: Triết Học Phương Tây, Khoa Học Tự Nhiên)..."
+              className="flex-1 px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs focus:ring-2 focus:ring-amber-700 focus:outline-hidden"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateDomain(e);
+                if (e.key === 'Escape') setIsAddingDomain(false);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => handleCreateDomain()}
+              className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-semibold transition"
+            >
+              Lưu
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAddingDomain(false);
+                setNewDomainName('');
+              }}
+              className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg text-xs font-medium"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Tags row & Tree controls */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100 text-xs">
@@ -269,55 +366,53 @@ export function TopicTree() {
 
       {/* Hierarchical Categories & Topics Tree */}
       <div className="space-y-4">
-        {categories
-          .filter((cat) => !selectedCategoryFilter || cat.type === selectedCategoryFilter || cat.id === selectedCategoryFilter || cat.parentId === selectedCategoryFilter)
-          .map((cat) => {
-            const catTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
-            const isExpanded = expandedCategories[cat.id] ?? true;
+        {categoriesToRender.map((cat) => {
+          const catTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
+          const isExpanded = expandedCategories[cat.id] ?? true;
 
-            return (
+          return (
+            <div
+              key={cat.id}
+              className="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-2xs transition"
+            >
+              {/* Category Group Header */}
               <div
-                key={cat.id}
-                className="bg-white border border-stone-200/90 rounded-2xl overflow-hidden shadow-2xs transition"
+                onClick={() => toggleCategory(cat.id)}
+                className="flex items-center justify-between p-4 bg-stone-100/60 hover:bg-stone-100 cursor-pointer transition border-b border-stone-200/70"
               >
-                {/* Category Group Header */}
-                <div
-                  onClick={() => toggleCategory(cat.id)}
-                  className="flex items-center justify-between p-4 bg-stone-100/60 hover:bg-stone-100 cursor-pointer transition border-b border-stone-200/70"
-                >
-                  <div className="flex items-center gap-3">
-                    <button className="text-stone-500 hover:text-stone-800">
-                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-amber-100 text-amber-900 border border-amber-300"
-                    >
-                      <Folder className="w-3.5 h-3.5 text-amber-800" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                        {cat.name}
-                        <span className="text-xs font-normal text-stone-500">
-                          ({catTopics.length} chủ đề)
-                        </span>
-                      </h2>
-                      {cat.description && (
-                        <p className="text-[11px] text-stone-500 line-clamp-1">{cat.description}</p>
-                      )}
-                    </div>
+                <div className="flex items-center gap-3">
+                  <button className="text-stone-500 hover:text-stone-800">
+                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  </button>
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-amber-100 text-amber-900 border border-amber-300"
+                  >
+                    <Folder className="w-3.5 h-3.5 text-amber-800" />
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono text-stone-600 hidden sm:inline">
-                      {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
-                    </span>
+                  <div>
+                    <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      {cat.name}
+                      <span className="text-xs font-normal text-stone-500">
+                        ({catTopics.length} chủ đề)
+                      </span>
+                    </h2>
+                    {cat.description && (
+                      <p className="text-[11px] text-stone-500 line-clamp-1">{cat.description}</p>
+                    )}
                   </div>
                 </div>
 
-                {/* Topics in this category */}
-                {isExpanded && (
-                  <div className="divide-y divide-stone-100">
-                    {catTopics.map((topic) => {
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-mono text-stone-600 hidden sm:inline">
+                    {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
+                  </span>
+                </div>
+              </div>
+
+              {/* Topics in this category */}
+              {isExpanded && (
+                <div className="divide-y divide-stone-100">
+                  {catTopics.map((topic) => {
                       const isHidden = topic.visibility === 'hidden';
 
                       return (

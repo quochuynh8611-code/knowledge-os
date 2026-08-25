@@ -10,17 +10,19 @@ import {
   Search,
   Sparkles,
   Compass,
-  CheckCircle2,
   Clock,
   Brain,
   BookA,
   Plus,
   X,
-  Layers,
   Folder,
 } from 'lucide-react';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
-import { getRootCategories } from '../../lib/taxonomyMigration';
+import {
+  getRootCategories,
+  topicBelongsToRootCategory,
+  resolveCategoryFilterToRootId,
+} from '../../lib/taxonomyMigration';
 
 export function Sidebar() {
   const {
@@ -43,30 +45,23 @@ export function Sidebar() {
     return getRootCategories(categories);
   }, [categories]);
 
+  const canonicalFilterRootId = useMemo(() => {
+    return resolveCategoryFilterToRootId(categories, selectedCategoryFilter);
+  }, [categories, selectedCategoryFilter]);
+
   // Compute topic stats for each root domain dynamically
   const domainStats = useMemo(() => {
     const map: Record<string, { total: number; donePercent: number }> = {};
     const activeTopics = topics.filter((t) => t.visibility !== 'hidden');
 
     rootCategories.forEach((root) => {
-      // Find all descendant category IDs
-      const childCatIds = categories
-        .filter((c) => c.parentId === root.id)
-        .map((c) => c.id);
-      const matchingCatIds = new Set([root.id, ...childCatIds]);
-
-      const rootTopics = activeTopics.filter((t) => {
-        return (
-          matchingCatIds.has(t.categoryId) ||
-          t.type === root.type ||
-          t.type === root.slug ||
-          t.categorySlug === root.slug
-        );
-      });
+      const rootTopics = activeTopics.filter((t) =>
+        topicBelongsToRootCategory(t, categories, root.id)
+      );
 
       const completed = rootTopics.filter(
         (t) =>
-          t.studyProgress?.progress >= 100 ||
+          (t.studyProgress?.progress || 0) >= 100 ||
           t.studyProgress?.status === 'completed'
       ).length;
 
@@ -88,7 +83,7 @@ export function Sidebar() {
     e.preventDefault();
     if (!newDomainName.trim()) return;
 
-    addCategory({
+    const newId = addCategory({
       name: newDomainName.trim(),
       slug: '',
       parentId: null,
@@ -97,6 +92,7 @@ export function Sidebar() {
 
     setNewDomainName('');
     setIsAddingDomain(false);
+    setSelectedCategoryFilter(newId);
   };
 
   const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: number | string; highlight?: boolean }[] = [
@@ -176,19 +172,14 @@ export function Sidebar() {
 
         <div className="space-y-1 mt-1">
           {rootCategories.map((root) => {
-            const rootDomainKey = root.slug || root.type || root.id;
-            const isSelected =
-              selectedCategoryFilter === root.id ||
-              selectedCategoryFilter === root.slug ||
-              selectedCategoryFilter === root.type;
-
+            const isSelected = canonicalFilterRootId === root.id;
             const domainStat = domainStats[root.id] || { total: 0, donePercent: 0 };
 
             return (
               <button
                 key={root.id}
                 onClick={() => {
-                  setSelectedCategoryFilter(isSelected ? null : rootDomainKey);
+                  setSelectedCategoryFilter(isSelected ? null : root.id);
                   setActiveTab('topics');
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition ${
