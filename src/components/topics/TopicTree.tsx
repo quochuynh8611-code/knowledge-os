@@ -18,9 +18,13 @@ import {
   ArrowRight,
   Edit2,
   Trash2,
+  Eye,
+  EyeOff,
+  Folder,
 } from 'lucide-react';
 import { TopicFormModal } from '../modals/TopicFormModal';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
+import { getRootCategories } from '../../lib/taxonomyMigration';
 
 export function TopicTree() {
   const {
@@ -32,11 +36,14 @@ export function TopicTree() {
     selectedTagFilter,
     setSelectedTagFilter,
     deleteTopic,
+    hideTopic,
+    restoreTopic,
     tags,
   } = useData();
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [visibilityFilter, setVisibilityFilter] = useState<'active' | 'hidden' | 'all'>('active');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     categories.forEach((c) => {
@@ -47,6 +54,8 @@ export function TopicTree() {
 
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+
+  const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
 
   const toggleCategory = (catId: string) => {
     setExpandedCategories((prev) => ({ ...prev, [catId]: !prev[catId] }));
@@ -67,8 +76,21 @@ export function TopicTree() {
   // Filter topics
   const filteredTopics = useMemo(() => {
     return topics.filter((t) => {
+      // Visibility filter
+      if (visibilityFilter === 'active' && t.visibility === 'hidden') return false;
+      if (visibilityFilter === 'hidden' && t.visibility !== 'hidden') return false;
+
       // Domain filter
-      if (selectedCategoryFilter && t.type !== selectedCategoryFilter) return false;
+      if (selectedCategoryFilter) {
+        const cat = categories.find((c) => c.id === t.categoryId);
+        const matchRoot =
+          t.type === selectedCategoryFilter ||
+          t.categorySlug === selectedCategoryFilter ||
+          cat?.parentId === selectedCategoryFilter ||
+          cat?.id === selectedCategoryFilter;
+        if (!matchRoot) return false;
+      }
+
       // Status filter
       if (statusFilter !== 'all' && t.studyProgress.status !== statusFilter) return false;
       // Tag filter
@@ -83,7 +105,7 @@ export function TopicTree() {
       }
       return true;
     });
-  }, [topics, selectedCategoryFilter, statusFilter, selectedTagFilter, search]);
+  }, [topics, categories, selectedCategoryFilter, statusFilter, selectedTagFilter, visibilityFilter, search]);
 
   const getStatusBadge = (status: TopicStatus) => {
     switch (status) {
@@ -111,7 +133,7 @@ export function TopicTree() {
             Cây Phân Cấp &amp; Quản Lý Chủ Đề
           </h1>
           <p className="text-xs text-stone-600 mt-0.5">
-            Hệ thống hóa phân nhánh các bộ tạng Phật học và môn phái Huyền học phương Đông
+            Hệ thống hóa phân nhánh các lĩnh vực nghiên cứu và quản lý trạng thái hiển thị chủ đề
           </p>
         </div>
 
@@ -140,11 +162,11 @@ export function TopicTree() {
             />
           </div>
 
-          {/* Domain Filter */}
-          <div className="flex gap-1.5">
+          {/* Dynamic Domain Filter */}
+          <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setSelectedCategoryFilter(null)}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold transition ${
+              className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold transition ${
                 !selectedCategoryFilter
                   ? 'bg-stone-800 text-white'
                   : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
@@ -152,35 +174,44 @@ export function TopicTree() {
             >
               Tất cả
             </button>
-            <button
-              onClick={() => setSelectedCategoryFilter('phat-hoc')}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1 ${
-                selectedCategoryFilter === 'phat-hoc'
-                  ? 'bg-amber-700 text-white'
-                  : 'bg-amber-50 text-amber-900 hover:bg-amber-100'
-              }`}
-            >
-              <Sparkles className="w-3 h-3" /> Phật Học
-            </button>
-            <button
-              onClick={() => setSelectedCategoryFilter('huyen-hoc')}
-              className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1 ${
-                selectedCategoryFilter === 'huyen-hoc'
-                  ? 'bg-indigo-700 text-white'
-                  : 'bg-indigo-50 text-indigo-900 hover:bg-indigo-100'
-              }`}
-            >
-              <Compass className="w-3 h-3" /> Huyền Học
-            </button>
+            {rootCategories.map((root) => {
+              const rootKey = root.slug || root.type || root.id;
+              const isSelected =
+                selectedCategoryFilter === root.id ||
+                selectedCategoryFilter === root.slug ||
+                selectedCategoryFilter === root.type;
+              return (
+                <button
+                  key={root.id}
+                  onClick={() => setSelectedCategoryFilter(isSelected ? null : rootKey)}
+                  className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1 ${
+                    isSelected
+                      ? 'bg-amber-700 text-white shadow-2xs'
+                      : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+                  }`}
+                >
+                  <Folder className="w-3 h-3" /> {root.name}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Status Filter */}
+          {/* Status & Visibility Filters */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-500 font-medium whitespace-nowrap">Trạng thái:</span>
+            <select
+              value={visibilityFilter}
+              onChange={(e) => setVisibilityFilter(e.target.value as 'active' | 'hidden' | 'all')}
+              className="px-2.5 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium"
+            >
+              <option value="active">Chủ đề hoạt động</option>
+              <option value="hidden">Chủ đề đã ẩn</option>
+              <option value="all">Tất cả chủ đề</option>
+            </select>
+
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="flex-1 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium"
+              className="flex-1 px-2.5 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium"
             >
               <option value="all">Tất cả tiến độ</option>
               <option value="in_progress">Đang nghiên cứu</option>
@@ -239,7 +270,7 @@ export function TopicTree() {
       {/* Hierarchical Categories & Topics Tree */}
       <div className="space-y-4">
         {categories
-          .filter((cat) => !selectedCategoryFilter || cat.type === selectedCategoryFilter)
+          .filter((cat) => !selectedCategoryFilter || cat.type === selectedCategoryFilter || cat.id === selectedCategoryFilter || cat.parentId === selectedCategoryFilter)
           .map((cat) => {
             const catTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
             const isExpanded = expandedCategories[cat.id] ?? true;
@@ -259,13 +290,9 @@ export function TopicTree() {
                       {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </button>
                     <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
-                        cat.type === 'phat-hoc'
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
-                      }`}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs bg-amber-100 text-amber-900 border border-amber-300"
                     >
-                      {cat.type === 'phat-hoc' ? 'PH' : 'HH'}
+                      <Folder className="w-3.5 h-3.5 text-amber-800" />
                     </div>
                     <div>
                       <h2 className="text-sm font-bold text-stone-900 flex items-center gap-2">
@@ -282,7 +309,7 @@ export function TopicTree() {
 
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-mono text-stone-600 hidden sm:inline">
-                      {catTopics.reduce((acc, t) => acc + t.studyProgress.timeSpent, 0)} phút
+                      {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
                     </span>
                   </div>
                 </div>
@@ -290,89 +317,117 @@ export function TopicTree() {
                 {/* Topics in this category */}
                 {isExpanded && (
                   <div className="divide-y divide-stone-100">
-                    {catTopics.map((topic) => (
-                      <div
-                        key={topic.id}
-                        className="p-4 hover:bg-stone-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
-                      >
-                        <div className="space-y-1.5 flex-1 pr-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3
-                              onClick={() => openTopicDetail(topic.id)}
-                              className="font-bold text-sm text-stone-900 hover:text-amber-800 cursor-pointer flex items-center gap-1.5 transition"
-                            >
-                              {topic.title}
-                            </h3>
-                            {getStatusBadge(topic.studyProgress.status)}
-                          </div>
-                          <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
-                            {topic.description}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                            {topic.tags.map((tg) => (
-                              <span
-                                key={tg}
-                                className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] rounded-md font-mono"
+                    {catTopics.map((topic) => {
+                      const isHidden = topic.visibility === 'hidden';
+
+                      return (
+                        <div
+                          key={topic.id}
+                          className={`p-4 hover:bg-stone-50/80 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 group ${
+                            isHidden ? 'bg-stone-100/40 opacity-75' : ''
+                          }`}
+                        >
+                          <div className="space-y-1.5 flex-1 pr-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3
+                                onClick={() => openTopicDetail(topic.id)}
+                                className="font-bold text-sm text-stone-900 hover:text-amber-800 cursor-pointer flex items-center gap-1.5 transition"
                               >
-                                #{tg}
+                                {topic.title}
+                              </h3>
+                              {getStatusBadge(topic.studyProgress.status)}
+                              {isHidden && (
+                                <span className="px-2 py-0.5 bg-stone-200 text-stone-700 rounded-md text-[10px] font-bold flex items-center gap-1">
+                                  <EyeOff className="w-3 h-3" /> Đã ẩn
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                              {topic.description}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              {topic.tags.map((tg) => (
+                                <span
+                                  key={tg}
+                                  className="px-2 py-0.5 bg-stone-100 text-stone-600 text-[10px] rounded-md font-mono"
+                                >
+                                  #{tg}
+                                </span>
+                              ))}
+                              <span className="text-[11px] text-stone-500 ml-2 font-mono flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-stone-400" />
+                                {formatMinutesToHours(topic.studyProgress.timeSpent)}
                               </span>
-                            ))}
-                            <span className="text-[11px] text-stone-500 ml-2 font-mono flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-stone-400" />
-                              {formatMinutesToHours(topic.studyProgress.timeSpent)}
-                            </span>
-                            <span className="text-[11px] text-stone-500 font-mono">
-                              • {topic.studyProgress.totalNotes} ghi chú
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar & Actions */}
-                        <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
-                          <div className="w-24 sm:w-28 space-y-1">
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-stone-500">Tiến độ</span>
-                              <span className="font-bold text-stone-800">{topic.studyProgress.progress}%</span>
-                            </div>
-                            <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${
-                                  topic.type === 'phat-hoc' ? 'bg-amber-600' : 'bg-indigo-600'
-                                }`}
-                                style={{ width: `${topic.studyProgress.progress}%` }}
-                              />
+                              <span className="text-[11px] text-stone-500 font-mono">
+                                • {topic.studyProgress.totalNotes} ghi chú
+                              </span>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setEditingTopic(topic)}
-                              className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-200 rounded-lg transition"
-                              title="Sửa chủ đề"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Xóa chủ đề "${topic.title}"?`)) {
-                                  deleteTopic(topic.id);
-                                }
-                              }}
-                              className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
-                              title="Xóa chủ đề"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => openTopicDetail(topic.id)}
-                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-1 transition ml-1"
-                            >
-                              Khám phá <ArrowRight className="w-3 h-3" />
-                            </button>
+                          {/* Progress Bar & Actions */}
+                          <div className="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
+                            <div className="w-24 sm:w-28 space-y-1">
+                              <div className="flex justify-between text-[11px]">
+                                <span className="text-stone-500">Tiến độ</span>
+                                <span className="font-bold text-stone-800">{topic.studyProgress.progress}%</span>
+                              </div>
+                              <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full bg-amber-600"
+                                  style={{ width: `${topic.studyProgress.progress}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                              {/* Soft Hide / Restore Action */}
+                              {isHidden ? (
+                                <button
+                                  onClick={() => restoreTopic(topic.id)}
+                                  className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition"
+                                  title="Khôi phục hiển thị chủ đề"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => hideTopic(topic.id)}
+                                  className="p-1.5 text-stone-400 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition"
+                                  title="Ẩn chủ đề"
+                                >
+                                  <EyeOff className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => setEditingTopic(topic)}
+                                className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-200 rounded-lg transition"
+                                title="Sửa chủ đề"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Xóa chủ đề "${topic.title}"?`)) {
+                                    deleteTopic(topic.id);
+                                  }
+                                }}
+                                className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                                title="Xóa chủ đề"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => openTopicDetail(topic.id)}
+                                className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-1 transition ml-1"
+                              >
+                                Khám phá <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     {catTopics.length === 0 && (
                       <div className="p-4 text-center text-xs text-stone-400">

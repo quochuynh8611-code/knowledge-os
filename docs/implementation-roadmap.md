@@ -103,6 +103,16 @@
 
 ---
 
+### 🔹 POST-PHASE 5 MICRO-INCREMENT: Dynamic Root Taxonomy & Soft Topic Visibility (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase5-dynamic-root-categories-and-topic-visibility.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-dynamic-root-categories-and-topic-visibility.md) · [`docs/gherkin/post-phase5-dynamic-root-categories-and-topic-visibility.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-dynamic-root-categories-and-topic-visibility.feature) · [`docs/specs/adr-016-dynamic-root-taxonomy-and-topic-visibility.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-016-dynamic-root-taxonomy-and-topic-visibility.md)
+- **Trọng tâm:**
+  - **Dynamic Root Taxonomy:** Xóa bỏ hoàn toàn ràng buộc hardcode 2 lĩnh vực "Phật học" & "Huyền học" ở tầng 1. Trục phân cấp cây danh mục sử dụng duy nhất `Category.parentId` (`!parentId` = Root Domain, `parentId === rootId` = Child Category). Cho phép người dùng thêm lĩnh vực mới trực tiếp từ Sidebar.
+  - **Soft Topic Visibility:** Bổ sung thuộc tính `visibility: 'active' | 'hidden'` cho Topic kèm migration engine chuẩn hóa an toàn (`normalizeTopics`). Ẩn chủ đề không xóa ghi chú, tài liệu tham khảo hay tiến độ SM-2.
+  - **Phân cấp tạo chủ đề:** Giao diện Topic Form tổ chức dropdown theo nhóm danh mục gốc và danh mục con. Cây chủ đề và bộ lọc tìm kiếm cho phép lọc theo lĩnh vực động và chuyển đổi chế độ xem chủ đề đã ẩn / đang hoạt động.
+- **Kiểm chứng:** 8/8 tests PASS (4/4 `dynamic-taxonomy-lib.test.ts` + 4/4 `dynamic-taxonomy-ui.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 5 MICRO-INCREMENT: Antigravity Result Ingestion & Tracker Completion Polish (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase5-antigravity-result-ingestion-tracker-completion.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase5-antigravity-result-ingestion-tracker-completion.md) · [`docs/gherkin/post-phase5-antigravity-result-ingestion-tracker-completion.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase5-antigravity-result-ingestion-tracker-completion.feature) · [`docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/adr-015-automated-antigravity-notebooklm-handoff.md)
 - **Trọng tâm:**
@@ -163,13 +173,13 @@
    - Vận hành snapshot sao lưu định kỳ qua kịch bản headless CLI `npm run snapshot:create`.
    - Giám sát độ trễ và tính khả dụng của cơ sở dữ liệu qua Health Badge thời gian thực.
 2. **Mở Rộng Cơ Sở Tri Thức (Knowledge Domain Expansion):**
-   - Bổ sung nội dung nghiên cứu chuyên sâu về Abhidharma (89/121 Tâm, 52 Tâm sở), Bát Nhã Ba La Mật Đa, Kỳ Môn Độn Giáp và Dịch học.
+   - Tận dụng hệ thống phân cấp động để khởi tạo các lĩnh vực mới (Triết học Đông Tây, Khoa học Nhận thức, Y học Cổ truyền).
    - Tiếp tục tuân thủ tuyệt đối các rào chắn kiến trúc: **Zero Binary Ingestion**, **Dual-Tier Resilience**, **Deterministic Checksum**, và **Confirmation Gate**.
 
 ---
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **43 / 43 test files PASS — 303 / 303 tests PASS (100% GREEN in 10.53s)**.
+- **Toàn bộ Test Suite:** ✅ **45 / 45 test files PASS — 311 / 311 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.

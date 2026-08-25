@@ -8,13 +8,26 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (303 TESTS GREEN 100%)**.
+- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 5 ĐÃ HOÀN TẤT & HỆ THỐNG MỞ RỘNG TIỆN ÍCH HỌC GIẢ (311 TESTS GREEN 100%)**.
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 5 Micro-Increment: Dynamic Root Taxonomy & Soft Topic Visibility (ADR-016):**
+    - **Mục tiêu:** Mở rộng linh hoạt hệ thống phân loại tri thức, xóa bỏ hoàn toàn hardcode 2 lĩnh vực "Phật học" & "Huyền học" ở tầng 1, cho phép thêm lĩnh vực tùy biến động, đồng thời trang bị tính năng Ẩn/Khôi phục chủ đề (Soft Hide/Restore) an toàn tuyệt đối mà không mất dữ liệu liên quan.
+    - **Kiến trúc & Giải pháp triển khai:**
+      - **Mô hình Phân Cấp Category:** Trục phân cấp đơn nhất dựa vào `Category.parentId` (`!parentId` = Root Category, `parentId === rootId` = Child Category). Trường `type` đóng vai trò legacy compatibility slug.
+      - **Mô hình Topic Visibility:** Thêm trường `visibility: 'active' | 'hidden'` trên Topic. Tự động chuẩn hóa (`normalizeTopics`) về `'active'` đối với các topic cũ hoặc snapshots không có trường này.
+      - **Bảo toàn dữ liệu triệt để:** Thao tác ẩn chủ đề (`hideTopic`) chỉ đổi cờ hiển thị; toàn bộ `notes`, `resources`, `links`, `studyProgress`, SM-2 repetitions và timestamps đều được bảo toàn nguyên vẹn 100%.
+      - **Thành phần phát triển:**
+        - Module di trú & truy vấn cây danh mục [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts).
+        - Giao diện Sidebar [`src/components/layout/Sidebar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/layout/Sidebar.tsx) render danh mục gốc động + nút "Thêm lĩnh vực" inline.
+        - Topic Form [`src/components/modals/TopicFormModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/TopicFormModal.tsx) cho phép chọn danh mục phân cấp động theo nhóm lĩnh vực.
+        - Cây chủ đề [`src/components/topics/TopicTree.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/TopicTree.tsx) tích hợp bộ lọc trạng thái hiển thị (Chủ đề hoạt động / Đã ẩn / Tất cả) và nút Ẩn/Khôi phục 1-click.
+        - Bộ lọc tìm kiếm [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) hỗ trợ chọn lĩnh vực gốc động và danh mục tương ứng.
+    - **Kiểm thử:** 8/8 tests PASS (4/4 pure lib + 4/4 UI integration).
   - **Post-Phase 5 Micro-Increment: Antigravity Result Ingestion & Tracker Completion Polish:**
     - **Mục tiêu:** Khép kín vòng quay kết quả nghiên cứu từ Antigravity/NotebookLM quay về app khi người dùng nạp (ingest) Artifact vào Artifacts Locker.
     - **Logic nghiệp vụ:**

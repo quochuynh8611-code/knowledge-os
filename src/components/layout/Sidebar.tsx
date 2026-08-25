@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData, ActiveTab } from '../../context/DataContext';
 import {
   LayoutDashboard,
@@ -14,8 +14,13 @@ import {
   Clock,
   Brain,
   BookA,
+  Plus,
+  X,
+  Layers,
+  Folder,
 } from 'lucide-react';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
+import { getRootCategories } from '../../lib/taxonomyMigration';
 
 export function Sidebar() {
   const {
@@ -26,8 +31,73 @@ export function Sidebar() {
     selectedCategoryFilter,
     setSelectedCategoryFilter,
     categories,
+    topics,
+    addCategory,
     reviewQueue,
   } = useData();
+
+  const [isAddingDomain, setIsAddingDomain] = useState(false);
+  const [newDomainName, setNewDomainName] = useState('');
+
+  const rootCategories = useMemo(() => {
+    return getRootCategories(categories);
+  }, [categories]);
+
+  // Compute topic stats for each root domain dynamically
+  const domainStats = useMemo(() => {
+    const map: Record<string, { total: number; donePercent: number }> = {};
+    const activeTopics = topics.filter((t) => t.visibility !== 'hidden');
+
+    rootCategories.forEach((root) => {
+      // Find all descendant category IDs
+      const childCatIds = categories
+        .filter((c) => c.parentId === root.id)
+        .map((c) => c.id);
+      const matchingCatIds = new Set([root.id, ...childCatIds]);
+
+      const rootTopics = activeTopics.filter((t) => {
+        return (
+          matchingCatIds.has(t.categoryId) ||
+          t.type === root.type ||
+          t.type === root.slug ||
+          t.categorySlug === root.slug
+        );
+      });
+
+      const completed = rootTopics.filter(
+        (t) =>
+          t.studyProgress?.progress >= 100 ||
+          t.studyProgress?.status === 'completed'
+      ).length;
+
+      const donePercent =
+        rootTopics.length > 0
+          ? Math.round((completed / rootTopics.length) * 100)
+          : 0;
+
+      map[root.id] = {
+        total: rootTopics.length,
+        donePercent,
+      };
+    });
+
+    return map;
+  }, [categories, rootCategories, topics]);
+
+  const handleCreateDomain = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDomainName.trim()) return;
+
+    addCategory({
+      name: newDomainName.trim(),
+      slug: '',
+      parentId: null,
+      color: '#475569',
+    });
+
+    setNewDomainName('');
+    setIsAddingDomain(false);
+  };
 
   const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: number | string; highlight?: boolean }[] = [
     { id: 'dashboard', label: 'Tổng Quan Nghiên Cứu', icon: LayoutDashboard },
@@ -105,47 +175,84 @@ export function Sidebar() {
         </div>
 
         <div className="space-y-1 mt-1">
-          {/* Buddhism Category */}
-          <button
-            onClick={() => {
-              setSelectedCategoryFilter(selectedCategoryFilter === 'phat-hoc' ? null : 'phat-hoc');
-              setActiveTab('topics');
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition ${
-              selectedCategoryFilter === 'phat-hoc'
-                ? 'bg-amber-100/90 text-amber-950 font-bold border border-amber-300'
-                : 'text-stone-700 hover:bg-stone-200/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-              <span>Phật Học ({stats.phatHocTopics})</span>
-            </div>
-            <span className="text-[10px] font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded">
-              {stats.phatHocDonePercent}%
-            </span>
-          </button>
+          {rootCategories.map((root) => {
+            const rootDomainKey = root.slug || root.type || root.id;
+            const isSelected =
+              selectedCategoryFilter === root.id ||
+              selectedCategoryFilter === root.slug ||
+              selectedCategoryFilter === root.type;
 
-          {/* Esotericism Category */}
-          <button
-            onClick={() => {
-              setSelectedCategoryFilter(selectedCategoryFilter === 'huyen-hoc' ? null : 'huyen-hoc');
-              setActiveTab('topics');
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition ${
-              selectedCategoryFilter === 'huyen-hoc'
-                ? 'bg-indigo-100/90 text-indigo-950 font-bold border border-indigo-300'
-                : 'text-stone-700 hover:bg-stone-200/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Compass className="w-3.5 h-3.5 text-indigo-700" />
-              <span>Huyền Học ({stats.huyenHocTopics})</span>
-            </div>
-            <span className="text-[10px] font-mono text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded">
-              {stats.huyenHocDonePercent}%
-            </span>
-          </button>
+            const domainStat = domainStats[root.id] || { total: 0, donePercent: 0 };
+
+            return (
+              <button
+                key={root.id}
+                onClick={() => {
+                  setSelectedCategoryFilter(isSelected ? null : rootDomainKey);
+                  setActiveTab('topics');
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition ${
+                  isSelected
+                    ? 'bg-amber-100/90 text-amber-950 font-bold border border-amber-300'
+                    : 'text-stone-700 hover:bg-stone-200/60'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  {root.slug === 'phat-hoc' || root.type === 'phat-hoc' ? (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  ) : root.slug === 'huyen-hoc' || root.type === 'huyen-hoc' ? (
+                    <Compass className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
+                  ) : (
+                    <Folder className="w-3.5 h-3.5 text-stone-600 shrink-0" />
+                  )}
+                  <span className="truncate">{root.name} ({domainStat.total})</span>
+                </div>
+                <span className="text-[10px] font-mono text-stone-800 bg-stone-200/70 px-1.5 py-0.5 rounded shrink-0">
+                  {domainStat.donePercent}%
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Add Domain Button & Form */}
+          {isAddingDomain ? (
+            <form onSubmit={handleCreateDomain} className="pt-2 px-1 space-y-1.5">
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newDomainName}
+                  onChange={(e) => setNewDomainName(e.target.value)}
+                  placeholder="Tên lĩnh vực mới..."
+                  autoFocus
+                  className="w-full px-2.5 py-1 text-xs bg-white border border-stone-300 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-700"
+                />
+                <button
+                  type="submit"
+                  className="px-2 py-1 bg-amber-700 text-white rounded-lg text-xs font-semibold hover:bg-amber-800"
+                >
+                  Lưu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingDomain(false);
+                    setNewDomainName('');
+                  }}
+                  className="p-1 text-stone-400 hover:text-stone-700 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </form>
+          ) : (
+            <button
+              onClick={() => setIsAddingDomain(true)}
+              className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-amber-800 hover:bg-amber-50 rounded-xl transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm lĩnh vực</span>
+            </button>
+          )}
         </div>
       </div>
 

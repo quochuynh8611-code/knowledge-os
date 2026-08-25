@@ -1,10 +1,12 @@
-export type CategoryType = 'phat-hoc' | 'huyen-hoc';
+export type CategoryType = 'phat-hoc' | 'huyen-hoc' | string;
+
+export type TopicVisibility = 'active' | 'hidden';
 
 export interface Category {
   id: string;
   name: string;
   slug: string;
-  type: CategoryType;
+  type?: CategoryType;
   parentId?: string | null;
   description?: string;
   icon?: string;
@@ -85,6 +87,7 @@ export interface Topic {
   tags: string[];
   links: KnowledgeLink[];
   studyProgress: StudyProgress;
+  visibility?: TopicVisibility; // Default: 'active'
   createdAt: string;
   updatedAt: string;
 }

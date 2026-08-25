@@ -42,7 +42,7 @@ describe("Phase 2: Zod Schema Validation & Data Migration Contracts", () => {
       const invalidPayload = {
         title: "",
         categoryId: "cat-tam-tang",
-        type: "khoa-hoc-hien-dai", // Sai enum
+        type: "", // Empty string
       };
 
       const result = TopicCreateSchema.safeParse(invalidPayload);
@@ -57,7 +57,7 @@ describe("Phase 2: Zod Schema Validation & Data Migration Contracts", () => {
         ).toBe(true);
         expect(
           errorMessages.some((msg) =>
-            msg.includes("Lĩnh vực phải là phat-hoc hoặc huyen-hoc"),
+            msg.includes("Lĩnh vực không được để trống"),
           ),
         ).toBe(true);
       }

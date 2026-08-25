@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import { Topic, CategoryType, TopicStatus } from '../../types';
-import { X, BookOpen, Sparkles, Tag as TagIcon } from 'lucide-react';
+import { X, BookOpen, Sparkles, Tag as TagIcon, FolderTree } from 'lucide-react';
+import { getRootCategories, getChildCategories, resolveRootCategory } from '../../lib/taxonomyMigration';
 
 interface TopicFormModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
   const [status, setStatus] = useState<TopicStatus>('not_started');
   const [progress, setProgress] = useState(0);
 
+  const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
+
   useEffect(() => {
     if (initialTopic) {
       setTitle(initialTopic.title);
@@ -37,8 +40,10 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
     } else {
       setTitle('');
       setSlug('');
-      setCategoryId(categories[0]?.id || '');
-      setType('phat-hoc');
+      const defaultCat = categories[0]?.id || '';
+      setCategoryId(defaultCat);
+      const defaultCatObj = categories.find((c) => c.id === defaultCat);
+      setType(defaultCatObj?.type || 'phat-hoc');
       setDescription('');
       setContent('## 1. Giới thiệu tổng quan\n\n## 2. Các nguyên lý cốt lõi\n\n## 3. Ứng dụng thực hành\n');
       setSelectedTags([]);
@@ -65,7 +70,8 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
     setCategoryId(catId);
     const cat = categories.find((c) => c.id === catId);
     if (cat) {
-      setType(cat.type);
+      const root = resolveRootCategory(categories, cat.id);
+      setType(cat.type || root?.slug || root?.type || 'general');
     }
   };
 
@@ -86,6 +92,8 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
     if (!title.trim()) return;
 
     const selectedCategory = categories.find((c) => c.id === categoryId);
+    const rootCat = selectedCategory ? resolveRootCategory(categories, selectedCategory.id) : null;
+    const resolvedType = selectedCategory?.type || rootCat?.slug || rootCat?.type || type || 'general';
 
     if (initialTopic) {
       updateTopic(initialTopic.id, {
@@ -94,7 +102,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
         categoryId,
         categoryName: selectedCategory?.name || initialTopic.categoryName,
         categorySlug: selectedCategory?.slug || initialTopic.categorySlug,
-        type,
+        type: resolvedType,
         description,
         content,
         tags: selectedTags,
@@ -111,7 +119,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
         categoryId,
         categoryName: selectedCategory?.name || 'Tổng quan',
         categorySlug: selectedCategory?.slug || 'tong-quan',
-        type,
+        type: resolvedType,
         description,
         content,
         tags: selectedTags,
@@ -121,6 +129,9 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
   };
 
   if (!isOpen) return null;
+
+  const currentCategory = categories.find((c) => c.id === categoryId);
+  const currentRoot = currentCategory ? resolveRootCategory(categories, currentCategory.id) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
@@ -135,7 +146,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               <h2 className="text-lg font-semibold text-stone-900">
                 {initialTopic ? 'Chỉnh Sửa Chủ Đề Nghiên Cứu' : 'Tạo Chủ Đề Nghiên Cứu Mới'}
               </h2>
-              <p className="text-xs text-stone-600">Phật học & Huyền học phương Đông</p>
+              <p className="text-xs text-stone-600">Phân loại theo lĩnh vực và danh mục khảo cứu động</p>
             </div>
           </div>
           <button
@@ -149,10 +160,11 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label htmlFor="topic-title-input" className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
               Tiêu đề chủ đề *
             </label>
             <input
+              id="topic-title-input"
               type="text"
               required
               value={title}
@@ -164,49 +176,45 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              <label htmlFor="category-select" className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
                 Danh mục phân cấp *
               </label>
               <select
+                id="category-select"
                 value={categoryId}
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700"
               >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    [{c.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {c.name}
-                  </option>
-                ))}
+                {rootCategories.map((root) => {
+                  const children = getChildCategories(categories, root.id);
+                  return (
+                    <optgroup key={root.id} label={`📂 ${root.name}`}>
+                      <option value={root.id}>[Gốc] {root.name}</option>
+                      {children.map((child) => (
+                        <option key={child.id} value={child.id}>
+                          &nbsp;&nbsp;↳ {child.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
-                Lĩnh vực chính
+                Lĩnh vực khảo cứu
               </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setType('phat-hoc')}
-                  className={`flex-1 py-2 px-3 text-xs font-medium rounded-xl border transition flex items-center justify-center gap-1.5 ${
-                    type === 'phat-hoc'
-                      ? 'bg-amber-100 border-amber-400 text-amber-900 font-semibold'
-                      : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Phật Học
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setType('huyen-hoc')}
-                  className={`flex-1 py-2 px-3 text-xs font-medium rounded-xl border transition flex items-center justify-center gap-1.5 ${
-                    type === 'huyen-hoc'
-                      ? 'bg-indigo-100 border-indigo-400 text-indigo-900 font-semibold'
-                      : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Huyền Học
-                </button>
+              <div className="flex items-center gap-2 px-3.5 py-2.5 bg-stone-100 border border-stone-200 rounded-xl text-xs font-medium text-stone-800">
+                <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="truncate">
+                  {currentRoot ? currentRoot.name : 'Chưa phân loại'}
+                </span>
+                {currentCategory && currentCategory.id !== currentRoot?.id && (
+                  <span className="text-[11px] text-stone-500 truncate">
+                    / {currentCategory.name}
+                  </span>
+                )}
               </div>
             </div>
           </div>

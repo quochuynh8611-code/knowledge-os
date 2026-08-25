@@ -4,9 +4,9 @@ import { z } from "zod";
 // 1. ENUMS & BASIC PRIMITIVES
 // ==========================================
 
-export const CategoryTypeEnum = z.enum(["phat-hoc", "huyen-hoc"], {
-  message: "Lĩnh vực phải là phat-hoc hoặc huyen-hoc",
-});
+export const CategoryTypeEnum = z.string().min(1, "Lĩnh vực không được để trống");
+
+export const TopicVisibilityEnum = z.enum(["active", "hidden"]);
 
 export const TopicStatusEnum = z.enum(
   ["not_started", "in_progress", "completed", "reviewing"],
@@ -23,7 +23,7 @@ export const NoteTypeEnum = z.enum(
 );
 
 export const ResourceTypeEnum = z.enum(
-  ["book", "article", "video", "audio", "pdf", "link"],
+  ["book", "article", "video", "audio", "pdf"],
   {
     message: "Loại tài liệu không hợp lệ",
   },
@@ -32,7 +32,7 @@ export const ResourceTypeEnum = z.enum(
 export const LinkTypeEnum = z.enum(
   ["related", "prerequisite", "advanced", "contradicts"],
   {
-    message: "Loại quan hệ liên kết không hợp lệ",
+    message: "Loại liên kết tri thức không hợp lệ",
   },
 );
 
@@ -44,7 +44,7 @@ export const TagSchema = z.object({
   id: z.string().min(1, "Tag ID không được để trống"),
   name: z.string().min(1, "Tên tag không được để trống"),
   slug: z.string().min(1, "Slug không được để trống"),
-  color: z.string().optional(),
+  color: z.string().default("#3b82f6"),
   count: z.number().int().optional(),
 });
 
@@ -58,7 +58,7 @@ export const CategorySchema = z.object({
   id: z.string().min(1, "Category ID không được để trống"),
   name: z.string().min(1, "Tên danh mục không được để trống"),
   slug: z.string().min(1, "Slug không được để trống"),
-  type: CategoryTypeEnum,
+  type: CategoryTypeEnum.optional(),
   description: z.string().optional(),
   parentId: z.string().nullable().optional(),
   icon: z.string().optional(),
@@ -133,6 +133,7 @@ export const TopicSchema = z.object({
   content: z.string().default(""),
   tags: z.array(z.string()).default([]),
   links: z.array(KnowledgeLinkSchema).default([]),
+  visibility: TopicVisibilityEnum.optional(),
   createdAt: z
     .string()
     .optional()
@@ -153,11 +154,12 @@ export const TopicCreateSchema = z.object({
   categoryId: z.string().min(1, "Category ID không được để trống"),
   categorySlug: z.string().optional(),
   categoryName: z.string().optional(),
-  type: CategoryTypeEnum,
+  type: CategoryTypeEnum.optional().default("general"),
   parentId: z.string().nullable().optional(),
   description: z.string().optional().default(""),
   content: z.string().optional().default(""),
   tags: z.array(z.string()).optional().default([]),
+  visibility: TopicVisibilityEnum.optional().default("active"),
 });
 
 export const TopicUpdateSchema = TopicCreateSchema.partial();

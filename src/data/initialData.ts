@@ -17,7 +17,6 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Abhidharma (Vi Diệu Pháp)",
     slug: "abhidharma",
     type: "phat-hoc",
-    parentId: "cat-tam-tang",
     description:
       "Thắng Pháp Tạng - Hệ thống phân tích thực tại tối hậu gồm Tâm (Citta), Tâm Sở (Cetasika), Sắc Pháp (Rūpa) và Niết Bàn (Nibbāna).",
     icon: "BookOpen",
@@ -73,16 +72,16 @@ export const INITIAL_CATEGORIES: Category[] = [
     description:
       "Khoa học điều hòa khí trường môi trường thông qua Loan Đầu hình thể và Huyền Không Lý Khí.",
     icon: "Mountain",
-    color: "#0D9488",
+    color: "#0284C7",
   },
   {
     id: "cat-tu-vi-tu-tru",
-    name: "Tử Vi & Mệnh Lý",
+    name: "Tử Vi & Tứ Trụ",
     slug: "tu-vi-tu-tru",
     type: "huyen-hoc",
     description:
-      "Hệ thống luận giải vận mệnh, tinh bàn 14 chính tinh và ngũ hành can chi sinh khắc.",
-    icon: "Star",
+      "Mệnh lý học phương Đông: Tinh bàn Tử Vi Đẩu Số và Bát Tự Hà Lạc / Tử Bình.",
+    icon: "Layers",
     color: "#4F46E5",
   },
 ];

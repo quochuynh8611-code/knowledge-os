@@ -7,8 +7,10 @@ import {
   X,
   Check,
   Bookmark,
+  Folder,
 } from "lucide-react";
 import { Category, Tag, CategoryType, TopicStatus } from "../../types";
+import { getRootCategories } from "../../lib/taxonomyMigration";
 
 export interface SearchFiltersState {
   domain: "all" | CategoryType;
@@ -49,9 +51,19 @@ export function SearchFilters({
     });
   };
 
+  const rootCategories = getRootCategories(categories);
+
   const filteredCategories = categories.filter((cat) => {
     if (filters.domain === "all") return true;
-    return cat.type === filters.domain;
+    const selectedRoot = rootCategories.find(
+      (r) => r.slug === filters.domain || r.type === filters.domain || r.id === filters.domain
+    );
+    return (
+      cat.type === filters.domain ||
+      cat.slug === filters.domain ||
+      cat.id === filters.domain ||
+      (selectedRoot && cat.parentId === selectedRoot.id)
+    );
   });
 
   return (
@@ -137,6 +149,33 @@ export function SearchFilters({
             <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
             <span>Huyền Học (Dịch Học / Kỳ Môn)</span>
           </button>
+          {categories
+            .filter((c) => !c.parentId && c.type !== "phat-hoc" && c.type !== "huyen-hoc")
+            .map((customRoot) => {
+              const customKey = (customRoot.slug || customRoot.id) as CategoryType;
+              const isSelected = filters.domain === customKey;
+              return (
+                <button
+                  key={customRoot.id}
+                  type="button"
+                  onClick={() =>
+                    onFilterChange({
+                      ...filters,
+                      domain: customKey,
+                      categoryId: null,
+                    })
+                  }
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                    isSelected
+                      ? "bg-stone-900 text-white font-bold shadow-2xs"
+                      : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200"
+                  }`}
+                >
+                  <Folder className="w-3 h-3" />
+                  <span>{customRoot.name}</span>
+                </button>
+              );
+            })}
         </div>
       </div>
 
@@ -162,8 +201,7 @@ export function SearchFilters({
             </option>
             {filteredCategories.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name} ({cat.type === "phat-hoc" ? "Phật Học" : "Huyền Học"}
-                )
+                {cat.name} ({cat.type === "phat-hoc" ? "Phật Học" : cat.type === "huyen-hoc" ? "Huyền Học" : cat.name})
               </option>
             ))}
           </select>

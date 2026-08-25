@@ -17,6 +17,7 @@ import {
   NoteType,
   ResourceType,
   StudyProgress,
+  TopicVisibility,
 } from "../types";
 import {
   INITIAL_CATEGORIES,
@@ -26,6 +27,11 @@ import {
   INITIAL_TAGS,
 } from "../data/initialData";
 import { calculateNextReview, getReviewQueue } from "../lib/spaced-repetition";
+import {
+  normalizeCategories,
+  normalizeTopics,
+  generateCategorySlug,
+} from "../lib/taxonomyMigration";
 import {
   LocalStorageDataRepository,
   ApiDataRepository,
@@ -79,6 +85,11 @@ interface DataContextType {
   setSelectedTagFilter: (tag: string | null) => void;
   openTopicDetail: (topicId: string) => void;
 
+  // Actions - Categories
+  addCategory: (categoryData: Omit<Category, "id">) => string;
+  updateCategory: (id: string, categoryData: Partial<Category>) => void;
+  deleteCategory: (id: string) => void;
+
   // Actions - Topics
   addTopic: (
     topicData: Omit<
@@ -88,6 +99,8 @@ interface DataContextType {
   ) => string;
   updateTopic: (id: string, topicData: Partial<Topic>) => void;
   deleteTopic: (id: string) => void;
+  hideTopic: (id: string) => void;
+  restoreTopic: (id: string) => void;
   updateTopicProgress: (
     topicId: string,
     progress: number,
@@ -143,18 +156,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_categories`);
-      return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+      return normalizeCategories(saved ? JSON.parse(saved) : INITIAL_CATEGORIES);
     } catch {
-      return INITIAL_CATEGORIES;
+      return normalizeCategories(INITIAL_CATEGORIES);
     }
   });
 
   const [topics, setTopics] = useState<Topic[]>(() => {
     try {
       const saved = localStorage.getItem(`${STORAGE_KEY}_topics`);
-      return saved ? JSON.parse(saved) : INITIAL_TOPICS;
+      return normalizeTopics(saved ? JSON.parse(saved) : INITIAL_TOPICS);
     } catch {
-      return INITIAL_TOPICS;
+      return normalizeTopics(INITIAL_TOPICS);
     }
   });
 
@@ -214,8 +227,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       .then((data) => {
         if (data.topics && data.topics.length > 0) {
           if (data.categories && data.categories.length > 0)
-            setCategories(data.categories);
-          setTopics(data.topics);
+            setCategories(normalizeCategories(data.categories));
+          setTopics(normalizeTopics(data.topics));
           if (data.notes && data.notes.length > 0) setNotes(data.notes);
           if (data.resources && data.resources.length > 0)
             setResources(data.resources);
@@ -280,6 +293,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setActiveTab("topics");
   };
 
+  // Category Handlers
+  const addCategory = (categoryData: Omit<Category, "id">): string => {
+    const newId = `cat-${Date.now()}`;
+    const slug = categoryData.slug || generateCategorySlug(categoryData.name);
+    const newCategory: Category = {
+      ...categoryData,
+      id: newId,
+      slug,
+      parentId: categoryData.parentId || null,
+    };
+    setCategories((prev) => [...prev, newCategory]);
+    return newId;
+  };
+
+  const updateCategory = (id: string, categoryData: Partial<Category>) => {
+    setCategories((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...categoryData } : c)),
+    );
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
   // Topics Handlers
   const addTopic = (
     topicData: Omit<
@@ -298,6 +335,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, ""),
+      visibility: topicData.visibility || "active",
       createdAt: now,
       updatedAt: now,
       links: [],
@@ -324,6 +362,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
           const updated = {
             ...t,
             ...topicData,
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository.saveTopic(updated).catch(console.error);
+          return updated;
+        }
+        return t;
+      }),
+    );
+  };
+
+  const hideTopic = (id: string) => {
+    setTopics((prev) =>
+      prev.map((t) => {
+        if (t.id === id) {
+          const updated: Topic = {
+            ...t,
+            visibility: "hidden",
+            updatedAt: new Date().toISOString(),
+          };
+          dataRepository.saveTopic(updated).catch(console.error);
+          return updated;
+        }
+        return t;
+      }),
+    );
+  };
+
+  const restoreTopic = (id: string) => {
+    setTopics((prev) =>
+      prev.map((t) => {
+        if (t.id === id) {
+          const updated: Topic = {
+            ...t,
+            visibility: "active",
             updatedAt: new Date().toISOString(),
           };
           dataRepository.saveTopic(updated).catch(console.error);
@@ -671,8 +743,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed.topics && Array.isArray(parsed.topics)) {
-        if (parsed.categories) setCategories(parsed.categories);
-        setTopics(parsed.topics);
+        const normCats = normalizeCategories(parsed.categories || categories);
+        const normTopics = normalizeTopics(parsed.topics);
+
+        if (parsed.categories) setCategories(normCats);
+        setTopics(normTopics);
         if (parsed.notes) setNotes(parsed.notes);
         if (parsed.resources) setResources(parsed.resources);
         if (parsed.tags) setTags(parsed.tags);
@@ -682,8 +757,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             clientSyncId: `import-${Date.now()}`,
             version: "2.0.0",
             clientTimestamp: new Date().toISOString(),
-            categories: parsed.categories || categories,
-            topics: parsed.topics,
+            categories: normCats,
+            topics: normTopics,
             notes: parsed.notes || notes,
             resources: parsed.resources || resources,
             tags: parsed.tags || tags,
@@ -713,8 +788,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     } catch {
       // Ignore storage clear errors
     }
-    setCategories(INITIAL_CATEGORIES);
-    setTopics(INITIAL_TOPICS);
+    setCategories(normalizeCategories(INITIAL_CATEGORIES));
+    setTopics(normalizeTopics(INITIAL_TOPICS));
     setNotes(INITIAL_NOTES);
     setResources(INITIAL_RESOURCES);
     setTags(INITIAL_TAGS);
@@ -753,14 +828,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const resourcesData =
           resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
 
-        setTopics(topicsData);
+        const normTopics = normalizeTopics(topicsData);
+        setTopics(normTopics);
         if (notesData) setNotes(notesData);
         if (resourcesData) setResources(resourcesData);
 
         try {
           const fullPayload = {
             categories,
-            topics: topicsData,
+            topics: normTopics,
             notes: notesData,
             resources: resourcesData,
             tags,
@@ -768,7 +844,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
           localStorage.setItem(
             `${STORAGE_KEY}_topics`,
-            JSON.stringify(topicsData),
+            JSON.stringify(normTopics),
           );
           localStorage.setItem(
             `${STORAGE_KEY}_notes`,
@@ -791,17 +867,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return false;
       }
       if (data.categories && data.categories.length > 0) {
-        setCategories(data.categories);
+        setCategories(normalizeCategories(data.categories));
       }
-      setTopics(data.topics);
+      const normTopics = normalizeTopics(data.topics);
+      setTopics(normTopics);
       if (data.notes) setNotes(data.notes);
       if (data.resources) setResources(data.resources);
       if (data.tags) setTags(data.tags);
 
       try {
         const fullPayload = {
-          categories: data.categories || [],
-          topics: data.topics,
+          categories: normalizeCategories(data.categories || []),
+          topics: normTopics,
           notes: data.notes || [],
           resources: data.resources || [],
           tags: data.tags || [],
@@ -809,11 +886,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
         localStorage.setItem(
           `${STORAGE_KEY}_categories`,
-          JSON.stringify(data.categories || []),
+          JSON.stringify(fullPayload.categories),
         );
         localStorage.setItem(
           `${STORAGE_KEY}_topics`,
-          JSON.stringify(data.topics),
+          JSON.stringify(normTopics),
         );
         localStorage.setItem(
           `${STORAGE_KEY}_notes`,
@@ -865,9 +942,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setSelectedCategoryFilter,
         setSelectedTagFilter,
         openTopicDetail,
+        addCategory,
+        updateCategory,
+        deleteCategory,
         addTopic,
         updateTopic,
         deleteTopic,
+        hideTopic,
+        restoreTopic,
         updateTopicProgress,
         addKnowledgeLink,
         removeKnowledgeLink,
