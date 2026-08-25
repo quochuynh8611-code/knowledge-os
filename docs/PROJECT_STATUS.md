@@ -1,8 +1,8 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-08-24  
-> **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY (WORKSTREAMS 5D, 5A, 5B, 5C COMPLETED & VERIFIED)**
+> **Cập nhật lần cuối:** 2026-08-25
+> **Người phụ trách:** Staff Software Engineer / Technical Architect
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–5 FULLY IMPLEMENTED & PRODUCTION-READY · OBSIDIAN URI PROTOCOL HARDENED & VERIFIED**
 
 ---
 
@@ -13,7 +13,9 @@
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
-  - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases.
+  - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
+- **Gia Cố Giao Thức Tích Hợp (Recent Hardening Checkpoint):**
+  - **Obsidian URI Integration Fix (Commit `521291d`):** Chuẩn hóa định danh Vault Identifier (hỗ trợ cả tên Vault và đường dẫn tuyệt đối macOS/Windows), bảo vệ chống nhầm thư mục con `01_Inbox`, làm sạch legacy LocalStorage, và chuẩn hóa relative file path.
 - **Quy tắc bất biến đã tuân thủ:** OODA, Read-before-write, Test-first, Zero Binary Ingestion, Dual-Tier Resilience, Fast-fail Security Guardrails.
 
 ---
@@ -23,7 +25,7 @@
 | Phase | Mục tiêu chính | Trạng thái kỹ thuật | Action tiếp theo |
 | :--- | :--- | :---: | :--- |
 | **Phase 1** | **Local File Picker UX:**<br>- Thêm nút "Duyệt tệp trên máy"<br>- Tự trích xuất `file.name`<br>- Auto-detect định dạng PDF/Audio/Video/Book<br>- Auto-suggest tiêu đề nếu trống<br>- Thông báo hướng dẫn sandbox trình duyệt<br>- Zero binary ingestion (metadata < 2KB) | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 6/6 tests trong `resource-form-modal-file-picker.test.tsx`)* | **Hoàn tất 100% (đã xác minh)** |
-| **Phase 2a** | **Obsidian Open / Export UX:**<br>- Cấu hình & Fallback an toàn Vault Name<br>- Mở topic qua `obsidian://open` (sanitized path)<br>- Tạo note qua `obsidian://new`<br>- Xuất file ZIP chuẩn cấu trúc Vault Markdown | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 9/9 `obsidian-lib` + 7/7 `obsidian-bridge` tests)* | **Hoàn tất 100% (đã xác minh)** |
+| **Phase 2a** | **Obsidian Open / Export UX & Protocol Hardening:**<br>- Cấu hình & Fallback an toàn Vault Name<br>- Chuẩn hóa thông minh Vault Identifier (Hỗ trợ tên Vault, đường dẫn tuyệt đối macOS/Windows, bảo vệ chống nhầm thư mục con `01_Inbox`)<br>- Làm sạch tự động giá trị bẩn legacy trong LocalStorage<br>- Mở topic qua `obsidian://open` (sanitized relative path)<br>- Tạo note qua `obsidian://new` (nhất quán contract)<br>- Xuất file ZIP chuẩn cấu trúc Vault Markdown | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 15/15 `obsidian-lib` + 8/8 `obsidian-bridge` tests)* | **Hoàn tất 100% (Commit `521291d` verified)** |
 | **Phase 2b** | **NotebookLM Studio UX:**<br>- Đóng gói 5 phần chuẩn tài liệu nguồn (Web + Local)<br>- An toàn Clipboard & File Download Markdown<br>- Quản lý và lưu trữ Artifacts Locker với ID duy nhất | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 7/7 `notebooklm-lib` + 6/6 `notebooklm-studio` tests)* | **Hoàn tất 100% (đã xác minh)** |
 | **Phase 3** | **Antigravity Handoff Bundle:**<br>- Đóng gói 6 phần chuẩn (1-hop direct graph)<br>- An toàn Clipboard & File Download `Antigravity-Handoff-{Topic}.md`<br>- Sinh System Prompt theo 3 chế độ nghiên cứu<br>- Tích hợp trigger trên TopicDetail, AIStudio và Navbar | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 6/6 `antigravity-lib` + 4/4 `antigravity-handoff` tests)* | **Hoàn tất 100% (đã xác minh)** |
 | **Phase 4** | **Production Readiness & Hardening:**<br>- Rate limiting 10 req/min (`/api/gemini/*`) & 5 req/min (`/api/backup/restore`)<br>- Boundary validation (`MAX_PROMPT_LENGTH = 20k`, `MAX_HANDOFF_CONTEXT_LENGTH = 100k`)<br>- Health & Latency Policy: `<100ms` healthy, `100-1000ms` degraded, `>=1000ms` unhealthy<br>- Fast-fail non-retryable Gemini errors (400, 401, Invalid Arg)<br>- Bounded retry tối đa 2 lần cho 503/429/overload kèm model fallback queue<br>- Structured JSON Logging không lộ bí mật | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 13/13 tests trong `phase-4-production-hardening.test.ts`)* | **Hoàn tất 100% (đã xác minh - Commit `9cfdabe`)** |
@@ -38,15 +40,15 @@
 | **5D** | **Scholar Search & Fast Fuzzy Metadata Filter** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5d-scholar-search.feature` (`d844530`)<br>• Core lib: `src/lib/scholarSearch.ts` + 8/8 tests (`8e09740`)<br>• UI: `useCommandPalette.ts` + `AdvancedSearch.tsx` (`5ee5d89`) |
 | **5A** | **Advanced Knowledge Graph & Multi-Hop Traversal Explorer** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5a-knowledge-graph.feature` (`613deed`)<br>• Core lib: `src/lib/knowledgeGraph.ts` + 6/6 tests (`613deed`)<br>• UI: `src/components/graph/KnowledgeGraph.tsx` + 4/4 tests (`4ee9f5c`) |
 | **5B** | **Spaced Repetition (SM-2) Study Session Analytics** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5b-study-analytics.feature` (`c325e33`)<br>• Core lib: `src/lib/studyAnalytics.ts` + 6/6 tests (`c325e33`)<br>• UI: `src/components/progress/StudyProgressView.tsx` + 4/4 tests (`d912818`) |
-| **5C** | **Automated Snapshot Maintenance & Headless Backup Script** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5c-headless-backup.feature`<br>• Core lib: `src/lib/snapshotManager.ts` + 10/10 tests (`snapshot-maintenance.test.ts`)<br>• CLI Script: `scripts/backup-snapshot.ts` + NPM scripts (`package.json`, `.gitignore`) |
+| **5C** | **Automated Snapshot Maintenance & Headless Backup Script** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5c-headless-backup.feature`<br>• Core lib: `src/lib/snapshotManager.ts` + 10/10 tests (`snapshot-maintenance.test.ts`)<br>• CLI Script: `scripts/backup-snapshot.ts` + NPM scripts (`693abd6`, `916b002`) |
 
 ---
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **32 / 32 test files PASS — 224 / 224 tests PASS (100% GREEN in 8.14s)**.
+- **Regression Test Suite:** ✅ **32 / 32 test files PASS — 231 / 231 tests PASS (100% GREEN in 6.60s)**.
 - **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
-- **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (9/9 PASS) · `obsidian-bridge-integration.test.tsx` (7/7 PASS).
+- **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (15/15 PASS) · `obsidian-bridge-integration.test.tsx` (8/8 PASS) *(Baseline 9/9 & 7/7, Post-fix 15/15 & 8/8)*.
 - **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (7/7 PASS) · `notebooklm-studio-integration.test.tsx` (6/6 PASS).
 - **Phase 3 Suites:** ✅ `antigravity-lib.test.ts` (6/6 PASS) · `antigravity-handoff-integration.test.tsx` (4/4 PASS).
 - **Phase 4 Suite:** ✅ `phase-4-production-hardening.test.ts` (13/13 PASS).
@@ -72,7 +74,14 @@
    - **Xác Minh 2 Lớp:** Kiểm tra cấu trúc Schema và khớp SHA-256 Checksum, phân biệt rõ `VALID`, `INVALID_SCHEMA`, `INVALID_CHECKSUM`.
    - **Dọn Dẹp Tự Động (Retention Pruning):** Lọc theo regex tên file `snapshot-*.json`, giữ $N$ bản ghi mới nhất, bảo toàn tuyệt đối các file ngoài lề (`.txt`, `.gitkeep`).
    - **NPM Scripts:** Cung cấp `npm run snapshot:create`, `npm run snapshot:dry-run`, `npm run snapshot:verify`, `npm run snapshot:prune`.
-5. **Tính Toàn Vẹn Hệ Thống:**
+5. **Obsidian URI Protocol & Path Resolution Hardening (Commit `521291d`):**
+   - **Chuẩn Hóa Vault Identifier:** Hàm thuần túy `normalizeObsidianVaultIdentifier` trong [`src/lib/obsidian.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/obsidian.ts) tự động trích xuất tên Vault từ cả plain string, đường dẫn tuyệt đối macOS/Linux (`/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian` $\rightarrow$ `Phat-Hoc-Obsidian`), hoặc Windows (`C:\...`).
+   - **Rào Chắn Thư Mục Con (Child Folder Guardrail):** Sử dụng regex `OBSIDIAN_CHILD_DIR_PATTERNS` để ngăn chặn các đường dẫn trỏ vào thư mục con (như `01_Inbox`, `_inbox`, `.obsidian`) bị gán nhầm làm tên Vault; tự động truy xuất thư mục cha là Vault Root.
+   - **Làm Sạch Đường Dẫn Tương Đối:** Hàm `normalizeObsidianFilePath` loại bỏ leading slashes và chuẩn hóa dấu phân cách, đảm bảo URI query parameter `file` là đường dẫn tương đối chính xác từ Vault Root.
+   - **Tự Động Làm Sạch Legacy LocalStorage:** Hàm `getStoredVaultName()` và `setStoredVaultName()` tự động khử bỏ các chuỗi đường dẫn tuyệt đối cũ lưu trong LocalStorage khi đọc/ghi.
+   - **Tính Nhất Quán Giao Thức:** Cả hai giao thức `obsidian://open` và `obsidian://new` đều chia sẻ 100% normalization contract.
+   - **Giới Hạn Phạm Vi & Bảo Toàn:** Không làm thay đổi database schema, backend API, hay logic xuất ZIP của Vault.
+6. **Tính Toàn Vẹn Hệ Thống:**
    - [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
@@ -82,4 +91,4 @@
 ## 🛑 6. Blockers & Trạng Thái Sẵn Sàng (Production Readiness)
 
 1. **Blockers kỹ thuật:** **0 blocker**.
-2. **Trạng thái hệ thống:** **Phase 1–5 GREEN, 100% VERIFIED & PRODUCTION-READY**.
+2. **Trạng thái hệ thống:** **Phase 1–5 GREEN, 100% VERIFIED & PRODUCTION-READY (No known regression detected in verified test scope)**.
