@@ -472,6 +472,18 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
               <p className="text-sm text-stone-600">
                 Xuất toàn bộ hệ thống gồm {topics.length} chủ đề, {notes.length} ghi chú, tài liệu và tiến độ học tập thành file JSON tiêu chuẩn Semver 2.x có mã băm SHA-256 để lưu trữ an toàn.
               </p>
+
+              {/* Safety Disambiguation Note */}
+              <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Lưu ý quan trọng về bản sao lưu Snapshot: </span>
+                  <span>
+                    Bản sao lưu này chỉ chứa dữ liệu logic và metadata (chủ đề, ghi chú, tiến độ SM-2). <strong>Không bao gồm các tệp PDF/Audio thật</strong>. Để sao lưu toàn diện, vui lòng sao chép cả thư mục tệp vật lý (<code className="font-mono text-[11px]">Knowledge-Library/</code>) và Bảng Kê Manifest.
+                  </span>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleDownloadServerSnapshot}

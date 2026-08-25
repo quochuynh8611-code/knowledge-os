@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Resource } from '../../types';
-import { X, ExternalLink, FileText, Book, Video, Headphones, Globe, Download } from 'lucide-react';
+import { X, ExternalLink, FileText, Book, Video, Headphones, Globe, Copy, CheckCircle2, Folder } from 'lucide-react';
+import { normalizeFilePath } from '../../lib/fileLibraryAudit';
 
 interface ResourceViewerModalProps {
   resource: Resource | null;
@@ -8,7 +9,19 @@ interface ResourceViewerModalProps {
 }
 
 export function ResourceViewerModal({ resource, onClose }: ResourceViewerModalProps) {
+  const [copiedPath, setCopiedPath] = useState(false);
+
   if (!resource) return null;
+
+  const handleCopyPath = () => {
+    if (!resource.filePath) return;
+    const norm = normalizeFilePath(resource.filePath);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(norm).catch(() => {});
+    }
+    setCopiedPath(true);
+    setTimeout(() => setCopiedPath(false), 2000);
+  };
 
   const getIcon = () => {
     switch (resource.type) {
@@ -62,6 +75,27 @@ export function ResourceViewerModal({ resource, onClose }: ResourceViewerModalPr
               </div>
             )}
 
+            {/* Local File Path Display Card */}
+            {resource.filePath && (
+              <div className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-indigo-700" /> Đường dẫn tệp cục bộ trên máy:
+                  </span>
+                  <button
+                    onClick={handleCopyPath}
+                    className="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 text-[11px] font-semibold rounded-lg flex items-center gap-1 transition cursor-pointer"
+                  >
+                    {copiedPath ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    <span>{copiedPath ? 'Đã sao chép đường dẫn!' : 'Sao chép đường dẫn'}</span>
+                  </button>
+                </div>
+                <code className="block text-xs font-mono text-stone-800 bg-white p-2.5 rounded-lg border border-stone-200 break-all select-all">
+                  {normalizeFilePath(resource.filePath)}
+                </code>
+              </div>
+            )}
+
             {/* Simulated Reader / Content preview */}
             <div className="p-4 bg-stone-100 rounded-xl border border-dashed border-stone-300 text-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-white shadow-xs mx-auto flex items-center justify-center text-indigo-700">
@@ -90,7 +124,7 @@ export function ResourceViewerModal({ resource, onClose }: ResourceViewerModalPr
         <div className="px-6 py-3 border-t border-stone-200 bg-stone-100 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl"
+            className="px-4 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl cursor-pointer"
           >
             Đóng
           </button>

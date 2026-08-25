@@ -123,6 +123,18 @@
 
 ---
 
+### 🔹 POST-PHASE 6C MICRO-INCREMENT: Resource Path Normalization & Guided Backup UX Hardening (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6c-resource-path-normalization-and-guided-backup-ux.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6c-resource-path-normalization-and-guided-backup-ux.md) · [`docs/gherkin/post-phase6c-resource-path-normalization-and-guided-backup-ux.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6c-resource-path-normalization-and-guided-backup-ux.feature)
+- **Trọng tâm:**
+  - Tự động chuẩn hóa đường dẫn tệp cục bộ (`filePath`) khi lưu tài liệu thông qua `normalizeFilePath`, ngăn chặn sai sót định dạng do dấu xuyệt chéo ngược Windows (`\`) hoặc khoảng trắng.
+  - Xác thực chặt chẽ chống bỏ trống đường dẫn ở chế độ tệp trên máy trong [`src/components/modals/ResourceFormModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ResourceFormModal.tsx).
+  - Cảnh báo sớm theo thời gian thực khi đường dẫn nằm ngoài thư mục thư viện gốc `canonicalLibraryRoot` với callout màu hổ phách.
+  - Hiển thị khối đường dẫn tệp cục bộ rõ ràng trong [`src/components/modals/ResourceViewerModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ResourceViewerModal.tsx) kèm nút sao chép 1-click an toàn.
+  - Gia cố thông báo phân định tại tab "Xuất JSON" trong [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx), nhắc nhở rõ ràng Snapshot JSON chỉ chứa metadata và yêu cầu sao chép thư mục tệp vật lý.
+- **Kiểm chứng:** 7/7 tests PASS (3/3 `resource-path-normalization.test.ts` + 3/3 `resource-form-path-validation.test.tsx` + 1/1 `resource-viewer-path-consistency.test.tsx`).
+
+---
+
 ### 🔹 POST-PHASE 6B MICRO-INCREMENT: Operational File Library Setup & Backup Readiness (ĐÃ HOÀN THÀNH)
 - **Tài liệu đặc tả:** [`docs/specs/post-phase6b-operational-file-library-setup.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6b-operational-file-library-setup.md) · [`docs/gherkin/post-phase6b-operational-file-library-setup.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6b-operational-file-library-setup.feature)
 - **Trọng tâm:**

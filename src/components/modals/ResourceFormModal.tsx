@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
 import { Resource, ResourceType } from '../../types';
-import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen } from 'lucide-react';
+import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen, AlertTriangle, AlertCircle } from 'lucide-react';
+import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
 
 interface ResourceFormModalProps {
   isOpen: boolean;
@@ -22,8 +23,14 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
   const [url, setUrl] = useState('');
   const [filePath, setFilePath] = useState('');
   const [notes, setNotes] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const canonicalLibraryRoot = typeof window !== 'undefined'
+    ? localStorage.getItem('knowledge_os_library_root_path') || ''
+    : '';
 
   useEffect(() => {
+    setFormError(null);
     if (initialResource) {
       setTopicId(initialResource.topicId);
       setTitle(initialResource.title);
@@ -49,6 +56,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
     }
   }, [initialResource, defaultTopicId, topics, isOpen]);
 
+  const isPathOutsideRoot = Boolean(
+    sourceMode === 'local' &&
+    filePath.trim() &&
+    canonicalLibraryRoot.trim() &&
+    classifyPathRelativeToRoot(normalizeFilePath(filePath), canonicalLibraryRoot) === 'outside'
+  );
+
   const detectTypeAndTitle = (fileName: string): { detectedType?: ResourceType; suggestedTitle: string } => {
     const cleanName = fileName.replace(/\.[^/.]+$/, '');
     const suggestedTitle = cleanName.replace(/[-_.]+/g, ' ').trim();
@@ -73,6 +87,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
     if (!file) return;
 
     setFilePath(file.name);
+    setFormError(null);
     const { detectedType, suggestedTitle } = detectTypeAndTitle(file.name);
 
     if (detectedType) {
@@ -86,14 +101,31 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    setFormError(null);
+
+    if (!title.trim()) {
+      setFormError('Vui lòng nhập tiêu đề tài liệu.');
+      return;
+    }
+
+    let finalUrl: string | undefined;
+    let finalPath: string | undefined;
+
+    if (sourceMode === 'web') {
+      if (!url.trim() || url.trim() === 'https://') {
+        setFormError('Vui lòng nhập đường dẫn liên kết (URL) hợp lệ.');
+        return;
+      }
+      finalUrl = url.trim();
+    } else {
+      if (!filePath.trim()) {
+        setFormError('Vui lòng nhập đường dẫn tệp cục bộ hợp lệ.');
+        return;
+      }
+      finalPath = normalizeFilePath(filePath);
+    }
 
     const currentTopic = topics.find((t) => t.id === topicId);
-
-    const finalUrl = sourceMode === 'web' && url.trim() ? url.trim() : undefined;
-    const finalPath = sourceMode === 'local' && filePath.trim() ? filePath.trim() : undefined;
-
-    if (!finalUrl && !finalPath) return;
 
     if (initialResource) {
       updateResource(initialResource.id, {
@@ -298,13 +330,28 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                     </button>
                     <input
                       type="text"
-                      required
                       value={filePath}
-                      onChange={(e) => setFilePath(e.target.value)}
-                      placeholder="Đường dẫn tệp (/Users/.../KinhDien.pdf)..."
-                      className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+                      onChange={(e) => {
+                        setFilePath(e.target.value);
+                        setFormError(null);
+                      }}
+                      placeholder="Đường dẫn tệp (/Users/.../KinhDien.pdf hoặc D:\...)..."
+                      className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
                     />
                   </div>
+
+                  {isPathOutsideRoot && (
+                    <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">Cảnh báo sao lưu: </span>
+                        <span>
+                          Tệp này nằm ngoài thư mục thư viện gốc (<code className="font-mono">{canonicalLibraryRoot}</code>). Khi sao lưu thư viện, tệp này có thể bị bỏ sót nếu không được gom vào thư mục chuẩn.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <p className="text-[11px] text-stone-500 leading-tight">
                     * Trình duyệt bảo mật không đọc được đường dẫn tuyệt đối (C:\ hoặc /Users/...). Đã tự động điền tên tệp; bạn có thể chỉnh sửa hoặc thêm tiền tố thư mục nếu cần.
                   </p>
@@ -325,6 +372,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
               className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm"
             />
           </div>
+
+          {formError && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{formError}</span>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200">

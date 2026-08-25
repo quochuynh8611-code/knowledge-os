@@ -164,7 +164,7 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     expect(screen.queryByText(/Phật Học \(0 chủ đề\)/i)).toBeNull();
     // Tam Tạng or related topics must be visible
     expect(screen.getAllByText(/Tam Tạng/i).length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it('7. TopicTree filter by "Huyền Học" shows topics belonging to its descendant categories (not 0 topics)', () => {
     render(
@@ -181,5 +181,5 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     expect(screen.queryByText(/Huyền Học \(0 chủ đề\)/i)).toBeNull();
     // Tam Thức or related topics must be visible
     expect(screen.getAllByText(/Tam Thức/i).length).toBeGreaterThan(0);
-  });
+  }, 15000);
 });

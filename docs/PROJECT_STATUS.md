@@ -15,6 +15,13 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6c Micro-Increment: Resource Path Normalization & Guided Backup UX Hardening:**
+    - **Mục tiêu:** Tự động chuẩn hóa đường dẫn tệp cục bộ (`filePath`) khi lưu tài liệu, xác thực chặt chẽ chống đường dẫn rỗng ở chế độ tệp trên máy, cảnh báo sớm khi tệp nằm ngoài thư viện gốc `canonicalLibraryRoot`, bổ sung khối hiển thị đường dẫn tệp chuẩn hóa kèm nút sao chép 1-click trong `ResourceViewerModal`, và tăng cường thông báo phân định rõ ràng trên giao diện xuất Snapshot JSON.
+    - **Giải pháp kỹ thuật:**
+      - `ResourceFormModal.tsx`: Tích hợp `normalizeFilePath` khi submit, kiểm tra `isPathOutsideRoot` theo thời gian thực và hiển thị banner cảnh báo sao lưu màu hổ phách, hiển thị banner lỗi `formError` khi để trống `filePath`.
+      - `ResourceViewerModal.tsx`: Hiển thị khối `Đường dẫn tệp cục bộ trên máy` với font mono, nút sao chép 1-click `Sao chép đường dẫn` an toàn với môi trường thiếu clipboard.
+      - `ExportImportModal.tsx`: Tăng cường callout cảnh báo tại tab "Xuất JSON", nêu rõ bản sao lưu Snapshot JSON chỉ chứa metadata và yêu cầu sao chép thư mục tệp vật lý.
+    - **Kiểm thử:** 7/7 tests PASS trong 3 test suites mới (`resource-path-normalization.test.ts`, `resource-form-path-validation.test.tsx`, `resource-viewer-path-consistency.test.tsx`).
   - **Post-Phase 6b Micro-Increment: Operational File Library Setup & Backup Readiness:**
     - **Mục tiêu:** Cung cấp cho học giả cấu trúc thư mục lưu trữ vật lý tiêu chuẩn (`Knowledge-Library/` $\rightarrow$ `PDF/`, `Notes/`, `Attachments/`, `Inbox/`, `Exports/`), hoàn thiện form lưu cấu hình thư mục gốc `canonicalLibraryRoot` với phản hồi trực quan, phân định rõ ràng 5 chỉ số kiểm toán, và hoàn thiện Checklist quy trình sao lưu 3 Trụ Cột + Vault Obsidian với cảnh báo nghiêm ngặt khi chưa sao lưu thư mục tệp thật.
     - **Giải pháp kỹ thuật:**
