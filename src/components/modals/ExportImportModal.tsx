@@ -17,6 +17,7 @@ import {
   CheckSquare,
   AlertTriangle,
   FolderOpen,
+  FlaskConical,
 } from 'lucide-react';
 import {
   IDataRepository,
@@ -33,6 +34,12 @@ import {
   auditFileReferences,
   generateFileLibraryManifest,
 } from '../../lib/fileLibraryAudit';
+import {
+  calculateBackupReadiness,
+  runRestoreDrill,
+  buildRestorePreview,
+  RestoreDrillResult,
+} from '../../lib/backupVerification';
 
 const defaultRepo: IDataRepository =
   typeof window !== 'undefined'
@@ -43,22 +50,27 @@ interface ExportImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   repository?: IDataRepository;
+  defaultTab?: 'export' | 'import' | 'markdown' | 'manifest' | 'reset';
 }
 
-export function ExportImportModal({ isOpen, onClose, repository }: ExportImportModalProps) {
+export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: ExportImportModalProps) {
   const repo = repository || defaultRepo;
   const {
     exportAllDataJSON,
     importAllDataJSON,
     resetToDefaultData,
     reloadAllData,
+    categories,
     topics,
     notes,
     resources,
+    tags,
   } = useData();
 
   // Tab & General State
-  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'markdown' | 'manifest' | 'reset'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'markdown' | 'manifest' | 'reset'>(
+    defaultTab || 'export'
+  );
   const [copied, setCopied] = useState(false);
   const [manifestCopied, setManifestCopied] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
@@ -68,6 +80,12 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
     }
     return '';
   });
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, isOpen]);
 
   const handleLibraryRootChange = (newPath: string) => {
     setLibraryRootPath(newPath);
@@ -82,6 +100,18 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
     });
   }, [resources, notes, libraryRootPath]);
 
+  const readinessReport = useMemo(() => {
+    return calculateBackupReadiness({
+      categories,
+      topics,
+      notes,
+      resources,
+      tags,
+      libraryRootPath: libraryRootPath.trim() || undefined,
+      auditSummary: auditResult.summary,
+    });
+  }, [categories, topics, notes, resources, tags, libraryRootPath, auditResult.summary]);
+
   // Health State
   const [dbHealth, setDbHealth] = useState<ValidatedDbHealthResponse | null>(null);
   const [isOfflineCapability, setIsOfflineCapability] = useState(false);
@@ -89,6 +119,7 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
 
   // Snapshot Import / Restore State Machine
   const [parsedSnapshot, setParsedSnapshot] = useState<ValidatedBackupSnapshot | null>(null);
+  const [drillResult, setDrillResult] = useState<RestoreDrillResult | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('merge');
   const [confirmReplaceText, setConfirmReplaceText] = useState('');
@@ -276,10 +307,21 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
       }
 
       setParsedSnapshot(snapshot);
+      const currentAppState = { categories, topics, notes, resources, tags };
+      const drill = runRestoreDrill(snapshot, currentAppState, { mode: restoreMode });
+      setDrillResult(drill);
     } catch (err: any) {
       setParseError('Không thể đọc file JSON hoặc tệp không hợp lệ.');
     }
   };
+
+  useEffect(() => {
+    if (parsedSnapshot) {
+      const currentAppState = { categories, topics, notes, resources, tags };
+      const drill = runRestoreDrill(parsedSnapshot, currentAppState, { mode: restoreMode });
+      setDrillResult(drill);
+    }
+  }, [restoreMode, parsedSnapshot, categories, topics, notes, resources, tags]);
 
   // ---------------------------------------------------------------------------
   // Restore Submission & Rehydration Lifecycle
@@ -779,6 +821,41 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
                         </label>
                       </div>
                     </div>
+
+                    {/* Restore Drill In-Memory Simulation Card */}
+                    {drillResult && drillResult.drillSuccess && (
+                      <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-indigo-900 flex items-center gap-1.5">
+                            <FlaskConical className="w-4 h-4 text-indigo-700" />
+                            Diễn Tập Khôi Phục (Restore Drill - In-Memory Dry Run)
+                          </span>
+                          <span className="px-2 py-0.5 bg-indigo-200/80 text-indigo-900 rounded font-semibold text-[10px]">
+                            Mô phỏng an toàn
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-indigo-800">
+                          Kết quả dự kiến sau khi {restoreMode === 'replace' ? 'thay thế toàn bộ' : 'gộp dữ liệu'} (hoàn toàn không ghi đè dữ liệu thật):
+                        </p>
+                        <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-[11px]">
+                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
+                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.topics.length}</div>
+                            <div className="text-[9px] text-stone-500 font-sans">Chủ đề ({drillResult.simulatedImpact.topicsDelta >= 0 ? `+${drillResult.simulatedImpact.topicsDelta}` : drillResult.simulatedImpact.topicsDelta})</div>
+                          </div>
+                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
+                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.notes.length}</div>
+                            <div className="text-[9px] text-stone-500 font-sans">Ghi chú ({drillResult.simulatedImpact.notesDelta >= 0 ? `+${drillResult.simulatedImpact.notesDelta}` : drillResult.simulatedImpact.notesDelta})</div>
+                          </div>
+                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
+                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.resources.length}</div>
+                            <div className="text-[9px] text-stone-500 font-sans">Tài liệu ({drillResult.simulatedImpact.resourcesDelta >= 0 ? `+${drillResult.simulatedImpact.resourcesDelta}` : drillResult.simulatedImpact.resourcesDelta})</div>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-indigo-700 italic">
+                          * Diễn tập chạy trong bộ nhớ đệm (RAM), chưa thực hiện bất kỳ thay đổi nào vào cơ sở dữ liệu thật.
+                        </div>
+                      </div>
+                    )}
 
                     {/* Confirmation Gate for Replace Mode */}
                     {restoreMode === 'replace' && (

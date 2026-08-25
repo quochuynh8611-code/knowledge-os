@@ -15,6 +15,13 @@
   - **Workstream 5B (Spaced Repetition SM-2 Study Session Analytics & Retention Dashboard):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`c325e33`, `d912818`, doc `dcdf3a8`).
   - **Workstream 5C (Automated Snapshot Maintenance & Headless Backup Script):** Đã hoàn tất 100% qua module lõi `snapshotManager.ts`, kịch bản CLI `scripts/backup-snapshot.ts` và 10/10 test cases (`693abd6`, doc `916b002`).
 - **Gia Cố Giao Thức & Tiện Ích Khảo Cứu Mới Nhất (Recent Increments & Hardening Checkpoints):**
+  - **Post-Phase 6e Micro-Increment: Backup Verification & Restore Drill:**
+    - **Mục tiêu:** Thẩm định tính đầy đủ của bộ sao lưu 3 lớp (App Snapshot JSON, File Manifest JSON, Physical File Set), cung cấp cơ chế diễn tập khôi phục mô phỏng thuần túy trong bộ nhớ (**Restore Drill - In-Memory Dry Run**) không làm biến đổi hay ghi đè dữ liệu thật, hỗ trợ xem trước tác động thực thể và gia cố rào chắn xác nhận tường minh trước khi nạp dữ liệu.
+    - **Giải pháp kỹ thuật:**
+      - Module lõi thuần túy `src/lib/backupVerification.ts`: `inspectSnapshotPayload`, `inspectManifestPayload`, `calculateBackupReadiness`, `validateRestoreCandidate`, `buildRestorePreview`, `runRestoreDrill`.
+      - Mở rộng `NoteSchema` trong `src/lib/validation.ts` với `sourcePath: z.string().optional()`.
+      - Giao diện `ExportImportModal.tsx`: Tích hợp Báo cáo mức độ sẵn sàng sao lưu 3 lớp và thẻ mô phỏng Diễn Tập Khôi Phục hiển thị biến động thực thể dự kiến (`simulatedImpact`) cùng thông điệp bảo đảm an toàn dữ liệu.
+    - **Kiểm thử:** 10/10 tests PASS trong 3 test suites mới (`backup-readiness.test.ts`, `restore-drill.test.ts`, `restore-preview-ui.test.tsx`).
   - **Post-Phase 6d Micro-Increment: Note Source Path Consistency & Unified Reference Audit:**
     - **Mục tiêu:** Đưa quản lý đường dẫn tệp nguồn ghi chú (`Note.sourcePath`) lên cùng chuẩn vận hành với tài liệu (`Resource.filePath`), tích hợp kiểm toán tệp hợp nhất trong Bảng Kê Manifest và bổ sung tiện ích hiển thị/sao chép đường dẫn trên thẻ ghi chú.
     - **Giải pháp kỹ thuật:**

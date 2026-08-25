@@ -241,6 +241,16 @@
 
 ---
 
+### 🔹 POST-PHASE 6E MICRO-INCREMENT: Backup Verification & Restore Drill (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/post-phase6e-backup-verification-and-restore-drill.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/post-phase6e-backup-verification-and-restore-drill.md) · [`docs/gherkin/post-phase6e-backup-verification-and-restore-drill.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/post-phase6e-backup-verification-and-restore-drill.feature)
+- **Trọng tâm:**
+  - Module thuần túy [`src/lib/backupVerification.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/backupVerification.ts) đánh giá mức độ sẵn sàng sao lưu 3 lớp (`calculateBackupReadiness`) và thẩm định snapshot (`inspectSnapshotPayload`, `validateRestoreCandidate`, `buildRestorePreview`).
+  - Thực hiện diễn tập khôi phục mô phỏng thuần túy trong bộ nhớ (`runRestoreDrill`), cam kết 100% không làm biến đổi hay ghi đè dữ liệu đang chạy.
+  - Tích hợp giao diện tại [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx): Thẻ diễn tập khôi phục xem trước biến động thực thể (`simulatedImpact`) cùng rào chắn xác nhận tường minh trước khi nạp dữ liệu.
+- **Kiểm chứng:** 10/10 tests PASS (3/3 `backup-readiness.test.ts` + 5/5 `restore-drill.test.ts` + 2/2 `restore-preview-ui.test.tsx`).
+
+---
+
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
 
 1. **Duy Trì & Giám Sát Vận Hành (Operational Maintenance):**
@@ -254,6 +264,6 @@
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **56 / 56 test files PASS — 351 / 351 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite:** ✅ **59 / 59 test files PASS — 361 / 361 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
