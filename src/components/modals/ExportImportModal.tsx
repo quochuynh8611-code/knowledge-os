@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../../context/DataContext';
 import {
   X,
@@ -12,6 +12,11 @@ import {
   Activity,
   ShieldAlert,
   Database,
+  Library,
+  HardDrive,
+  CheckSquare,
+  AlertTriangle,
+  FolderOpen,
 } from 'lucide-react';
 import {
   IDataRepository,
@@ -24,11 +29,15 @@ import {
   ValidatedBackupSnapshot,
   ValidatedDbHealthResponse,
 } from '../../lib/validation';
+import {
+  auditFileReferences,
+  generateFileLibraryManifest,
+} from '../../lib/fileLibraryAudit';
 
 const defaultRepo: IDataRepository =
   typeof window !== 'undefined'
     ? new ApiDataRepository('/api', new LocalStorageDataRepository('phat_hoc_huyen_hoc_clean_v3'))
-    : new LocalStorageDataRepository('phat_hoc_huyen_hoc_clean_v3');
+  : new LocalStorageDataRepository('phat_hoc_huyen_hoc_clean_v3');
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -45,11 +54,32 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
     reloadAllData,
     topics,
     notes,
+    resources,
   } = useData();
 
   // Tab & General State
-  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'markdown' | 'reset'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'markdown' | 'manifest' | 'reset'>('export');
   const [copied, setCopied] = useState(false);
+  const [manifestCopied, setManifestCopied] = useState(false);
+  const [libraryRootPath, setLibraryRootPath] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('knowledge_os_library_root_path') || '';
+    }
+    return '';
+  });
+
+  const handleLibraryRootChange = (newPath: string) => {
+    setLibraryRootPath(newPath);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('knowledge_os_library_root_path', newPath);
+    }
+  };
+
+  const auditResult = useMemo(() => {
+    return auditFileReferences(resources, notes, {
+      libraryRootPath: libraryRootPath.trim() || undefined,
+    });
+  }, [resources, notes, libraryRootPath]);
 
   // Health State
   const [dbHealth, setDbHealth] = useState<ValidatedDbHealthResponse | null>(null);
@@ -179,6 +209,29 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
     navigator.clipboard.writeText(exportAllDataJSON());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadManifest = () => {
+    const manifest = generateFileLibraryManifest(auditResult, {
+      libraryRootPath: libraryRootPath.trim() || undefined,
+    });
+    const dataStr = JSON.stringify(manifest, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `file-library-manifest-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyManifestJSON = () => {
+    const manifest = generateFileLibraryManifest(auditResult, {
+      libraryRootPath: libraryRootPath.trim() || undefined,
+    });
+    navigator.clipboard.writeText(JSON.stringify(manifest, null, 2));
+    setManifestCopied(true);
+    setTimeout(() => setManifestCopied(false), 2000);
   };
 
   // ---------------------------------------------------------------------------
@@ -377,6 +430,17 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
             <FileText className="w-3.5 h-3.5" /> Báo cáo Markdown
           </button>
           <button
+            data-testid="tab-file-library"
+            onClick={() => setActiveTab('manifest')}
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+              activeTab === 'manifest'
+                ? 'border-indigo-700 text-indigo-900'
+                : 'border-transparent text-stone-600 hover:text-stone-900'
+            }`}
+          >
+            <Library className="w-3.5 h-3.5" /> Kiểm toán tệp &amp; Manifest
+          </button>
+          <button
             data-testid="tab-import"
             onClick={() => setActiveTab('import')}
             className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
@@ -436,6 +500,146 @@ export function ExportImportModal({ isOpen, onClose, repository }: ExportImportM
               >
                 <FileText className="w-4 h-4" /> Xuất Báo Cáo Markdown Toàn Bộ (.md)
               </button>
+            </div>
+          )}
+
+          {activeTab === 'manifest' && (
+            <div className="space-y-5">
+              {/* Header & Disambiguation Card */}
+              <div>
+                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                  <Library className="w-4 h-4 text-indigo-700" />
+                  Bảng Kê Kiểm Toán Thư Viện Tệp (File Library Manifest)
+                </h3>
+                <p className="text-xs text-stone-600 mt-1">
+                  Kiểm toán danh mục đường dẫn các tệp PDF, âm thanh, video và tài liệu nghiên cứu vật lý trên máy tính.
+                </p>
+              </div>
+
+              {/* 3 Pillars Architecture Clarification */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl space-y-1">
+                  <div className="font-semibold text-amber-900 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-amber-700" /> 1. App Snapshot
+                  </div>
+                  <p className="text-[11px] text-amber-800">
+                    Chứa toàn bộ ghi chú, chủ đề, tiến độ SM-2 (Logic state).
+                  </p>
+                </div>
+                <div className="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl space-y-1">
+                  <div className="font-semibold text-indigo-900 flex items-center gap-1.5">
+                    <Library className="w-3.5 h-3.5 text-indigo-700" /> 2. File Manifest
+                  </div>
+                  <p className="text-[11px] text-indigo-800">
+                    Bảng kê danh mục đường dẫn tệp vật lý để kiểm toán sao lưu.
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl space-y-1">
+                  <div className="font-semibold text-emerald-900 flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-700" /> 3. Thư Mục File Thật
+                  </div>
+                  <p className="text-[11px] text-emerald-800">
+                    Thư mục chứa các tệp PDF, Audio gốc trên ổ cứng máy tính.
+                  </p>
+                </div>
+              </div>
+
+              {/* Prominent Warning Callout */}
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-900">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Lưu ý an toàn sao lưu: </span>
+                  <span>
+                    Manifest không chứa file PDF thật. Khi backup cần sao chép cả thư mục file vật lý.
+                  </span>
+                </div>
+              </div>
+
+              {/* Canonical Library Root Config */}
+              <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-2">
+                <label className="block text-xs font-semibold text-stone-800 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FolderOpen className="w-3.5 h-3.5 text-stone-600" /> Thư Mục Thư Viện Gốc Chuẩn (Canonical Library Root)
+                  </span>
+                  <span className="text-[10px] text-stone-500 font-normal">Tùy chọn</span>
+                </label>
+                <input
+                  type="text"
+                  value={libraryRootPath}
+                  onChange={(e) => handleLibraryRootChange(e.target.value)}
+                  placeholder="/Users/username/KnowledgeLibrary hoặc D:\KnowledgeOS_Library"
+                  className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono focus:bg-white focus:ring-2 focus:ring-indigo-600"
+                />
+                <p className="text-[11px] text-stone-500">
+                  Dùng để phát hiện các tệp nằm rải rác ngoài thư mục chính để gom gọn khi sao lưu.
+                </p>
+              </div>
+
+              {/* Audit Summary Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 bg-stone-100 rounded-xl border border-stone-200 text-center">
+                  <div className="text-xl font-bold text-stone-900">{auditResult.summary.totalWithLocalPath}</div>
+                  <div className="text-[11px] text-stone-600 font-medium mt-0.5">Tệp có đường dẫn</div>
+                </div>
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                  <div className="text-xl font-bold text-emerald-800">
+                    {auditResult.summary.existingCount > 0
+                      ? auditResult.summary.existingCount
+                      : auditResult.summary.unverifiedCount}
+                  </div>
+                  <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                    {auditResult.summary.existingCount > 0 ? 'Tệp hợp lệ' : 'Đã kê khai'}
+                  </div>
+                </div>
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-center">
+                  <div className="text-xl font-bold text-rose-800">{auditResult.summary.missingCount}</div>
+                  <div className="text-[11px] text-rose-700 font-medium mt-0.5">Tệp thất lạc (Missing)</div>
+                </div>
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-center">
+                  <div className="text-xl font-bold text-amber-800">{auditResult.summary.outsideLibraryCount}</div>
+                  <div className="text-[11px] text-amber-700 font-medium mt-0.5">Ngoài thư viện gốc</div>
+                </div>
+              </div>
+
+              {/* Manifest Export Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <button
+                  data-testid="btn-export-file-manifest"
+                  onClick={handleDownloadManifest}
+                  className="flex-1 py-2.5 px-4 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-xs transition"
+                >
+                  <Download className="w-4 h-4" /> Tải Xuống Bảng Kê Manifest (.json)
+                </button>
+                <button
+                  onClick={handleCopyManifestJSON}
+                  className="py-2.5 px-4 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition"
+                >
+                  {manifestCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  {manifestCopied ? 'Đã sao chép!' : 'Sao chép Manifest JSON'}
+                </button>
+              </div>
+
+              {/* 3-Pillar Backup Checklist Component */}
+              <div className="p-4 bg-stone-100/70 border border-stone-200 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-700" />
+                  Quy trình sao lưu toàn diện 3 thành phần (Checklist Sao Lưu)
+                </h4>
+                <div className="space-y-2 text-xs text-stone-700">
+                  <div className="flex items-start gap-2">
+                    <span className="w-4 h-4 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                    <span><strong>Bước 1:</strong> Xuất bản sao lưu App Snapshot JSON từ tab "Xuất JSON".</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-4 h-4 rounded-full bg-indigo-200 text-indigo-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                    <span><strong>Bước 2:</strong> Xuất Bảng Kê File Library Manifest JSON từ nút trên.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-4 h-4 rounded-full bg-emerald-200 text-emerald-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+                    <span><strong>Bước 3:</strong> Sao chép toàn bộ thư mục tệp vật lý (PDF/Media) sang ổ cứng sao lưu ngoài hoặc đám mây.</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
