@@ -12,12 +12,13 @@
        │
 [BƯỚC 2: SPEC & ADR] (Hoàn thành: ADR-001 -> ADR-014)
        │
-[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 32 test suites / 241 tests)
+[BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 33 test suites / 250 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
        ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
        ├── PHASE 2A: Obsidian Open / Export UX Flow (obsidian://, ZIP export) [VERIFIED]
        ├── PHASE 2B: Google NotebookLM Studio & Antigravity 2.0 Mediated Workflow [VERIFIED]
+       ├── PHASE 2C: Data Management Modal & Confirmation Gate UI (ADR-009) [VERIFIED]
        ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
        ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
        └── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
@@ -46,6 +47,18 @@
   - Bộ lọc kiểm tra tính hợp lệ (`validateArtifactImportInput`) và nạp tệp Markdown (`parseArtifactMarkdownFile`) với trích xuất H1 tự động.
   - Thông điệp **Mediated Workflow Disclaimer**: Minh bạch kiến trúc tích hợp trung gian qua Antigravity 2.0, không tuyên bố direct NotebookLM sync API.
 - **Kiểm chứng:** 13/13 `notebooklm-lib.test.ts` + 10/10 `notebooklm-studio-integration.test.tsx` PASS (Commit `5a2cc35`, doc `f48a684`).
+
+### 🔹 PHASE 2C: Data Management Modal & Confirmation Gate UI (ĐÃ HOÀN THÀNH)
+- **Mã ADR:** ADR-009
+- **Trọng tâm:**
+  - Hiển thị **Real-time Database Health Badge** thăm dò kết nối & độ trễ máy chủ PostgreSQL.
+  - Xuất bản sao lưu máy chủ Semver 2.x có SHA-256 Checksum tất định (`exportBackupSnapshot`).
+  - Nạp và xác minh tệp Snapshot phía Client (`BackupSnapshotSchema` và `calculateBackupChecksum`).
+  - Bộ chọn chế độ khôi phục: **Gộp dữ liệu (Merge - LWW)** vs **Thay thế toàn bộ (Replace - Destructive)**.
+  - **Confirmation Gate:** Bắt buộc nhập chính xác 100% chuỗi ký tự hoa `XÁC NHẬN THAY THẾ` để mở khóa nút Replace.
+  - Quy trình khôi phục: Gọi `restoreBackupSnapshot` $\rightarrow$ `reloadAllData()` $\rightarrow$ Xử lý lỗi `rehydrate_failed` bảo toàn in-memory state cũ.
+  - Cảnh báo an toàn cho kho lưu trữ ngoại tuyến LocalStorage (`UNSUPPORTED_OFFLINE_OPERATION`).
+- **Kiểm chứng:** 28/28 tests PASS (9/9 `phase2c-data-management-modal-component.test.tsx` + 6/6 `phase2c-data-management-ui.test.tsx` + 8/8 `phase2c-repository-methods.test.ts` + 5/5 `phase2c-health-badge.test.tsx`).
 
 ### 🔹 PHASE 3: Antigravity Research Scholar Handoff Bundle (ĐÃ HOÀN THÀNH)
 - **Mã ADR:** ADR-012 (Phase 3)
@@ -80,17 +93,28 @@
   - KHÔNG thay đổi schema database hoặc phá vỡ tính tương thích ngược của snapshot Semver 2.x mà không có migration script an toàn.
   - KHÔNG triển khai Authentication/Multi-tenancy phức tạp làm mất tính độc lập offline của người dùng cá nhân.
 - **Bảo toàn các quyết định Một Chiều (One-Way / Irreversible Decisions):**
-  - [!] *Database Schema Migration:* Không phát sinh migration mới, toàn bộ Phase 5 và Phase 2b hoạt động an toàn trên schema hiện hữu và dual-tier repository.
+  - [!] *Database Schema Migration:* Không phát sinh migration mới, toàn bộ Phase 5, Phase 2b và Phase 2c hoạt động an toàn trên schema hiện hữu và dual-tier repository.
   - [!] *External Auth/Cloud Sync Provider:* Không thay đổi mô hình bảo mật cục bộ sang cloud auth, duy trì quyền riêng tư 100% offline.
 - **Quality Gates cho Phase 5:**
   - 100% Spec & ADR được phê duyệt thủ công trước khi viết code.
   - Gherkin Scenarios và Failing Tests được tạo trước cho từng Workstream.
-  - Đảm bảo toàn bộ 32 test files duy trì trạng thái 100% PASS.
+  - Đảm bảo toàn bộ 33 test files duy trì trạng thái 100% PASS.
+
+---
+
+## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
+
+1. **Duy Trì & Giám Sát Vận Hành (Operational Maintenance):**
+   - Vận hành snapshot sao lưu định kỳ qua kịch bản headless CLI `npm run snapshot:create`.
+   - Giám sát độ trễ và tính khả dụng của cơ sở dữ liệu qua Health Badge thời gian thực.
+2. **Mở Rộng Cơ Sở Tri Thức (Knowledge Domain Expansion):**
+   - Bổ sung nội dung nghiên cứu chuyên sâu về Abhidharma (89/121 Tâm, 52 Tâm sở), Bát Nhã Ba La Mật Đa, Kỳ Môn Độn Giáp và Dịch học.
+   - Tiếp tục tuân thủ tuyệt đối các rào chắn kiến trúc: **Zero Binary Ingestion**, **Dual-Tier Resilience**, **Deterministic Checksum**, và **Confirmation Gate**.
 
 ---
 
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
-- **Toàn bộ Test Suite:** ✅ **32 / 32 test files PASS — 241 / 241 tests PASS (100% GREEN in 8.58s)**.
+- **Toàn bộ Test Suite:** ✅ **33 / 33 test files PASS — 250 / 250 tests PASS (100% GREEN in 9.83s)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
