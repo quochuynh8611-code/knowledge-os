@@ -353,6 +353,8 @@ export function KnowledgeGraph() {
   const getNodeColor = (node: GraphNode) => {
     if (node.type === 'note') return '#E11D48'; // Rose
     if (node.type === 'resource') return '#8B5CF6'; // Purple
+    const cat = categories.find((c) => c.slug === node.domain || c.id === node.domain || c.type === node.domain);
+    if (cat?.color) return cat.color;
     if (node.domain === 'phat-hoc') return '#D97706'; // Amber / Gold
     if (node.domain === 'huyen-hoc') return '#4F46E5'; // Indigo
     const hash = (node.domain || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -378,14 +380,17 @@ export function KnowledgeGraph() {
         </div>
 
         {/* Legend pills */}
-        <div className="flex items-center gap-3 bg-white p-2 px-3.5 border border-stone-200 rounded-xl text-xs font-medium shadow-2xs">
+        <div className="flex flex-wrap items-center gap-3 bg-white p-2 px-3.5 border border-stone-200 rounded-xl text-xs font-medium shadow-2xs">
           <span className="text-stone-400 text-[11px]">Chú thích:</span>
-          <span className="flex items-center gap-1.5 text-stone-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block" /> Phật Học
-          </span>
-          <span className="flex items-center gap-1.5 text-stone-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" /> Huyền Học
-          </span>
+          {rootCategories.map((cat) => (
+            <span key={cat.id} className="flex items-center gap-1.5 text-stone-700">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block"
+                style={{ backgroundColor: cat.color || '#D97706' }}
+              />{' '}
+              {cat.name}
+            </span>
+          ))}
           <span className="flex items-center gap-1.5 text-stone-700">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block" /> Ghi Chú
           </span>
@@ -668,8 +673,14 @@ export function KnowledgeGraph() {
                     className="select-none pointer-events-none"
                   >
                     {node.type === 'topic'
-                      ? node.domain === 'phat-hoc' ? '佛' : '易'
-                      : node.type === 'note' ? '📝' : '📖'}
+                      ? node.domain === 'phat-hoc'
+                        ? '佛'
+                        : node.domain === 'huyen-hoc'
+                        ? '易'
+                        : (node.domain ? node.domain[0].toUpperCase() : 'T')
+                      : node.type === 'note'
+                      ? '📝'
+                      : '📖'}
                   </text>
 
                   {/* Text Label Below Node */}

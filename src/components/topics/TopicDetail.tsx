@@ -64,6 +64,7 @@ import {
 
 export function TopicDetail() {
   const {
+    categories,
     selectedTopicId,
     setSelectedTopicId,
     topics,
@@ -145,6 +146,11 @@ export function TopicDetail() {
     setTargetTopicId("");
   };
 
+  const domainCategory = categories.find(
+    (c) => c.slug === topic.type || c.id === topic.categoryId
+  );
+  const domainName = domainCategory?.name || topic.type;
+
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
       {/* Top Breadcrumbs & Back Navigation */}
@@ -152,13 +158,11 @@ export function TopicDetail() {
         <Breadcrumbs
           items={[
             {
-              label: topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học",
+              label: domainName,
               onClick: () => setSelectedTopicId(null),
             },
             {
-              label:
-                topic.categoryName ||
-                (topic.type === "phat-hoc" ? "Tam Tạng" : "Dịch Học"),
+              label: topic.categoryName || domainName,
               onClick: () => setSelectedTopicId(null),
             },
             {
@@ -235,11 +239,13 @@ export function TopicDetail() {
               className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
                 topic.type === "phat-hoc"
                   ? "bg-amber-100 text-amber-900 border border-amber-300"
-                  : "bg-indigo-100 text-indigo-900 border border-indigo-300"
+                  : topic.type === "huyen-hoc"
+                  ? "bg-indigo-100 text-indigo-900 border border-indigo-300"
+                  : "bg-stone-100 text-stone-900 border border-stone-300"
               }`}
             >
-              {topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học"} •{" "}
-              {topic.categoryName}
+              {domainName}
+              {topic.categoryName ? ` • ${topic.categoryName}` : ""}
             </span>
             <span className="text-xs text-stone-500 font-mono flex items-center gap-1">
               <Clock className="w-3 h-3 text-stone-400" />
@@ -296,7 +302,11 @@ export function TopicDetail() {
             <div className="flex-1 bg-stone-100 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
-                  topic.type === "phat-hoc" ? "bg-amber-600" : "bg-indigo-600"
+                  topic.type === "phat-hoc"
+                    ? "bg-amber-600"
+                    : topic.type === "huyen-hoc"
+                    ? "bg-indigo-600"
+                    : "bg-stone-600"
                 }`}
                 style={{ width: `${topic.studyProgress.progress}%` }}
               />
@@ -565,12 +575,17 @@ export function TopicDetail() {
                     <option value="">-- Chọn chủ đề --</option>
                     {topics
                       .filter((t) => t.id !== topic.id)
-                      .map((t) => (
-                        <option key={t.id} value={t.id}>
-                          [{t.type === "phat-hoc" ? "Phật Học" : "Huyền Học"}]{" "}
-                          {t.title}
-                        </option>
-                      ))}
+                      .map((t) => {
+                        const tDomain =
+                          categories.find((c) => c.slug === t.type || c.id === t.categoryId)?.name ||
+                          t.categoryName ||
+                          t.type;
+                        return (
+                          <option key={t.id} value={t.id}>
+                            [{tDomain}] {t.title}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
 

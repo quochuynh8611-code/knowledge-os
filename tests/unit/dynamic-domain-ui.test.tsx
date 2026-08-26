@@ -6,6 +6,9 @@ import { StudyTimerModal } from '../../src/components/modals/StudyTimerModal';
 import { NoteFormModal } from '../../src/components/modals/NoteFormModal';
 import { SpacedReviewModal } from '../../src/components/modals/SpacedReviewModal';
 import { ExportImportModal } from '../../src/components/modals/ExportImportModal';
+import { TopicDetail } from '../../src/components/topics/TopicDetail';
+import { SearchFilters } from '../../src/components/search/SearchFilters';
+import { KnowledgeGraph } from '../../src/components/graph/KnowledgeGraph';
 import { Category, Topic, Note, Resource, Tag } from '../../src/types';
 
 const mockCategories: Category[] = [
@@ -14,6 +17,7 @@ const mockCategories: Category[] = [
     name: 'Kinh Tế Học',
     slug: 'kinh-te',
     type: 'kinh-te',
+    color: '#059669',
     parentId: null,
     description: 'Lĩnh vực kinh tế',
   },
@@ -22,6 +26,7 @@ const mockCategories: Category[] = [
     name: 'Triết Học',
     slug: 'triet-hoc',
     type: 'triet-hoc',
+    color: '#7C3AED',
     parentId: null,
     description: 'Lĩnh vực triết học',
   },
@@ -92,8 +97,11 @@ vi.mock('../../src/context/DataContext', () => ({
     notes: [] as Note[],
     resources: [] as Resource[],
     tags: [] as Tag[],
+    selectedTopicId: 'topic-kinh-te-1',
+    setSelectedTopicId: vi.fn(),
     addTopic: vi.fn(),
     updateTopic: vi.fn(),
+    updateTopicProgress: vi.fn(),
     deleteTopic: vi.fn(),
     addCategory: vi.fn(),
     updateCategory: vi.fn(),
@@ -104,6 +112,9 @@ vi.mock('../../src/context/DataContext', () => ({
     addResource: vi.fn(),
     updateResource: vi.fn(),
     deleteResource: vi.fn(),
+    openTopicDetail: vi.fn(),
+    addKnowledgeLink: vi.fn(),
+    removeKnowledgeLink: vi.fn(),
     startStudyTimer: vi.fn(),
     pauseStudyTimer: vi.fn(),
     stopAndSaveStudyTimer: vi.fn(),
@@ -121,7 +132,7 @@ vi.mock('../../src/context/DataContext', () => ({
   }),
 }));
 
-describe('Increment B (Batch B1): Dynamic Domain UI Label & Default Generalization', () => {
+describe('Increment B: Dynamic Domain UI Generalization', () => {
   it('1. TopicFormModal: sets default category and derived type from custom root category', () => {
     render(<TopicFormModal isOpen={true} onClose={vi.fn()} />);
 
@@ -192,5 +203,36 @@ describe('Increment B (Batch B1): Dynamic Domain UI Label & Default Generalizati
     });
 
     createElementSpy.mockRestore();
+  });
+
+  it('6. TopicDetail: renders dynamic domain in breadcrumbs and header badge', () => {
+    render(<TopicDetail />);
+
+    // Domain badge and breadcrumb should show "Kinh Tế Học" instead of "Huyền Học"
+    expect(screen.getAllByText(/Kinh Tế/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText('Huyền Học • Kinh Tế Vĩ Mô')).not.toBeInTheDocument();
+  });
+
+  it('7. SearchFilters: renders dynamic domain filter buttons for all root categories', () => {
+    render(
+      <SearchFilters
+        filters={{ domain: 'all', categoryId: null, tag: null, status: 'all' }}
+        onFilterChange={vi.fn()}
+        categories={mockCategories}
+        tags={[]}
+      />
+    );
+
+    // Filter buttons should include Kinh Tế Học and Triết Học
+    expect(screen.getByRole('button', { name: /Kinh Tế Học/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Triết Học/i })).toBeInTheDocument();
+  });
+
+  it('8. KnowledgeGraph: renders dynamic domain legend pills', () => {
+    render(<KnowledgeGraph />);
+
+    // Legend should contain dynamic root category names
+    expect(screen.getAllByText('Kinh Tế Học').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Triết Học').length).toBeGreaterThan(0);
   });
 });

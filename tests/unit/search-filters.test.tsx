@@ -54,16 +54,32 @@ describe("Search Engine & SearchFilters Component (Phase 1B)", () => {
 
   const mockCategories: Category[] = [
     {
+      id: "cat-root-phat-hoc",
+      name: "Phật Học",
+      slug: "phat-hoc",
+      type: "phat-hoc",
+      parentId: null,
+    },
+    {
+      id: "cat-root-huyen-hoc",
+      name: "Huyền Học",
+      slug: "huyen-hoc",
+      type: "huyen-hoc",
+      parentId: null,
+    },
+    {
       id: "cat-tam-tang",
       name: "Tam Tạng",
       slug: "tam-tang",
       type: "phat-hoc",
+      parentId: "cat-root-phat-hoc",
     },
     {
       id: "cat-dich-hoc",
       name: "Dịch Học",
       slug: "dich-hoc",
       type: "huyen-hoc",
+      parentId: "cat-root-huyen-hoc",
     },
   ];
 
@@ -114,12 +130,10 @@ describe("Search Engine & SearchFilters Component (Phase 1B)", () => {
 
     expect(screen.getByText(/Bộ Lọc Chuyên Sâu/i)).toBeInTheDocument();
     expect(screen.getByText(/42 kết quả/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Phật Học \(Tam Tạng \/ Abhidhamma\)/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Phật Học/i })).toBeInTheDocument();
 
     // Click domain filter
-    fireEvent.click(screen.getByText(/Phật Học \(Tam Tạng \/ Abhidhamma\)/i));
+    fireEvent.click(screen.getByRole("button", { name: /Phật Học/i }));
     expect(handleFilterChange).toHaveBeenCalledWith(
       expect.objectContaining({ domain: "phat-hoc", categoryId: null }),
     );

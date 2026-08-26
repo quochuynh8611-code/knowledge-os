@@ -35,8 +35,8 @@ export interface SearchFiltersProps {
 export function SearchFilters({
   filters,
   onFilterChange,
-  categories,
-  tags,
+  categories = [],
+  tags = [],
   totalResultsCount,
   className = "",
 }: SearchFiltersProps) {
@@ -95,8 +95,9 @@ export function SearchFilters({
 
       {/* 1. Domain Selector */}
       <div className="space-y-1.5">
-        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
-          Lĩnh Vực Khảo Cứu:
+        <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-amber-700" />
+          <span>Lĩnh Vực (Domain):</span>
         </label>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
@@ -112,69 +113,45 @@ export function SearchFilters({
           >
             Tất cả
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              onFilterChange({
-                ...filters,
-                domain: "phat-hoc",
-                categoryId: null,
-              })
-            }
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-              filters.domain === "phat-hoc"
-                ? "bg-amber-800 text-white font-bold shadow-2xs"
-                : "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 hover:bg-amber-100"
-            }`}
-          >
-            <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-            <span>Phật Học (Tam Tạng / Abhidhamma)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              onFilterChange({
-                ...filters,
-                domain: "huyen-hoc",
-                categoryId: null,
-              })
-            }
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-              filters.domain === "huyen-hoc"
-                ? "bg-indigo-800 text-white font-bold shadow-2xs"
-                : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-300 hover:bg-indigo-100"
-            }`}
-          >
-            <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-            <span>Huyền Học (Dịch Học / Kỳ Môn)</span>
-          </button>
-          {categories
-            .filter((c) => !c.parentId && c.type !== "phat-hoc" && c.type !== "huyen-hoc")
-            .map((customRoot) => {
-              const customKey = (customRoot.slug || customRoot.id) as CategoryType;
-              const isSelected = filters.domain === customKey;
-              return (
-                <button
-                  key={customRoot.id}
-                  type="button"
-                  onClick={() =>
-                    onFilterChange({
-                      ...filters,
-                      domain: customKey,
-                      categoryId: null,
-                    })
-                  }
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
-                    isSelected
-                      ? "bg-stone-900 text-white font-bold shadow-2xs"
-                      : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200"
-                  }`}
-                >
+          {rootCategories.map((root) => {
+            const domainKey = (root.slug || root.type || root.id) as CategoryType;
+            const isSelected = filters.domain === domainKey;
+            return (
+              <button
+                key={root.id}
+                type="button"
+                onClick={() =>
+                  onFilterChange({
+                    ...filters,
+                    domain: domainKey,
+                    categoryId: null,
+                  })
+                }
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                  isSelected
+                    ? root.slug === "phat-hoc"
+                      ? "bg-amber-800 text-white font-bold shadow-2xs"
+                      : root.slug === "huyen-hoc"
+                      ? "bg-indigo-800 text-white font-bold shadow-2xs"
+                      : "bg-stone-900 text-white font-bold shadow-2xs"
+                    : root.slug === "phat-hoc"
+                    ? "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 hover:bg-amber-100"
+                    : root.slug === "huyen-hoc"
+                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-300 hover:bg-indigo-100"
+                    : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200"
+                }`}
+              >
+                {root.slug === "phat-hoc" ? (
+                  <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                ) : root.slug === "huyen-hoc" ? (
+                  <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                ) : (
                   <Folder className="w-3 h-3" />
-                  <span>{customRoot.name}</span>
-                </button>
-              );
-            })}
+                )}
+                <span>{root.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -198,11 +175,21 @@ export function SearchFilters({
             <option value="all">
               Tất cả danh mục ({filteredCategories.length})
             </option>
-            {filteredCategories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name} ({cat.type === "phat-hoc" ? "Phật Học" : cat.type === "huyen-hoc" ? "Huyền Học" : cat.name})
-              </option>
-            ))}
+            {filteredCategories.map((cat) => {
+              const root = categories.find(
+                (c) =>
+                  !c.parentId &&
+                  (c.id === cat.parentId ||
+                    c.slug === cat.type ||
+                    c.type === cat.type)
+              );
+              const domainLabel = root?.name || cat.type || cat.name;
+              return (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name} ({domainLabel})
+                </option>
+              );
+            })}
           </select>
         </div>
 
