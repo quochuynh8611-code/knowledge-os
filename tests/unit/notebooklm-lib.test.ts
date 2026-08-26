@@ -153,9 +153,6 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
     expect(doc).not.toContain('ArrayBuffer');
   });
 
-  // ---------------------------------------------------------------------------
-  // 3. Graceful handling of empty or undefined notes/resources
-  // ---------------------------------------------------------------------------
   it('3. packageSourceForNotebookLM handles empty notes and resources arrays gracefully', () => {
     const doc = packageSourceForNotebookLM(mockTopic, [], []);
 
@@ -163,6 +160,22 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
     expect(doc).toContain('[PHẦN 2: NỘI DUNG LUẬN THUYẾT & NGUYÊN BẢN KINH ĐIỂN]');
     expect(doc).not.toContain('[PHẦN 4: TẬP HỢP GHI CHÚ');
     expect(doc).not.toContain('[PHẦN 5: THƯ TỊCH THAM KHẢO');
+  });
+
+  it('3b. packageSourceForNotebookLM handles custom dynamic domain without hardcoded Huyền Học fallback', () => {
+    const customTopic: Topic = {
+      ...mockTopic,
+      id: 'topic-custom-kt',
+      title: 'Kinh Tế Vĩ Mô & Chính Sách Tiền Tệ',
+      type: 'kinh-te',
+      categoryName: 'Kinh Tế Học',
+    };
+
+    const doc = packageSourceForNotebookLM(customTopic, [], []);
+
+    expect(doc).toContain('CHỦ ĐỀ: KINH TẾ VĨ MÔ & CHÍNH SÁCH TIỀN TỆ');
+    expect(doc).not.toContain('HUYỀN HỌC & DỊCH LÝ ĐÔNG PHƯƠNG');
+    expect(doc).toContain('LĨNH VỰC: KINH TẾ HỌC');
   });
 
   // ---------------------------------------------------------------------------

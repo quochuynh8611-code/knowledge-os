@@ -200,6 +200,15 @@ export function getObsidianNewNoteUri(vaultName: string, noteName: string, conte
   return `obsidian://new?vault=${encodeURIComponent(cleanVault)}&name=${encodeURIComponent(noteName.trim())}&content=${encodeURIComponent(content)}`;
 }
 
+function getDomainFolderName(domainKey: string): string {
+  if (domainKey === 'phat-hoc') return 'Phat-Hoc';
+  if (domainKey === 'huyen-hoc') return 'Huyen-Hoc';
+  return domainKey
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('-');
+}
+
 /**
  * Export full Obsidian Vault ZIP
  */
@@ -207,7 +216,7 @@ export async function generateObsidianVaultZip(
   topics: Topic[],
   notes: Note[],
   resources: Resource[],
-  categories: Category[],
+  categories?: Category[],
   vaultName: string = DEFAULT_OBSIDIAN_VAULT_NAME
 ): Promise<Blob> {
   const JSZipModule = await import('jszip');
@@ -220,40 +229,124 @@ export async function generateObsidianVaultZip(
   mocContent += `*Vault: ${cleanVault} | Ngày tạo: ${new Date().toLocaleDateString('vi-VN')}*\n\n`;
   mocContent += `Chào mừng bạn đến với Obsidian Vault Khảo Cứu Phật Học & Huyền Học. Tất cả các ghi chú đã được kết nối bằng hệ thống liên kết hai chiều \`[[Wiki Links]]\`.\n\n`;
 
-  mocContent += `## 🪷 1. Lĩnh Vực Phật Học (Buddhism)\n`;
-  const phatHocTopics = topics.filter((t) => t.type === 'phat-hoc');
-  phatHocTopics.forEach((t) => {
-    mocContent += `- [[Phat-Hoc/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
+  const defaultPhatHocRoot: Category = categories?.find(
+    (c) => c.slug === 'phat-hoc' || c.id === 'cat-root-phat-hoc'
+  ) || {
+    id: 'cat-root-phat-hoc',
+    name: 'Phật Học (Buddhism)',
+    slug: 'phat-hoc',
+    type: 'phat-hoc',
+    parentId: null,
+  };
+
+  const defaultHuyenHocRoot: Category = categories?.find(
+    (c) => c.slug === 'huyen-hoc' || c.id === 'cat-root-huyen-hoc'
+  ) || {
+    id: 'cat-root-huyen-hoc',
+    name: 'Huyền Học & Dịch Học (Esotericism)',
+    slug: 'huyen-hoc',
+    type: 'huyen-hoc',
+    parentId: null,
+  };
+
+  const customRoots = (categories || []).filter(
+    (c) =>
+      !c.parentId &&
+      c.id !== defaultPhatHocRoot.id &&
+      c.id !== defaultHuyenHocRoot.id &&
+      c.slug !== 'phat-hoc' &&
+      c.slug !== 'huyen-hoc'
+  );
+
+  const rootCats: Category[] = [
+    defaultPhatHocRoot,
+    defaultHuyenHocRoot,
+    ...customRoots,
+  ];
+
+  const getTopicRootSlug = (topic: Topic): string => {
+    if (topic.type === 'phat-hoc') return 'phat-hoc';
+    if (topic.type === 'huyen-hoc') return 'huyen-hoc';
+
+    if (categories && categories.length > 0 && topic.categoryId) {
+      const catMap = new Map(categories.map((c) => [c.id, c]));
+      let curr = catMap.get(topic.categoryId);
+      const visited = new Set<string>();
+      while (curr && curr.parentId) {
+        if (visited.has(curr.id)) break;
+        visited.add(curr.id);
+        const parent = catMap.get(curr.parentId);
+        if (!parent) break;
+        curr = parent;
+      }
+      if (curr) return curr.slug || curr.type || curr.id;
+    }
+    return topic.type || 'other';
+  };
+
+  let sectionIndex = 1;
+  const processedTopicIds = new Set<string>();
+
+  rootCats.forEach((root) => {
+    const rootSlug = root.slug || root.type || root.id;
+    const domainTopics = topics.filter((t) => {
+      const targetSlug = getTopicRootSlug(t);
+      return targetSlug === rootSlug || t.type === rootSlug || t.categoryId === root.id;
+    });
+
+    if (domainTopics.length === 0) {
+      return;
+    }
+
+    const folderName = getDomainFolderName(rootSlug);
+    let heading = '';
+    if (rootSlug === 'phat-hoc') {
+      heading = `## 🪷 ${sectionIndex}. Lĩnh Vực Phật Học (Buddhism)`;
+    } else if (rootSlug === 'huyen-hoc') {
+      heading = `## ☯️ ${sectionIndex}. Lĩnh Vực Huyền Học & Dịch Học (Esotericism)`;
+    } else {
+      heading = `## ${sectionIndex}. Lĩnh Vực ${root.name}`;
+    }
+    sectionIndex++;
+
+    mocContent += `${heading}\n`;
+    domainTopics.forEach((t) => {
+      processedTopicIds.add(t.id);
+      mocContent += `- [[${folderName}/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
+    });
+    mocContent += '\n';
+
+    // Add domain folder & files to zip
+    const domainFolder = zip.folder(folderName);
+    domainTopics.forEach((topic) => {
+      const cleanFileName = `${sanitizeFileName(topic.title)}.md`;
+      const content = formatTopicForObsidian(topic, notes);
+      domainFolder?.file(cleanFileName, content);
+    });
   });
 
-  mocContent += `\n## ☯️ 2. Lĩnh Vực Huyền Học & Dịch Học (Esotericism)\n`;
-  const huyenHocTopics = topics.filter((t) => t.type === 'huyen-hoc');
-  huyenHocTopics.forEach((t) => {
-    mocContent += `- [[Huyen-Hoc/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
-  });
+  // Remaining topics not mapped to any known root category
+  const remainingTopics = topics.filter((t) => !processedTopicIds.has(t.id));
+  if (remainingTopics.length > 0) {
+    const otherFolder = zip.folder('Other');
+    mocContent += `## ${sectionIndex}. Lĩnh Vực Khác\n`;
+    sectionIndex++;
+    remainingTopics.forEach((t) => {
+      mocContent += `- [[Other/${sanitizeFileName(t.title)}|${t.title}]] — *${t.categoryName || 'Tổng quan'}* (Tiến độ: ${t.studyProgress?.progress || 0}%)\n`;
+      const cleanFileName = `${sanitizeFileName(t.title)}.md`;
+      const content = formatTopicForObsidian(t, notes);
+      otherFolder?.file(cleanFileName, content);
+    });
+    mocContent += '\n';
+  }
 
-  mocContent += `\n## 📚 3. Thư Viện Tài Liệu Tham Khảo\n`;
+  // Section: Library Resources
+  mocContent += `## 📚 ${sectionIndex}. Thư Viện Tài Liệu Tham Khảo\n`;
   resources.forEach((r) => {
     mocContent += `- **${r.title}** [${r.type.toUpperCase()}] ${r.author ? `(Tác giả: ${r.author})` : ''} ${r.url ? `[Link](${r.url})` : ''}\n`;
   });
 
   zip.file('00_Map_Of_Content.md', mocContent);
-
-  // Add Phat-Hoc topic notes
-  const phatHocFolder = zip.folder('Phat-Hoc');
-  phatHocTopics.forEach((topic) => {
-    const cleanFileName = `${sanitizeFileName(topic.title)}.md`;
-    const content = formatTopicForObsidian(topic, notes);
-    phatHocFolder?.file(cleanFileName, content);
-  });
-
-  // Add Huyen-Hoc topic notes
-  const huyenHocFolder = zip.folder('Huyen-Hoc');
-  huyenHocTopics.forEach((topic) => {
-    const cleanFileName = `${sanitizeFileName(topic.title)}.md`;
-    const content = formatTopicForObsidian(topic, notes);
-    huyenHocFolder?.file(cleanFileName, content);
-  });
 
   // Add separate notes folder
   const notesFolder = zip.folder('Ghi-Chu');

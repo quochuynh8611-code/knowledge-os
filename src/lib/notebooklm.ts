@@ -84,10 +84,17 @@ export function packageSourceForNotebookLM(
   const topicNotes = (notes || []).filter((n) => n.topicId === topic.id);
   const topicResources = (resources || []).filter((r) => r.topicId === topic.id);
 
+  const domainLabel =
+    topic.type === 'phat-hoc'
+      ? 'PHẬT HỌC HỌC THUẬT'
+      : topic.type === 'huyen-hoc'
+      ? 'HUYỀN HỌC & DỊCH LÝ ĐÔNG PHƯƠNG'
+      : (topic.categoryName || topic.type || 'KHÁC').toUpperCase();
+
   let doc = `================================================================================\n`;
   doc += `TÀI LIỆU NGUỒN KHẢO CỨU (NOTEBOOKLM SOURCE DOCUMENT)\n`;
   doc += `CHỦ ĐỀ: ${topic.title.toUpperCase()}\n`;
-  doc += `LĨNH VỰC: ${topic.type === 'phat-hoc' ? 'PHẬT HỌC HỌC THUẬT' : 'HUYỀN HỌC & DỊCH LÝ ĐÔNG PHƯƠNG'}\n`;
+  doc += `LĨNH VỰC: ${domainLabel}\n`;
   doc += `PHÂN LOẠI: ${topic.categoryName || topic.categoryId}\n`;
   doc += `NGÀY ĐÓNG GÓI: ${new Date().toLocaleDateString('vi-VN')}\n`;
   doc += `================================================================================\n\n`;

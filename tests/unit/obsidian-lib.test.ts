@@ -314,4 +314,80 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
     const noteContent = await noteFile!.async('string');
     expect(noteContent).toContain('Tâm Sở Bất Thiện');
   });
+
+  it('10. generateObsidianVaultZip dynamically creates domain folders and MOC sections for custom root categories', async () => {
+    const customCategories: Category[] = [
+      { id: 'cat-root-kinh-te', name: 'Kinh Tế Học', slug: 'kinh-te', type: 'kinh-te', parentId: null },
+      { id: 'cat-root-triet-hoc', name: 'Triết Học', slug: 'triet-hoc', type: 'triet-hoc', parentId: null },
+    ];
+    const customTopics: Topic[] = [
+      {
+        id: 'topic-kt-1',
+        title: 'Kinh Tế Lượng',
+        slug: 'kinh-te-luong',
+        categoryId: 'cat-root-kinh-te',
+        categoryName: 'Kinh Tế Học',
+        type: 'kinh-te',
+        description: 'Mô hình kinh tế lượng',
+        content: 'Nội dung kinh tế...',
+        tags: ['kinh-te'],
+        links: [],
+        createdAt: '2026-08-20T10:00:00Z',
+        updatedAt: '2026-08-20T10:00:00Z',
+        studyProgress: {
+          topicId: 'topic-kt-1',
+          status: 'in_progress',
+          progress: 50,
+          interval: 2,
+          easeFactor: 2.5,
+          repetitions: 2,
+          totalNotes: 0,
+          timeSpent: 30,
+        },
+      },
+      {
+        id: 'topic-th-1',
+        title: 'Hiện Tượng Luận',
+        slug: 'hien-tuong-luan',
+        categoryId: 'cat-root-triet-hoc',
+        categoryName: 'Triết Học',
+        type: 'triet-hoc',
+        description: 'Hiện tượng luận Edmund Husserl',
+        content: 'Nội dung triết học...',
+        tags: ['triet-hoc'],
+        links: [],
+        createdAt: '2026-08-20T10:00:00Z',
+        updatedAt: '2026-08-20T10:00:00Z',
+        studyProgress: {
+          topicId: 'topic-th-1',
+          status: 'not_started',
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+      },
+    ];
+
+    const blob = await generateObsidianVaultZip(customTopics, [], [], customCategories, 'Multi-Domain-Vault');
+    const arrayBuffer = await blob.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // MOC must contain dynamic sections and topic links
+    const mocFile = zip.file('00_Map_Of_Content.md');
+    expect(mocFile).not.toBeNull();
+    const mocText = await mocFile!.async('string');
+    expect(mocText).toContain('Kinh Tế Học');
+    expect(mocText).toContain('Triết Học');
+    expect(mocText).toContain('Kinh Tế Lượng');
+    expect(mocText).toContain('Hiện Tượng Luận');
+
+    // Folders must exist dynamically
+    const ktFile = zip.file('Kinh-Te/Kinh Tế Lượng.md') || zip.file('kinh-te/Kinh Tế Lượng.md');
+    expect(ktFile).not.toBeNull();
+    const thFile = zip.file('Triet-Hoc/Hiện Tượng Luận.md') || zip.file('triet-hoc/Hiện Tượng Luận.md');
+    expect(thFile).not.toBeNull();
+  });
 });
