@@ -1,14 +1,23 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-08-25
+> **Cập nhật lần cuối:** 2026-08-26
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–6 FULLY IMPLEMENTED & PRODUCTION-READY · 3-LAYER BACKUP, RESTORE DRILL, RUNBOOK & EVIDENCE AUDIT VERIFIED**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–8 & DYNAMIC MULTI-DOMAIN HARDENING FULLY IMPLEMENTED & PRODUCTION-READY (80 / 80 TEST FILES PASS — 507 / 507 TESTS PASS 100% GREEN)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ PHASE 1 ĐẾN PHASE 6 ĐÃ HOÀN TẤT & HỆ THỐNG SAO LƯU 3 LỚP / KIỂM TOÁN DIỄN TẬP KHÔI PHỤC ĐƯỢC KIỂM CHỨNG (66 / 66 TEST FILES PASS — 409 / 409 TESTS PASS 100% GREEN)**.
+- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / PHÂN TÍCH TIẾN ĐỘ ĐA LĨNH VỰC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (80 / 80 TEST FILES PASS — 507 / 507 TESTS PASS 100% GREEN)**.
+- **Tiến độ Các Phase Phổ Quát Hóa Đa Lĩnh Vực Mới Nhất (Recent Dynamic Domain Hardening Phases):**
+  - **Phase Study Analytics Multi-Domain Alignment (Commits `d7ad5b3`, `2b9e33f`):**
+    - **Increment 1 (Core Engine Calculation Contract — `d7ad5b3`):** Phổ quát hóa hàm `calculateReviewForecast` hỗ trợ phân giải root domain động qua `getTopicRootDomain(topic, categories)`, bổ sung bản đồ `domainCounts` và mảng `domains` sắp xếp tất định (A-Z), bảo toàn tương thích ngược 100% cho `phatHocCount` / `huyenHocCount`, bổ sung `calculateDomainRetentionSummary`, và cố định tính tất định thời gian test bằng `vi.useFakeTimers()`.
+    - **Increment 2 (UI Alignment & Neutral Presentation — `2b9e33f`):** Đồng bộ `StudyProgressView.tsx` render cột biểu đồ động, chú giải legend động, cân bằng lĩnh vực (PieChart) động theo root categories, và triển khai presentation resolver `getTopicPresentation` bảo đảm các domain mới có màu ngọc bích / trung tính (emerald/neutral), không bị gán nhầm sang Huyền Học.
+    - **Kiểm thử:** 19/19 tests PASS (`study-analytics-lib.test.ts` & `study-analytics-ui-integration.test.tsx`).
+  - **Phase Knowledge Graph & Multi-Hop Hardening (Commits `a2f6073`, `68021de`, `e353f86`):**
+    - **Increment 1 (Core Traversal & Explainability — `a2f6073`):** Gia cố thuật toán BFS `traverseMultiHop` với thứ tự ưu tiên tất định (`strength` giảm dần, `type === 'prerequisite'`, `targetId` từ điển), truy vết nguồn gốc bước nhảy (`hopDistance`, `parentHopId`), và helper `findShortestPath`.
+    - **Increment 2 (Dynamic Domain UI Explorer — `68021de`):** Đồng bộ bộ lọc lĩnh vực động trên `KnowledgeGraph.tsx` từ danh mục gốc và phân bổ cụm tọa độ layout $N$-domain.
+    - **Kiểm thử:** 16/16 tests PASS (`knowledge-graph-lib.test.ts` & `knowledge-graph-ui-integration.test.tsx`).
 - **Tiến độ Phase 5 (Evolution Planning & Operational Expansion) — Hoàn tất 4/4 Workstreams:**
   - **Workstream 5D (Scholar Search & Fast Fuzzy Metadata Filter):** Đã hoàn tất 100% và kiểm chứng qua 3 mốc commit (`d844530`, `8e09740`, `5ee5d89`, doc `1e749af`).
   - **Workstream 5A (Advanced Knowledge Graph & Multi-Hop Traversal Explorer):** Đã hoàn tất 100% và kiểm chứng qua 2 mốc commit (`613deed`, `4ee9f5c`, doc `a89111e`).
