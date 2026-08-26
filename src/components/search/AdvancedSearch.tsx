@@ -18,6 +18,7 @@ import {
   formatTimeAgo,
 } from "../../lib/spaced-repetition";
 import { searchScholarCollections } from "../../lib/scholarSearch";
+import { toReadablePlainTextPreview } from "../../lib/markdownReadability";
 
 export function AdvancedSearch() {
   const {
@@ -254,7 +255,7 @@ export function AdvancedSearch() {
                         {highlightMatch(note.title)}
                       </h3>
                       <p className="text-xs text-stone-600 dark:text-stone-400 mt-1 line-clamp-3">
-                        {highlightMatch(note.content)}
+                        {highlightMatch(toReadablePlainTextPreview(note.content, 220))}
                       </p>
                     </div>
                     <div className="pt-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-amber-800 dark:text-amber-400 font-medium">

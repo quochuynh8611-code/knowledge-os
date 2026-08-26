@@ -16,6 +16,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { formatTimeAgo } from "../../lib/spaced-repetition";
+import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
 export interface NoteReaderModalProps {
   isOpen: boolean;
@@ -88,47 +89,6 @@ export function NoteReaderModal({
     }
   };
 
-  const renderWikiLinks = (text: string) => {
-    const parts = text.split(/(\[\[.*?\]\])/g);
-    return parts.map((part, index) => {
-      if (part.startsWith("[[") && part.endsWith("]]")) {
-        const titleQuery = part.slice(2, -2).trim();
-        const matchedTopic = topics.find(
-          (t) =>
-            t.title.toLowerCase().includes(titleQuery.toLowerCase()) ||
-            titleQuery.toLowerCase().includes(t.title.toLowerCase())
-        );
-
-        if (matchedTopic) {
-          return (
-            <button
-              key={index}
-              type="button"
-              onClick={() => {
-                onClose();
-                openTopicDetail(matchedTopic.id);
-              }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/90 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-semibold rounded-md text-xs sm:text-sm border border-amber-300 dark:border-amber-700 transition mx-0.5 cursor-pointer align-baseline"
-              title={`Mở chủ đề: ${matchedTopic.title}`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-              <span>{titleQuery}</span>
-            </button>
-          );
-        }
-        return (
-          <span
-            key={index}
-            className="px-2 py-0.5 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-md text-xs sm:text-sm font-mono"
-          >
-            {titleQuery}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
-
   return (
     <div
       role="dialog"
@@ -188,8 +148,15 @@ export function NoteReaderModal({
           </div>
 
           {/* Note Body with Markdown/Wiki link formatting */}
-          <div className="text-sm sm:text-base text-stone-800 dark:text-stone-200 leading-relaxed font-sans whitespace-pre-wrap bg-stone-50/70 dark:bg-stone-950/40 p-5 rounded-2xl border border-stone-200/80 dark:border-stone-800/80">
-            {renderWikiLinks(note.content)}
+          <div className="text-sm sm:text-base text-stone-800 dark:text-stone-200 leading-relaxed font-sans bg-stone-50/70 dark:bg-stone-950/40 p-5 rounded-2xl border border-stone-200/80 dark:border-stone-800/80">
+            <MarkdownReadabilityRenderer
+              content={note.content}
+              topics={topics}
+              onOpenTopic={(id) => {
+                onClose();
+                openTopicDetail(id);
+              }}
+            />
           </div>
 
           {/* Source Path Display */}

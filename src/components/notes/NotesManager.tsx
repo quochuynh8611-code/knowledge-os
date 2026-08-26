@@ -20,6 +20,7 @@ import {
 import { NoteFormModal } from '../modals/NoteFormModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
+import { toReadablePlainTextPreview } from '../../lib/markdownReadability';
 
 export function NotesManager() {
   const { notes, topics, deleteNote, openTopicDetail } = useData();
@@ -46,43 +47,6 @@ export function NotesManager() {
       return true;
     });
   }, [notes, typeFilter, topicFilter, search]);
-
-  const renderWikiLinks = (text: string) => {
-    const parts = text.split(/(\[\[.*?\]\])/g);
-    return parts.map((part, index) => {
-      if (part.startsWith('[[') && part.endsWith(']]')) {
-        const titleQuery = part.slice(2, -2).trim();
-        const matchedTopic = topics.find(
-          (t) =>
-            t.title.toLowerCase().includes(titleQuery.toLowerCase()) ||
-            titleQuery.toLowerCase().includes(t.title.toLowerCase())
-        );
-
-        if (matchedTopic) {
-          return (
-            <button
-              key={index}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openTopicDetail(matchedTopic.id);
-              }}
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-300 font-semibold rounded text-xs border border-amber-300 dark:border-amber-700 transition mx-0.5"
-            >
-              <Sparkles className="w-3 h-3 text-amber-700 dark:text-amber-400" />
-              {titleQuery}
-            </button>
-          );
-        }
-        return (
-          <span key={index} className="px-1.5 py-0.5 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded text-xs font-mono">
-            {titleQuery}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
@@ -236,9 +200,9 @@ export function NotesManager() {
                   {note.title}
                 </h3>
 
-                <div className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap line-clamp-3">
-                  {renderWikiLinks(note.content)}
-                </div>
+                <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed line-clamp-3">
+                  {toReadablePlainTextPreview(note.content)}
+                </p>
 
                 {/* Source Path Display */}
                 {note.sourcePath && (

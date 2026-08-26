@@ -37,6 +37,10 @@ import { EmptyState } from "../ui/EmptyState";
 import { Resource, Note, TopicStatus } from "../../types";
 import { resolveResourceOpenTarget } from "../../lib/resourceOpenResolver";
 import {
+  MarkdownReadabilityRenderer,
+  toReadablePlainTextPreview,
+} from "../../lib/markdownReadability";
+import {
   formatMinutesToHours,
   formatTimeAgo,
 } from "../../lib/spaced-repetition";
@@ -122,44 +126,6 @@ export function TopicDetail() {
     });
     setShowAddLink(false);
     setTargetTopicId("");
-  };
-
-  // Helper to parse Wiki-style [[Topic Name]] in note or content and make them clickable
-  const renderWikiLinks = (text: string) => {
-    const parts = text.split(/(\[\[.*?\]\])/g);
-    return parts.map((part, index) => {
-      if (part.startsWith("[[") && part.endsWith("]]")) {
-        const titleQuery = part.slice(2, -2).trim();
-        const matchedTopic = topics.find(
-          (t) =>
-            t.title.toLowerCase().includes(titleQuery.toLowerCase()) ||
-            titleQuery.toLowerCase().includes(t.title.toLowerCase()),
-        );
-
-        if (matchedTopic) {
-          return (
-            <button
-              key={index}
-              onClick={() => openTopicDetail(matchedTopic.id)}
-              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold rounded text-xs border border-amber-300 transition mx-0.5 align-baseline"
-              title={`Nhấp để mở: ${matchedTopic.title}`}
-            >
-              <Sparkles className="w-3 h-3 text-amber-700" />
-              {titleQuery}
-            </button>
-          );
-        }
-        return (
-          <span
-            key={index}
-            className="px-1.5 py-0.5 bg-stone-200 text-stone-700 rounded text-xs font-mono"
-          >
-            {titleQuery}
-          </span>
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
   };
 
   return (
@@ -399,8 +365,12 @@ export function TopicDetail() {
           </div>
 
           {/* Render Markdown with Wiki Link styling */}
-          <div className="text-stone-800 text-sm leading-relaxed whitespace-pre-wrap font-sans space-y-3">
-            {renderWikiLinks(topic.content)}
+          <div className="text-stone-800 text-sm leading-relaxed font-sans">
+            <MarkdownReadabilityRenderer
+              content={topic.content}
+              topics={topics}
+              onOpenTopic={openTopicDetail}
+            />
           </div>
 
           {/* Tags */}
@@ -473,9 +443,9 @@ export function TopicDetail() {
                       {note.title}
                     </h4>
 
-                    <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
-                      {renderWikiLinks(note.content)}
-                    </div>
+                    <p className="text-xs text-stone-700 leading-relaxed line-clamp-4">
+                      {toReadablePlainTextPreview(note.content)}
+                    </p>
                   </div>
 
                   <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
