@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { Topic, Note, Resource, Category } from '../types';
 
 export const DEFAULT_OBSIDIAN_VAULT_KEY = 'obsidian_vault_name_pref';
@@ -210,6 +209,8 @@ export async function generateObsidianVaultZip(
   categories: Category[],
   vaultName: string = DEFAULT_OBSIDIAN_VAULT_NAME
 ): Promise<Blob> {
+  const JSZipModule = await import('jszip');
+  const JSZip = (JSZipModule as any).default || JSZipModule;
   const zip = new JSZip();
   const cleanVault = vaultName && vaultName.trim().length > 0 ? vaultName.trim() : DEFAULT_OBSIDIAN_VAULT_NAME;
 

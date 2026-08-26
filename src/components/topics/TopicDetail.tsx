@@ -28,10 +28,27 @@ import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
-import { ObsidianBridgeModal } from "../integrations/ObsidianBridgeModal";
-import { NotebookLMStudioModal } from "../integrations/NotebookLMStudioModal";
-import { AntigravityHandoffModal } from "../integrations/AntigravityHandoffModal";
-import { AIResearchStudio } from "../ai/AIResearchStudio";
+
+const ObsidianBridgeModal = React.lazy(() =>
+  import("../integrations/ObsidianBridgeModal").then((m) => ({
+    default: m.ObsidianBridgeModal,
+  }))
+);
+const NotebookLMStudioModal = React.lazy(() =>
+  import("../integrations/NotebookLMStudioModal").then((m) => ({
+    default: m.NotebookLMStudioModal,
+  }))
+);
+const AntigravityHandoffModal = React.lazy(() =>
+  import("../integrations/AntigravityHandoffModal").then((m) => ({
+    default: m.AntigravityHandoffModal,
+  }))
+);
+const AIResearchStudio = React.lazy(() =>
+  import("../ai/AIResearchStudio").then((m) => ({
+    default: m.AIResearchStudio,
+  }))
+);
 import { Breadcrumbs } from "../layout/Breadcrumbs";
 import { EmptyState } from "../ui/EmptyState";
 import { Resource, Note, TopicStatus } from "../../types";
@@ -796,33 +813,47 @@ export function TopicDetail() {
         onClose={() => setViewingResource(null)}
       />
 
-      <ObsidianBridgeModal
-        isOpen={showObsidianModal}
-        onClose={() => setShowObsidianModal(false)}
-        topic={topic}
-      />
+      {showObsidianModal && (
+        <React.Suspense fallback={null}>
+          <ObsidianBridgeModal
+            isOpen={showObsidianModal}
+            onClose={() => setShowObsidianModal(false)}
+            topic={topic}
+          />
+        </React.Suspense>
+      )}
 
-      <NotebookLMStudioModal
-        isOpen={showNotebookLMModal}
-        onClose={() => setShowNotebookLMModal(false)}
-        topic={topic}
-      />
+      {showNotebookLMModal && (
+        <React.Suspense fallback={null}>
+          <NotebookLMStudioModal
+            isOpen={showNotebookLMModal}
+            onClose={() => setShowNotebookLMModal(false)}
+            topic={topic}
+          />
+        </React.Suspense>
+      )}
 
-      <AntigravityHandoffModal
-        isOpen={showAntigravityModal}
-        onClose={() => setShowAntigravityModal(false)}
-        topic={topic}
-      />
+      {showAntigravityModal && (
+        <React.Suspense fallback={null}>
+          <AntigravityHandoffModal
+            isOpen={showAntigravityModal}
+            onClose={() => setShowAntigravityModal(false)}
+            topic={topic}
+          />
+        </React.Suspense>
+      )}
 
       {showAIStudioModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-          <div className="w-full max-w-4xl max-h-[90vh]">
-            <AIResearchStudio
-              currentTopic={topic}
-              onClose={() => setShowAIStudioModal(false)}
-            />
+        <React.Suspense fallback={null}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
+            <div className="w-full max-w-4xl max-h-[90vh]">
+              <AIResearchStudio
+                currentTopic={topic}
+                onClose={() => setShowAIStudioModal(false)}
+              />
+            </div>
           </div>
-        </div>
+        </React.Suspense>
       )}
     </div>
   );

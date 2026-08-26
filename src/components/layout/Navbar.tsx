@@ -18,12 +18,24 @@ import { ThemeToggle } from "../ui/ThemeToggle";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
-import { ExportImportModal } from "../modals/ExportImportModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
-import { ObsidianBridgeModal } from "../integrations/ObsidianBridgeModal";
-import { NotebookLMStudioModal } from "../integrations/NotebookLMStudioModal";
-import { AntigravityHandoffModal } from "../integrations/AntigravityHandoffModal";
+import { ExportImportModal } from "../modals/ExportImportModal";
+const ObsidianBridgeModal = React.lazy(() =>
+  import("../integrations/ObsidianBridgeModal").then((m) => ({
+    default: m.ObsidianBridgeModal,
+  }))
+);
+const NotebookLMStudioModal = React.lazy(() =>
+  import("../integrations/NotebookLMStudioModal").then((m) => ({
+    default: m.NotebookLMStudioModal,
+  }))
+);
+const AntigravityHandoffModal = React.lazy(() =>
+  import("../integrations/AntigravityHandoffModal").then((m) => ({
+    default: m.AntigravityHandoffModal,
+  }))
+);
 
 export interface NavbarProps {
   onOpenCommandPalette?: () => void;
@@ -42,7 +54,6 @@ export function Navbar({
     timerSeconds,
     activeTimerTopicId,
     topics,
-    stats,
     reviewQueue,
   } = useData();
 
@@ -50,11 +61,11 @@ export function Navbar({
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showTimerModal, setShowTimerModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showObsidianModal, setShowObsidianModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
+  const [showTimerModal, setShowTimerModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
 
   const activeTopic = topics.find((t) => t.id === activeTimerTopicId);
@@ -63,6 +74,13 @@ export function Navbar({
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setActiveTab("search");
+    }
   };
 
   return (
@@ -116,17 +134,17 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Right Action Toolbar */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Right Action Tools */}
+          <div className="flex items-center gap-2">
             {/* Spaced Review Due Queue button */}
             {reviewQueue.length > 0 && (
               <button
                 onClick={() => setShowReviewModal(true)}
-                className="relative flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold border border-amber-300 dark:border-amber-700 transition"
+                className="relative hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold border border-amber-300 dark:border-amber-700 transition"
                 title="Hôm nay có chủ đề cần ôn tập lại"
               >
                 <Brain className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
-                <span className="hidden sm:inline">Ôn tập SM-2</span>
+                <span className="hidden sm:inline">Ôn tập</span>
                 <span className="w-4 h-4 bg-amber-800 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
                   {reviewQueue.length}
                 </span>
@@ -282,18 +300,30 @@ export function Navbar({
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
       />
-      <ObsidianBridgeModal
-        isOpen={showObsidianModal}
-        onClose={() => setShowObsidianModal(false)}
-      />
-      <NotebookLMStudioModal
-        isOpen={showNotebookLMModal}
-        onClose={() => setShowNotebookLMModal(false)}
-      />
-      <AntigravityHandoffModal
-        isOpen={showAntigravityModal}
-        onClose={() => setShowAntigravityModal(false)}
-      />
+      {showObsidianModal && (
+        <React.Suspense fallback={null}>
+          <ObsidianBridgeModal
+            isOpen={showObsidianModal}
+            onClose={() => setShowObsidianModal(false)}
+          />
+        </React.Suspense>
+      )}
+      {showNotebookLMModal && (
+        <React.Suspense fallback={null}>
+          <NotebookLMStudioModal
+            isOpen={showNotebookLMModal}
+            onClose={() => setShowNotebookLMModal(false)}
+          />
+        </React.Suspense>
+      )}
+      {showAntigravityModal && (
+        <React.Suspense fallback={null}>
+          <AntigravityHandoffModal
+            isOpen={showAntigravityModal}
+            onClose={() => setShowAntigravityModal(false)}
+          />
+        </React.Suspense>
+      )}
       <StudyTimerModal
         isOpen={showTimerModal}
         onClose={() => setShowTimerModal(false)}

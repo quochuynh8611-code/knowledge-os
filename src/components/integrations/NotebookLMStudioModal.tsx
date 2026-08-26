@@ -259,7 +259,11 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg">
+          <button
+            onClick={onClose}
+            aria-label="Đóng modal"
+            className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>

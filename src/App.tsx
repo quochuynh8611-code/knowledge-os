@@ -6,15 +6,8 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { DashboardHome } from "./components/dashboard/DashboardHome";
 import { TopicTree } from "./components/topics/TopicTree";
 import { TopicDetail } from "./components/topics/TopicDetail";
-import { KnowledgeGraph } from "./components/graph/KnowledgeGraph";
-import { StudyProgressView } from "./components/progress/StudyProgressView";
 import { NotesManager } from "./components/notes/NotesManager";
 import { ResourcesManager } from "./components/resources/ResourcesManager";
-import { AdvancedSearch } from "./components/search/AdvancedSearch";
-import { AIResearchStudio } from "./components/ai/AIResearchStudio";
-import { AbhidharmaMatrix } from "./components/matrix/AbhidharmaMatrix";
-import { DivinationMatrix } from "./components/matrix/DivinationMatrix";
-import { MultilingualLexicon } from "./components/lexicon/MultilingualLexicon";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useCommandPalette } from "./hooks/useCommandPalette";
 import { useTheme } from "./hooks/useTheme";
@@ -30,6 +23,54 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
+
+// Lazy-loaded heavy & specialized workspace tabs
+const KnowledgeGraph = React.lazy(() =>
+  import("./components/graph/KnowledgeGraph").then((m) => ({
+    default: m.KnowledgeGraph,
+  }))
+);
+const StudyProgressView = React.lazy(() =>
+  import("./components/progress/StudyProgressView").then((m) => ({
+    default: m.StudyProgressView,
+  }))
+);
+const AdvancedSearch = React.lazy(() =>
+  import("./components/search/AdvancedSearch").then((m) => ({
+    default: m.AdvancedSearch,
+  }))
+);
+const AIResearchStudio = React.lazy(() =>
+  import("./components/ai/AIResearchStudio").then((m) => ({
+    default: m.AIResearchStudio,
+  }))
+);
+const AbhidharmaMatrix = React.lazy(() =>
+  import("./components/matrix/AbhidharmaMatrix").then((m) => ({
+    default: m.AbhidharmaMatrix,
+  }))
+);
+const DivinationMatrix = React.lazy(() =>
+  import("./components/matrix/DivinationMatrix").then((m) => ({
+    default: m.DivinationMatrix,
+  }))
+);
+const MultilingualLexicon = React.lazy(() =>
+  import("./components/lexicon/MultilingualLexicon").then((m) => ({
+    default: m.MultilingualLexicon,
+  }))
+);
+
+function TabLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 min-h-[400px] text-stone-400 dark:text-stone-500 animate-pulse">
+      <div className="w-8 h-8 rounded-full border-2 border-amber-600/30 border-t-amber-600 animate-spin mb-3" />
+      <span className="text-xs font-semibold tracking-wide text-stone-500 dark:text-stone-400">
+        Đang nạp không gian nghiên cứu...
+      </span>
+    </div>
+  );
+}
 
 function AppContent() {
   const { activeTab, setActiveTab, selectedTopicId, openTopicDetail } =
@@ -62,27 +103,53 @@ function AppContent() {
       case "topics":
         return selectedTopicId ? <TopicDetail /> : <TopicTree />;
       case "graph":
-        return <KnowledgeGraph />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <KnowledgeGraph />
+          </React.Suspense>
+        );
       case "progress":
-        return <StudyProgressView />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <StudyProgressView />
+          </React.Suspense>
+        );
       case "notes":
         return <NotesManager />;
       case "resources":
         return <ResourcesManager />;
       case "search":
-        return <AdvancedSearch />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <AdvancedSearch />
+          </React.Suspense>
+        );
       case "ai_studio":
         return (
           <div className="p-4 md:p-8 max-w-7xl mx-auto">
-            <AIResearchStudio />
+            <React.Suspense fallback={<TabLoadingFallback />}>
+              <AIResearchStudio />
+            </React.Suspense>
           </div>
         );
       case "abhidharma_matrix":
-        return <AbhidharmaMatrix />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <AbhidharmaMatrix />
+          </React.Suspense>
+        );
       case "divination_matrix":
-        return <DivinationMatrix />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <DivinationMatrix />
+          </React.Suspense>
+        );
       case "lexicon":
-        return <MultilingualLexicon />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <MultilingualLexicon />
+          </React.Suspense>
+        );
       default:
         return <DashboardHome />;
     }

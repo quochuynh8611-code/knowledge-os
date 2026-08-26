@@ -15,7 +15,12 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Topic } from '../../types';
-import { AntigravityHandoffModal } from '../integrations/AntigravityHandoffModal';
+
+const AntigravityHandoffModal = React.lazy(() =>
+  import('../integrations/AntigravityHandoffModal').then((m) => ({
+    default: m.AntigravityHandoffModal,
+  }))
+);
 
 interface AIResearchStudioProps {
   currentTopic?: Topic;
@@ -393,11 +398,15 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
         </form>
       </div>
 
-      <AntigravityHandoffModal
-        isOpen={showHandoffModal}
-        onClose={() => setShowHandoffModal(false)}
-        topic={activeTopic}
-      />
+      {showHandoffModal && (
+        <React.Suspense fallback={null}>
+          <AntigravityHandoffModal
+            isOpen={showHandoffModal}
+            onClose={() => setShowHandoffModal(false)}
+            topic={activeTopic}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }
