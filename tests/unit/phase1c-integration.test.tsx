@@ -13,8 +13,8 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
     render(<App />);
 
     expect(
-      screen.getByText(/Nghiên Cứu Phật Học & Huyền Học/i),
-    ).toBeInTheDocument();
+      screen.getAllByRole("heading", { level: 1 })[0],
+    ).toHaveTextContent(/Nghiên Cứu/i);
 
     // Command Palette ban đầu không hiển thị
     expect(
@@ -27,7 +27,7 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
     // Command Palette mở lên
     await waitFor(() => {
       expect(
-        screen.getByPlaceholderText(/Tìm lệnh, chủ đề khảo cứu/i),
+        screen.getByPlaceholderText(/Tìm lệnh, chủ đề nghiên cứu/i),
       ).toBeInTheDocument();
     });
 
@@ -35,7 +35,7 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => {
       expect(
-        screen.queryByPlaceholderText(/Tìm lệnh, chủ đề khảo cứu/i),
+        screen.queryByPlaceholderText(/Tìm lệnh, chủ đề nghiên cứu/i),
       ).not.toBeInTheDocument();
     });
   });
@@ -78,8 +78,8 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
   it("4. Điều hướng sang tab Tra Cứu (Search) và hiển thị SearchFilters", async () => {
     render(<App />);
 
-    // Nhấn phím số 7 để mở Search hoặc click vào search input
-    const searchInput = screen.getByPlaceholderText(/Tìm nhanh: Abhidharma/i);
+    // Click vào search input trên Navbar
+    const searchInput = screen.getByPlaceholderText(/Tìm kiếm chủ đề, ghi chú/i);
     fireEvent.change(searchInput, { target: { value: "Abhidharma" } });
 
     await waitFor(() => {

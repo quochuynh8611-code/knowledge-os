@@ -47,8 +47,8 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
       </TestHarness>
     );
 
-    // Verify "Lĩnh Vực Khảo Cứu" section exists
-    expect(screen.getByText(/Lĩnh Vực Khảo Cứu/i)).toBeInTheDocument();
+    // Verify "Lĩnh Vực Nghiên Cứu" section exists
+    expect(screen.getByText(/Lĩnh Vực Nghiên Cứu/i)).toBeInTheDocument();
 
     // Verify "Thêm lĩnh vực" button exists
     expect(screen.getByText(/Thêm lĩnh vực/i)).toBeInTheDocument();

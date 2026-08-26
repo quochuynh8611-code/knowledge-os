@@ -121,13 +121,13 @@ export function DashboardHome() {
         <div>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Trung Tâm Điều Hành Nghiên Cứu</span>
+            <span>Không Gian Nghiên Cứu</span>
           </div>
           <h1 className="text-2xl lg:text-3xl font-bold text-stone-900 tracking-tight font-serif-title">
             Tổng quan nghiên cứu
           </h1>
           <p className="text-xs sm:text-sm text-stone-600 mt-1">
-            Hệ thống hóa học thuật Phật giáo &amp; Huyền học cổ truyền phương Đông
+            Hệ thống hóa học thuật, ghi chú và quản trị tri thức đa lĩnh vực
           </p>
         </div>
 
@@ -361,7 +361,7 @@ export function DashboardHome() {
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Tra cứu giáo lý, quẻ dịch, luận tạng, nhân tướng..."
+                placeholder="Tra cứu chủ đề, ghi chú, khái niệm học thuật..."
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   if (e.target.value.trim()) setActiveTab('search');

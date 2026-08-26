@@ -76,14 +76,13 @@ export function Navbar({
             </div>
             <div>
               <h1 className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base tracking-tight leading-tight flex items-center gap-2">
-                Nghiên Cứu Phật Học &amp; Huyền Học
+                Nghiên Cứu
                 <span className="hidden sm:inline text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 rounded-full border border-amber-300 dark:border-amber-700">
-                  Knowledge OS
+                  Workspace
                 </span>
               </h1>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
-                Hệ thống hóa Abhidharma, Tam Tạng, Thiền định &amp; Huyền học
-                phương Đông
+                Không gian làm việc &amp; hệ thống hóa kiến thức đa lĩnh vực
               </p>
             </div>
           </div>
@@ -101,7 +100,7 @@ export function Navbar({
                     setActiveTab("search");
                   }
                 }}
-                placeholder="Tìm nhanh: Abhidharma, Kỳ Môn, Tứ Niệm Xứ, Quẻ Dịch..."
+                placeholder="Tìm kiếm chủ đề, ghi chú, tài liệu, liên kết..."
                 className="w-full pl-9 pr-14 py-1.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/50 transition"
               />
               {onOpenCommandPalette && (

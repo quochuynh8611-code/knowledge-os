@@ -45,11 +45,11 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
       items: [
         { keys: ["1"], description: "Về Trang Tổng Quan (Dashboard)" },
         { keys: ["2"], description: "Về Cây Phân Cấp Chủ Đề (Topics)" },
-        { keys: ["3"], description: "Về Ma Trận Vi Diệu Pháp (Abhidharma)" },
-        { keys: ["4"], description: "Về Dịch Học & Kỳ Môn (Divination)" },
-        { keys: ["5"], description: "Về Biểu Đồ Tri Thức (Knowledge Graph)" },
+        { keys: ["3"], description: "Về Ma Trận Phân Tích (Analysis Matrix)" },
+        { keys: ["4"], description: "Về Mô Hình Hệ Thống (System Models)" },
+        { keys: ["5"], description: "Về Bản Đồ Tri Thức (Knowledge Graph)" },
         { keys: ["6"], description: "Về Tiến Độ & Ôn Tập (SM-2)" },
-        { keys: ["7"], description: "Về Ghi Chú & Wiki Links (Notes)" },
+        { keys: ["7"], description: "Về Ghi Chú & Liên Kết (Notes)" },
       ],
     },
   ];
@@ -136,7 +136,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
           <span>
             Nhấn <kbd className="font-mono font-bold">Esc</kbd> để đóng
           </span>
-          <span>Knowledge OS • SuperMemo-2 Ready</span>
+          <span>Nghiên Cứu • Hỗ trợ ghi nhớ khoa học (SM-2)</span>
         </div>
       </div>
     </div>

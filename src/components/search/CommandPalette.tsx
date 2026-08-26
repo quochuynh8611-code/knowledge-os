@@ -108,7 +108,7 @@ export function CommandPalette({
               onQueryChange(e.target.value);
               onSelectIndex(0);
             }}
-            placeholder="Tìm lệnh, chủ đề khảo cứu, ghi chú, ma trận..."
+            placeholder="Tìm lệnh, chủ đề nghiên cứu, ghi chú, ma trận..."
             className="flex-1 bg-transparent text-sm font-medium outline-hidden placeholder:text-stone-400 dark:placeholder:text-stone-500 text-stone-900 dark:text-stone-100"
           />
           {query && (
@@ -135,7 +135,7 @@ export function CommandPalette({
             <div className="py-12 text-center text-xs text-stone-400 dark:text-stone-500 space-y-1">
               <p>Không tìm thấy lệnh hoặc chủ đề nào khớp với "{query}"</p>
               <p className="text-[11px] text-stone-400">
-                Thử tìm "Abhidharma", "Kỳ Môn", "Ghi chú", "Giao diện"...
+                Thử tìm "Tổng quan", "Chủ đề", "Ghi chú", "Giao diện", "Tiến độ"...
               </p>
             </div>
           ) : (

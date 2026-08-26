@@ -40,7 +40,7 @@ describe("Command Palette & useCommandPalette Hook (Phase 1B)", () => {
       });
 
       expect(result.current.filteredItems.length).toBeGreaterThanOrEqual(1);
-      expect(result.current.filteredItems[0].title).toContain("Vi Diệu Pháp");
+      expect(result.current.filteredItems[0].title).toContain("Ma trận phân tích");
     });
 
     it("Thực thi hành động và tự động đóng Command Palette", () => {
@@ -125,7 +125,7 @@ describe("Command Palette & useCommandPalette Hook (Phase 1B)", () => {
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(
-        screen.getByPlaceholderText(/Tìm lệnh, chủ đề khảo cứu/i),
+        screen.getByPlaceholderText(/Tìm lệnh, chủ đề nghiên cứu/i),
       ).toBeInTheDocument();
       expect(screen.getByText("Tổng Quan")).toBeInTheDocument();
       expect(screen.getByText("Tạo Chủ Đề")).toBeInTheDocument();

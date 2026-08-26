@@ -113,7 +113,7 @@ function AppContent() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-100/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around py-2 px-1">
         <button
           onClick={() => setActiveTab("dashboard")}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold py-1 px-2 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
             activeTab === "dashboard"
               ? "text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80"
               : "text-stone-600 dark:text-stone-400"
@@ -125,7 +125,7 @@ function AppContent() {
 
         <button
           onClick={() => setActiveTab("topics")}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold py-1 px-2 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
             activeTab === "topics"
               ? "text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80"
               : "text-stone-600 dark:text-stone-400"
@@ -137,7 +137,7 @@ function AppContent() {
 
         <button
           onClick={() => setActiveTab("graph")}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold py-1 px-2 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
             activeTab === "graph"
               ? "text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80"
               : "text-stone-600 dark:text-stone-400"
@@ -149,7 +149,7 @@ function AppContent() {
 
         <button
           onClick={() => setActiveTab("progress")}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold py-1 px-2 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
             activeTab === "progress"
               ? "text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80"
               : "text-stone-600 dark:text-stone-400"
@@ -161,7 +161,7 @@ function AppContent() {
 
         <button
           onClick={() => setActiveTab("notes")}
-          className={`flex flex-col items-center gap-0.5 text-[10px] font-semibold py-1 px-2 rounded-xl transition ${
+          className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
             activeTab === "notes"
               ? "text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80"
               : "text-stone-600 dark:text-stone-400"

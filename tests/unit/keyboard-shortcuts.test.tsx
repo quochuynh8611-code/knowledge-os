@@ -84,7 +84,7 @@ describe("Keyboard Shortcuts & ShortcutsModal (Phase 1B)", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/Phím Tắt Hệ Thống/i)).toBeInTheDocument();
       expect(screen.getByText(/Thanh Lệnh Toàn Năng/i)).toBeInTheDocument();
-      expect(screen.getByText(/Ma Trận Vi Diệu Pháp/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ma Trận Phân Tích/i)).toBeInTheDocument();
 
       // Close on button click
       const closeBtn = screen.getByLabelText(/Đóng bảng phím tắt/i);

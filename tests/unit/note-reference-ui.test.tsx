@@ -51,6 +51,6 @@ describe('Post-Phase 6d: Note UI - Source Path Input, Normalization & Boundary W
     );
 
     // Verify NotesManager renders without crashing
-    expect(screen.getByRole('heading', { name: /Quản Lý Ghi Chú & Wiki Link/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Quản Lý Ghi Chú & Liên Kết Kiến Thức/i })).toBeInTheDocument();
   });
 });

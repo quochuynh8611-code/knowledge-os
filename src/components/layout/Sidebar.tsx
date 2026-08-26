@@ -96,17 +96,17 @@ export function Sidebar() {
   };
 
   const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: number | string; highlight?: boolean }[] = [
-    { id: 'dashboard', label: 'Tổng Quan Nghiên Cứu', icon: LayoutDashboard },
-    { id: 'ai_studio', label: 'Antigravity AI Scholar', icon: Sparkles, badge: 'AI', highlight: true },
-    { id: 'topics', label: 'Quản Lý & Cây Chủ Đề', icon: FolderTree, badge: stats.totalTopics },
-    { id: 'abhidharma_matrix', label: 'Ma Trận Vi Diệu Pháp', icon: Brain, badge: '89 Tâm' },
-    { id: 'divination_matrix', label: 'Dịch Học & Kỳ Môn', icon: Compass, badge: '64 Quẻ' },
-    { id: 'lexicon', label: 'Từ Điển Đa Ngữ Pali/Hán', icon: BookA },
-    { id: 'graph', label: 'Biểu Đồ Tri Thức (Graph)', icon: Share2 },
-    { id: 'progress', label: 'Tiến Độ & Ôn Tập (SM-2)', icon: TrendingUp, badge: reviewQueue.length > 0 ? reviewQueue.length : undefined },
-    { id: 'notes', label: 'Ghi Chú & Wiki Link', icon: FileText, badge: stats.totalNotesCount },
-    { id: 'resources', label: 'Tài Liệu & Thư Viện', icon: Library, badge: stats.totalResourcesCount },
-    { id: 'search', label: 'Tra Cứu Chuyên Sâu', icon: Search },
+    { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'ai_studio', label: 'AI hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
+    { id: 'topics', label: 'Chủ đề', icon: FolderTree, badge: stats.totalTopics },
+    { id: 'abhidharma_matrix', label: 'Ma trận phân tích', icon: Brain, badge: '89 Tâm' },
+    { id: 'divination_matrix', label: 'Mô hình hệ thống', icon: Compass, badge: '64 Quẻ' },
+    { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
+    { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
+    { id: 'progress', label: 'Tiến độ', icon: TrendingUp, badge: reviewQueue.length > 0 ? reviewQueue.length : undefined },
+    { id: 'notes', label: 'Ghi chú', icon: FileText, badge: stats.totalNotesCount },
+    { id: 'resources', label: 'Tài liệu', icon: Library, badge: stats.totalResourcesCount },
+    { id: 'search', label: 'Tìm kiếm', icon: Search },
   ];
 
   return (
@@ -159,7 +159,7 @@ export function Sidebar() {
       {/* Domain Classification Filter */}
       <div className="px-3.5 pt-4 pb-2 border-t border-stone-200">
         <div className="flex items-center justify-between px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-stone-600">
-          <span>Lĩnh Vực Khảo Cứu</span>
+          <span>Lĩnh Vực Nghiên Cứu</span>
           {selectedCategoryFilter && (
             <button
               onClick={() => setSelectedCategoryFilter(null)}
