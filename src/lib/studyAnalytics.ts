@@ -1,4 +1,4 @@
-import { Topic } from "../types";
+import { Topic, Category } from "../types";
 
 export interface RetentionMetrics {
   estimatedRetentionRate: number; // 0 - 100%
@@ -10,11 +10,18 @@ export interface RetentionMetrics {
   totalTimeSpentMinutes: number;
 }
 
+export interface DomainReviewBreakdown {
+  domain: string;
+  count: number;
+}
+
 export interface DailyForecast {
   dateStr: string; // "YYYY-MM-DD"
   dayLabel: string; // "Hôm nay", "Ngày mai", "T5 28/08",...
   phatHocCount: number;
   huyenHocCount: number;
+  domainCounts: Record<string, number>;
+  domains?: DomainReviewBreakdown[];
   totalCount: number;
   isOverdue?: boolean;
 }
@@ -24,6 +31,51 @@ export interface ForgettingCurvePoint {
   masteredRetention: number; // %
   moderateRetention: number; // %
   strugglingRetention: number; // %
+}
+
+export interface DomainStudySummary {
+  domain: string;
+  totalTopics: number;
+  masteredCount: number;
+  learningCount: number;
+  consolidatingCount: number;
+  unstartedCount: number;
+  totalTimeSpentMinutes: number;
+  estimatedRetentionRate: number;
+}
+
+/**
+ * Resolves the canonical root domain key for a given topic from the category hierarchy.
+ * Traverses parentId upwards until reaching the top-level root category (parentId === null).
+ * Fallback to topic.categorySlug, topic.type, or 'other'.
+ */
+export function getTopicRootDomain(
+  topic: Topic | undefined,
+  categories: Category[] = []
+): string {
+  if (!topic) return "other";
+
+  if (categories && categories.length > 0 && topic.categoryId) {
+    const categoryMap = new Map<string, Category>(categories.map((c) => [c.id, c]));
+    let current = categoryMap.get(topic.categoryId);
+    const visited = new Set<string>();
+
+    while (current && current.parentId) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      const parent = categoryMap.get(current.parentId);
+      if (!parent) break;
+      current = parent;
+    }
+
+    if (current) {
+      return current.slug || current.id;
+    }
+  }
+
+  if (topic.categorySlug) return topic.categorySlug;
+  if (topic.type) return topic.type;
+  return "other";
 }
 
 /**
@@ -125,11 +177,12 @@ export function calculateRetentionMetrics(topics: Topic[] = []): RetentionMetric
 
 /**
  * Generates a 7-day review queue forecast from topics' nextReview dates,
- * separating counts by domain (phat-hoc vs huyen-hoc).
+ * separating counts dynamically by all root domains.
  */
 export function calculateReviewForecast(
   topics: Topic[] = [],
-  daysAhead: number = 7
+  daysAhead: number = 7,
+  categories?: Category[]
 ): DailyForecast[] {
   const safeDays = Math.max(1, Math.min(daysAhead || 7, 30));
   const forecastList: DailyForecast[] = [];
@@ -161,6 +214,8 @@ export function calculateReviewForecast(
       dayLabel,
       phatHocCount: 0,
       huyenHocCount: 0,
+      domainCounts: {},
+      domains: [],
       totalCount: 0,
       isOverdue: i === 0,
     });
@@ -173,27 +228,66 @@ export function calculateReviewForecast(
     const nextReviewTime = new Date(topic.studyProgress.nextReview).getTime();
     const diffDays = Math.floor((nextReviewTime - startOfDay) / oneDayMs);
 
-    const isPhatHoc = topic.type === "phat-hoc";
+    const domainKey = getTopicRootDomain(topic, categories);
 
-    if (diffDays <= 0) {
-      // Overdue or due today -> place in bucket 0 (Hôm nay)
-      if (isPhatHoc) {
-        forecastList[0].phatHocCount += 1;
-      } else {
-        forecastList[0].huyenHocCount += 1;
+    const targetBucketIdx = diffDays <= 0 ? 0 : diffDays < safeDays ? diffDays : -1;
+
+    if (targetBucketIdx >= 0) {
+      const bucket = forecastList[targetBucketIdx];
+      bucket.domainCounts[domainKey] = (bucket.domainCounts[domainKey] || 0) + 1;
+      if (domainKey === "phat-hoc") {
+        bucket.phatHocCount += 1;
+      } else if (domainKey === "huyen-hoc") {
+        bucket.huyenHocCount += 1;
       }
-      forecastList[0].totalCount += 1;
-    } else if (diffDays < safeDays) {
-      if (isPhatHoc) {
-        forecastList[diffDays].phatHocCount += 1;
-      } else {
-        forecastList[diffDays].huyenHocCount += 1;
-      }
-      forecastList[diffDays].totalCount += 1;
+      bucket.totalCount += 1;
     }
   }
 
+  // Compute deterministic sorted domains list for each forecast bucket
+  for (const bucket of forecastList) {
+    const domainKeys = Object.keys(bucket.domainCounts).sort();
+    bucket.domains = domainKeys.map((domain) => ({
+      domain,
+      count: bucket.domainCounts[domain],
+    }));
+  }
+
   return forecastList;
+}
+
+/**
+ * Aggregates study progress metrics grouped deterministically by root domain.
+ */
+export function calculateDomainRetentionSummary(
+  topics: Topic[] = [],
+  categories?: Category[]
+): DomainStudySummary[] {
+  if (!topics || topics.length === 0) return [];
+
+  const domainMap = new Map<string, Topic[]>();
+  for (const topic of topics) {
+    const domainKey = getTopicRootDomain(topic, categories);
+    const list = domainMap.get(domainKey) || [];
+    list.push(topic);
+    domainMap.set(domainKey, list);
+  }
+
+  const sortedDomainKeys = Array.from(domainMap.keys()).sort();
+  return sortedDomainKeys.map((domain) => {
+    const domainTopics = domainMap.get(domain) || [];
+    const metrics = calculateRetentionMetrics(domainTopics);
+    return {
+      domain,
+      totalTopics: domainTopics.length,
+      masteredCount: metrics.masteredCount,
+      learningCount: metrics.learningCount,
+      consolidatingCount: metrics.consolidatingCount,
+      unstartedCount: metrics.unstartedCount,
+      totalTimeSpentMinutes: metrics.totalTimeSpentMinutes,
+      estimatedRetentionRate: metrics.estimatedRetentionRate,
+    };
+  });
 }
 
 /**
