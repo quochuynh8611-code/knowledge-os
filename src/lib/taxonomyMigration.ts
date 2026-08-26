@@ -14,59 +14,16 @@ export function normalizeTopics(topics: Topic[]): Topic[] {
 
 /**
  * Normalizes categories ensuring valid id, name, slug, and parentId references.
- * Automatically backfills root category nodes if migrating from legacy datasets.
+ * Preserves parentId hierarchy without hardcoded domain injections.
  */
 export function normalizeCategories(categories: Category[]): Category[] {
   if (!Array.isArray(categories) || categories.length === 0) return [];
 
-  const list = [...categories];
-
-  // Check if legacy roots need backfilling
-  const hasRootPhatHoc = list.some((c) => c.id === 'cat-root-phat-hoc' || (c.slug === 'phat-hoc' && !c.parentId));
-  const hasRootHuyenHoc = list.some((c) => c.id === 'cat-root-huyen-hoc' || (c.slug === 'huyen-hoc' && !c.parentId));
-
-  if (!hasRootPhatHoc && list.some((c) => c.type === 'phat-hoc')) {
-    list.unshift({
-      id: 'cat-root-phat-hoc',
-      name: 'Phật Học',
-      slug: 'phat-hoc',
-      type: 'phat-hoc',
-      parentId: null,
-      description: 'Tam Tạng Pāli, Vi Diệu Pháp, Thiền Định và Triết học Phật giáo Đại thừa.',
-      icon: 'Sparkles',
-      color: '#D97706',
-    });
-  }
-
-  if (!hasRootHuyenHoc && list.some((c) => c.type === 'huyen-hoc')) {
-    const insertIdx = list.findIndex((c) => c.id === 'cat-root-phat-hoc') + 1;
-    list.splice(insertIdx, 0, {
-      id: 'cat-root-huyen-hoc',
-      name: 'Huyền Học',
-      slug: 'huyen-hoc',
-      type: 'huyen-hoc',
-      parentId: null,
-      description: 'Cổ học phương Đông: Tam Thức (Kỳ Môn - Thái Ất - Lục Nhâm), Kinh Dịch, Phong Thủy và Mệnh Lý.',
-      icon: 'Compass',
-      color: '#2563EB',
-    });
-  }
-
-  // Ensure unparented legacy categories link to their respective root category
-  return list.map((c) => {
-    let parentId = c.parentId !== undefined ? c.parentId : null;
-    if (!parentId && c.id !== 'cat-root-phat-hoc' && c.id !== 'cat-root-huyen-hoc') {
-      if (c.type === 'phat-hoc' || c.id === 'cat-tam-tang' || c.id === 'cat-thien-dinh' || c.id === 'cat-triet-hoc-phat-giao') {
-        parentId = 'cat-root-phat-hoc';
-      } else if (c.type === 'huyen-hoc' || c.id === 'cat-tam-thuc' || c.id === 'cat-dich-hoc' || c.id === 'cat-phong-thuy' || c.id === 'cat-tu-vi-tu-tru' || c.id === 'cat-menh-ly') {
-        parentId = 'cat-root-huyen-hoc';
-      }
-    }
-    return {
-      ...c,
-      parentId,
-    };
-  });
+  return categories.map((c) => ({
+    ...c,
+    parentId: c.parentId !== undefined ? c.parentId : null,
+    type: c.type || c.slug || 'general',
+  }));
 }
 
 /**

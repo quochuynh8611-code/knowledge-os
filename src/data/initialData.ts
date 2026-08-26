@@ -1,12 +1,35 @@
 import { Category, Topic, Note, Resource, Tag } from "../types";
 
 export const INITIAL_CATEGORIES: Category[] = [
+  // Root Categories
+  {
+    id: "cat-root-phat-hoc",
+    name: "Phật Học",
+    slug: "phat-hoc",
+    type: "phat-hoc",
+    parentId: null,
+    description: "Lĩnh vực nghiên cứu Phật học — Theravāda, Đại Thừa và Triết học Phật giáo.",
+    icon: "BookOpen",
+    color: "#D97706",
+  },
+  {
+    id: "cat-root-huyen-hoc",
+    name: "Huyền Học",
+    slug: "huyen-hoc",
+    type: "huyen-hoc",
+    parentId: null,
+    description: "Lĩnh vực nghiên cứu Huyền học phương Đông — Kỳ Môn, Dịch Học, Phong Thủy, Mệnh Lý.",
+    icon: "Compass",
+    color: "#2563EB",
+  },
+
   // Phật Học (Theravāda & Triết học Đại Thừa)
   {
     id: "cat-tam-tang",
     name: "Tam Tạng (Tipiṭaka)",
     slug: "tam-tang",
     type: "phat-hoc",
+    parentId: "cat-root-phat-hoc",
     description:
       "Ba tạng thánh điển Phật giáo: Tạng Kinh (Sutta), Tạng Luật (Vinaya) và Tạng Luận (Abhidhamma).",
     icon: "Scroll",
@@ -17,6 +40,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Abhidharma (Vi Diệu Pháp)",
     slug: "abhidharma",
     type: "phat-hoc",
+    parentId: "cat-root-phat-hoc",
     description:
       "Thắng Pháp Tạng - Hệ thống phân tích thực tại tối hậu gồm Tâm (Citta), Tâm Sở (Cetasika), Sắc Pháp (Rūpa) và Niết Bàn (Nibbāna).",
     icon: "BookOpen",
@@ -27,6 +51,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Thiền Định (Bhāvanā)",
     slug: "thien-dinh",
     type: "phat-hoc",
+    parentId: "cat-root-phat-hoc",
     description:
       "Phương pháp tu tập tâm thức: Thiền Chỉ (Samatha) và Thiền Quán Minh Sát (Vipassanā).",
     icon: "Sparkles",
@@ -37,6 +62,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Triết Học Phật Giáo",
     slug: "triet-hoc-phat-giao",
     type: "phat-hoc",
+    parentId: "cat-root-phat-hoc",
     description:
       "Bát Nhã Ba La Mật Đa (Prajñāpāramitā), Trung Quán Luận (Mūlamadhyamakakārikā) và Duyên Khởi Luận.",
     icon: "Feather",
@@ -49,6 +75,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Tam Thức (Kỳ Môn - Thái Ất - Lục Nhâm)",
     slug: "tam-thuc",
     type: "huyen-hoc",
+    parentId: "cat-root-huyen-hoc",
     description:
       "Ba môn chiêm bốc và dự trắc thời không tối cao của cổ học phương Đông: Thiên - Địa - Nhân.",
     icon: "Compass",
@@ -59,6 +86,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Dịch Học (Kinh Dịch)",
     slug: "dich-hoc",
     type: "huyen-hoc",
+    parentId: "cat-root-huyen-hoc",
     description:
       "Đạo biến dịch của vũ trụ, Tiên Thiên - Hậu Thiên Bát Quái và hệ thống 64 Quẻ Dịch.",
     icon: "CircleDot",
@@ -69,6 +97,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Phong Thủy Học",
     slug: "phong-thuy",
     type: "huyen-hoc",
+    parentId: "cat-root-huyen-hoc",
     description:
       "Khoa học điều hòa khí trường môi trường thông qua Loan Đầu hình thể và Huyền Không Lý Khí.",
     icon: "Mountain",
@@ -79,6 +108,7 @@ export const INITIAL_CATEGORIES: Category[] = [
     name: "Tử Vi & Tứ Trụ",
     slug: "tu-vi-tu-tru",
     type: "huyen-hoc",
+    parentId: "cat-root-huyen-hoc",
     description:
       "Mệnh lý học phương Đông: Tinh bàn Tử Vi Đẩu Số và Bát Tự Hà Lạc / Tử Bình.",
     icon: "Layers",

@@ -26,8 +26,8 @@ describe("Dataset Canonicalization Test Suite - 35 Topics SSOT Integrity", () =>
   // ---------------------------------------------------------------------------
   // Scenario 1: Exact seed cardinalities
   // ---------------------------------------------------------------------------
-  it("1. Exact seed cardinalities (8 categories, 35 topics, 5 notes, 4 resources, 12 tags)", () => {
-    expect(INITIAL_CATEGORIES.length).toBe(8);
+  it("1. Exact seed cardinalities (10 categories, 35 topics, 5 notes, 4 resources, 12 tags)", () => {
+    expect(INITIAL_CATEGORIES.length).toBe(10);
     expect(INITIAL_TOPICS.length).toBe(35);
     expect(INITIAL_NOTES.length).toBe(5);
     expect(INITIAL_RESOURCES.length).toBe(4);

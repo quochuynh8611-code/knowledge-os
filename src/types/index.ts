@@ -1,4 +1,4 @@
-export type CategoryType = 'phat-hoc' | 'huyen-hoc' | string;
+export type CategoryType = string;
 
 export type TopicVisibility = 'active' | 'hidden';
 

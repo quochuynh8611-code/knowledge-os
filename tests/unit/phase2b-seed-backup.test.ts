@@ -46,11 +46,11 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     expect(hash1).toBe(hash2);
   });
 
-  it("2. BackupSnapshotSchema xác thực thành công snapshot canonical dataset (8/35/5/4/12)", () => {
+  it("2. BackupSnapshotSchema xác thực thành công snapshot canonical dataset (10/35/5/4/12)", () => {
     const result = BackupSnapshotSchema.safeParse(sampleSnapshot);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.counts.categories).toBe(8);
+      expect(result.data.counts.categories).toBe(10);
       expect(result.data.counts.topics).toBe(35);
       expect(result.data.counts.notes).toBe(5);
       expect(result.data.counts.resources).toBe(4);
@@ -228,7 +228,7 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     );
     const totalProgress = INITIAL_TOPICS.filter((t) => t.studyProgress).length;
 
-    expect(INITIAL_CATEGORIES.length).toBe(8);
+    expect(INITIAL_CATEGORIES.length).toBe(10);
     expect(INITIAL_TAGS.length).toBe(12);
     expect(INITIAL_TOPICS.length).toBe(35);
     expect(totalProgress).toBe(35);
@@ -268,7 +268,7 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     const validationResult = BackupSnapshotSchema.safeParse(exported);
     expect(validationResult.success).toBe(true);
     if (validationResult.success) {
-      expect(validationResult.data.counts.categories).toBe(8);
+      expect(validationResult.data.counts.categories).toBe(10);
       expect(validationResult.data.counts.topics).toBe(35);
       expect(validationResult.data.counts.notes).toBe(5);
       expect(validationResult.data.counts.resources).toBe(4);
