@@ -17,6 +17,8 @@ export interface GraphNodeMetadata {
   filePath?: string;
   studyStatus?: string;
   progress?: number;
+  hopDistance?: number;
+  parentHopId?: string;
 }
 
 export interface GraphEdgeMetadata {
@@ -251,12 +253,27 @@ export function traverseMultiHop(
   }
 
   const visitedNodeIds = new Set<string>([startNodeId]);
-  const resultNodes: GraphNodeMetadata[] = [startNode];
+  const rootWithHop: GraphNodeMetadata = {
+    ...startNode,
+    hopDistance: 0,
+    parentHopId: undefined,
+  };
+  const resultNodes: GraphNodeMetadata[] = [rootWithHop];
   const resultEdges: GraphEdgeMetadata[] = [];
   const edgeIdSet = new Set<string>();
 
   let hasCycles = false;
   let depthReached = 0;
+
+  // Semantic edge type priority for deterministic expansion
+  const edgeTypePriority: Record<string, number> = {
+    prerequisite: 5,
+    advanced: 4,
+    related: 3,
+    contradicts: 2,
+    has_note: 1,
+    has_resource: 1,
+  };
 
   // BFS Queue: [nodeId, currentDepth]
   const queue: Array<[string, number]> = [[startNodeId, 0]];
@@ -270,7 +287,25 @@ export function traverseMultiHop(
 
     const outgoing = graph.adjacency.get(currentId) || [];
     const incoming = graph.reverseAdjacency.get(currentId) || [];
-    const adjacentEdges = [...outgoing, ...incoming];
+
+    // Sort adjacent edges deterministically:
+    // 1. strength desc
+    // 2. semantic edge priority desc
+    // 3. neighborId asc, then edge.id asc
+    const adjacentEdges = [...outgoing, ...incoming].sort((a, b) => {
+      const strengthDiff = (b.strength || 0) - (a.strength || 0);
+      if (strengthDiff !== 0) return strengthDiff;
+
+      const priorityDiff = (edgeTypePriority[b.type] || 0) - (edgeTypePriority[a.type] || 0);
+      if (priorityDiff !== 0) return priorityDiff;
+
+      const neighborA = a.source === currentId ? a.target : a.source;
+      const neighborB = b.source === currentId ? b.target : b.source;
+      if (neighborA !== neighborB) {
+        return neighborA.localeCompare(neighborB);
+      }
+      return a.id.localeCompare(b.id);
+    });
 
     for (const edge of adjacentEdges) {
       // Filter edge types if specified
@@ -295,7 +330,12 @@ export function traverseMultiHop(
       } else {
         if (resultNodes.length < safeMaxNodes) {
           visitedNodeIds.add(neighborId);
-          resultNodes.push(neighborNode);
+          const neighborWithHop: GraphNodeMetadata = {
+            ...neighborNode,
+            hopDistance: currentDepth + 1,
+            parentHopId: currentId,
+          };
+          resultNodes.push(neighborWithHop);
           depthReached = Math.max(depthReached, currentDepth + 1);
           queue.push([neighborId, currentDepth + 1]);
         }
