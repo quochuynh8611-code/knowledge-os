@@ -115,9 +115,9 @@ describe('Phase 3: AntigravityHandoffModal UI Integration Tests', () => {
 
     expect(screen.getByText(/Antigravity AI Scholar Handoff/i)).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Luận Tạng/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Gốc Từ Pali\/Hán/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Đối Chiếu Dịch Lý/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Phân Tích Khái Niệm/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ngữ Nguyên & Thuật Ngữ/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tổng Hợp Liên Ngành/i })).toBeInTheDocument();
     expect(screen.getByText(/## 1. System Directive & Academic Persona/i)).toBeInTheDocument();
     expect(screen.getByText(/## 3. Multi-Hop Knowledge Graph Topology/i)).toBeInTheDocument();
   });

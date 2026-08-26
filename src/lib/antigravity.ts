@@ -25,16 +25,31 @@ export function packageHandoffBundleForAntigravity(
     allTopics.forEach((t) => topicMap.set(t.id, t.title));
   }
 
+  // Check if topic domain is Buddhist / Mysticism
+  const categoryOrType = `${topic.type || ''} ${topic.categoryName || ''} ${topic.categoryId || ''}`.toLowerCase();
+  const isBuddhist = categoryOrType.includes('phat') || categoryOrType.includes('phật') || categoryOrType.includes('buddhis') || categoryOrType.includes('abhidhamma');
+  const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
+
   // --- SECTION 1: System Directive & Academic Persona ---
-  const sec1 = `## 1. System Directive & Academic Persona
+  let sec1 = `## 1. System Directive & Academic Persona
+Bạn là **Antigravity AI Scholar** — Học giả Nghiên cứu Cấp cao và Trợ lý Khảo cứu Tri thức uyên bác về phương pháp luận học thuật và phân tích liên ngành.
+
+Nhiệm vụ của bạn là tiếp nhận bối cảnh nghiên cứu có cấu trúc bên dưới, phân tích sâu các mối liên hệ khái niệm, đối chiếu tài liệu nguồn và giải đáp các câu hỏi học thuật với độ chính xác và tính phản biện cao nhất.`;
+
+  if (isBuddhist || isMystic) {
+    sec1 = `## 1. System Directive & Academic Persona
 Bạn là **Antigravity AI Scholar** — Học giả Nghiên cứu Cấp cao và Trợ lý Khảo cứu Tri thức uyên bác về hai kho tàng tư tưởng Phương Đông:
 1. **Phật Học Học Thuật:** Tam Tạng Pali (Tipiṭaka), Luận Tạng Thắng Pháp (Abhidhamma), Duy Thức Học (Yogācāra), và Thiền Định (Samatha - Vipassanā).
 2. **Huyền Học & Dịch Học:** Chu Dịch (64 Quẻ, Thao lược, Tượng số), Kỳ Môn Độn Giáp, Bát Tự Hà Lạc và Phong Thủy Lý Khí.
 
 Nhiệm vụ của bạn là tiếp nhận bối cảnh nghiên cứu có cấu trúc bên dưới, phân tích sâu các mối liên hệ liên ngành, đối chiếu ngữ nguyên kinh điển và giải đáp các câu hỏi học thuật với độ chính xác tuyệt đối.`;
+  }
 
   // --- SECTION 2: Topic Exegesis & Canonical Metadata ---
-  const domainLabel = topic.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học';
+  let domainLabel = topic.categoryName || topic.type || 'Nghiên Cứu';
+  if (topic.type === 'phat-hoc') domainLabel = 'Phật Học';
+  else if (topic.type === 'huyen-hoc') domainLabel = 'Huyền Học';
+
   const categoryLabel = topic.categoryName || topic.categoryId;
   const tagsFormatted = topic.tags && topic.tags.length > 0 ? `#${topic.tags.join(' #')}` : 'None recorded.';
   const progressStatus = topic.studyProgress?.status || 'not_started';
@@ -110,12 +125,21 @@ ${sec4Body}`;
 ${sec5Body}`;
 
   // --- SECTION 6: Reasoning Directives & Rigor Invariants ---
-  const sec6 = `## 6. Reasoning Directives & Rigor Invariants
+  let sec6 = `## 6. Reasoning Directives & Rigor Invariants
+Khi phân tích và trả lời câu hỏi dựa trên gói bàn giao này, Antigravity AI bắt buộc tuân thủ 4 nguyên tắc học thuật:
+1. **Tuyệt đối không bịa đặt nguồn gốc (Zero Hallucination of Citations):** Mọi trích dẫn và luận điểm phải dựa trên tài liệu nguồn xác thực, dữ liệu lịch sử hoặc lý thuyết học thuật được công nhận.
+2. **Chuẩn xác về mặt thuật ngữ & ngữ nghĩa (Conceptual Rigor):** Định nghĩa rõ ràng các thuật ngữ chuyên ngành, đối chiếu nguyên ngữ hoặc bối cảnh lý thuyết liên quan.
+3. **Cấu trúc luận cứ khoa học:** Phân tích rõ các thành tố tiên đề, quan hệ nhân quả, cơ chế vận hành và phương pháp kiểm chứng.
+4. **Đối chiếu liên ngành & Tổng hợp tri thức:** Thiết lập cầu nối giữa chủ đề này với các nhánh tri thức liên quan để rút ra kết luận sâu sắc.`;
+
+  if (isBuddhist || isMystic) {
+    sec6 = `## 6. Reasoning Directives & Rigor Invariants
 Khi phân tích và trả lời câu hỏi dựa trên gói bàn giao này, Antigravity AI bắt buộc tuân thủ 4 nguyên tắc học thuật:
 1. **Tuyệt đối không bịa đặt nguồn gốc (Zero Hallucination of Canonical Citations):** Mọi trích dẫn phải xác thực đúng Kinh (Sutta), Luận (Abhidhamma/Vipassanā) hoặc Quẻ/Thoán từ Chu Dịch.
 2. **Chuẩn xác về mặt nguyên ngữ (Multi-linguistic Rigor):** Đối chiếu chính xác thuật ngữ Pāli (IAST), Sanskrit (IAST/Devanagari) và Hán tự (Phồn thể/Giản thể kèm Pinyin).
 3. **Cấu trúc danh sắc theo Abhidhamma:** Khi phân tích tâm thức, phân định rõ thuộc 89/121 Tâm (Citta) nào và các Tâm sở (Cetasika) đồng sanh nào.
 4. **Đối chiếu triết học Dịch lý & Tương quan:** Phân tích quy luật biến dịch (Âm Dương, Ngũ Hành, Quẻ Dịch) trong mối tương hỗ với lý Duyên Khởi (Paṭiccasamuppāda) và Tam Tướng (Anicca, Dukkha, Anattā).`;
+  }
 
   // Ghép toàn bộ 6 phần theo thứ tự bất biến
   return [
@@ -137,41 +161,82 @@ Khi phân tích và trả lời câu hỏi dựa trên gói bàn giao này, Anti
   ].join('\n');
 }
 
+export type AntigravityResearchMode =
+  | 'concept_analysis'
+  | 'terminology_exegesis'
+  | 'cross_domain_synthesis'
+  | 'scholar_analysis'
+  | 'pali_sanskrit_exegesis'
+  | 'cross_domain_link';
+
 /**
- * Sinh Prompt chuyên sâu định dạng sẵn theo 3 chế độ nghiên cứu của Antigravity AI
+ * Sinh Prompt chuyên sâu định dạng sẵn theo các chế độ nghiên cứu của Antigravity AI
  */
 export function generateAntigravityPrompt(
   topic: Topic,
-  mode: 'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link',
+  mode: AntigravityResearchMode = 'concept_analysis',
   customQuery?: string
 ): string {
   const query = customQuery?.trim() || '';
+  const categoryOrType = `${topic.type || ''} ${topic.categoryName || ''} ${topic.categoryId || ''}`.toLowerCase();
+  const isBuddhist = categoryOrType.includes('phat') || categoryOrType.includes('phật') || categoryOrType.includes('buddhis') || categoryOrType.includes('abhidhamma');
+  const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
 
-  if (mode === 'scholar_analysis') {
-    return `[Học giả Nghiên cứu Phật học & Luận Tạng Abhidhamma]
+  if (mode === 'concept_analysis' || mode === 'scholar_analysis') {
+    if (isBuddhist) {
+      return `[Học giả Nghiên cứu Phật học & Luận Tạng Abhidhamma]
 Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
 ${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
 Yêu cầu:
 1. Phân tích chi tiết các pháp chân đế (Paramattha Dhammā): Tâm (Citta), Tâm sở (Cetasika), Sắc (Rūpa) và Niết-bàn (Nibbāna) liên quan đến chủ đề.
 2. Nêu rõ các chi pháp tâm sở đồng sanh và tiến trình tâm (Citta Vīthi) tương ứng.
 3. Ứng dụng cụ thể vào lộ trình thực hành thiền Định (Samatha) và thiền Tuệ (Vipassanā).`;
+    }
+
+    return `[Học giả Khảo cứu Học thuật & Phân tích Khái niệm]
+Chủ đề: "${topic.title}" (${topic.categoryName || topic.type || 'Nghiên cứu'})
+${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
+Yêu cầu:
+1. Phân tích chi tiết các định nghĩa cốt lõi, thành tố cấu thành và khung lý thuyết nền tảng của chủ đề.
+2. Nêu rõ các mối liên hệ nhân quả, cơ chế vận hành và nguyên lý hoạt động tương ứng.
+3. Rút ra ý nghĩa phương pháp luận và ứng dụng thực tiễn trong nghiên cứu chuyên sâu.`;
   }
 
-  if (mode === 'pali_sanskrit_exegesis') {
-    return `[Khảo cứu Ngữ nguyên & Chiết tự Thuật ngữ Cổ]
+  if (mode === 'terminology_exegesis' || mode === 'pali_sanskrit_exegesis') {
+    if (isBuddhist || isMystic) {
+      return `[Khảo cứu Ngữ nguyên & Chiết tự Thuật ngữ Cổ]
 Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
 ${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
 Yêu cầu:
 1. Truy xuất nguyên ngữ gốc Pali (IAST) và Sanskrit (IAST) của các thuật ngữ trọng tâm trong chủ đề này.
 2. Chiết tự căn tố (Dhātu/Root), tiền tố (Upasagga) và hậu tố (Paccaya) ngữ pháp.
 3. Đối chiếu dịch nghĩa tương đương trong hệ thống Hán văn cổ (Kinh điển Hán tạng và Dịch học).`;
+    }
+
+    return `[Khảo cứu Ngữ nguyên & Định nghĩa Thuật ngữ Chuyên ngành]
+Chủ đề: "${topic.title}" (${topic.categoryName || topic.type || 'Nghiên cứu'})
+${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
+Yêu cầu:
+1. Truy xuất nguồn gốc ngữ nguyên, thuật ngữ chuyên ngành (thuật ngữ gốc tiếng Anh/Latin/Hy Lạp hoặc chữ Hán nếu có).
+2. Chiết tự, phân tích cấu trúc từ và tiến trình biến đổi ngữ nghĩa học thuật.
+3. Đối chiếu định nghĩa tương đương giữa các tài liệu tiêu chuẩn và trường phái nghiên cứu.`;
   }
 
-  return `[Đối chiếu Liên ngành Phật Học & Dịch Học / Huyền Học Đông Phương]
+  if (isBuddhist || isMystic) {
+    return `[Đối chiếu Liên ngành Phật Học & Dịch Học / Huyền Học Đông Phương]
 Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
 ${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
 Yêu cầu:
 1. Khảo cứu mối tương quan triết học giữa chủ đề này với đạo biến dịch của Chu Dịch (64 Quẻ, Âm Dương, Ngũ Hành).
 2. Đối chiếu cơ chế vận hành của lý Duyên Khởi (Paṭiccasamuppāda) và quy luật biến dịch của Dịch Học.
+3. Rút ra bài học ứng dụng thực tiễn cho tư duy và nhận thức của người nghiên cứu học thuật.`;
+  }
+
+  return `[Khảo cứu & Tổng hợp Tri thức Liên ngành]
+Chủ đề: "${topic.title}" (${topic.categoryName || topic.type || 'Nghiên cứu'})
+${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
+Yêu cầu:
+1. Khảo cứu mối tương quan lý thuyết và phương pháp luận giữa chủ đề này với các ngành khoa học / tri thức liên quan.
+2. Đối chiếu các mô hình tương đương và phân tích điểm tương đồng cũng như khác biệt bản chất.
 3. Rút ra bài học ứng dụng thực tiễn cho tư duy và nhận thức của người nghiên cứu học thuật.`;
 }

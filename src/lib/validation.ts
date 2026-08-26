@@ -685,9 +685,16 @@ export const GeminiResearchInputSchema = z.object({
     )
     .optional(),
   mode: z
-    .enum(["scholar_analysis", "pali_sanskrit_exegesis", "cross_domain_link"])
+    .enum([
+      "concept_analysis",
+      "terminology_exegesis",
+      "cross_domain_synthesis",
+      "scholar_analysis",
+      "pali_sanskrit_exegesis",
+      "cross_domain_link",
+    ])
     .optional()
-    .default("scholar_analysis"),
+    .default("concept_analysis"),
 });
 
 export type ValidatedTopic = z.infer<typeof TopicSchema>;

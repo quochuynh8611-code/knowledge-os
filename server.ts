@@ -636,23 +636,36 @@ async function startServer() {
         });
       }
 
-      let systemInstruction = `Bạn là một Học Giả Trí Tuệ Nhân Tạo Cao Cấp (Antigravity Research Scholar & Engine) chuyên sâu về hai hệ thống tri thức bác học:
-1. PHẬT HỌC HỌC THUẬT: Tam Tạng Pali (Tipiṭaka), Luận Tạng Vi Diệu Pháp (Abhidhamma Piṭaka - 89/121 Tâm, 52 Tâm Sở, 28 Sắc Pháp, 24 Duyên Paṭṭhāna), Duy Thức Học (Yogācāra), Thiền Định (Samatha - Vipassanā, 16 Tuệ Minh Sát).
-2. HUYỀN HỌC & DỊCH HỌC PHƯƠNG ĐÔNG: Chu Dịch (Kinh Dịch 64 Quẻ, Thập Dực), Kỳ Môn Độn Giáp (Tam Kỳ, Lục Nghi, Cửu Tinh, Bát Môn, Bát Thần), Thái Ất Thần Số, Tử Vi Đẩu Số, Phong Thủy Loan Đầu & Lý Khí, Bát Tự Hà Lạc.
+      const categoryStr = (category || "").toLowerCase();
+      const isBuddhistOrMystic =
+        categoryStr.includes("phật") ||
+        categoryStr.includes("buddhis") ||
+        categoryStr.includes("huyền") ||
+        categoryStr.includes("dịch") ||
+        categoryStr.includes("abhidhamma");
 
-Phong cách phản hồi:
-- Chuẩn mực học thuật, sâu sắc, sáng tỏ, sử dụng thuật ngữ gốc chính xác (kèm nguyên ngữ Pali/Sanskrit dạng IAST hoặc Hán Cổ).
-- Đối chiếu liên ngành tinh tế (so sánh tâm lý học Phật giáo với cơ chế vận hành của Dịch Lý và Vũ Trụ quan Huyền học).
-- Trình bày định dạng Markdown rõ ràng, có phân mục, bảng so sánh hoặc trích dẫn khi cần thiết.`;
+      let systemInstruction = `Bạn là một Học Giả Trí Tuệ Nhân Tạo Cấp Cao (Antigravity Universal Research Scholar & Engine) chuyên sâu về khảo cứu học thuật đa lĩnh vực, phân tích cấu trúc luận thuyết và tổng hợp tri thức liên ngành.
 
-      if (mode === "pali_sanskrit_exegesis") {
-        systemInstruction += `\nNhiệm vụ trọng tâm hiện tại: Giải nghĩa chiết tự từ gốc ngữ Pali/Sanskrit/Hán Cổ, tra cứu nghĩa gốc văn bản cổ và các dị bản dịch nghĩa học thuật.`;
-      } else if (mode === "cross_domain_link") {
-        systemInstruction += `\nNhiệm vụ trọng tâm hiện tại: Khảo cứu và phân tích mối liên hệ nhân quả, triết học và tâm thức giữa Vi Diệu Pháp (Abhidharma) và Dịch Học/Kỳ Môn/Huyền Học.`;
+Phong cách phản hồi & Tiêu chuẩn học thuật:
+- Chuẩn mực học thuật quốc tế, tư duy phản biện sắc bén, lập luận chặt chẽ và trích dẫn chuẩn xác.
+- Làm rõ cấu trúc khái niệm, tiên đề nền tảng, cơ chế vận hành và phương pháp luận của chủ đề.
+- Tra cứu và làm rõ thuật ngữ chuyên ngành (kèm nguyên ngữ gốc hoặc chuyển tự IAST / Hán ngữ nếu là văn bản cổ).
+- Trình bày định dạng Markdown rõ ràng, có phân cấp đề mục, bảng so sánh hoặc đối chiếu luận cứ khoa học.`;
+
+      if (isBuddhistOrMystic) {
+        systemInstruction += `\n\n[Bối cảnh Chuyên sâu - Tri thức Phương Đông]: Khi khảo cứu Phật học hoặc Dịch học/Huyền học, đối chiếu chuẩn xác Tam Tạng Pali (Tipiṭaka), Luận Tạng Abhidhamma, Duy Thức Học hoặc Chu Dịch 64 Quẻ, Âm Dương Ngũ Hành và Tượng Số Lý Khí.`;
+      }
+
+      if (mode === "terminology_exegesis" || mode === "pali_sanskrit_exegesis") {
+        systemInstruction += `\n\nNhiệm vụ trọng tâm hiện tại: Khảo cứu ngữ nguyên, chiết tự căn tố, tra cứu định nghĩa thuật ngữ chuyên ngành và các dị bản dịch thuật học thuật đối chiếu.`;
+      } else if (mode === "cross_domain_synthesis" || mode === "cross_domain_link") {
+        systemInstruction += `\n\nNhiệm vụ trọng tâm hiện tại: Khảo cứu và thiết lập mối liên hệ liên ngành, đối chiếu các mô hình tri thức tương đương và rút ra luận điểm tổng hợp sâu sắc.`;
+      } else {
+        systemInstruction += `\n\nNhiệm vụ trọng tâm hiện tại: Phân tích cấu trúc khái niệm, các thành tố nội tại, tiên đề nền tảng và khung lý thuyết cốt lõi của chủ đề.`;
       }
 
       const promptContext =
-        `Chủ đề khảo cứu: "${topicTitle || "Nghiên cứu Tổng Quát"}" (Lĩnh vực: ${category || "Phật học & Huyền học"})\n` +
+        `Chủ đề khảo cứu: "${topicTitle || "Nghiên cứu Tổng Quát"}" (Lĩnh vực: ${category || "Khảo cứu Đa Ngành"})\n` +
         (contextNotes ? `Ghi chú ngữ cảnh: ${contextNotes}\n\n` : "") +
         `Yêu cầu nghiên cứu: ${prompt}`;
 

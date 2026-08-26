@@ -36,8 +36,8 @@ export function AntigravityHandoffModal({
     topic?.id || topics[0]?.id || ''
   );
   const [researchMode, setResearchMode] = useState<
-    'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link'
-  >('scholar_analysis');
+    'concept_analysis' | 'terminology_exegesis' | 'cross_domain_synthesis' | 'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link'
+  >('concept_analysis');
   const [customQuery, setCustomQuery] = useState('');
   const [copiedBundle, setCopiedBundle] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -138,11 +138,14 @@ export function AntigravityHandoffModal({
                 onChange={(e) => setSelectedTopicId(e.target.value)}
                 className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-700"
               >
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                  </option>
-                ))}
+                {topics.map((t) => {
+                  const domainTag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
+                  return (
+                    <option key={t.id} value={t.id}>
+                      [{domainTag}] {t.title}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -154,36 +157,36 @@ export function AntigravityHandoffModal({
               <div className="grid grid-cols-3 gap-1 bg-stone-200/80 dark:bg-stone-800 p-1 rounded-xl text-[11px] font-semibold">
                 <button
                   type="button"
-                  onClick={() => setResearchMode('scholar_analysis')}
+                  onClick={() => setResearchMode('concept_analysis')}
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'scholar_analysis'
+                    researchMode === 'concept_analysis' || researchMode === 'scholar_analysis'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                       : 'text-stone-700 dark:text-stone-300'
                   }`}
                 >
-                  Luận Tạng
+                  Phân Tích Khái Niệm
                 </button>
                 <button
                   type="button"
-                  onClick={() => setResearchMode('pali_sanskrit_exegesis')}
+                  onClick={() => setResearchMode('terminology_exegesis')}
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'pali_sanskrit_exegesis'
+                    researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                       : 'text-stone-700 dark:text-stone-300'
                   }`}
                 >
-                  Gốc Từ Pali/Hán
+                  Ngữ Nguyên &amp; Thuật Ngữ
                 </button>
                 <button
                   type="button"
-                  onClick={() => setResearchMode('cross_domain_link')}
+                  onClick={() => setResearchMode('cross_domain_synthesis')}
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'cross_domain_link'
+                    researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                       : 'text-stone-700 dark:text-stone-300'
                   }`}
                 >
-                  Đối Chiếu Dịch Lý
+                  Tổng Hợp Liên Ngành
                 </button>
               </div>
             </div>

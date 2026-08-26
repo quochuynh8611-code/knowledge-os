@@ -25,7 +25,9 @@ interface AIResearchStudioProps {
 export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProps) {
   const { topics, notes, addNote } = useData();
   const [selectedTopicId, setSelectedTopicId] = useState<string>(currentTopic?.id || topics[0]?.id || '');
-  const [researchMode, setResearchMode] = useState<'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link'>('scholar_analysis');
+  const [researchMode, setResearchMode] = useState<
+    'concept_analysis' | 'terminology_exegesis' | 'cross_domain_synthesis' | 'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link'
+  >('concept_analysis');
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [researchResult, setResearchResult] = useState<string>('');
@@ -37,28 +39,78 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
   const activeTopic = topics.find((t) => t.id === selectedTopicId) || currentTopic || topics[0];
   const topicNotes = notes.filter((n) => n.topicId === activeTopic?.id);
 
-  const quickPrompts = [
-    {
-      label: 'Phân tích Vi Diệu Pháp & Tâm Sở',
-      prompt: 'Hãy phân tích chi tiết các Tâm sở (Cetasika) đồng sanh hoặc tương ưng với chủ đề này, đối chiếu theo Luận tạng Abhidhamma.',
-      mode: 'scholar_analysis' as const,
-    },
-    {
-      label: 'Tra Cứu Gốc Từ Pali / Sanskrit / Hán Cổ',
-      prompt: 'Chiết tự và tra cứu nguyên ngữ gốc Pali (IAST), Sanskrit và đối chiếu chữ Hán cổ cho các thuật ngữ trọng tâm trong chủ đề này.',
-      mode: 'pali_sanskrit_exegesis' as const,
-    },
-    {
-      label: 'Đối Chiếu Phật Học & Dịch Học / Kỳ Môn',
-      prompt: 'Phân tích mối tương quan học thuật và triết lý giữa chủ đề này với quy luật Âm Dương Ngũ Hành, 64 Quẻ Dịch hoặc Kỳ Môn Độn Giáp.',
-      mode: 'cross_domain_link' as const,
-    },
-    {
-      label: 'Lộ Trình Tiến Trình Tâm (Citta Vīthi) & Thiền Tuệ',
-      prompt: 'Giải thích tiến trình lộ tâm (Citta Vīthi) và ứng dụng thực tiễn vào các tầng Tuệ Minh Sát (Vipassanā-ñāṇa) liên quan.',
-      mode: 'scholar_analysis' as const,
-    },
-  ];
+  const categoryOrType = `${activeTopic?.type || ''} ${activeTopic?.categoryName || ''} ${activeTopic?.categoryId || ''}`.toLowerCase();
+  const isBuddhist = categoryOrType.includes('phat') || categoryOrType.includes('phật') || categoryOrType.includes('buddhis') || categoryOrType.includes('abhidhamma');
+  const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
+
+  const quickPrompts = isBuddhist
+    ? [
+        {
+          label: 'Phân tích Vi Diệu Pháp & Tâm Sở',
+          prompt: 'Hãy phân tích chi tiết các Tâm sở (Cetasika) đồng sanh hoặc tương ưng với chủ đề này, đối chiếu theo Luận tạng Abhidhamma.',
+          mode: 'concept_analysis' as const,
+        },
+        {
+          label: 'Tra Cứu Gốc Từ Pali / Sanskrit / Hán Cổ',
+          prompt: 'Chiết tự và tra cứu nguyên ngữ gốc Pali (IAST), Sanskrit và đối chiếu chữ Hán cổ cho các thuật ngữ trọng tâm trong chủ đề này.',
+          mode: 'terminology_exegesis' as const,
+        },
+        {
+          label: 'Đối Chiếu Phật Học & Dịch Học / Kỳ Môn',
+          prompt: 'Phân tích mối tương quan học thuật và triết lý giữa chủ đề này với quy luật Âm Dương Ngũ Hành, 64 Quẻ Dịch hoặc Kỳ Môn Độn Giáp.',
+          mode: 'cross_domain_synthesis' as const,
+        },
+        {
+          label: 'Lộ Trình Tiến Trình Tâm (Citta Vīthi) & Thiền Tuệ',
+          prompt: 'Giải thích tiến trình lộ tâm (Citta Vīthi) và ứng dụng thực tiễn vào các tầng Tuệ Minh Sát (Vipassanā-ñāṇa) liên quan.',
+          mode: 'concept_analysis' as const,
+        },
+      ]
+    : isMystic
+    ? [
+        {
+          label: 'Khảo Luận Quẻ Dịch & Hào Từ',
+          prompt: 'Phân tích tượng quẻ, thoán từ, hào từ và biến dịch liên quan đến chủ đề nghiên cứu này.',
+          mode: 'concept_analysis' as const,
+        },
+        {
+          label: 'Ngữ Nguyên & Chiết Tự Hán Cổ',
+          prompt: 'Chiết tự chữ Hán cổ, giải nghĩa gốc từ và bối cảnh triết học cổ điển của các thuật ngữ trọng tâm.',
+          mode: 'terminology_exegesis' as const,
+        },
+        {
+          label: 'Đối Chiếu Ngũ Hành & Lý Khí',
+          prompt: 'Đối chiếu quy luật Âm Dương Ngũ Hành, Thiên Can Địa Chi và quy luật tương sinh tương khắc.',
+          mode: 'cross_domain_synthesis' as const,
+        },
+        {
+          label: 'Tổng Hợp Luận Thuyết & Ứng Dụng',
+          prompt: 'Tổng hợp các luận thuyết cổ điển và rút ra nguyên tắc ứng dụng thực tiễn trong nghiên cứu.',
+          mode: 'concept_analysis' as const,
+        },
+      ]
+    : [
+        {
+          label: 'Phân Tích Cấu Trúc Khái Niệm & Tiên Đề',
+          prompt: `Hãy phân tích chi tiết các định nghĩa cốt lõi, thành tố cấu thành và khung lý thuyết nền tảng của chủ đề "${activeTopic?.title || ''}".`,
+          mode: 'concept_analysis' as const,
+        },
+        {
+          label: 'Khảo Cứu Ngữ Nguyên & Thuật Ngữ',
+          prompt: `Truy xuất nguồn gốc ngữ nguyên, thuật ngữ chuyên ngành và đối chiếu các dị bản định nghĩa học thuật cho "${activeTopic?.title || ''}".`,
+          mode: 'terminology_exegesis' as const,
+        },
+        {
+          label: 'Tổng Hợp & Đối Chiếu Liên Ngành',
+          prompt: `Khảo cứu mối tương quan học thuật và phương pháp luận giữa "${activeTopic?.title || ''}" với các nhánh tri thức liên quan.`,
+          mode: 'cross_domain_synthesis' as const,
+        },
+        {
+          label: 'Khung Phương Pháp Luận & Đánh Giá',
+          prompt: `Phân tích các giả thuyết nền tảng, phương pháp kiểm chứng và bài học thực tiễn rút ra từ "${activeTopic?.title || ''}".`,
+          mode: 'concept_analysis' as const,
+        },
+      ];
 
   const handleExecuteResearch = async (customPrompt?: string) => {
     const textToSend = customPrompt || prompt;
@@ -136,7 +188,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               </span>
             </div>
             <p className="text-xs text-stone-300">
-              Trợ lý khảo cứu ngữ nghĩa sâu, phân tích Vi Diệu Pháp, Tam Tạng &amp; Huyền học Đông phương
+              Trợ lý khảo cứu ngữ nghĩa sâu, phân tích cấu trúc luận thuyết &amp; tổng hợp tri thức đa ngành
             </p>
           </div>
         </div>
@@ -174,11 +226,14 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               onChange={(e) => setSelectedTopicId(e.target.value)}
               className="w-full text-xs font-medium bg-white border border-stone-300 rounded-xl px-3 py-2 text-stone-900 focus:ring-2 focus:ring-amber-700"
             >
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                </option>
-              ))}
+              {topics.map((t) => {
+                const domainLabel = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
+                return (
+                  <option key={t.id} value={t.id}>
+                    [{domainLabel}] {t.title}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -190,30 +245,30 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
             <div className="grid grid-cols-3 gap-1 bg-stone-200/80 p-1 rounded-xl text-[11px] font-semibold">
               <button
                 type="button"
-                onClick={() => setResearchMode('scholar_analysis')}
+                onClick={() => setResearchMode('concept_analysis')}
                 className={`py-1.5 px-2 rounded-lg transition text-center truncate ${
-                  researchMode === 'scholar_analysis' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
+                  researchMode === 'concept_analysis' || researchMode === 'scholar_analysis' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
                 }`}
               >
-                Luận Tạng
+                Phân Tích Khái Niệm
               </button>
               <button
                 type="button"
-                onClick={() => setResearchMode('pali_sanskrit_exegesis')}
+                onClick={() => setResearchMode('terminology_exegesis')}
                 className={`py-1.5 px-2 rounded-lg transition text-center truncate ${
-                  researchMode === 'pali_sanskrit_exegesis' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
+                  researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
                 }`}
               >
-                Gốc Từ Pali/Hán
+                Ngữ Nguyên &amp; Thuật Ngữ
               </button>
               <button
                 type="button"
-                onClick={() => setResearchMode('cross_domain_link')}
+                onClick={() => setResearchMode('cross_domain_synthesis')}
                 className={`py-1.5 px-2 rounded-lg transition text-center truncate ${
-                  researchMode === 'cross_domain_link' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
+                  researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link' ? 'bg-white text-amber-950 shadow-xs' : 'text-stone-700'
                 }`}
               >
-                Đối Chiếu Dịch Lý
+                Tổng Hợp Liên Ngành
               </button>
             </div>
           </div>
