@@ -18,7 +18,11 @@ import {
 } from 'lucide-react';
 import { Topic, TopicStatus } from '../../types';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
-import { calculateRetentionMetrics, calculateReviewForecast } from '../../lib/studyAnalytics';
+import {
+  calculateRetentionMetrics,
+  calculateReviewForecast,
+  getTopicRootDomain,
+} from '../../lib/studyAnalytics';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
 import { StudyTimerModal } from '../modals/StudyTimerModal';
 import {
@@ -34,8 +38,31 @@ import {
   Legend,
 } from 'recharts';
 
+function getTopicPresentation(topic: Topic, categories?: any[]) {
+  const rootDomain = categories?.length ? getTopicRootDomain(topic, categories) : (topic.type || 'other');
+
+  if (rootDomain === 'phat-hoc' || topic.type === 'phat-hoc') {
+    return {
+      badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300',
+      progressBarClass: 'bg-amber-600',
+    };
+  }
+
+  if (rootDomain === 'huyen-hoc' || topic.type === 'huyen-hoc') {
+    return {
+      badgeClass: 'bg-indigo-100 text-indigo-900 border border-indigo-300',
+      progressBarClass: 'bg-indigo-600',
+    };
+  }
+
+  return {
+    badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300',
+    progressBarClass: 'bg-emerald-600',
+  };
+}
+
 export function StudyProgressView() {
-  const { topics, stats, reviewQueue, openTopicDetail, updateTopicProgress } = useData();
+  const { topics, stats, reviewQueue, openTopicDetail, updateTopicProgress, categories } = useData();
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'in_progress' | 'completed' | 'reviewing'>('all');
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -43,9 +70,57 @@ export function StudyProgressView() {
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
 
-  // 1. Compute in-memory retention metrics and review forecast safely
+  // 1. Compute in-memory retention metrics and review forecast safely with dynamic categories
   const retentionMetrics = useMemo(() => calculateRetentionMetrics(topics), [topics]);
-  const reviewForecast = useMemo(() => calculateReviewForecast(topics, 7), [topics]);
+  const reviewForecast = useMemo(() => calculateReviewForecast(topics, 7, categories), [topics, categories]);
+
+  // Dynamic forecast domains and chart dataset
+  const activeForecastDomains = useMemo(() => {
+    const domainSet = new Set<string>();
+    reviewForecast.forEach((f) => {
+      if (f.domainCounts) {
+        Object.keys(f.domainCounts).forEach((dom) => domainSet.add(dom));
+      }
+    });
+
+    if (domainSet.size === 0) {
+      return [
+        { domain: 'phat-hoc', name: 'Phật Học', color: '#D97706', dataKey: 'phatHocCount' },
+        { domain: 'huyen-hoc', name: 'Huyền Học', color: '#4F46E5', dataKey: 'huyenHocCount' },
+      ];
+    }
+
+    const colors = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
+    const sorted = Array.from(domainSet).sort();
+    return sorted.map((domKey, idx) => {
+      const cat = categories?.find((c) => c.slug === domKey || c.id === domKey);
+      const name = cat?.name || (domKey === 'phat-hoc' ? 'Phật Học' : domKey === 'huyen-hoc' ? 'Huyền Học' : domKey === 'other' ? 'Khác' : domKey);
+      const color = domKey === 'phat-hoc' ? '#D97706' : domKey === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length];
+      return {
+        domain: domKey,
+        name,
+        color,
+        dataKey: domKey === 'phat-hoc' && !categories?.length ? 'phatHocCount' : domKey === 'huyen-hoc' && !categories?.length ? 'huyenHocCount' : `domain_${domKey}`,
+      };
+    });
+  }, [reviewForecast, categories]);
+
+  const chartForecastData = useMemo(() => {
+    return reviewForecast.map((f) => {
+      const item: Record<string, any> = {
+        ...f,
+        dayLabel: f.dayLabel,
+        phatHocCount: f.phatHocCount,
+        huyenHocCount: f.huyenHocCount,
+      };
+      if (f.domainCounts) {
+        Object.entries(f.domainCounts).forEach(([domKey, count]) => {
+          item[`domain_${domKey}`] = count;
+        });
+      }
+      return item;
+    });
+  }, [reviewForecast]);
 
   // Filtered topics
   const filteredTopics = topics.filter((t) => {
@@ -70,11 +145,30 @@ export function StudyProgressView() {
     huyenHoc: idx === todayIdx ? totalHuyenHocTime : 0,
   }));
 
-  const categoryPieData = [
-    { name: 'Phật Học (Tam Tạng & Luận)', value: stats.phatHocTopics, color: '#D97706' },
-    { name: 'Huyền Học (Tam Thức & Dịch)', value: stats.huyenHocTopics, color: '#4F46E5' },
-    { name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount, color: '#059669' },
-  ];
+  const categoryPieData = useMemo(() => {
+    if (categories && categories.length > 0) {
+      const rootCats = categories.filter((c) => !c.parentId);
+      const colors = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
+      const items = rootCats.map((cat, idx) => {
+        const catTopicsCount = topics.filter((t) => {
+          return t.categoryId === cat.id || t.type === cat.slug || t.type === cat.id;
+        }).length;
+        return {
+          name: cat.name,
+          value: catTopicsCount,
+          color: cat.slug === 'phat-hoc' ? '#D97706' : cat.slug === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length],
+        };
+      });
+      items.push({ name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount || 0, color: '#059669' });
+      return items;
+    }
+
+    return [
+      { name: 'Phật Học (Tam Tạng & Luận)', value: stats.phatHocTopics || 0, color: '#D97706' },
+      { name: 'Huyền Học (Tam Thức & Dịch)', value: stats.huyenHocTopics || 0, color: '#4F46E5' },
+      { name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount || 0, color: '#059669' },
+    ];
+  }, [categories, topics, stats]);
 
   const handleStartReview = (topic?: Topic) => {
     setSelectedReviewTopic(topic || null);
@@ -182,13 +276,12 @@ export function StudyProgressView() {
               Dự báo hàng đợi ôn tập 7 ngày
             </h3>
           </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1 text-amber-800 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block" /> Phật Học
-            </span>
-            <span className="flex items-center gap-1 text-indigo-800 font-medium">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" /> Huyền Học
-            </span>
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            {activeForecastDomains.map((dom) => (
+              <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800">
+                <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: dom.color }} /> {dom.name}
+              </span>
+            ))}
           </div>
         </div>
 
@@ -223,14 +316,21 @@ export function StudyProgressView() {
 
         <div className="h-52 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={reviewForecast}>
+            <BarChart data={chartForecastData}>
               <XAxis dataKey="dayLabel" tick={{ fontSize: 11, fill: '#78716C' }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#78716C' }} unit=" mục" />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
               />
-              <Bar dataKey="phatHocCount" name="Phật Học" fill="#D97706" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="huyenHocCount" name="Huyền Học" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+              {activeForecastDomains.map((dom) => (
+                <Bar
+                  key={dom.domain}
+                  dataKey={dom.dataKey}
+                  name={dom.name}
+                  fill={dom.color}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -296,14 +396,12 @@ export function StudyProgressView() {
             </ResponsiveContainer>
           </div>
           <div className="space-y-1 text-xs">
-            <div className="flex justify-between">
-              <span className="text-amber-800 font-medium">Phật Học</span>
-              <span className="font-bold">{stats.phatHocTopics} topics</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-indigo-800 font-medium">Huyền Học</span>
-              <span className="font-bold">{stats.huyenHocTopics} topics</span>
-            </div>
+            {categoryPieData.map((item) => (
+              <div key={item.name} className="flex justify-between">
+                <span className="font-medium" style={{ color: item.color }}>{item.name}</span>
+                <span className="font-bold font-mono">{item.value} {item.name.includes('Ghi Chú') ? 'mục' : 'topics'}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -342,6 +440,7 @@ export function StudyProgressView() {
         {filteredTopics.map((topic) => {
           const isOverdue =
             topic.studyProgress.nextReview && new Date(topic.studyProgress.nextReview) <= new Date();
+          const presentation = getTopicPresentation(topic, categories);
 
           return (
             <div
@@ -353,13 +452,9 @@ export function StudyProgressView() {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                        topic.type === 'phat-hoc'
-                          ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                          : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
-                      }`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${presentation.badgeClass}`}
                     >
-                      {topic.categoryName}
+                      {topic.categoryName || topic.type || 'Chủ đề'}
                     </span>
                     <h3
                       onClick={() => openTopicDetail(topic.id)}
@@ -421,9 +516,7 @@ export function StudyProgressView() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 bg-stone-200 rounded-full h-2 overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-300 ${
-                        topic.type === 'phat-hoc' ? 'bg-amber-600' : 'bg-indigo-600'
-                      }`}
+                      className={`h-full rounded-full transition-all duration-300 ${presentation.progressBarClass}`}
                       style={{ width: `${topic.studyProgress.progress}%` }}
                     />
                   </div>

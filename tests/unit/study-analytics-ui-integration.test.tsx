@@ -101,9 +101,13 @@ const mockOpenTopicDetail = vi.fn();
 const mockUpdateTopicProgress = vi.fn();
 const mockReviewTopicSM2 = vi.fn();
 
+let currentTopics: Topic[] = mockTopics;
+let currentCategories: Category[] = [];
+
 vi.mock("../../src/context/DataContext", () => ({
   useData: () => ({
-    topics: mockTopics,
+    topics: currentTopics,
+    categories: currentCategories,
     stats: mockStats,
     reviewQueue: [mockTopics[2]], // topic-3 due today
     openTopicDetail: mockOpenTopicDetail,
@@ -115,6 +119,8 @@ vi.mock("../../src/context/DataContext", () => ({
 describe("Workstream 5B Gate B: StudyProgress Analytics Dashboard UI Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    currentTopics = mockTopics;
+    currentCategories = [];
   });
 
   it("1. Renders projected retention KPI cards with accurate wording", () => {
@@ -172,5 +178,112 @@ describe("Workstream 5B Gate B: StudyProgress Analytics Dashboard UI Integration
     await waitFor(() => {
       expect(screen.getByText(/Ôn Tập Thông Minh/i)).toBeInTheDocument();
     });
+  });
+
+  it("5. Renders dynamic domain legend in forecast section when 3 or more root domains exist", () => {
+    currentCategories = [
+      { id: "cat-phat-hoc", name: "Phật Học", slug: "phat-hoc", parentId: null },
+      { id: "cat-huyen-hoc", name: "Huyền Học", slug: "huyen-hoc", parentId: null },
+      { id: "cat-triet-hoc", name: "Triết Học Tây Phương", slug: "triet-hoc", parentId: null },
+    ];
+
+    currentTopics = [
+      ...mockTopics,
+      {
+        id: "topic-4",
+        title: "Hiện tượng học Tinh thần",
+        slug: "hien-tuong-hoc",
+        type: "triet-hoc",
+        categoryId: "cat-triet-hoc",
+        categoryName: "Triết Học Tây Phương",
+        description: "Triết học Hegel",
+        content: "",
+        tags: ["triet-hoc"],
+        studyProgress: {
+          topicId: "topic-4",
+          status: "in_progress",
+          progress: 50,
+          repetitions: 2,
+          interval: 2,
+          easeFactor: 2.5,
+          nextReview: new Date().toISOString(),
+          totalNotes: 1,
+          timeSpent: 40,
+        },
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        links: [],
+      },
+    ];
+
+    render(<StudyProgressView />);
+
+    // Legend should contain the 3rd root domain name as well as default domains
+    expect(screen.getAllByText("Triết Học Tây Phương").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Phật Học").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Huyền Học").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("6. Renders category balance breakdown dynamically for new root domains without crashing", () => {
+    currentCategories = [
+      { id: "cat-phat-hoc", name: "Phật Học", slug: "phat-hoc", parentId: null },
+      { id: "cat-huyen-hoc", name: "Huyền Học", slug: "huyen-hoc", parentId: null },
+      { id: "cat-triet-hoc", name: "Triết Học Tây Phương", slug: "triet-hoc", parentId: null },
+    ];
+
+    render(<StudyProgressView />);
+
+    expect(screen.getByText("Cân bằng lĩnh vực")).toBeInTheDocument();
+    expect(screen.getAllByText("Triết Học Tây Phương").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("7. Resolves topic badge and progress bar styling with neutral fallback rather than defaulting to Huyền Học", () => {
+    currentCategories = [
+      { id: "cat-phat-hoc", name: "Phật Học", slug: "phat-hoc", parentId: null },
+      { id: "cat-huyen-hoc", name: "Huyền Học", slug: "huyen-hoc", parentId: null },
+      { id: "cat-triet-hoc", name: "Triết Học Tây Phương", slug: "triet-hoc", parentId: null },
+    ];
+
+    const nonHuyenHocTopic: Topic = {
+      id: "topic-99",
+      title: "Triết Học Kant Khảo Lược",
+      slug: "triet-hoc-kant",
+      type: "triet-hoc",
+      categoryId: "cat-triet-hoc",
+      categoryName: "Triết Học Tây Phương",
+      description: "Phê phán lý tính thuần túy",
+      content: "",
+      tags: ["triet-hoc"],
+      studyProgress: {
+        topicId: "topic-99",
+        status: "in_progress",
+        progress: 75,
+        repetitions: 2,
+        interval: 2,
+        easeFactor: 2.5,
+        nextReview: new Date().toISOString(),
+        totalNotes: 1,
+        timeSpent: 40,
+      },
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+      links: [],
+    };
+
+    currentTopics = [nonHuyenHocTopic];
+
+    const { container } = render(<StudyProgressView />);
+
+    // Check badge: should NOT have bg-indigo-100 (Huyền Học badge class)
+    const badges = screen.getAllByText("Triết Học Tây Phương");
+    const badge = badges[badges.length - 1];
+    expect(badge.className).not.toContain("bg-indigo-100");
+    expect(badge.className).not.toContain("text-indigo-900");
+
+    // Check progress bar: should NOT have bg-indigo-600 (Huyền Học bar color)
+    const progressBar = container.querySelector(".h-full.rounded-full");
+    expect(progressBar).not.toBeNull();
+    expect(progressBar?.className).not.toContain("bg-indigo-600");
+    expect(progressBar?.className).not.toContain("bg-amber-600");
   });
 });
