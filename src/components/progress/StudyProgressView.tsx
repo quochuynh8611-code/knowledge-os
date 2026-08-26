@@ -128,22 +128,45 @@ export function StudyProgressView() {
     return t.studyProgress.status === statusFilter;
   });
 
-  // Dynamic weekly study data reflecting logged study time
-  const totalPhatHocTime = topics
-    .filter((t) => t.type === 'phat-hoc')
-    .reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0);
-  const totalHuyenHocTime = topics
-    .filter((t) => t.type === 'huyen-hoc')
-    .reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0);
+  // Dynamic weekly study domains and data calculation
+  const weeklyDomains = useMemo(() => {
+    if (categories && categories.length > 0) {
+      const rootCats = categories.filter((c) => !c.parentId);
+      const colors = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
+      return rootCats.map((cat, idx) => ({
+        domain: cat.slug || cat.id,
+        name: cat.name,
+        color: cat.color || (cat.slug === 'phat-hoc' ? '#D97706' : cat.slug === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length]),
+        dataKey: `weekly_${cat.slug || cat.id}`,
+      }));
+    }
 
-  const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
-  const todayIdx = (new Date().getDay() + 6) % 7; // Monday = 0
+    return [
+      { domain: 'phat-hoc', name: 'Phật Học', color: '#D97706', dataKey: 'weekly_phat-hoc' },
+      { domain: 'huyen-hoc', name: 'Huyền Học', color: '#4F46E5', dataKey: 'weekly_huyen-hoc' },
+    ];
+  }, [categories]);
 
-  const weeklyStudyData = days.map((day, idx) => ({
-    day,
-    phatHoc: idx === todayIdx ? totalPhatHocTime : 0,
-    huyenHoc: idx === todayIdx ? totalHuyenHocTime : 0,
-  }));
+  const weeklyStudyData = useMemo(() => {
+    const days = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
+    const todayIdx = (new Date().getDay() + 6) % 7; // Monday = 0
+
+    // Compute total study time per domain for topics
+    const domainTimeMap: Record<string, number> = {};
+    topics.forEach((t) => {
+      const rootDomain = categories?.length ? getTopicRootDomain(t, categories) : (t.type || 'other');
+      const timeSpent = t.studyProgress?.timeSpent || 0;
+      domainTimeMap[rootDomain] = (domainTimeMap[rootDomain] || 0) + timeSpent;
+    });
+
+    return days.map((day, idx) => {
+      const entry: Record<string, any> = { day };
+      weeklyDomains.forEach((dom) => {
+        entry[dom.dataKey] = idx === todayIdx ? (domainTimeMap[dom.domain] || 0) : 0;
+      });
+      return entry;
+    });
+  }, [topics, categories, weeklyDomains]);
 
   const categoryPieData = useMemo(() => {
     if (categories && categories.length > 0) {
@@ -344,13 +367,12 @@ export function StudyProgressView() {
             <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
               Thời gian nghiên cứu tuần này (Phút)
             </h3>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1 text-amber-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-600 inline-block" /> Phật Học
-              </span>
-              <span className="flex items-center gap-1 text-indigo-800">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" /> Huyền Học
-              </span>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {weeklyDomains.map((dom) => (
+                <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800">
+                  <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: dom.color }} /> {dom.name}
+                </span>
+              ))}
             </div>
           </div>
           <div className="h-56 w-full">
@@ -361,8 +383,15 @@ export function StudyProgressView() {
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
                 />
-                <Bar dataKey="phatHoc" name="Phật Học" fill="#D97706" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="huyenHoc" name="Huyền Học" fill="#4F46E5" radius={[4, 4, 0, 0]} />
+                {weeklyDomains.map((dom) => (
+                  <Bar
+                    key={dom.domain}
+                    dataKey={dom.dataKey}
+                    name={dom.name}
+                    fill={dom.color}
+                    radius={[4, 4, 0, 0]}
+                  />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           </div>

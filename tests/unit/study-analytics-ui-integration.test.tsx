@@ -286,4 +286,76 @@ describe("Workstream 5B Gate B: StudyProgress Analytics Dashboard UI Integration
     expect(progressBar?.className).not.toContain("bg-indigo-600");
     expect(progressBar?.className).not.toContain("bg-amber-600");
   });
+
+  it("8. Weekly study chart and legend dynamically render bars and legends for custom root categories without hardcoded Phật Học / Huyền Học", () => {
+    currentCategories = [
+      { id: "cat-root-kinh-te", name: "Kinh Tế Học", slug: "kinh-te", parentId: null },
+      { id: "cat-root-triet-hoc", name: "Triết Học", slug: "triet-hoc", parentId: null },
+    ];
+
+    currentTopics = [
+      {
+        id: "topic-kt",
+        title: "Kinh Tế Vĩ Mô",
+        slug: "kinh-te-vi-mo",
+        type: "kinh-te",
+        categoryId: "cat-root-kinh-te",
+        categoryName: "Kinh Tế Học",
+        description: "Mô tả",
+        content: "Nội dung",
+        tags: ["kinh-te"],
+        studyProgress: {
+          topicId: "topic-kt",
+          status: "in_progress",
+          progress: 50,
+          repetitions: 2,
+          interval: 2,
+          easeFactor: 2.5,
+          nextReview: new Date().toISOString(),
+          totalNotes: 0,
+          timeSpent: 60,
+        },
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        links: [],
+      },
+      {
+        id: "topic-th",
+        title: "Hiện Tượng Luận",
+        slug: "hien-tuong-luan",
+        type: "triet-hoc",
+        categoryId: "cat-root-triet-hoc",
+        categoryName: "Triết Học",
+        description: "Mô tả",
+        content: "Nội dung",
+        tags: ["triet-hoc"],
+        studyProgress: {
+          topicId: "topic-th",
+          status: "in_progress",
+          progress: 40,
+          repetitions: 1,
+          interval: 1,
+          easeFactor: 2.5,
+          nextReview: new Date().toISOString(),
+          totalNotes: 0,
+          timeSpent: 40,
+        },
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        links: [],
+      },
+    ];
+
+    render(<StudyProgressView />);
+
+    // In the Weekly study section, the legend should render Kinh Tế Học and Triết Học, NOT hardcoded Phật Học and Huyền Học
+    const weeklyHeading = screen.getByText("Thời gian nghiên cứu tuần này (Phút)");
+    const weeklyCard = weeklyHeading.closest("div")?.parentElement;
+    expect(weeklyCard).not.toBeNull();
+
+    expect(weeklyCard!.textContent).toContain("Kinh Tế Học");
+    expect(weeklyCard!.textContent).toContain("Triết Học");
+    expect(weeklyCard!.textContent).not.toContain("Phật Học");
+    expect(weeklyCard!.textContent).not.toContain("Huyền Học");
+  });
 });
