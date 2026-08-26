@@ -102,6 +102,30 @@ const mockTopics: Topic[] = [
       },
     ],
   },
+  {
+    id: "topic-phe-phan-ly-tinh",
+    title: "Phê Phán Lý Tính Thuần Túy",
+    slug: "phe-phan-ly-tinh",
+    type: "triet-hoc",
+    categoryId: "cat-triet-hoc",
+    categoryName: "Triết Học Tây Phương",
+    description: "Tác phẩm triết học của Immanuel Kant.",
+    content: "A priori, a posteriori, hiện tượng và vật tự nó.",
+    tags: ["triet-hoc", "kant"],
+    links: [],
+    studyProgress: {
+      topicId: "topic-phe-phan-ly-tinh",
+      status: "in_progress",
+      progress: 40,
+      repetitions: 1,
+      interval: 2,
+      easeFactor: 2.5,
+      totalNotes: 0,
+      timeSpent: 20,
+    },
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+  },
 ];
 
 const mockNotes: Note[] = [
@@ -134,12 +158,14 @@ const mockResources: Resource[] = [
 
 const mockOpenTopicDetail = vi.fn();
 
+let currentCategories: Category[] = [];
+
 vi.mock("../../src/context/DataContext", () => ({
   useData: () => ({
     topics: mockTopics,
     notes: mockNotes,
     resources: mockResources,
-    categories: [],
+    categories: currentCategories,
     tags: [{ id: "tag-1", name: "co-ban", color: "amber" }],
     openTopicDetail: mockOpenTopicDetail,
   }),
@@ -148,6 +174,7 @@ vi.mock("../../src/context/DataContext", () => ({
 describe("Workstream 5A Gate B: KnowledgeGraph UI Traversal Explorer Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    currentCategories = [];
   });
 
   it("1. Renders KnowledgeGraph with Semantic Edge Filter and traversal controls", () => {
@@ -223,5 +250,111 @@ describe("Workstream 5A Gate B: KnowledgeGraph UI Traversal Explorer Integration
     // Change depth to 1
     fireEvent.change(depthSelector, { target: { value: "1" } });
     expect(depthSelector).toHaveValue("1");
+  });
+
+  it("5. Dynamic Root Domain Filter: Renders domain buttons dynamically for all available root categories and handles all mode", () => {
+    currentCategories = [
+      {
+        id: "cat-phat-hoc",
+        name: "Phật Học",
+        slug: "phat-hoc",
+        color: "amber",
+        parentId: null,
+      },
+      {
+        id: "cat-huyen-hoc",
+        name: "Huyền Học",
+        slug: "huyen-hoc",
+        color: "indigo",
+        parentId: null,
+      },
+      {
+        id: "cat-triet-hoc",
+        name: "Triết Học Tây Phương",
+        slug: "triet-hoc",
+        color: "emerald",
+        parentId: null,
+      },
+    ];
+
+    render(<KnowledgeGraph />);
+
+    // a. Must render dynamic domain buttons
+    const allBtn = screen.getByRole("button", { name: /Tất cả/i });
+    const phatHocBtn = screen.getByRole("button", { name: /Phật Học/i });
+    const huyenHocBtn = screen.getByRole("button", { name: /Huyền Học/i });
+    const trietHocBtn = screen.getByRole("button", { name: /Triết Học Tây Phương/i });
+
+    expect(allBtn).toBeInTheDocument();
+    expect(phatHocBtn).toBeInTheDocument();
+    expect(huyenHocBtn).toBeInTheDocument();
+    expect(trietHocBtn).toBeInTheDocument();
+
+    // Initial state: both Buddhist topic and Kant topic exist in DOM
+    expect(screen.getByText("Tứ Diệu Đế")).toBeInTheDocument();
+    expect(screen.getByText(/Phê Phán Lý Tính/i)).toBeInTheDocument();
+
+    // b. Click dynamic category button to filter to Triết Học Tây Phương
+    fireEvent.click(trietHocBtn);
+    expect(trietHocBtn).toHaveClass("bg-amber-700");
+
+    // c. Triết học topic remains visible, while Buddhist topic is filtered out
+    expect(screen.getByText(/Phê Phán Lý Tính/i)).toBeInTheDocument();
+    expect(screen.queryByText("Tứ Diệu Đế")).not.toBeInTheDocument();
+
+    // Click Phật Học button to switch filter
+    fireEvent.click(phatHocBtn);
+    expect(screen.getByText("Tứ Diệu Đế")).toBeInTheDocument();
+    expect(screen.queryByText(/Phê Phán Lý Tính/i)).not.toBeInTheDocument();
+
+    // d. Click "Tất cả" to reset to all mode
+    fireEvent.click(allBtn);
+    expect(allBtn).toHaveClass("bg-white");
+    expect(screen.getByText("Tứ Diệu Đế")).toBeInTheDocument();
+    expect(screen.getByText(/Phê Phán Lý Tính/i)).toBeInTheDocument();
+  });
+
+  it("6. Fallback Behavior: Gracefully renders default domain buttons when categories is empty", () => {
+    currentCategories = []; // Empty categories fallback
+
+    render(<KnowledgeGraph />);
+
+    expect(screen.getByRole("button", { name: /Tất cả/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Phật Học/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Huyền Học/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Triết Học Tây Phương/i })).not.toBeInTheDocument();
+  });
+
+  it("7. Detail-Open Behavior: Clicking 'Mở chi tiết' in detail drawer invokes openTopicDetail callback", async () => {
+    render(<KnowledgeGraph />);
+
+    // Select topic "Tứ Diệu Đế"
+    const nodeElement = screen.getByText("Tứ Diệu Đế");
+    fireEvent.click(nodeElement);
+
+    // Find and click "Mở chi tiết"
+    const openDetailBtn = await screen.findByRole("button", {
+      name: /Mở chi tiết/i,
+    });
+    expect(openDetailBtn).toBeInTheDocument();
+    fireEvent.click(openDetailBtn);
+
+    expect(mockOpenTopicDetail).toHaveBeenCalledWith("topic-tu-dieu-de");
+  });
+
+  it("8. Node Type Filter: Toggling note and resource checkboxes updates visibility without regression", () => {
+    render(<KnowledgeGraph />);
+
+    const noteCheckbox = screen.getByRole("checkbox", { name: /Ghi chú/i });
+    const resourceCheckbox = screen.getByRole("checkbox", { name: /Tài liệu/i });
+
+    expect(noteCheckbox).toBeChecked();
+    expect(resourceCheckbox).toBeChecked();
+
+    fireEvent.click(noteCheckbox);
+    expect(noteCheckbox).not.toBeChecked();
+
+    fireEvent.click(resourceCheckbox);
+    expect(resourceCheckbox).not.toBeChecked();
   });
 });

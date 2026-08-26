@@ -12,7 +12,7 @@ import {
   Info,
   Layers,
 } from 'lucide-react';
-import { Topic, Note, Resource } from '../../types';
+import { Topic, Note, Resource, Category } from '../../types';
 import {
   buildAdjacencyGraph,
   getDirectNeighbors,
@@ -23,11 +23,48 @@ import {
   KnowledgeGraphData,
 } from '../../lib/knowledgeGraph';
 
+/**
+ * Resolves the canonical root domain key for a given topic from the category hierarchy.
+ * Traverses parentId upwards until reaching the top-level root category (parentId === null).
+ * Falls back to topic.type or 'other' only when category data is not available.
+ */
+export function getRootDomainKeyForTopic(
+  topic: Topic | undefined,
+  categories: Category[] = []
+): string {
+  if (!topic) return 'other';
+
+  if (categories.length > 0 && topic.categoryId) {
+    const categoryMap = new Map<string, Category>(categories.map((c) => [c.id, c]));
+    let current = categoryMap.get(topic.categoryId);
+    const visited = new Set<string>();
+
+    while (current && current.parentId) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      const parent = categoryMap.get(current.parentId);
+      if (!parent) break;
+      current = parent;
+    }
+
+    if (current) {
+      return current.slug || current.id;
+    }
+  }
+
+  // Compatibility fallback for legacy datasets without explicit category trees
+  if (topic.type) {
+    return topic.type;
+  }
+
+  return 'other';
+}
+
 interface GraphNode {
   id: string;
   title: string;
   type: 'topic' | 'note' | 'resource';
-  domain: 'phat-hoc' | 'huyen-hoc' | 'other';
+  domain: string;
   category?: string;
   x: number;
   y: number;
@@ -46,10 +83,15 @@ interface GraphLink {
 }
 
 export function KnowledgeGraph() {
-  const { topics, notes, resources, openTopicDetail, tags } = useData();
+  const { topics, notes, resources, openTopicDetail, tags, categories } = useData();
+
+  const rootCategories = useMemo(() => {
+    if (!categories || categories.length === 0) return [];
+    return categories.filter((c) => !c.parentId);
+  }, [categories]);
 
   // Filters
-  const [domainFilter, setDomainFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc'>('all');
+  const [domainFilter, setDomainFilter] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [semanticEdgeFilter, setSemanticEdgeFilter] = useState<
     'all' | 'related' | 'prerequisite' | 'advanced' | 'contradicts'
@@ -112,7 +154,11 @@ export function KnowledgeGraph() {
     if (!isFocusMode) {
       filteredNodes = filteredNodes.filter((n) => {
         if (n.type === 'topic') {
-          if (domainFilter !== 'all' && n.domain !== domainFilter) return false;
+          if (domainFilter !== 'all') {
+            const originalTopic = topics.find((t) => t.id === n.id);
+            const topicRootDomain = getRootDomainKeyForTopic(originalTopic, categories);
+            if (topicRootDomain !== domainFilter) return false;
+          }
           if (selectedTag !== 'all' && n.tags && !n.tags.includes(selectedTag)) return false;
         }
         return true;
@@ -124,7 +170,7 @@ export function KnowledgeGraph() {
       (e) => visibleNodeIdSet.has(e.source) && visibleNodeIdSet.has(e.target)
     );
 
-    // Build layout positions (preserve circular cluster layout)
+    // Build layout positions (dynamic multi-domain cluster layout)
     const topicNodes = filteredNodes.filter((n) => n.type === 'topic');
     const noteNodes = filteredNodes.filter((n) => n.type === 'note');
     const resNodes = filteredNodes.filter((n) => n.type === 'resource');
@@ -132,22 +178,41 @@ export function KnowledgeGraph() {
     const nodeList: GraphNode[] = [];
     const topicPosMap = new Map<string, { x: number; y: number; domain: string }>();
 
+    // Map distinct domains to angles around center
+    const domainList: string[] = Array.from(
+      new Set(
+        topicNodes.map((t) => {
+          const orig = topics.find((item) => item.id === t.id);
+          return getRootDomainKeyForTopic(orig, categories);
+        })
+      )
+    );
+    const numDomains = Math.max(1, domainList.length);
+    const domainAngleMap = new Map<string, number>();
+    domainList.forEach((d: string, idx: number) => {
+      domainAngleMap.set(d, (idx / numDomains) * 2 * Math.PI);
+    });
+
     topicNodes.forEach((nodeMeta, idx) => {
-      const angle = (idx / (topicNodes.length || 1)) * 2 * Math.PI;
-      const radiusDist = nodeMeta.domain === 'phat-hoc' ? 240 : 270;
-      const clusterOffsetX = nodeMeta.domain === 'phat-hoc' ? -120 : 120;
-      const posX = 450 + Math.cos(angle) * radiusDist + clusterOffsetX;
-      const posY = 350 + Math.sin(angle) * radiusDist;
-
-      topicPosMap.set(nodeMeta.id, { x: posX, y: posY, domain: String(nodeMeta.domain) });
-
       const originalTopic = topics.find((t) => t.id === nodeMeta.id);
+      const topicRootDomain = getRootDomainKeyForTopic(originalTopic, categories);
+      const clusterAngle = domainAngleMap.get(topicRootDomain) || 0;
+      const clusterDist = numDomains > 1 ? 120 : 0;
+      const clusterCenterX = 450 + Math.cos(clusterAngle) * clusterDist;
+      const clusterCenterY = 350 + Math.sin(clusterAngle) * clusterDist;
+
+      const angle = (idx / (topicNodes.length || 1)) * 2 * Math.PI;
+      const radiusDist = 240;
+      const posX = clusterCenterX + Math.cos(angle) * (radiusDist / Math.sqrt(numDomains || 1));
+      const posY = clusterCenterY + Math.sin(angle) * (radiusDist / Math.sqrt(numDomains || 1));
+
+      topicPosMap.set(nodeMeta.id, { x: posX, y: posY, domain: topicRootDomain });
 
       nodeList.push({
         id: nodeMeta.id,
         title: nodeMeta.title,
         type: 'topic',
-        domain: nodeMeta.domain === 'phat-hoc' ? 'phat-hoc' : nodeMeta.domain === 'huyen-hoc' ? 'huyen-hoc' : 'other',
+        domain: topicRootDomain,
         category: nodeMeta.category,
         x: posX,
         y: posY,
@@ -170,7 +235,7 @@ export function KnowledgeGraph() {
         id: noteMeta.id,
         title: noteMeta.title,
         type: 'note',
-        domain: (parentPos.domain === 'phat-hoc' || parentPos.domain === 'huyen-hoc') ? (parentPos.domain as any) : 'other',
+        domain: parentPos.domain || 'other',
         category: `Ghi chú (${originalNote?.type || 'study'})`,
         x: parentPos.x + Math.cos(angle) * dist,
         y: parentPos.y + Math.sin(angle) * dist,
@@ -192,7 +257,7 @@ export function KnowledgeGraph() {
         id: resMeta.id,
         title: resMeta.title,
         type: 'resource',
-        domain: (parentPos.domain === 'phat-hoc' || parentPos.domain === 'huyen-hoc') ? (parentPos.domain as any) : 'other',
+        domain: parentPos.domain || 'other',
         category: `Tài liệu (${originalRes?.type?.toUpperCase() || 'BOOK'})`,
         x: parentPos.x + Math.cos(angle) * dist,
         y: parentPos.y + Math.sin(angle) * dist,
@@ -223,6 +288,7 @@ export function KnowledgeGraph() {
     topics,
     notes,
     resources,
+    categories,
   ]);
 
   const [nodes, setNodes] = useState<GraphNode[]>(initialNodes);
@@ -289,7 +355,9 @@ export function KnowledgeGraph() {
     if (node.type === 'resource') return '#8B5CF6'; // Purple
     if (node.domain === 'phat-hoc') return '#D97706'; // Amber / Gold
     if (node.domain === 'huyen-hoc') return '#4F46E5'; // Indigo
-    return '#64748B';
+    const hash = (node.domain || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const colors = ['#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
+    return colors[hash % colors.length] || '#64748B';
   };
 
   return (
@@ -335,7 +403,7 @@ export function KnowledgeGraph() {
           </span>
 
           {/* Domain selector */}
-          <div className="flex bg-stone-100 p-0.5 rounded-xl text-xs font-medium">
+          <div className="flex flex-wrap bg-stone-100 p-0.5 rounded-xl text-xs font-medium gap-0.5">
             <button
               onClick={() => setDomainFilter('all')}
               className={`px-3 py-1 rounded-lg transition ${
@@ -344,26 +412,47 @@ export function KnowledgeGraph() {
             >
               Tất cả
             </button>
-            <button
-              onClick={() => setDomainFilter('phat-hoc')}
-              className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
-                domainFilter === 'phat-hoc'
-                  ? 'bg-amber-700 text-white font-bold shadow-2xs'
-                  : 'text-stone-600 hover:text-amber-900'
-              }`}
-            >
-              <Sparkles className="w-3 h-3" /> Phật Học
-            </button>
-            <button
-              onClick={() => setDomainFilter('huyen-hoc')}
-              className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
-                domainFilter === 'huyen-hoc'
-                  ? 'bg-indigo-700 text-white font-bold shadow-2xs'
-                  : 'text-stone-600 hover:text-indigo-900'
-              }`}
-            >
-              <Compass className="w-3 h-3" /> Huyền Học
-            </button>
+            {rootCategories.length > 0 ? (
+              rootCategories.map((cat) => {
+                const isSelected = domainFilter === (cat.slug || cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setDomainFilter(isSelected ? 'all' : (cat.slug || cat.id))}
+                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-amber-700 text-white font-bold shadow-2xs'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })
+            ) : (
+              <>
+                <button
+                  onClick={() => setDomainFilter('phat-hoc')}
+                  className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
+                    domainFilter === 'phat-hoc'
+                      ? 'bg-amber-700 text-white font-bold shadow-2xs'
+                      : 'text-stone-600 hover:text-amber-900'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" /> Phật Học
+                </button>
+                <button
+                  onClick={() => setDomainFilter('huyen-hoc')}
+                  className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
+                    domainFilter === 'huyen-hoc'
+                      ? 'bg-indigo-700 text-white font-bold shadow-2xs'
+                      : 'text-stone-600 hover:text-indigo-900'
+                  }`}
+                >
+                  <Compass className="w-3 h-3" /> Huyền Học
+                </button>
+              </>
+            )}
           </div>
 
           {/* Tag selector */}
