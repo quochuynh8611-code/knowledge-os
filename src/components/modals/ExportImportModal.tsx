@@ -192,7 +192,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `phat-hoc-huyen-hoc-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `knowledge-os-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -210,17 +210,21 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `phat-hoc-huyen-hoc-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `knowledge-os-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleDownloadMarkdown = () => {
-    let md = `# BÁO CÁO TỔNG HỢP NGHIÊN CỨU PHẬT HỌC & HUYỀN HỌC\n*Xuất bản ngày: ${new Date().toLocaleDateString('vi-VN')}*\n\n---\n\n`;
+    let md = `# BÁO CÁO TỔNG HỢP HỆ THỐNG TRI THỨC KNOWLEDGE OS\n*Xuất bản ngày: ${new Date().toLocaleDateString('vi-VN')}*\n\n---\n\n`;
 
     md += `## 1. DANH MỤC CÁC CHỦ ĐỀ NGHIÊN CỨU (${topics.length} topics)\n\n`;
     topics.forEach((t, i) => {
-      md += `### ${i + 1}. [${t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] ${t.title}\n`;
+      const domainLabel =
+        categories.find((c) => c.slug === t.type || c.id === t.categoryId)?.name ||
+        t.categoryName ||
+        t.type;
+      md += `### ${i + 1}. [${domainLabel}] ${t.title}\n`;
       md += `- **Danh mục**: ${t.categoryName}\n`;
       md += `- **Tiến độ**: ${t.studyProgress.progress}% (${t.studyProgress.status})\n`;
       md += `- **Thời gian nghiên cứu**: ${t.studyProgress.timeSpent} phút\n`;

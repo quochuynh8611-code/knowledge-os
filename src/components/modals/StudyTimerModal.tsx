@@ -11,6 +11,7 @@ interface StudyTimerModalProps {
 
 export function StudyTimerModal({ isOpen, onClose, defaultTopicId }: StudyTimerModalProps) {
   const {
+    categories,
     topics,
     activeTimerTopicId,
     timerSeconds,
@@ -69,11 +70,17 @@ export function StudyTimerModal({ isOpen, onClose, defaultTopicId }: StudyTimerM
                 onChange={(e) => setSelectedTopicId(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-medium text-stone-900"
               >
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                  </option>
-                ))}
+                {topics.map((t) => {
+                  const domainLabel =
+                    categories.find((c) => c.slug === t.type || c.id === t.categoryId)?.name ||
+                    t.categoryName ||
+                    t.type;
+                  return (
+                    <option key={t.id} value={t.id}>
+                      [{domainLabel}] {t.title}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 

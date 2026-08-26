@@ -11,7 +11,7 @@ interface SpacedReviewModalProps {
 }
 
 export function SpacedReviewModal({ isOpen, onClose, initialTopic }: SpacedReviewModalProps) {
-  const { reviewQueue, reviewTopicSM2, topics } = useData();
+  const { categories, reviewQueue, reviewTopicSM2, topics } = useData();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
 
@@ -77,10 +77,15 @@ export function SpacedReviewModal({ isOpen, onClose, initialTopic }: SpacedRevie
                 className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
                   currentTopic.type === 'phat-hoc'
                     ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                    : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                    : currentTopic.type === 'huyen-hoc'
+                    ? 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+                    : 'bg-stone-100 text-stone-900 border border-stone-300'
                 }`}
               >
-                {currentTopic.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'} • {currentTopic.categoryName}
+                {categories.find((c) => c.slug === currentTopic.type || c.id === currentTopic.categoryId)?.name ||
+                  currentTopic.categoryName ||
+                  currentTopic.type}
+                {currentTopic.categoryName ? ` • ${currentTopic.categoryName}` : ''}
               </span>
               <span className="text-xs text-stone-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Đã học: {currentTopic.studyProgress.timeSpent} phút

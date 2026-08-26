@@ -16,7 +16,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [type, setType] = useState<CategoryType>('phat-hoc');
+  const [type, setType] = useState<CategoryType>('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -43,7 +43,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
       const defaultCat = categories[0]?.id || '';
       setCategoryId(defaultCat);
       const defaultCatObj = categories.find((c) => c.id === defaultCat);
-      setType(defaultCatObj?.type || 'phat-hoc');
+      setType(defaultCatObj?.type || rootCategories[0]?.slug || rootCategories[0]?.type || 'general');
       setDescription('');
       setContent('## 1. Giới thiệu tổng quan\n\n## 2. Các nguyên lý cốt lõi\n\n## 3. Ứng dụng thực hành\n');
       setSelectedTags([]);

@@ -13,7 +13,7 @@ interface NoteFormModalProps {
 }
 
 export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: NoteFormModalProps) {
-  const { topics, addNote, updateNote } = useData();
+  const { categories, topics, addNote, updateNote } = useData();
 
   const [topicId, setTopicId] = useState('');
   const [title, setTitle] = useState('');
@@ -137,11 +137,17 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               onChange={(e) => setTopicId(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-emerald-600"
             >
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                </option>
-              ))}
+              {topics.map((t) => {
+                const domainLabel =
+                  categories.find((c) => c.slug === t.type || c.id === t.categoryId)?.name ||
+                  t.categoryName ||
+                  t.type;
+                return (
+                  <option key={t.id} value={t.id}>
+                    [{domainLabel}] {t.title}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
