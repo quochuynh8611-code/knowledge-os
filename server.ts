@@ -5,6 +5,8 @@ import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { prisma } from "./src/lib/prisma";
 import {
+  CategoryCreateSchema,
+  CategoryUpdateSchema,
   TopicCreateSchema,
   TopicUpdateSchema,
   NoteCreateSchema,
@@ -74,7 +76,7 @@ export async function buildBackupSnapshotFromDb(
     id: c.id,
     name: c.name,
     slug: c.slug,
-    type: c.type as "phat-hoc" | "huyen-hoc",
+    type: (c.type || c.slug) as any,
     description: c.description ?? undefined,
     parentId: c.parentId ?? undefined,
     icon: c.icon ?? undefined,
@@ -87,7 +89,7 @@ export async function buildBackupSnapshotFromDb(
     title: t.title,
     slug: t.slug,
     categoryId: t.categoryId,
-    type: t.type as "phat-hoc" | "huyen-hoc",
+    type: (t.type || "general") as any,
     parentId: t.parentId ?? undefined,
     description: t.description,
     content: t.content,
@@ -823,6 +825,85 @@ Yêu cầu định dạng JSON:
   // REST CRUD & PERSISTENCE ENDPOINTS (PHASE 2A)
   // ==========================================
 
+  // 0. Categories CRUD
+  app.get("/api/categories", async (_req, res) => {
+    try {
+      const categories = await prisma.category.findMany({
+        orderBy: { order: "asc" },
+      });
+      res.json(categories);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Database error";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    const parsed = CategoryCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues });
+    }
+    try {
+      const slug =
+        parsed.data.slug ||
+        parsed.data.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)+/g, "");
+      const type = parsed.data.type || slug;
+
+      const category = await prisma.category.create({
+        data: {
+          id: req.body.id || undefined,
+          name: parsed.data.name,
+          slug,
+          type,
+          description: parsed.data.description,
+          parentId: parsed.data.parentId,
+          icon: parsed.data.icon,
+          color: parsed.data.color,
+          order: parsed.data.order ?? 0,
+        },
+      });
+      res.status(201).json(category);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to create category";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.put("/api/categories/:id", async (req, res) => {
+    const parsed = CategoryUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues });
+    }
+    try {
+      const category = await prisma.category.update({
+        where: { id: req.params.id },
+        data: parsed.data,
+      });
+      res.json(category);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to update category";
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.delete("/api/categories/:id", async (req, res) => {
+    try {
+      await prisma.category.delete({
+        where: { id: req.params.id },
+      });
+      res.json({ success: true, id: req.params.id });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to delete category";
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // 1. Topics CRUD
   app.get("/api/topics", async (_req, res) => {
     try {
@@ -850,6 +931,16 @@ Yêu cầu định dạng JSON:
       return res.status(400).json({ error: parsed.error.issues });
     }
     try {
+      let resolvedType = parsed.data.type;
+      if (!resolvedType || resolvedType === "general") {
+        const cat = await prisma.category.findUnique({
+          where: { id: parsed.data.categoryId },
+        });
+        if (cat) {
+          resolvedType = (cat.type || cat.slug) as any;
+        }
+      }
+
       const topic = await prisma.topic.create({
         data: {
           id: req.body.id || undefined,
@@ -858,7 +949,7 @@ Yêu cầu định dạng JSON:
             parsed.data.slug ||
             parsed.data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           categoryId: parsed.data.categoryId,
-          type: parsed.data.type,
+          type: resolvedType || "general",
           parentId: parsed.data.parentId,
           description: parsed.data.description,
           content: parsed.data.content,

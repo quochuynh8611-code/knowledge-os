@@ -77,6 +77,8 @@ describe('Phase 2C.4: Data Management Modal Component Tests', () => {
     mockRepository = {
       loadInitialData: vi.fn().mockResolvedValue(canonicalData),
       syncHydrate: vi.fn(),
+      saveCategory: vi.fn(),
+      deleteCategory: vi.fn(),
       saveTopic: vi.fn(),
       deleteTopic: vi.fn(),
       saveNote: vi.fn(),

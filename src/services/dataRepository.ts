@@ -32,25 +32,29 @@ export interface IDataRepository {
     payload: ValidatedHydrateInput,
   ): Promise<ValidatedHydrateResponse>;
 
-  // 2. Topics CRUD
+  // 2. Categories CRUD
+  saveCategory(category: Category): Promise<Category>;
+  deleteCategory(categoryId: string): Promise<boolean>;
+
+  // 3. Topics CRUD
   saveTopic(topic: Topic): Promise<Topic>;
   deleteTopic(topicId: string): Promise<boolean>;
 
-  // 3. Notes CRUD
+  // 4. Notes CRUD
   saveNote(note: Note): Promise<Note>;
   deleteNote(noteId: string): Promise<boolean>;
 
-  // 4. Resources CRUD
+  // 5. Resources CRUD
   saveResource(resource: Resource): Promise<Resource>;
   deleteResource(resourceId: string): Promise<boolean>;
 
-  // 5. Spaced Repetition (SM-2) & Study Progress
+  // 6. Spaced Repetition (SM-2) & Study Progress
   saveStudyProgress(
     topicId: string,
     progress: StudyProgress,
   ): Promise<StudyProgress>;
 
-  // 6. Disaster Recovery & Health Checks (Phase 2C - Option A)
+  // 7. Disaster Recovery & Health Checks (Phase 2C - Option A)
   exportBackupSnapshot(): Promise<ValidatedBackupSnapshot>;
   restoreBackupSnapshot(
     req: ValidatedRestoreRequest,
@@ -126,6 +130,34 @@ export class LocalStorageDataRepository implements IDataRepository {
         progressMerged: validated.topics.filter((t) => t.studyProgress).length,
       },
     };
+  }
+
+  async saveCategory(category: Category): Promise<Category> {
+    const data = await this.loadInitialData();
+    const resolvedCategory: Category = {
+      ...category,
+      type: category.type || category.slug || "general",
+    };
+    const idx = data.categories.findIndex((c) => c.id === category.id);
+    if (idx >= 0) {
+      data.categories[idx] = resolvedCategory;
+    } else {
+      data.categories.push(resolvedCategory);
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    }
+    return resolvedCategory;
+  }
+
+  async deleteCategory(categoryId: string): Promise<boolean> {
+    const data = await this.loadInitialData();
+    data.categories = data.categories.filter((c) => c.id !== categoryId);
+    data.topics = data.topics.filter((t) => t.categoryId !== categoryId);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    }
+    return true;
   }
 
   async saveTopic(topic: Topic): Promise<Topic> {
@@ -269,6 +301,11 @@ export class ApiDataRepository implements IDataRepository {
         if (res.ok) {
           const topics = await res.json();
           if (Array.isArray(topics) && topics.length > 0) {
+            const categoriesUrl = this.getUrl("/categories");
+            const catRes = categoriesUrl ? await fetch(categoriesUrl) : null;
+            const categories =
+              catRes && catRes.ok ? await catRes.json() : [];
+
             const notesUrl = this.getUrl("/notes");
             const notesRes = notesUrl ? await fetch(notesUrl) : null;
             const notes = notesRes && notesRes.ok ? await notesRes.json() : [];
@@ -281,7 +318,7 @@ export class ApiDataRepository implements IDataRepository {
               resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
 
             return {
-              categories: [],
+              categories,
               topics,
               notes,
               resources,
@@ -317,6 +354,40 @@ export class ApiDataRepository implements IDataRepository {
       }
     }
     return this.localFallback.syncHydrate(payload);
+  }
+
+  async saveCategory(category: Category): Promise<Category> {
+    const resolvedCategory: Category = {
+      ...category,
+      type: category.type || category.slug || "general",
+    };
+    await this.localFallback.saveCategory(resolvedCategory);
+    const url = this.getUrl("/categories");
+    if (url) {
+      try {
+        await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(resolvedCategory),
+        });
+      } catch {
+        // Handled via local fallback
+      }
+    }
+    return resolvedCategory;
+  }
+
+  async deleteCategory(categoryId: string): Promise<boolean> {
+    await this.localFallback.deleteCategory(categoryId);
+    const url = this.getUrl(`/categories/${categoryId}`);
+    if (url) {
+      try {
+        await fetch(url, { method: "DELETE" });
+      } catch {
+        // Handled via local fallback
+      }
+    }
+    return true;
   }
 
   async saveTopic(topic: Topic): Promise<Topic> {

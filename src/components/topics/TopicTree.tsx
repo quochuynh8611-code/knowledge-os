@@ -45,6 +45,7 @@ export function TopicTree() {
     selectedTagFilter,
     setSelectedTagFilter,
     deleteTopic,
+    deleteCategory,
     hideTopic,
     restoreTopic,
     addCategory,
@@ -94,9 +95,19 @@ export function TopicTree() {
     if (e) e.preventDefault();
     if (!newDomainName.trim()) return;
 
+    const trimmed = newDomainName.trim();
+    const generatedSlug = trimmed
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+
     const newId = addCategory({
-      name: newDomainName.trim(),
-      slug: '',
+      name: trimmed,
+      slug: generatedSlug,
+      type: generatedSlug,
       parentId: null,
       color: '#475569',
     });
@@ -406,6 +417,29 @@ export function TopicTree() {
                   <span className="text-xs font-mono text-stone-600 hidden sm:inline">
                     {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
                   </span>
+                  {cat.id !== 'cat-root-phat-hoc' && cat.id !== 'cat-root-huyen-hoc' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (catTopics.length > 0) {
+                          if (
+                            !window.confirm(
+                              `Danh mục "${cat.name}" đang có ${catTopics.length} chủ đề. Bạn có chắc muốn xóa danh mục này?`
+                            )
+                          ) {
+                            return;
+                          }
+                        } else if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) {
+                          return;
+                        }
+                        deleteCategory(cat.id);
+                      }}
+                      className="p-1 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
+                      title="Xóa danh mục"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 
