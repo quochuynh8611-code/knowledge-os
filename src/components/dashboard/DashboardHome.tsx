@@ -18,6 +18,8 @@ import {
   Layers,
   ChevronRight,
   Folder,
+  Plus,
+  X,
 } from 'lucide-react';
 import { formatMinutesToHours, formatTimeAgo } from '../../lib/spaced-repetition';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
@@ -27,6 +29,7 @@ import {
   getChildCategories,
   calculateRootCategoryStats,
 } from '../../lib/taxonomyMigration';
+import { getNeutralDomainStyle } from '../../lib/domainStyling';
 
 export function DashboardHome() {
   const {
@@ -41,46 +44,32 @@ export function DashboardHome() {
     setSelectedCategoryFilter,
     reviewQueue,
     startStudyTimer,
+    addCategory,
   } = useData();
 
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
+  const [isAddingDomain, setIsAddingDomain] = useState(false);
+  const [newDomainName, setNewDomainName] = useState('');
 
   const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
 
-  const getDomainStyle = (root: Category) => {
-    if (root.slug === 'phat-hoc' || root.type === 'phat-hoc') {
-      return {
-        icon: Sparkles,
-        iconBg: 'bg-amber-100 text-amber-800',
-        hoverBorder: 'hover:border-amber-400',
-        progressBar: 'bg-amber-600',
-        percentText: 'text-amber-800',
-        actionText: 'text-amber-700',
-        arrowHover: 'group-hover:text-amber-700',
-      };
-    }
-    if (root.slug === 'huyen-hoc' || root.type === 'huyen-hoc') {
-      return {
-        icon: Compass,
-        iconBg: 'bg-indigo-100 text-indigo-800',
-        hoverBorder: 'hover:border-indigo-400',
-        progressBar: 'bg-indigo-600',
-        percentText: 'text-indigo-800',
-        actionText: 'text-indigo-700',
-        arrowHover: 'group-hover:text-indigo-700',
-      };
-    }
-    return {
-      icon: Folder,
-      iconBg: 'bg-sky-100 text-sky-800',
-      hoverBorder: 'hover:border-sky-400',
-      progressBar: 'bg-sky-600',
-      percentText: 'text-sky-800',
-      actionText: 'text-sky-700',
-      arrowHover: 'group-hover:text-sky-700',
-    };
+  const handleCreateDomain = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDomainName.trim()) return;
+
+    const newId = addCategory({
+      name: newDomainName.trim(),
+      slug: '',
+      parentId: null,
+      color: '#475569',
+    });
+
+    setNewDomainName('');
+    setIsAddingDomain(false);
+    setSelectedCategoryFilter(newId);
+    setActiveTab('topics');
   };
 
   const getDomainSubtitle = (root: Category) => {
@@ -155,90 +144,143 @@ export function DashboardHome() {
         )}
       </div>
 
-      {/* Dynamic Root Domain Cards + System Stat Card */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
-        {/* Dynamic Root Category Cards */}
-        {rootCategories.map((root) => {
-          const style = getDomainStyle(root);
-          const domainStat = calculateRootCategoryStats(topics, categories, root.id);
-          const Icon = style.icon;
-          const subtitle = getDomainSubtitle(root);
-
-          return (
-            <div
-              key={root.id}
-              onClick={() => {
-                setSelectedCategoryFilter(root.id);
-                setActiveTab('topics');
-              }}
-              className={`bg-white border border-stone-200/90 rounded-2xl p-5 ${style.hoverBorder} hover:shadow-md transition cursor-pointer relative overflow-hidden group`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-lg ${style.iconBg} flex items-center justify-center font-bold`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="font-semibold text-stone-900 text-sm">{root.name}</span>
-                </div>
-                <ArrowUpRight className={`w-4 h-4 text-stone-400 ${style.arrowHover} transition`} />
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold font-serif-title text-stone-900">{domainStat.totalTopics}</span>
-                <span className="text-xs text-stone-500 font-medium">chủ đề (topics)</span>
-              </div>
-              <div className="mt-3">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="text-stone-500">Mức độ hoàn thành</span>
-                  <span className={`font-bold ${style.percentText}`}>{domainStat.donePercent}% done</span>
-                </div>
-                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`${style.progressBar} h-full rounded-full transition-all duration-700`}
-                    style={{ width: `${domainStat.donePercent}%` }}
-                  />
-                </div>
-              </div>
-              <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
-                <span className="truncate pr-2">{subtitle}</span>
-                <span className={`${style.actionText} font-medium shrink-0`}>Khảo sát →</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* System Card: Đang học / Tiến độ */}
-        <div
-          onClick={() => setActiveTab('progress')}
-          className="bg-white border border-stone-200/90 rounded-2xl p-5 hover:border-emerald-400 hover:shadow-md transition cursor-pointer relative overflow-hidden group"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                <Clock className="w-4 h-4" />
-              </div>
-              <span className="font-semibold text-stone-900 text-sm">Đang học</span>
-            </div>
-            <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
+      {/* Research Domain Hub Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 font-serif-title flex items-center gap-2">
+              <Folder className="w-4 h-4 text-amber-800" />
+              <span>Lĩnh vực nghiên cứu</span>
+            </h2>
+            <p className="text-xs text-stone-500">
+              Không gian tri thức chuyên ngành và tiến độ khảo sát học thuật
+            </p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold font-serif-title text-stone-900">{stats.studyingThisWeek}</span>
-            <span className="text-xs text-stone-500 font-medium">topic this week</span>
-          </div>
-          <div className="mt-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span className="text-stone-500">Tổng thời gian tích lũy</span>
-              <span className="font-bold text-emerald-800">{formatMinutesToHours(stats.totalTimeSpentMinutes)}</span>
-            </div>
-            <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-emerald-600 h-full rounded-full transition-all duration-700"
-                style={{ width: `${Math.min(100, Math.round((stats.completedTopicsCount / (stats.totalTopics || 1)) * 100))}%` }}
+
+          {/* Add Domain CTA Button / Inline Form */}
+          {isAddingDomain ? (
+            <form onSubmit={handleCreateDomain} className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={newDomainName}
+                onChange={(e) => setNewDomainName(e.target.value)}
+                placeholder="Tên lĩnh vực mới..."
+                autoFocus
+                className="px-3 py-1.5 text-xs bg-white border border-stone-300 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-amber-700"
               />
+              <button
+                type="submit"
+                className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition"
+              >
+                Lưu
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingDomain(false);
+                  setNewDomainName('');
+                }}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-xl"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </form>
+          ) : (
+            <button
+              onClick={() => setIsAddingDomain(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-200/80 rounded-xl text-xs font-semibold transition cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-700" />
+              <span>Thêm lĩnh vực</span>
+            </button>
+          )}
+        </div>
+
+        {/* Dynamic Root Domain Cards + System Stat Card */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+          {/* Dynamic Root Category Cards */}
+          {rootCategories.map((root) => {
+            const style = getNeutralDomainStyle(root);
+            const domainStat = calculateRootCategoryStats(topics, categories, root.id);
+            const Icon = style.icon;
+            const subtitle = getDomainSubtitle(root);
+
+            return (
+              <div
+                key={root.id}
+                onClick={() => {
+                  setSelectedCategoryFilter(root.id);
+                  setActiveTab('topics');
+                }}
+                className={`bg-white border border-stone-200/90 rounded-2xl p-5 ${style.hoverBorder} hover:shadow-md transition cursor-pointer relative overflow-hidden group`}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-lg ${style.iconBg} flex items-center justify-center font-bold`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="font-semibold text-stone-900 text-sm">{root.name}</span>
+                  </div>
+                  <ArrowUpRight className={`w-4 h-4 text-stone-400 ${style.arrowHover} transition`} />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold font-serif-title text-stone-900">{domainStat.totalTopics}</span>
+                  <span className="text-xs text-stone-500 font-medium">chủ đề (topics)</span>
+                </div>
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-stone-500">Mức độ hoàn thành</span>
+                    <span className={`font-bold ${style.percentText}`}>{domainStat.donePercent}% done</span>
+                  </div>
+                  <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`${style.progressBar} h-full rounded-full transition-all duration-700`}
+                      style={{ width: `${domainStat.donePercent}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
+                  <span className="truncate pr-2">{subtitle}</span>
+                  <span className={`${style.actionText} font-medium shrink-0`}>Khảo sát →</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* System Card: Đang học / Tiến độ */}
+          <div
+            onClick={() => setActiveTab('progress')}
+            className="bg-white border border-stone-200/90 rounded-2xl p-5 hover:border-emerald-400 hover:shadow-md transition cursor-pointer relative overflow-hidden group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="font-semibold text-stone-900 text-sm">Đang học</span>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-stone-400 group-hover:text-emerald-700 transition" />
             </div>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
-            <span>{stats.totalNotesCount} ghi chú • {stats.totalResourcesCount} tài liệu</span>
-            <span className="text-emerald-700 font-medium">Chi tiết →</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold font-serif-title text-stone-900">{stats.studyingThisWeek}</span>
+              <span className="text-xs text-stone-500 font-medium">topic this week</span>
+            </div>
+            <div className="mt-3">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-stone-500">Tổng thời gian tích lũy</span>
+                <span className="font-bold text-emerald-800">{formatMinutesToHours(stats.totalTimeSpentMinutes)}</span>
+              </div>
+              <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, Math.round((stats.completedTopicsCount / (stats.totalTopics || 1)) * 100))}%` }}
+                />
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
+              <span>{stats.totalNotesCount} ghi chú • {stats.totalResourcesCount} tài liệu</span>
+              <span className="text-emerald-700 font-medium">Chi tiết →</span>
+            </div>
           </div>
         </div>
       </div>

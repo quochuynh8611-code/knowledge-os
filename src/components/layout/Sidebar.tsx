@@ -23,6 +23,7 @@ import {
   topicBelongsToRootCategory,
   resolveCategoryFilterToRootId,
 } from '../../lib/taxonomyMigration';
+import { getNeutralDomainStyle } from '../../lib/domainStyling';
 
 export function Sidebar() {
   const {
@@ -95,13 +96,18 @@ export function Sidebar() {
     setSelectedCategoryFilter(newId);
   };
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ElementType; badge?: number | string; highlight?: boolean }[] = [
+  type NavItemConfig = {
+    id: ActiveTab;
+    label: string;
+    icon: React.ElementType;
+    badge?: number | string;
+    highlight?: boolean;
+  };
+
+  const coreNavItems: NavItemConfig[] = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'ai_studio', label: 'AI hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
     { id: 'topics', label: 'Chủ đề', icon: FolderTree, badge: stats.totalTopics },
-    { id: 'abhidharma_matrix', label: 'Ma trận phân tích', icon: Brain, badge: '89 Tâm' },
-    { id: 'divination_matrix', label: 'Mô hình hệ thống', icon: Compass, badge: '64 Quẻ' },
-    { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
     { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
     { id: 'progress', label: 'Tiến độ', icon: TrendingUp, badge: reviewQueue.length > 0 ? reviewQueue.length : undefined },
     { id: 'notes', label: 'Ghi chú', icon: FileText, badge: stats.totalNotesCount },
@@ -109,51 +115,69 @@ export function Sidebar() {
     { id: 'search', label: 'Tìm kiếm', icon: Search },
   ];
 
+  const specializedNavItems: NavItemConfig[] = [
+    { id: 'abhidharma_matrix', label: 'Ma trận phân tích', icon: Brain, badge: '89 Tâm' },
+    { id: 'divination_matrix', label: 'Mô hình hệ thống', icon: Compass, badge: '64 Quẻ' },
+    { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
+  ];
+
+  const renderNavButton = (item: NavItemConfig) => {
+    const Icon = item.icon;
+    const isActive = activeTab === item.id;
+    return (
+      <button
+        key={item.id}
+        onClick={() => {
+          setActiveTab(item.id);
+          if (item.id === 'topics' && activeTab !== 'topics') {
+            setSelectedTopicId(null);
+          }
+        }}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+          isActive
+            ? 'bg-amber-100 text-amber-900 font-semibold shadow-2xs'
+            : 'text-stone-700 hover:bg-stone-200/70 hover:text-stone-900'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <Icon className={`w-4 h-4 ${isActive ? 'text-amber-800' : 'text-stone-500'}`} />
+          <span>{item.label}</span>
+        </div>
+        {item.badge !== undefined && (
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+              item.id === 'progress' && reviewQueue.length > 0
+                ? 'bg-amber-600 text-white animate-pulse'
+                : isActive
+                ? 'bg-amber-200 text-amber-900'
+                : 'bg-stone-200 text-stone-600'
+            }`}
+          >
+            {item.badge}
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <aside className="w-64 bg-stone-100/70 border-r border-stone-200/80 flex flex-col shrink-0 min-h-[calc(100vh-61px)]">
-      {/* Navigation Links */}
+      {/* Universal Core Navigation Links */}
       <div className="p-3.5 space-y-1">
         <div className="text-[11px] font-bold uppercase tracking-wider text-stone-600 px-3 py-1.5">
           Danh mục chính
         </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                if (item.id === 'topics' && activeTab !== 'topics') {
-                  setSelectedTopicId(null);
-                }
-              }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
-                isActive
-                  ? 'bg-amber-100 text-amber-900 font-semibold shadow-2xs'
-                  : 'text-stone-700 hover:bg-stone-200/70 hover:text-stone-900'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-800' : 'text-stone-500'}`} />
-                <span>{item.label}</span>
-              </div>
-              {item.badge !== undefined && (
-                <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    item.id === 'progress' && reviewQueue.length > 0
-                      ? 'bg-amber-600 text-white animate-pulse'
-                      : isActive
-                      ? 'bg-amber-200 text-amber-900'
-                      : 'bg-stone-200 text-stone-600'
-                  }`}
-                >
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {coreNavItems.map(renderNavButton)}
+      </div>
+
+      {/* Advanced / Specialized Tools Group */}
+      <div className="px-3.5 pt-3 pb-2 border-t border-stone-200">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-stone-600 px-3 py-1.5">
+          Công cụ chuyên sâu
+        </div>
+        <div className="space-y-1 mt-1">
+          {specializedNavItems.map(renderNavButton)}
+        </div>
       </div>
 
       {/* Domain Classification Filter */}
@@ -174,6 +198,8 @@ export function Sidebar() {
           {rootCategories.map((root) => {
             const isSelected = canonicalFilterRootId === root.id;
             const domainStat = domainStats[root.id] || { total: 0, donePercent: 0 };
+            const domainStyle = getNeutralDomainStyle(root);
+            const DomainIcon = domainStyle.icon;
 
             return (
               <button
@@ -189,13 +215,7 @@ export function Sidebar() {
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  {root.slug === 'phat-hoc' || root.type === 'phat-hoc' ? (
-                    <Sparkles className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                  ) : root.slug === 'huyen-hoc' || root.type === 'huyen-hoc' ? (
-                    <Compass className="w-3.5 h-3.5 text-indigo-700 shrink-0" />
-                  ) : (
-                    <Folder className="w-3.5 h-3.5 text-stone-600 shrink-0" />
-                  )}
+                  <DomainIcon className={`w-3.5 h-3.5 ${domainStyle.sidebarIconColor} shrink-0`} />
                   <span className="truncate">{root.name} ({domainStat.total})</span>
                 </div>
                 <span className="text-[10px] font-mono text-stone-800 bg-stone-200/70 px-1.5 py-0.5 rounded shrink-0">
