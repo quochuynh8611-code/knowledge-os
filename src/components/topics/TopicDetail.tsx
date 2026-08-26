@@ -35,6 +35,7 @@ import { AIResearchStudio } from "../ai/AIResearchStudio";
 import { Breadcrumbs } from "../layout/Breadcrumbs";
 import { EmptyState } from "../ui/EmptyState";
 import { Resource, Note, TopicStatus } from "../../types";
+import { resolveResourceOpenTarget } from "../../lib/resourceOpenResolver";
 import {
   formatMinutesToHours,
   formatTimeAgo,
@@ -744,17 +745,21 @@ export function TopicDetail() {
                   </button>
 
                   <div className="flex items-center gap-1">
-                    {res.url && (
-                      <a
-                        href={res.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1 text-stone-400 hover:text-stone-700"
-                        title="Mở liên kết"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
+                    {(() => {
+                      const resolution = resolveResourceOpenTarget(res);
+                      if (!resolution.canOpenDirectly || !resolution.targetUrl) return null;
+                      return (
+                        <a
+                          href={resolution.targetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1 text-stone-400 hover:text-stone-700"
+                          title={resolution.label}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      );
+                    })()}
                     <button
                       onClick={() => {
                         if (window.confirm("Xóa tài liệu này?"))

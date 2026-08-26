@@ -23,6 +23,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
   const [sourceMode, setSourceMode] = useState<'web' | 'local'>('web');
   const [url, setUrl] = useState('');
   const [filePath, setFilePath] = useState('');
+  const [openTarget, setOpenTarget] = useState('');
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -42,6 +43,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
       }
       setUrl(initialResource.url || '');
       setFilePath(initialResource.filePath || '');
+      setOpenTarget(initialResource.openTarget || '');
       setNotes(initialResource.notes || '');
     } else {
       setTopicId(defaultTopicId || topics[0]?.id || '');
@@ -51,6 +53,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
       setSourceMode('web');
       setUrl('https://');
       setFilePath('');
+      setOpenTarget('');
       setNotes('');
     }
   }, [initialResource, defaultTopicId, topics, isOpen]);
@@ -135,6 +138,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
         author: author.trim() || undefined,
         url: finalUrl,
         filePath: finalPath,
+        openTarget: openTarget.trim() || undefined,
         notes: notes.trim() || undefined,
       });
     } else {
@@ -146,6 +150,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
         author: author.trim() || undefined,
         url: finalUrl,
         filePath: finalPath,
+        openTarget: openTarget.trim() || undefined,
         notes: notes.trim() || undefined,
       });
     }
@@ -298,7 +303,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
-                {sourceMode === 'web' ? 'Đường dẫn liên kết (URL) *' : 'Đường dẫn tệp cục bộ (filePath) *'}
+                {sourceMode === 'web' ? 'Liên kết tham chiếu (URL Web) *' : 'Đường dẫn tệp cục bộ (filePath) *'}
               </label>
               {sourceMode === 'web' ? (
                 <input
@@ -357,6 +362,24 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Open Target Custom Override Field */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5 flex items-center justify-between">
+              <span>Đích mở nội dung (openTarget - tùy chọn)</span>
+              <span className="text-[10px] lowercase text-stone-500 font-normal">ưu tiên khi bấm "Mở tài liệu"</span>
+            </label>
+            <input
+              type="text"
+              value={openTarget}
+              onChange={(e) => setOpenTarget(e.target.value)}
+              placeholder="VD: drive.google.com/... hoặc obsidian://... (để trống sẽ tự động dùng liên kết trên)"
+              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+            />
+            <p className="text-[11px] text-stone-500 mt-1 leading-tight">
+              * Đích mở trực tiếp khi bấm nút "Mở Tài Liệu". Nếu để trống, hệ thống sẽ tự động fallback sang Liên kết tham chiếu hoặc Tệp cục bộ.
+            </p>
           </div>
 
           <div>

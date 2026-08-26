@@ -22,6 +22,7 @@ import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
+import { resolveResourceOpenTarget } from '../../lib/resourceOpenResolver';
 
 export function ResourcesManager() {
   const { resources, topics, deleteResource, openTopicDetail } = useData();
@@ -211,17 +212,21 @@ export function ResourcesManager() {
               </div>
 
               <div className="flex items-center gap-1">
-                {res.url && (
-                  <a
-                    href={res.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition"
-                    title="Mở đường dẫn ngoài"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
+                {(() => {
+                  const resolution = resolveResourceOpenTarget(res);
+                  if (!resolution.canOpenDirectly || !resolution.targetUrl) return null;
+                  return (
+                    <a
+                      href={resolution.targetUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition"
+                      title={resolution.label}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  );
+                })()}
                 <button
                   onClick={() => {
                     if (window.confirm('Xóa tài liệu này khỏi hệ thống?')) deleteResource(res.id);

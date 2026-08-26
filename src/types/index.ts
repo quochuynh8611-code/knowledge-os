@@ -53,6 +53,7 @@ export interface Resource {
   title: string;
   url?: string;
   filePath?: string;
+  openTarget?: string;
   type: ResourceType;
   author?: string;
   notes?: string;

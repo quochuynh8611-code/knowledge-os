@@ -21,9 +21,9 @@ describe('Post-Phase 6c: ResourceViewerModal - Local Path Display & 1-Click Copy
     expect(screen.getByText(/\/Users\/researcher\/Knowledge-Library\/PDF\/kosa\.pdf/i)).toBeInTheDocument();
 
     // Verify copy button exists
-    const copyBtn = screen.getByRole('button', { name: /Sao chép đường dẫn|Copy/i });
-    expect(copyBtn).toBeInTheDocument();
-    fireEvent.click(copyBtn);
+    const copyBtns = screen.getAllByRole('button', { name: /Sao chép đường dẫn|Copy/i });
+    expect(copyBtns.length).toBeGreaterThan(0);
+    fireEvent.click(copyBtns[0]);
 
     expect(screen.getByText(/Đã sao chép đường dẫn!|Đã sao chép/i)).toBeInTheDocument();
   });

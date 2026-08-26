@@ -214,6 +214,7 @@ export const ResourceSchema = z.object({
   author: z.string().optional(),
   url: z.string().optional(),
   filePath: z.string().optional(),
+  openTarget: z.string().optional(),
   notes: z.string().optional(),
   createdAt: z
     .string()
@@ -229,6 +230,7 @@ export const ResourceCreateBaseSchema = z.object({
   author: z.string().optional(),
   url: z.string().optional(),
   filePath: z.string().optional(),
+  openTarget: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -236,10 +238,11 @@ export const ResourceCreateSchema = ResourceCreateBaseSchema.refine(
   (data) => {
     const hasUrl = Boolean(data.url && data.url.trim().length > 0);
     const hasPath = Boolean(data.filePath && data.filePath.trim().length > 0);
-    return hasUrl || hasPath;
+    const hasOpenTarget = Boolean(data.openTarget && data.openTarget.trim().length > 0);
+    return hasUrl || hasPath || hasOpenTarget;
   },
   {
-    message: "Tài liệu phải có ít nhất một nguồn tham chiếu: URL hoặc filePath",
+    message: "Tài liệu phải có ít nhất một nguồn: Đích mở (openTarget), URL tham chiếu hoặc filePath",
     path: ["url"],
   },
 );
