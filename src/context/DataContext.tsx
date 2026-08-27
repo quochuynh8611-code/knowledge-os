@@ -193,8 +193,6 @@ export function useDomainData(): DomainDataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 function InnerDataProvider({ children }: { children: ReactNode }) {
-  const nav = useNavigation();
-
   // Initialize state from LocalStorage sub-keys (via safe helper) or Seed Data
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
@@ -400,7 +398,6 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     setTopics((prev) => prev.filter((t) => t.id !== id));
     setNotes((prev) => prev.filter((n) => n.topicId !== id));
     setResources((prev) => prev.filter((r) => r.topicId !== id));
-    if (nav.selectedTopicId === id) nav.setSelectedTopicId(null);
     dataRepository.deleteTopic(id).catch(console.error);
   };
 
@@ -821,45 +818,50 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const knowledgeValue: DomainDataContextType = {
-    categories,
-    topics,
-    notes,
-    resources,
-    tags,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addTopic,
-    updateTopic,
-    deleteTopic,
-    hideTopic,
-    restoreTopic,
-    updateTopicProgress,
-    addKnowledgeLink,
-    removeKnowledgeLink,
-    addNote,
-    updateNote,
-    deleteNote,
-    addResource,
-    updateResource,
-    deleteResource,
-    reviewTopicSM2,
-    logStudyTime,
-    stats,
-    reviewQueue,
-    exportAllDataJSON,
-    importAllDataJSON,
-    resetToDefaultData,
-    reloadAllData,
-  };
+  const knowledgeValue = useMemo<DomainDataContextType>(
+    () => ({
+      categories,
+      topics,
+      notes,
+      resources,
+      tags,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      addTopic,
+      updateTopic,
+      deleteTopic,
+      hideTopic,
+      restoreTopic,
+      updateTopicProgress,
+      addKnowledgeLink,
+      removeKnowledgeLink,
+      addNote,
+      updateNote,
+      deleteNote,
+      addResource,
+      updateResource,
+      deleteResource,
+      reviewTopicSM2,
+      logStudyTime,
+      stats,
+      reviewQueue,
+      exportAllDataJSON,
+      importAllDataJSON,
+      resetToDefaultData,
+      reloadAllData,
+    }),
+    [categories, topics, notes, resources, tags, stats, reviewQueue],
+  );
 
   return (
-    <StudyTimerProvider onLogStudyTime={logStudyTime}>
-      <DataProviderBridge knowledgeValue={knowledgeValue}>
-        {children}
-      </DataProviderBridge>
-    </StudyTimerProvider>
+    <DomainDataContext.Provider value={knowledgeValue}>
+      <StudyTimerProvider onLogStudyTime={logStudyTime}>
+        <DataProviderBridge knowledgeValue={knowledgeValue}>
+          {children}
+        </DataProviderBridge>
+      </StudyTimerProvider>
+    </DomainDataContext.Provider>
   );
 }
 
@@ -876,6 +878,12 @@ function DataProviderBridge({
   const combinedValue = useMemo<DataContextType>(
     () => ({
       ...knowledgeValue,
+      deleteTopic: (id: string) => {
+        knowledgeValue.deleteTopic(id);
+        if (nav.selectedTopicId === id) {
+          nav.setSelectedTopicId(null);
+        }
+      },
       activeTab: nav.activeTab,
       selectedTopicId: nav.selectedTopicId,
       searchQuery: nav.searchQuery,
@@ -900,11 +908,9 @@ function DataProviderBridge({
   );
 
   return (
-    <DomainDataContext.Provider value={knowledgeValue}>
-      <DataContext.Provider value={combinedValue}>
-        {children}
-      </DataContext.Provider>
-    </DomainDataContext.Provider>
+    <DataContext.Provider value={combinedValue}>
+      {children}
+    </DataContext.Provider>
   );
 }
 

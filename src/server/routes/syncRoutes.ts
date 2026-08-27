@@ -1,6 +1,10 @@
 import { Router } from "express";
 import type { PrismaClient } from "@prisma/client";
 import { HydratePayloadSchema } from "../../lib/validation";
+import {
+  normalizeTopicTags,
+  generateTagSlug,
+} from "../../lib/researchStorageHelpers";
 
 export function createSyncRouter(prisma: PrismaClient | any): Router {
   const router = Router();
@@ -84,6 +88,8 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
 
         // Topics
         for (const topic of payload.topics) {
+          const normTags = normalizeTopicTags(topic.tags || []);
+
           await tx.topic.upsert({
             where: { slug: topic.slug },
             create: {
@@ -95,7 +101,7 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
               parentId: topic.parentId,
               description: topic.description,
               content: topic.content,
-              tags: topic.tags,
+              tags: normTags,
             },
             update: {
               title: topic.title,
@@ -103,10 +109,43 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
               type: topic.type,
               description: topic.description,
               content: topic.content,
-              tags: topic.tags,
+              tags: normTags,
             },
           });
           topicsCount++;
+
+          // Dual-write TopicTag relations
+          if (tx.topicTag && normTags.length > 0) {
+            for (const tagName of normTags) {
+              const slug = generateTagSlug(tagName);
+              const tag = await tx.tag.upsert({
+                where: { slug },
+                create: {
+                  id: `tag-${slug}`,
+                  name: tagName,
+                  slug,
+                  color: "#D97706",
+                  count: 0,
+                },
+                update: {
+                  name: tagName,
+                },
+              });
+              await tx.topicTag.upsert({
+                where: {
+                  topicId_tagId: {
+                    topicId: topic.id,
+                    tagId: tag.id,
+                  },
+                },
+                create: {
+                  topicId: topic.id,
+                  tagId: tag.id,
+                },
+                update: {},
+              });
+            }
+          }
 
           // Study Progress
           if (topic.studyProgress) {

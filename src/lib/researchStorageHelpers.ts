@@ -76,7 +76,24 @@ export function buildSourceRegistry(resources: Resource[]): Map<string, SourceRe
   return registry;
 }
 
-// ─── normalizeTopicTags ───────────────────────────────────────────────────────
+// ─── generateTagSlug & normalizeTopicTags ─────────────────────────────────────
+
+/**
+ * Generates a clean, deterministic URL/database-safe slug from a tag name.
+ * Supports Vietnamese unicode characters and standard ASCII.
+ */
+export function generateTagSlug(name: string): string {
+  const trimmed = name.trim().toLowerCase();
+  if (!trimmed) return "tag";
+  return (
+    trimmed
+      .replace(
+        /[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]+/gu,
+        "-",
+      )
+      .replace(/^-+|-+$/g, "") || "tag"
+  );
+}
 
 /**
  * Sanitizes a tag array:
