@@ -4,8 +4,12 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useCallback,
   ReactNode,
 } from "react";
+import {
+  safeGetLocalStorageItem,
+} from "../lib/storage";
 import {
   Category,
   Topic,
@@ -37,6 +41,15 @@ import {
   ApiDataRepository,
   IDataRepository,
 } from "../services/dataRepository";
+import {
+  StudyTimerProvider,
+  useStudyTimer,
+  TimerMode,
+  StudyTimerContextType,
+} from "./StudyTimerContext";
+
+export { StudyTimerProvider, useStudyTimer };
+export type { TimerMode, StudyTimerContextType };
 
 const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
 const dataRepository: IDataRepository =
@@ -152,10 +165,10 @@ interface DataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  // Initialize state from LocalStorage or Seed Data
+  // Initialize state from LocalStorage sub-keys (via safe helper) or Seed Data
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_categories`);
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_categories`);
       return normalizeCategories(saved ? JSON.parse(saved) : INITIAL_CATEGORIES);
     } catch {
       return normalizeCategories(INITIAL_CATEGORIES);
@@ -164,7 +177,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const [topics, setTopics] = useState<Topic[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_topics`);
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_topics`);
       return normalizeTopics(saved ? JSON.parse(saved) : INITIAL_TOPICS);
     } catch {
       return normalizeTopics(INITIAL_TOPICS);
@@ -173,7 +186,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const [notes, setNotes] = useState<Note[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_notes`);
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_notes`);
       return saved ? JSON.parse(saved) : INITIAL_NOTES;
     } catch {
       return INITIAL_NOTES;
@@ -182,7 +195,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const [resources, setResources] = useState<Resource[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_resources`);
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_resources`);
       return saved ? JSON.parse(saved) : INITIAL_RESOURCES;
     } catch {
       return INITIAL_RESOURCES;
@@ -191,7 +204,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const [tags, setTags] = useState<Tag[]>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_tags`);
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_tags`);
       return saved ? JSON.parse(saved) : INITIAL_TAGS;
     } catch {
       return INITIAL_TAGS;
@@ -208,17 +221,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(
     null,
   );
-
-  // Timer State
-  const [activeTimerTopicId, setActiveTimerTopicId] = useState<string | null>(
-    null,
-  );
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerMode, setTimerMode] = useState<"stopwatch" | "pomodoro">(
-    "stopwatch",
-  );
-  const [pomodoroTimeRemaining, setPomodoroTimeRemaining] = useState(25 * 60);
 
   // Bootstrap Load & Hydration via DataRepository
   useEffect(() => {
@@ -243,49 +245,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  // Auto-sync to LocalStorage
+  // Auto-sync to LocalStorage via repository (repository owns all storage I/O)
   useEffect(() => {
-    try {
-      const fullPayload = { categories, topics, notes, resources, tags };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
-      localStorage.setItem(
-        `${STORAGE_KEY}_categories`,
-        JSON.stringify(categories),
-      );
-      localStorage.setItem(`${STORAGE_KEY}_topics`, JSON.stringify(topics));
-      localStorage.setItem(`${STORAGE_KEY}_notes`, JSON.stringify(notes));
-      localStorage.setItem(
-        `${STORAGE_KEY}_resources`,
-        JSON.stringify(resources),
-      );
-      localStorage.setItem(`${STORAGE_KEY}_tags`, JSON.stringify(tags));
-    } catch (e) {
-      console.error("Failed to save state to localStorage", e);
-    }
+    dataRepository
+      .syncHydrate({
+        clientSyncId: `auto-sync-${Date.now()}`,
+        version: "2.0.0",
+        clientTimestamp: new Date().toISOString(),
+        categories,
+        topics,
+        notes,
+        resources,
+        tags,
+        links: [],
+      })
+      .catch((e) => {
+        console.error("Failed to persist state via repository", e);
+      });
   }, [categories, topics, notes, resources, tags]);
-
-  // Timer Interval Effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        if (timerMode === "stopwatch") {
-          setTimerSeconds((prev) => prev + 1);
-        } else {
-          setPomodoroTimeRemaining((prev) => {
-            if (prev <= 1) {
-              setIsTimerRunning(false);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTimerRunning, timerMode]);
 
   // Navigation Handlers
   const openTopicDetail = (topicId: string) => {
@@ -631,40 +608,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const startStudyTimer = (
-    topicId: string,
-    mode: "stopwatch" | "pomodoro" = "stopwatch",
-  ) => {
-    setActiveTimerTopicId(topicId);
-    setTimerMode(mode);
-    if (mode === "pomodoro") {
-      setPomodoroTimeRemaining(25 * 60);
-    } else {
-      setTimerSeconds(0);
-    }
-    setIsTimerRunning(true);
-  };
-
-  const pauseStudyTimer = () => {
-    setIsTimerRunning(false);
-  };
-
-  const stopAndSaveStudyTimer = () => {
-    setIsTimerRunning(false);
-    if (activeTimerTopicId) {
-      const minutesSpent =
-        timerMode === "stopwatch"
-          ? Math.round(timerSeconds / 60)
-          : Math.round((25 * 60 - pomodoroTimeRemaining) / 60);
-      if (minutesSpent > 0) {
-        logStudyTime(activeTimerTopicId, minutesSpent);
-      }
-    }
-    setActiveTimerTopicId(null);
-    setTimerSeconds(0);
-    setPomodoroTimeRemaining(25 * 60);
-  };
-
   // Review Queue Computed
   const reviewQueue = useMemo(() => {
     return getReviewQueue(topics);
@@ -774,20 +717,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   const resetToDefaultData = () => {
-    try {
-      localStorage.removeItem(`${STORAGE_KEY}_categories`);
-      localStorage.removeItem(`${STORAGE_KEY}_topics`);
-      localStorage.removeItem(`${STORAGE_KEY}_notes`);
-      localStorage.removeItem(`${STORAGE_KEY}_resources`);
-      localStorage.removeItem(`${STORAGE_KEY}_tags`);
-      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_categories");
-      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_topics");
-      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_notes");
-      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_resources");
-      localStorage.removeItem("phat_hoc_huyen_hoc_dashboard_v1_tags");
-    } catch {
-      // Ignore storage clear errors
-    }
+    // Delegate storage cleanup to repository (sole owner of all localStorage keys)
+    dataRepository.resetAllData().catch((err) => {
+      console.warn("resetAllData storage cleanup failed:", err);
+    });
     setCategories(normalizeCategories(INITIAL_CATEGORIES));
     setTopics(normalizeTopics(INITIAL_TOPICS));
     setNotes(INITIAL_NOTES);
@@ -833,30 +766,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         if (notesData) setNotes(notesData);
         if (resourcesData) setResources(resourcesData);
 
-        try {
-          const fullPayload = {
+        // Persist via repository (no raw localStorage calls here)
+        dataRepository
+          .syncHydrate({
+            clientSyncId: `reload-${Date.now()}`,
+            version: "2.0.0",
+            clientTimestamp: new Date().toISOString(),
             categories,
             topics: normTopics,
             notes: notesData,
             resources: resourcesData,
             tags,
-          };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
-          localStorage.setItem(
-            `${STORAGE_KEY}_topics`,
-            JSON.stringify(normTopics),
-          );
-          localStorage.setItem(
-            `${STORAGE_KEY}_notes`,
-            JSON.stringify(notesData),
-          );
-          localStorage.setItem(
-            `${STORAGE_KEY}_resources`,
-            JSON.stringify(resourcesData),
-          );
-        } catch {
-          // Ignore storage write errors
-        }
+            links: [],
+          })
+          .catch(console.error);
 
         return true;
       }
@@ -875,39 +798,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (data.resources) setResources(data.resources);
       if (data.tags) setTags(data.tags);
 
-      try {
-        const fullPayload = {
-          categories: normalizeCategories(data.categories || []),
-          topics: normTopics,
-          notes: data.notes || [],
-          resources: data.resources || [],
-          tags: data.tags || [],
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(fullPayload));
-        localStorage.setItem(
-          `${STORAGE_KEY}_categories`,
-          JSON.stringify(fullPayload.categories),
-        );
-        localStorage.setItem(
-          `${STORAGE_KEY}_topics`,
-          JSON.stringify(normTopics),
-        );
-        localStorage.setItem(
-          `${STORAGE_KEY}_notes`,
-          JSON.stringify(data.notes || []),
-        );
-        localStorage.setItem(
-          `${STORAGE_KEY}_resources`,
-          JSON.stringify(data.resources || []),
-        );
-        localStorage.setItem(
-          `${STORAGE_KEY}_tags`,
-          JSON.stringify(data.tags || []),
-        );
-      } catch {
-        // Ignore storage write errors
-      }
-
       return true;
     } catch (err) {
       console.warn(
@@ -918,60 +808,95 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const knowledgeValue = {
+    categories,
+    topics,
+    notes,
+    resources,
+    tags,
+    activeTab,
+    selectedTopicId,
+    searchQuery,
+    selectedCategoryFilter,
+    selectedTagFilter,
+    setActiveTab,
+    setSelectedTopicId,
+    setSearchQuery,
+    setSelectedCategoryFilter,
+    setSelectedTagFilter,
+    openTopicDetail,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addTopic,
+    updateTopic,
+    deleteTopic,
+    hideTopic,
+    restoreTopic,
+    updateTopicProgress,
+    addKnowledgeLink,
+    removeKnowledgeLink,
+    addNote,
+    updateNote,
+    deleteNote,
+    addResource,
+    updateResource,
+    deleteResource,
+    reviewTopicSM2,
+    logStudyTime,
+    stats,
+    reviewQueue,
+    exportAllDataJSON,
+    importAllDataJSON,
+    resetToDefaultData,
+    reloadAllData,
+  };
+
   return (
-    <DataContext.Provider
-      value={{
-        categories,
-        topics,
-        notes,
-        resources,
-        tags,
-        activeTab,
-        selectedTopicId,
-        searchQuery,
-        selectedCategoryFilter,
-        selectedTagFilter,
-        activeTimerTopicId,
-        timerSeconds,
-        isTimerRunning,
-        timerMode,
-        pomodoroTimeRemaining,
-        setActiveTab,
-        setSelectedTopicId,
-        setSearchQuery,
-        setSelectedCategoryFilter,
-        setSelectedTagFilter,
-        openTopicDetail,
-        addCategory,
-        updateCategory,
-        deleteCategory,
-        addTopic,
-        updateTopic,
-        deleteTopic,
-        hideTopic,
-        restoreTopic,
-        updateTopicProgress,
-        addKnowledgeLink,
-        removeKnowledgeLink,
-        addNote,
-        updateNote,
-        deleteNote,
-        addResource,
-        updateResource,
-        deleteResource,
-        reviewTopicSM2,
-        logStudyTime,
-        startStudyTimer,
-        pauseStudyTimer,
-        stopAndSaveStudyTimer,
-        stats,
-        reviewQueue,
-        exportAllDataJSON,
-        importAllDataJSON,
-        resetToDefaultData,
-        reloadAllData,
-      }}
-    >
+    <StudyTimerProvider onLogStudyTime={logStudyTime}>
+      <DataProviderBridge knowledgeValue={knowledgeValue}>
+        {children}
+      </DataProviderBridge>
+    </StudyTimerProvider>
+  );
+}
+
+function DataProviderBridge({
+  children,
+  knowledgeValue,
+}: {
+  children: ReactNode;
+  knowledgeValue: Omit<
+    DataContextType,
+    | "activeTimerTopicId"
+    | "timerSeconds"
+    | "isTimerRunning"
+    | "timerMode"
+    | "pomodoroTimeRemaining"
+    | "startStudyTimer"
+    | "pauseStudyTimer"
+    | "stopAndSaveStudyTimer"
+  >;
+}) {
+  const timer = useStudyTimer();
+
+  const combinedValue = useMemo<DataContextType>(
+    () => ({
+      ...knowledgeValue,
+      activeTimerTopicId: timer.activeTimerTopicId,
+      timerSeconds: timer.timerSeconds,
+      isTimerRunning: timer.isTimerRunning,
+      timerMode: timer.timerMode,
+      pomodoroTimeRemaining: timer.pomodoroTimeRemaining,
+      startStudyTimer: timer.startStudyTimer,
+      pauseStudyTimer: timer.pauseStudyTimer,
+      stopAndSaveStudyTimer: timer.stopAndSaveStudyTimer,
+    }),
+    [knowledgeValue, timer],
+  );
+
+  return (
+    <DataContext.Provider value={combinedValue}>
       {children}
     </DataContext.Provider>
   );

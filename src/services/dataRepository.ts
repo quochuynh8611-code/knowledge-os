@@ -1,5 +1,10 @@
 import { Category, Topic, Note, Resource, Tag, StudyProgress } from "../types";
 import {
+  safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+  safeRemoveLocalStorageItem,
+} from "../lib/storage";
+import {
   ValidatedHydrateInput,
   ValidatedHydrateResponse,
   HydratePayloadSchema,
@@ -60,6 +65,9 @@ export interface IDataRepository {
     req: ValidatedRestoreRequest,
   ): Promise<ValidatedRestoreResponse>;
   getDbHealth(): Promise<ValidatedDbHealthResponse>;
+
+  // 8. Full Storage Reset (P0.2 - SSOT)
+  resetAllData(): Promise<boolean>;
 }
 
 /**
@@ -73,11 +81,31 @@ export class LocalStorageDataRepository implements IDataRepository {
     this.storageKey = storageKey;
   }
 
+  /**
+   * Writes state to both the root key and all 5 entity sub-keys.
+   * This is the single internal persistence method for all mutations.
+   * Using safe helpers prevents SecurityError / QuotaExceededError crashes.
+   */
+  private _persist(data: {
+    categories: Category[];
+    topics: Topic[];
+    notes: Note[];
+    resources: Resource[];
+    tags: Tag[];
+    links?: unknown[];
+    _lastSyncedAt?: string;
+  }): void {
+    safeSetLocalStorageItem(this.storageKey, JSON.stringify(data));
+    safeSetLocalStorageItem(`${this.storageKey}_categories`, JSON.stringify(data.categories));
+    safeSetLocalStorageItem(`${this.storageKey}_topics`, JSON.stringify(data.topics));
+    safeSetLocalStorageItem(`${this.storageKey}_notes`, JSON.stringify(data.notes));
+    safeSetLocalStorageItem(`${this.storageKey}_resources`, JSON.stringify(data.resources));
+    safeSetLocalStorageItem(`${this.storageKey}_tags`, JSON.stringify(data.tags));
+  }
+
   async loadInitialData() {
-    const raw =
-      typeof localStorage !== "undefined"
-        ? localStorage.getItem(this.storageKey)
-        : null;
+    // Primary: try root key
+    const raw = safeGetLocalStorageItem(this.storageKey);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -95,6 +123,29 @@ export class LocalStorageDataRepository implements IDataRepository {
         );
       }
     }
+
+    // Fallback: try individual sub-keys (root key missing or corrupt)
+    const categoriesRaw = safeGetLocalStorageItem(`${this.storageKey}_categories`);
+    const topicsRaw = safeGetLocalStorageItem(`${this.storageKey}_topics`);
+    const notesRaw = safeGetLocalStorageItem(`${this.storageKey}_notes`);
+    const resourcesRaw = safeGetLocalStorageItem(`${this.storageKey}_resources`);
+    const tagsRaw = safeGetLocalStorageItem(`${this.storageKey}_tags`);
+
+    const hasAnySubKey = categoriesRaw || topicsRaw || notesRaw || resourcesRaw || tagsRaw;
+    if (hasAnySubKey) {
+      try {
+        return {
+          categories: categoriesRaw ? JSON.parse(categoriesRaw) : [],
+          topics: topicsRaw ? JSON.parse(topicsRaw) : [],
+          notes: notesRaw ? JSON.parse(notesRaw) : [],
+          resources: resourcesRaw ? JSON.parse(resourcesRaw) : [],
+          tags: tagsRaw ? JSON.parse(tagsRaw) : [],
+        };
+      } catch (e) {
+        console.warn("Failed to parse sub-key storage, returning empty structures", e);
+      }
+    }
+
     return { categories: [], topics: [], notes: [], resources: [], tags: [] };
   }
 
@@ -102,20 +153,15 @@ export class LocalStorageDataRepository implements IDataRepository {
     payload: ValidatedHydrateInput,
   ): Promise<ValidatedHydrateResponse> {
     const validated = HydratePayloadSchema.parse(payload);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(
-        this.storageKey,
-        JSON.stringify({
-          categories: validated.categories,
-          topics: validated.topics,
-          notes: validated.notes,
-          resources: validated.resources,
-          tags: validated.tags,
-          links: validated.links,
-          _lastSyncedAt: new Date().toISOString(),
-        }),
-      );
-    }
+    this._persist({
+      categories: validated.categories,
+      topics: validated.topics,
+      notes: validated.notes,
+      resources: validated.resources,
+      tags: validated.tags,
+      links: validated.links,
+      _lastSyncedAt: new Date().toISOString(),
+    });
     return {
       success: true,
       clientSyncId: validated.clientSyncId,
@@ -144,9 +190,7 @@ export class LocalStorageDataRepository implements IDataRepository {
     } else {
       data.categories.push(resolvedCategory);
     }
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return resolvedCategory;
   }
 
@@ -154,9 +198,7 @@ export class LocalStorageDataRepository implements IDataRepository {
     const data = await this.loadInitialData();
     data.categories = data.categories.filter((c) => c.id !== categoryId);
     data.topics = data.topics.filter((t) => t.categoryId !== categoryId);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return true;
   }
 
@@ -168,18 +210,14 @@ export class LocalStorageDataRepository implements IDataRepository {
     } else {
       data.topics.push(topic);
     }
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return topic;
   }
 
   async deleteTopic(topicId: string): Promise<boolean> {
     const data = await this.loadInitialData();
     data.topics = data.topics.filter((t) => t.id !== topicId);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return true;
   }
 
@@ -191,18 +229,14 @@ export class LocalStorageDataRepository implements IDataRepository {
     } else {
       data.notes.push(note);
     }
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return note;
   }
 
   async deleteNote(noteId: string): Promise<boolean> {
     const data = await this.loadInitialData();
     data.notes = data.notes.filter((n) => n.id !== noteId);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return true;
   }
 
@@ -214,18 +248,14 @@ export class LocalStorageDataRepository implements IDataRepository {
     } else {
       data.resources.push(resource);
     }
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return resource;
   }
 
   async deleteResource(resourceId: string): Promise<boolean> {
     const data = await this.loadInitialData();
     data.resources = data.resources.filter((r) => r.id !== resourceId);
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
-    }
+    this._persist(data);
     return true;
   }
 
@@ -237,11 +267,33 @@ export class LocalStorageDataRepository implements IDataRepository {
     const target = data.topics.find((t) => t.id === topicId);
     if (target) {
       target.studyProgress = progress;
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(this.storageKey, JSON.stringify(data));
-      }
+      this._persist(data);
     }
     return progress;
+  }
+
+  /**
+   * Clears root key and all entity sub-keys from localStorage.
+   * Also removes legacy v1 keys for migration compatibility.
+   */
+  async resetAllData(): Promise<boolean> {
+    const LEGACY_KEY = "phat_hoc_huyen_hoc_dashboard_v1";
+    const keysToRemove = [
+      this.storageKey,
+      `${this.storageKey}_categories`,
+      `${this.storageKey}_topics`,
+      `${this.storageKey}_notes`,
+      `${this.storageKey}_resources`,
+      `${this.storageKey}_tags`,
+      LEGACY_KEY,
+      `${LEGACY_KEY}_categories`,
+      `${LEGACY_KEY}_topics`,
+      `${LEGACY_KEY}_notes`,
+      `${LEGACY_KEY}_resources`,
+      `${LEGACY_KEY}_tags`,
+    ];
+    keysToRemove.forEach((k) => safeRemoveLocalStorageItem(k));
+    return true;
   }
 
   async exportBackupSnapshot(): Promise<ValidatedBackupSnapshot> {
@@ -498,6 +550,11 @@ export class ApiDataRepository implements IDataRepository {
       }
     }
     return progress;
+  }
+
+  async resetAllData(): Promise<boolean> {
+    await this.localFallback.resetAllData();
+    return true;
   }
 
   async exportBackupSnapshot(): Promise<ValidatedBackupSnapshot> {
