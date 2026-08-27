@@ -109,7 +109,7 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
     // Header metadata
     expect(doc).toContain('TÀI LIỆU NGUỒN KHẢO CỨU (NOTEBOOKLM SOURCE DOCUMENT)');
     expect(doc).toContain('CHỦ ĐỀ: KỲ MÔN ĐỘN GIÁP TOÀN THƯ');
-    expect(doc).toContain('LĨNH VỰC: HUYỀN HỌC & DỊCH LÝ ĐÔNG PHƯƠNG');
+    expect(doc).toContain('LĨNH VỰC: DỊCH HỌC & THUẬT SỐ');
     expect(doc).toContain('PHÂN LOẠI: Dịch Học & Thuật Số');
 
     // Section 1: Concept summary
@@ -312,5 +312,21 @@ describe('ADR-012 Phase 2b: NotebookLM Library Contract Tests', () => {
     expect(parsed.title).toBe('Tóm Tắt Audio Overview: Luận Về Bát Môn');
     expect(parsed.content).toContain('Đây là phần tóm tắt chi tiết');
     expect(parsed.type).toBe('audio_overview_summary');
+  });
+
+  it('14. [C4] packageSourceForNotebookLM renders domain-neutral header based on categoryName/type without legacy overrides', () => {
+    const specializedTopic: Topic = {
+      ...mockTopic,
+      id: 'topic-specialized-ph',
+      title: 'Thiền Minh Sát',
+      type: 'phat-hoc',
+      categoryName: 'Phật Giáo Nguyên Thủy Vipassana',
+    };
+
+    const doc = packageSourceForNotebookLM(specializedTopic, [], []);
+
+    expect(doc).toContain('CHỦ ĐỀ: THIỀN MINH SÁT');
+    expect(doc).toContain('LĨNH VỰC: PHẬT GIÁO NGUYÊN THỦY VIPASSANA');
+    expect(doc).not.toContain('PHẬT HỌC HỌC THUẬT');
   });
 });

@@ -16,6 +16,7 @@ import {
   getObsidianNewNoteUri,
   generateObsidianVaultZip,
   DEFAULT_OBSIDIAN_VAULT_KEY,
+  normalizeExportTags,
 } from '../../src/lib/obsidian';
 import { Topic, Note, Resource, Category } from '../../src/types';
 import JSZip from 'jszip';
@@ -116,12 +117,35 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
 
   const mockCategories: Category[] = [
     {
+      id: 'cat-root-phat-hoc',
+      name: 'Phật Học (Buddhism)',
+      slug: 'phat-hoc',
+      type: 'phat-hoc',
+      parentId: null,
+    },
+    {
+      id: 'cat-root-huyen-hoc',
+      name: 'Huyền Học & Dịch Học (Esotericism)',
+      slug: 'huyen-hoc',
+      type: 'huyen-hoc',
+      parentId: null,
+    },
+    {
       id: 'cat-abhidharma',
       name: 'Vi Diệu Pháp',
       slug: 'vi-dieu-phap',
       type: 'phat-hoc',
+      parentId: 'cat-root-phat-hoc',
       description: 'Luận tạng Phật giáo',
       icon: 'Book',
+    },
+    {
+      id: 'cat-dich-hoc',
+      name: 'Dịch Học',
+      slug: 'dich-hoc',
+      type: 'huyen-hoc',
+      parentId: 'cat-root-huyen-hoc',
+      description: 'Dịch lý đông phương',
     },
   ];
 
@@ -389,5 +413,115 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
     expect(ktFile).not.toBeNull();
     const thFile = zip.file('Triet-Hoc/Hiện Tượng Luận.md') || zip.file('triet-hoc/Hiện Tượng Luận.md');
     expect(thFile).not.toBeNull();
+  });
+
+  it('11. [C4] normalizeExportTags sanitizes tags: strips hash prefixes, trims whitespace, escapes quotes, deduplicates and filters empty values', () => {
+    const rawTags = [
+      ' #Abhidharma ',
+      'Tâm Sở',
+      '#Abhidharma',
+      'Tag "Quotes"',
+      '   ',
+      '',
+      null as any,
+      undefined as any,
+      '##Kỳ Môn',
+    ];
+
+    const cleaned = normalizeExportTags(rawTags);
+
+    expect(cleaned).toEqual([
+      'Abhidharma',
+      'Tâm Sở',
+      'Tag \\"Quotes\\"',
+      'Kỳ Môn',
+    ]);
+  });
+
+  it('12. [C4] formatTopicForObsidian sanitizes dirty tags and renders valid YAML frontmatter', () => {
+    const dirtyTopic: Topic = {
+      ...mockTopicPhatHoc,
+      tags: [' #Abhidharma ', 'Tâm Sở', '#Abhidharma', 'Tag "Quotes"', '  '],
+    };
+
+    const md = formatTopicForObsidian(dirtyTopic);
+
+    // Frontmatter tags array must be sanitized and quotes escaped
+    expect(md).toContain('tags: ["Abhidharma", "Tâm Sở", "Tag \\"Quotes\\""]');
+  });
+
+  it('13. [C4] generateObsidianVaultZip groups topics deterministically when categories is empty without hardcoded Buddhist/Esoteric injection', async () => {
+    const customTypeTopics: Topic[] = [
+      {
+        id: 'topic-kt-custom',
+        title: 'Kinh Tế Vĩ Mô',
+        slug: 'kinh-te-vi-mo',
+        type: 'kinh-te',
+        categoryName: 'Kinh Tế Học',
+        description: 'Tổng quan kinh tế',
+        content: 'Nội dung...',
+        tags: ['kinh-te'],
+        links: [],
+        createdAt: '2026-08-20T10:00:00Z',
+        updatedAt: '2026-08-20T10:00:00Z',
+        studyProgress: {
+          topicId: 'topic-kt-custom',
+          status: 'in_progress',
+          progress: 50,
+          interval: 2,
+          easeFactor: 2.5,
+          repetitions: 2,
+          totalNotes: 0,
+          timeSpent: 30,
+        },
+      },
+      {
+        id: 'topic-tl-custom',
+        title: 'Tâm Lý Học Đại Cương',
+        slug: 'tam-ly-hoc-dai-cuong',
+        type: 'tam-ly',
+        categoryName: 'Tâm Lý Học',
+        description: 'Tổng quan tâm lý',
+        content: 'Nội dung...',
+        tags: ['tam-ly'],
+        links: [],
+        createdAt: '2026-08-20T10:00:00Z',
+        updatedAt: '2026-08-20T10:00:00Z',
+        studyProgress: {
+          topicId: 'topic-tl-custom',
+          status: 'not_started',
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+      },
+    ];
+
+    // Passing empty categories array []
+    const blob = await generateObsidianVaultZip(customTypeTopics, [], [], [], 'Empty-Cat-Vault');
+    const arrayBuffer = await blob.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+
+    // MOC must contain sections derived from topic.type
+    const mocFile = zip.file('00_Map_Of_Content.md');
+    expect(mocFile).not.toBeNull();
+    const mocText = await mocFile!.async('string');
+
+    expect(mocText).toContain('Kinh Tế Học');
+    expect(mocText).toContain('Tâm Lý Học');
+    expect(mocText).toContain('[[Kinh-Te/Kinh Tế Vĩ Mô|Kinh Tế Vĩ Mô]]');
+    expect(mocText).toContain('[[Tam-Ly/Tâm Lý Học Đại Cương|Tâm Lý Học Đại Cương]]');
+
+    // Folders must be generated dynamically from types
+    expect(zip.file('Kinh-Te/Kinh Tế Vĩ Mô.md')).not.toBeNull();
+    expect(zip.file('Tam-Ly/Tâm Lý Học Đại Cương.md')).not.toBeNull();
+
+    // Must NOT contain empty Phat-Hoc or Huyen-Hoc folders
+    const fileKeys = Object.keys(zip.files);
+    expect(fileKeys.some((k) => k.startsWith('Phat-Hoc/'))).toBe(false);
+    expect(fileKeys.some((k) => k.startsWith('Huyen-Hoc/'))).toBe(false);
   });
 });

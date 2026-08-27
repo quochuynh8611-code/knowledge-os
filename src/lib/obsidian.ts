@@ -107,16 +107,54 @@ export function setStoredVaultName(name: string): void {
 }
 
 /**
+ * Sanitizes and normalizes tags for Markdown and YAML Frontmatter export.
+ * - Strips leading '#' characters
+ * - Trims whitespace
+ * - Escapes internal double quotes (\")
+ * - Removes empty/whitespace/null/undefined elements
+ * - Deduplicates preserving initial insertion order
+ */
+export function normalizeExportTags(tags?: (string | null | undefined)[]): string[] {
+  if (!tags || !Array.isArray(tags)) {
+    return [];
+  }
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of tags) {
+    if (typeof raw !== 'string') continue;
+    let cleaned = raw.trim();
+    if (!cleaned) continue;
+
+    // Strip leading '#'
+    cleaned = cleaned.replace(/^#+/, '').trim();
+    if (!cleaned) continue;
+
+    // Escape internal double quotes
+    cleaned = cleaned.replace(/\\"/g, '"').replace(/"/g, '\\"');
+
+    if (!seen.has(cleaned)) {
+      seen.add(cleaned);
+      result.push(cleaned);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Format topic as clean Obsidian Markdown with YAML Frontmatter
  */
 export function formatTopicForObsidian(topic: Topic, allNotes: Note[] = []): string {
+  const cleanTags = normalizeExportTags(topic.tags);
   const frontmatter = [
     '---',
     `title: "${topic.title.replace(/"/g, '\\"')}"`,
     `slug: "${topic.slug}"`,
     `domain: "${topic.type}"`,
     `category: "${topic.categoryName || topic.categoryId}"`,
-    `tags: [${topic.tags.map((t) => `"${t}"`).join(', ')}]`,
+    `tags: [${cleanTags.map((t) => `"${t}"`).join(', ')}]`,
     `aliases: ["${topic.title}"]`,
     `progress: ${topic.studyProgress?.progress || 0}`,
     `status: "${topic.studyProgress?.status || 'not_started'}"`,
@@ -162,12 +200,13 @@ export function formatTopicForObsidian(topic: Topic, allNotes: Note[] = []): str
  * Format single note for Obsidian
  */
 export function formatNoteForObsidian(note: Note): string {
+  const cleanTags = normalizeExportTags(note.tags);
   const frontmatter = [
     '---',
     `title: "${note.title.replace(/"/g, '\\"')}"`,
     `type: "${note.type}"`,
     `topic: "${note.topicTitle || ''}"`,
-    `tags: [${note.tags.map((t) => `"${t}"`).join(', ')}]`,
+    `tags: [${cleanTags.map((t) => `"${t}"`).join(', ')}]`,
     `created: "${note.createdAt.slice(0, 10)}"`,
     `updated: "${note.updatedAt.slice(0, 10)}"`,
     '---',
@@ -200,11 +239,14 @@ export function getObsidianNewNoteUri(vaultName: string, noteName: string, conte
   return `obsidian://new?vault=${encodeURIComponent(cleanVault)}&name=${encodeURIComponent(noteName.trim())}&content=${encodeURIComponent(content)}`;
 }
 
-function getDomainFolderName(domainKey: string): string {
-  if (domainKey === 'phat-hoc') return 'Phat-Hoc';
-  if (domainKey === 'huyen-hoc') return 'Huyen-Hoc';
-  return domainKey
+export function getDomainFolderName(domainKey: string): string {
+  if (!domainKey || typeof domainKey !== 'string') return 'Other';
+  const trimmed = domainKey.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'other') return 'Other';
+
+  return trimmed
     .split('-')
+    .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('-');
 }
@@ -227,47 +269,9 @@ export async function generateObsidianVaultZip(
   // Root README / Map of Content (MOC)
   let mocContent = `# 🧭 BẢN ĐỒ TRI THỨC (MAP OF CONTENT - MOC)\n\n`;
   mocContent += `*Vault: ${cleanVault} | Ngày tạo: ${new Date().toLocaleDateString('vi-VN')}*\n\n`;
-  mocContent += `Chào mừng bạn đến với Obsidian Vault Khảo Cứu Phật Học & Huyền Học. Tất cả các ghi chú đã được kết nối bằng hệ thống liên kết hai chiều \`[[Wiki Links]]\`.\n\n`;
-
-  const defaultPhatHocRoot: Category = categories?.find(
-    (c) => c.slug === 'phat-hoc' || c.id === 'cat-root-phat-hoc'
-  ) || {
-    id: 'cat-root-phat-hoc',
-    name: 'Phật Học (Buddhism)',
-    slug: 'phat-hoc',
-    type: 'phat-hoc',
-    parentId: null,
-  };
-
-  const defaultHuyenHocRoot: Category = categories?.find(
-    (c) => c.slug === 'huyen-hoc' || c.id === 'cat-root-huyen-hoc'
-  ) || {
-    id: 'cat-root-huyen-hoc',
-    name: 'Huyền Học & Dịch Học (Esotericism)',
-    slug: 'huyen-hoc',
-    type: 'huyen-hoc',
-    parentId: null,
-  };
-
-  const customRoots = (categories || []).filter(
-    (c) =>
-      !c.parentId &&
-      c.id !== defaultPhatHocRoot.id &&
-      c.id !== defaultHuyenHocRoot.id &&
-      c.slug !== 'phat-hoc' &&
-      c.slug !== 'huyen-hoc'
-  );
-
-  const rootCats: Category[] = [
-    defaultPhatHocRoot,
-    defaultHuyenHocRoot,
-    ...customRoots,
-  ];
+  mocContent += `Chào mừng bạn đến với Obsidian Vault Khảo Cứu Tri Thức. Tất cả các ghi chú đã được kết nối bằng hệ thống liên kết hai chiều \`[[Wiki Links]]\`.\n\n`;
 
   const getTopicRootSlug = (topic: Topic): string => {
-    if (topic.type === 'phat-hoc') return 'phat-hoc';
-    if (topic.type === 'huyen-hoc') return 'huyen-hoc';
-
     if (categories && categories.length > 0 && topic.categoryId) {
       const catMap = new Map(categories.map((c) => [c.id, c]));
       let curr = catMap.get(topic.categoryId);
@@ -281,14 +285,40 @@ export async function generateObsidianVaultZip(
       }
       if (curr) return curr.slug || curr.type || curr.id;
     }
-    return topic.type || 'other';
+    return topic.categorySlug || topic.type || 'other';
   };
+
+  let rootCats: { id: string; name: string; slug: string }[] = [];
+
+  if (categories && categories.length > 0) {
+    rootCats = categories
+      .filter((c) => !c.parentId)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        slug: c.slug || c.type || c.id,
+      }));
+  } else {
+    // Derive root categories deterministically from topics when categories is empty
+    const typeMap = new Map<string, { id: string; name: string; slug: string }>();
+    topics.forEach((t) => {
+      const slug = t.categorySlug || t.type || 'other';
+      if (slug !== 'other' && !typeMap.has(slug)) {
+        typeMap.set(slug, {
+          id: slug,
+          name: t.categoryName || getDomainFolderName(slug).replace(/-/g, ' '),
+          slug,
+        });
+      }
+    });
+    rootCats = Array.from(typeMap.values()).sort((a, b) => a.slug.localeCompare(b.slug));
+  }
 
   let sectionIndex = 1;
   const processedTopicIds = new Set<string>();
 
   rootCats.forEach((root) => {
-    const rootSlug = root.slug || root.type || root.id;
+    const rootSlug = root.slug;
     const domainTopics = topics.filter((t) => {
       const targetSlug = getTopicRootSlug(t);
       return targetSlug === rootSlug || t.type === rootSlug || t.categoryId === root.id;
@@ -299,14 +329,7 @@ export async function generateObsidianVaultZip(
     }
 
     const folderName = getDomainFolderName(rootSlug);
-    let heading = '';
-    if (rootSlug === 'phat-hoc') {
-      heading = `## 🪷 ${sectionIndex}. Lĩnh Vực Phật Học (Buddhism)`;
-    } else if (rootSlug === 'huyen-hoc') {
-      heading = `## ☯️ ${sectionIndex}. Lĩnh Vực Huyền Học & Dịch Học (Esotericism)`;
-    } else {
-      heading = `## ${sectionIndex}. Lĩnh Vực ${root.name}`;
-    }
+    const heading = `## ${sectionIndex}. Lĩnh Vực ${root.name}`;
     sectionIndex++;
 
     mocContent += `${heading}\n`;

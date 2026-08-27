@@ -84,6 +84,7 @@ describe('Phase Performance-Followup: Obsidian Vault Zip Export Integration & Dy
       name: 'Phật Học Căn Bản',
       slug: 'phat-hoc-can-ban',
       type: 'phat-hoc',
+      parentId: null,
     },
   ];
 
@@ -133,8 +134,8 @@ describe('Phase Performance-Followup: Obsidian Vault Zip Export Integration & Dy
     expect(mocText).toContain('Test-Dynamic-Vault');
     expect(mocText).toContain('Bát Chánh Đạo');
 
-    // 2.2. Phat-Hoc topic note
-    const topicFile = zip.file('Phat-Hoc/Bát Chánh Đạo.md');
+    // 2.2. Phat-Hoc-Can-Ban topic folder (root slug is 'phat-hoc-can-ban' from mockCategories)
+    const topicFile = zip.file('Phat-Hoc-Can-Ban/Bát Chánh Đạo.md');
     expect(topicFile).not.toBeNull();
     const topicText = await topicFile!.async('string');
     expect(topicText).toContain('title: "Bát Chánh Đạo"');
