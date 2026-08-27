@@ -358,4 +358,171 @@ describe("Workstream 5B Gate B: StudyProgress Analytics Dashboard UI Integration
     expect(weeklyCard!.textContent).not.toContain("Phật Học");
     expect(weeklyCard!.textContent).not.toContain("Huyền Học");
   });
+
+  it("9. [C3] Topic presentation dynamically applies neutral palette from category styling rather than hardcoded emerald fallback", () => {
+    currentCategories = [
+      { id: "cat-purple-domain", name: "Tâm Lý Học", slug: "tam-ly", color: "purple", parentId: null },
+    ];
+
+    const purpleTopic: Topic = {
+      id: "topic-tam-ly-1",
+      title: "Tâm Lý Học Nhận Thức",
+      slug: "tam-ly-nhan-thuc",
+      type: "tam-ly",
+      categoryId: "cat-purple-domain",
+      categoryName: "Tâm Lý Học",
+      description: "Nghiên cứu nhận thức",
+      content: "",
+      tags: ["tam-ly"],
+      studyProgress: {
+        topicId: "topic-tam-ly-1",
+        status: "in_progress",
+        progress: 80,
+        repetitions: 2,
+        interval: 3,
+        easeFactor: 2.5,
+        nextReview: new Date().toISOString(),
+        totalNotes: 0,
+        timeSpent: 50,
+      },
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+      links: [],
+    };
+
+    currentTopics = [purpleTopic];
+
+    const { container } = render(<StudyProgressView />);
+
+    // Topic badge should use purple palette styling instead of fallback emerald or hardcoded amber/indigo
+    const topicHeading = screen.getByText("Tâm Lý Học Nhận Thức");
+    const topicCard = topicHeading.closest(".space-y-3");
+    expect(topicCard).not.toBeNull();
+
+    const badge = topicCard!.querySelector("span.text-\\[10px\\]");
+    expect(badge).not.toBeNull();
+    expect(badge!.textContent).toContain("Tâm Lý Học");
+    expect(badge!.className).toContain("bg-purple-100");
+
+    // Progress bar should have purple progress bar class
+    const progressBar = container.querySelector(".h-full.rounded-full");
+    expect(progressBar).not.toBeNull();
+    expect(progressBar?.className).toContain("bg-purple-600");
+  });
+
+  it("10. [C3] Forecast empty state renders legend according to root categories if available, or renders empty without hardcoded Phật Học / Huyền Học", () => {
+    // Case 1: Custom root categories exist and no forecast items due
+    currentCategories = [
+      { id: "cat-root-y-hoc", name: "Y Học Cổ Truyền", slug: "y-hoc", parentId: null },
+      { id: "cat-root-toan-hoc", name: "Toán Học Đại Cương", slug: "toan-hoc", parentId: null },
+    ];
+    // Topics have no nextReview in 7-day forecast window
+    currentTopics = [
+      {
+        id: "topic-no-due",
+        title: "Toán Rời Rạc",
+        slug: "toan-roi-rac",
+        type: "toan-hoc",
+        categoryId: "cat-root-toan-hoc",
+        categoryName: "Toán Học Đại Cương",
+        description: "",
+        content: "",
+        tags: [],
+        studyProgress: {
+          topicId: "topic-no-due",
+          status: "not_started",
+          progress: 0,
+          repetitions: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        links: [],
+      },
+    ];
+
+    const { unmount } = render(<StudyProgressView />);
+    const forecastHeading = screen.getByText(/Dự báo hàng đợi ôn tập 7 ngày/i);
+    const forecastCard = forecastHeading.closest("div")?.parentElement;
+    expect(forecastCard).not.toBeNull();
+
+    // When custom root categories exist, empty forecast legend should reflect root categories, NOT Phật Học / Huyền Học
+    expect(forecastCard!.textContent).toContain("Y Học Cổ Truyền");
+    expect(forecastCard!.textContent).toContain("Toán Học Đại Cương");
+    expect(forecastCard!.textContent).not.toContain("Phật Học");
+    expect(forecastCard!.textContent).not.toContain("Huyền Học");
+
+    unmount();
+
+    // Case 2: No categories defined and no forecast items due -> do NOT render hardcoded domain legend
+    currentCategories = [];
+    currentTopics = [];
+
+    render(<StudyProgressView />);
+    const emptyForecastHeading = screen.getByText(/Dự báo hàng đợi ôn tập 7 ngày/i);
+    const emptyForecastCard = emptyForecastHeading.closest("div")?.parentElement;
+    expect(emptyForecastCard!.textContent).not.toContain("Phật Học");
+    expect(emptyForecastCard!.textContent).not.toContain("Huyền Học");
+  });
+
+  it("11. [C3] Category balance pie chart uses dynamic category colors and eliminates hardcoded label fallbacks", () => {
+    // Custom category with custom color
+    currentCategories = [
+      { id: "cat-am-nhac", name: "Âm Nhạc Học", slug: "am-nhac", color: "#EC4899", parentId: null },
+    ];
+    currentTopics = [
+      {
+        id: "topic-music",
+        title: "Nhạc Lý Cơ Bản",
+        slug: "nhac-ly",
+        type: "am-nhac",
+        categoryId: "cat-am-nhac",
+        categoryName: "Âm Nhạc Học",
+        description: "",
+        content: "",
+        tags: [],
+        studyProgress: {
+          topicId: "topic-music",
+          status: "in_progress",
+          progress: 50,
+          repetitions: 1,
+          interval: 1,
+          easeFactor: 2.5,
+          totalNotes: 0,
+          timeSpent: 30,
+        },
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt: "2026-01-01T00:00:00Z",
+        links: [],
+      },
+    ];
+
+    const { unmount } = render(<StudyProgressView />);
+
+    // Custom category name should be present in balance breakdown card
+    const balanceCardHeading = screen.getByText("Cân bằng lĩnh vực");
+    const balanceCard = balanceCardHeading.closest("div")?.parentElement;
+    expect(balanceCard).not.toBeNull();
+
+    expect(balanceCard!.textContent).toContain("Âm Nhạc Học");
+
+    // In current code, color is hardcoded to #D97706 instead of cat.color (#EC4899)
+    const musicLabels = balanceCard!.querySelectorAll("span.font-medium");
+    const musicSpan = Array.from(musicLabels).find((el) => el.textContent === "Âm Nhạc Học");
+    expect(musicSpan).toBeDefined();
+    expect(musicSpan).toHaveStyle({ color: "#EC4899" });
+
+    unmount();
+
+    // When categories is empty, it should NOT render legacy hardcoded strings
+    currentCategories = [];
+    currentTopics = [];
+
+    render(<StudyProgressView />);
+    expect(screen.queryByText(/Phật Học \(Tam Tạng & Luận\)/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Huyền Học \(Tam Thức & Dịch\)/i)).not.toBeInTheDocument();
+  });
 });

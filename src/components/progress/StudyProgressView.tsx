@@ -16,13 +16,14 @@ import {
   Filter,
   CalendarDays,
 } from 'lucide-react';
-import { Topic, TopicStatus } from '../../types';
+import { Topic, TopicStatus, Category } from '../../types';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
 import {
   calculateRetentionMetrics,
   calculateReviewForecast,
   getTopicRootDomain,
 } from '../../lib/studyAnalytics';
+import { getNeutralDomainStyle, DOMAIN_PALETTES } from '../../lib/domainStyling';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
 import { StudyTimerModal } from '../modals/StudyTimerModal';
 import {
@@ -38,26 +39,66 @@ import {
   Legend,
 } from 'recharts';
 
-function getTopicPresentation(topic: Topic, categories?: any[]) {
-  const rootDomain = categories?.length ? getTopicRootDomain(topic, categories) : (topic.type || 'other');
+const PALETTE_COLOR_MAP: Record<string, string> = {
+  amber: '#D97706',
+  indigo: '#4F46E5',
+  emerald: '#059669',
+  sky: '#0284C7',
+  rose: '#E11D48',
+  teal: '#0D9488',
+  purple: '#7C3AED',
+  stone: '#57534E',
+};
 
-  if (rootDomain === 'phat-hoc' || topic.type === 'phat-hoc') {
-    return {
-      badgeClass: 'bg-amber-100 text-amber-900 border border-amber-300',
-      progressBarClass: 'bg-amber-600',
-    };
+const DEFAULT_CHART_COLORS = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
+
+function resolveCategoryColor(category?: Category, fallbackIndex = 0): string {
+  if (category?.color) {
+    if (category.color.startsWith('#') || category.color.startsWith('rgb')) {
+      return category.color;
+    }
+    const lower = category.color.toLowerCase();
+    if (PALETTE_COLOR_MAP[lower]) {
+      return PALETTE_COLOR_MAP[lower];
+    }
+    const matched = DOMAIN_PALETTES.find((p) => p.id === lower || lower.includes(p.id));
+    if (matched && PALETTE_COLOR_MAP[matched.id]) {
+      return PALETTE_COLOR_MAP[matched.id];
+    }
   }
 
-  if (rootDomain === 'huyen-hoc' || topic.type === 'huyen-hoc') {
-    return {
-      badgeClass: 'bg-indigo-100 text-indigo-900 border border-indigo-300',
-      progressBarClass: 'bg-indigo-600',
-    };
+  if (category) {
+    const style = getNeutralDomainStyle(category);
+    const matched = DOMAIN_PALETTES.find((p) => p.icon === style.icon && p.progressBar === style.progressBar);
+    if (matched && PALETTE_COLOR_MAP[matched.id]) {
+      return PALETTE_COLOR_MAP[matched.id];
+    }
   }
 
+  return DEFAULT_CHART_COLORS[fallbackIndex % DEFAULT_CHART_COLORS.length];
+}
+
+function getTopicPresentation(topic: Topic, categories?: Category[]) {
+  let targetCat: Category | undefined;
+  if (categories && categories.length > 0) {
+    targetCat = categories.find(
+      (c) => c.id === topic.categoryId || c.slug === topic.type || c.id === topic.type
+    );
+  }
+
+  if (!targetCat) {
+    targetCat = {
+      id: topic.categoryId || topic.type || 'other',
+      name: topic.categoryName || topic.type || 'Chủ đề',
+      slug: topic.categorySlug || topic.type || 'other',
+      parentId: null,
+    } as Category;
+  }
+
+  const style = getNeutralDomainStyle(targetCat);
   return {
-    badgeClass: 'bg-emerald-100 text-emerald-900 border border-emerald-300',
-    progressBarClass: 'bg-emerald-600',
+    badgeClass: `${style.iconBg} border border-stone-200/80 dark:border-stone-700/80`,
+    progressBarClass: style.progressBar,
   };
 }
 
@@ -84,23 +125,28 @@ export function StudyProgressView() {
     });
 
     if (domainSet.size === 0) {
-      return [
-        { domain: 'phat-hoc', name: 'Phật Học', color: '#D97706', dataKey: 'phatHocCount' },
-        { domain: 'huyen-hoc', name: 'Huyền Học', color: '#4F46E5', dataKey: 'huyenHocCount' },
-      ];
+      if (categories && categories.length > 0) {
+        const rootCats = categories.filter((c) => !c.parentId);
+        return rootCats.map((cat, idx) => ({
+          domain: cat.slug || cat.id,
+          name: cat.name,
+          color: resolveCategoryColor(cat, idx),
+          dataKey: `domain_${cat.slug || cat.id}`,
+        }));
+      }
+      return [];
     }
 
-    const colors = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
     const sorted = Array.from(domainSet).sort();
     return sorted.map((domKey, idx) => {
       const cat = categories?.find((c) => c.slug === domKey || c.id === domKey);
-      const name = cat?.name || (domKey === 'phat-hoc' ? 'Phật Học' : domKey === 'huyen-hoc' ? 'Huyền Học' : domKey === 'other' ? 'Khác' : domKey);
-      const color = domKey === 'phat-hoc' ? '#D97706' : domKey === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length];
+      const name = cat?.name || (domKey === 'other' ? 'Khác' : domKey);
+      const color = resolveCategoryColor(cat, idx);
       return {
         domain: domKey,
         name,
         color,
-        dataKey: domKey === 'phat-hoc' && !categories?.length ? 'phatHocCount' : domKey === 'huyen-hoc' && !categories?.length ? 'huyenHocCount' : `domain_${domKey}`,
+        dataKey: `domain_${domKey}`,
       };
     });
   }, [reviewForecast, categories]);
@@ -171,7 +217,6 @@ export function StudyProgressView() {
   const categoryPieData = useMemo(() => {
     if (categories && categories.length > 0) {
       const rootCats = categories.filter((c) => !c.parentId);
-      const colors = ['#D97706', '#4F46E5', '#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
       const items = rootCats.map((cat, idx) => {
         const catTopicsCount = topics.filter((t) => {
           return t.categoryId === cat.id || t.type === cat.slug || t.type === cat.id;
@@ -179,18 +224,27 @@ export function StudyProgressView() {
         return {
           name: cat.name,
           value: catTopicsCount,
-          color: cat.slug === 'phat-hoc' ? '#D97706' : cat.slug === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length],
+          color: resolveCategoryColor(cat, idx),
         };
       });
       items.push({ name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount || 0, color: '#059669' });
       return items;
     }
 
-    return [
-      { name: 'Phật Học (Tam Tạng & Luận)', value: stats.phatHocTopics || 0, color: '#D97706' },
-      { name: 'Huyền Học (Tam Thức & Dịch)', value: stats.huyenHocTopics || 0, color: '#4F46E5' },
-      { name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount || 0, color: '#059669' },
-    ];
+    const typeCounts: Record<string, number> = {};
+    topics.forEach((t) => {
+      const typeKey = t.categoryName || t.type || 'Chủ đề khác';
+      typeCounts[typeKey] = (typeCounts[typeKey] || 0) + 1;
+    });
+
+    const items = Object.entries(typeCounts).map(([typeKey, count], idx) => ({
+      name: typeKey,
+      value: count,
+      color: DEFAULT_CHART_COLORS[idx % DEFAULT_CHART_COLORS.length],
+    }));
+
+    items.push({ name: 'Ghi Chú & Khảo Cứu', value: stats.totalNotesCount || 0, color: '#059669' });
+    return items;
   }, [categories, topics, stats]);
 
   const handleStartReview = (topic?: Topic) => {
