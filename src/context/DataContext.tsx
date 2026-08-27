@@ -47,28 +47,21 @@ import {
   TimerMode,
   StudyTimerContextType,
 } from "./StudyTimerContext";
+import {
+  NavigationProvider,
+  useNavigation,
+  ActiveTab,
+  NavigationContextType,
+} from "./NavigationContext";
 
-export { StudyTimerProvider, useStudyTimer };
-export type { TimerMode, StudyTimerContextType };
+export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation };
+export type { TimerMode, StudyTimerContextType, ActiveTab, NavigationContextType };
 
 const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
 const dataRepository: IDataRepository =
   typeof window !== "undefined"
     ? new ApiDataRepository("/api", new LocalStorageDataRepository(STORAGE_KEY))
     : new LocalStorageDataRepository(STORAGE_KEY);
-
-export type ActiveTab =
-  | "dashboard"
-  | "topics"
-  | "graph"
-  | "progress"
-  | "notes"
-  | "resources"
-  | "search"
-  | "ai_studio"
-  | "abhidharma_matrix"
-  | "divination_matrix"
-  | "lexicon";
 
 interface DataContextType {
   // State
@@ -162,9 +155,46 @@ interface DataContextType {
   reloadAllData: () => Promise<boolean>;
 }
 
+export type DomainDataContextType = Omit<
+  DataContextType,
+  | "activeTab"
+  | "selectedTopicId"
+  | "searchQuery"
+  | "selectedCategoryFilter"
+  | "selectedTagFilter"
+  | "setActiveTab"
+  | "setSelectedTopicId"
+  | "setSearchQuery"
+  | "setSelectedCategoryFilter"
+  | "setSelectedTagFilter"
+  | "openTopicDetail"
+  | "activeTimerTopicId"
+  | "timerSeconds"
+  | "isTimerRunning"
+  | "timerMode"
+  | "pomodoroTimeRemaining"
+  | "startStudyTimer"
+  | "pauseStudyTimer"
+  | "stopAndSaveStudyTimer"
+>;
+
+const DomainDataContext = createContext<DomainDataContextType | undefined>(
+  undefined,
+);
+
+export function useDomainData(): DomainDataContextType {
+  const context = useContext(DomainDataContext);
+  if (!context) {
+    throw new Error("useDomainData must be used within a DataProvider");
+  }
+  return context;
+}
+
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-export function DataProvider({ children }: { children: ReactNode }) {
+function InnerDataProvider({ children }: { children: ReactNode }) {
+  const nav = useNavigation();
+
   // Initialize state from LocalStorage sub-keys (via safe helper) or Seed Data
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
@@ -211,17 +241,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  // UI Navigation State
-  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
-    string | null
-  >(null);
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(
-    null,
-  );
-
   // Bootstrap Load & Hydration via DataRepository
   useEffect(() => {
     dataRepository
@@ -263,12 +282,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         console.error("Failed to persist state via repository", e);
       });
   }, [categories, topics, notes, resources, tags]);
-
-  // Navigation Handlers
-  const openTopicDetail = (topicId: string) => {
-    setSelectedTopicId(topicId);
-    setActiveTab("topics");
-  };
 
   // Category Handlers
   const addCategory = (categoryData: Omit<Category, "id">): string => {
@@ -387,7 +400,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTopics((prev) => prev.filter((t) => t.id !== id));
     setNotes((prev) => prev.filter((n) => n.topicId !== id));
     setResources((prev) => prev.filter((r) => r.topicId !== id));
-    if (selectedTopicId === id) setSelectedTopicId(null);
+    if (nav.selectedTopicId === id) nav.setSelectedTopicId(null);
     dataRepository.deleteTopic(id).catch(console.error);
   };
 
@@ -808,23 +821,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const knowledgeValue = {
+  const knowledgeValue: DomainDataContextType = {
     categories,
     topics,
     notes,
     resources,
     tags,
-    activeTab,
-    selectedTopicId,
-    searchQuery,
-    selectedCategoryFilter,
-    selectedTagFilter,
-    setActiveTab,
-    setSelectedTopicId,
-    setSearchQuery,
-    setSelectedCategoryFilter,
-    setSelectedTagFilter,
-    openTopicDetail,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -866,23 +868,25 @@ function DataProviderBridge({
   knowledgeValue,
 }: {
   children: ReactNode;
-  knowledgeValue: Omit<
-    DataContextType,
-    | "activeTimerTopicId"
-    | "timerSeconds"
-    | "isTimerRunning"
-    | "timerMode"
-    | "pomodoroTimeRemaining"
-    | "startStudyTimer"
-    | "pauseStudyTimer"
-    | "stopAndSaveStudyTimer"
-  >;
+  knowledgeValue: DomainDataContextType;
 }) {
   const timer = useStudyTimer();
+  const nav = useNavigation();
 
   const combinedValue = useMemo<DataContextType>(
     () => ({
       ...knowledgeValue,
+      activeTab: nav.activeTab,
+      selectedTopicId: nav.selectedTopicId,
+      searchQuery: nav.searchQuery,
+      selectedCategoryFilter: nav.selectedCategoryFilter,
+      selectedTagFilter: nav.selectedTagFilter,
+      setActiveTab: nav.setActiveTab,
+      setSelectedTopicId: nav.setSelectedTopicId,
+      setSearchQuery: nav.setSearchQuery,
+      setSelectedCategoryFilter: nav.setSelectedCategoryFilter,
+      setSelectedTagFilter: nav.setSelectedTagFilter,
+      openTopicDetail: nav.openTopicDetail,
       activeTimerTopicId: timer.activeTimerTopicId,
       timerSeconds: timer.timerSeconds,
       isTimerRunning: timer.isTimerRunning,
@@ -892,13 +896,23 @@ function DataProviderBridge({
       pauseStudyTimer: timer.pauseStudyTimer,
       stopAndSaveStudyTimer: timer.stopAndSaveStudyTimer,
     }),
-    [knowledgeValue, timer],
+    [knowledgeValue, nav, timer],
   );
 
   return (
-    <DataContext.Provider value={combinedValue}>
-      {children}
-    </DataContext.Provider>
+    <DomainDataContext.Provider value={knowledgeValue}>
+      <DataContext.Provider value={combinedValue}>
+        {children}
+      </DataContext.Provider>
+    </DomainDataContext.Provider>
+  );
+}
+
+export function DataProvider({ children }: { children: ReactNode }) {
+  return (
+    <NavigationProvider>
+      <InnerDataProvider>{children}</InnerDataProvider>
+    </NavigationProvider>
   );
 }
 
@@ -909,3 +923,4 @@ export function useData() {
   }
   return context;
 }
+
