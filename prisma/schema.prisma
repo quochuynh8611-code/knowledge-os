@@ -10,7 +10,7 @@ model Category {
   id          String    @id @default(uuid())
   name        String
   slug        String    @unique
-  type        String    // 'phat-hoc' | 'huyen-hoc'
+  type        String    // CategoryType — configurable, not hardcoded
   description String?
   parentId    String?
   icon        String?
@@ -22,12 +22,13 @@ model Category {
 }
 
 model Tag {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
-  slug      String   @unique
-  color     String   @default("#D97706")
-  count     Int      @default(0)
-  createdAt DateTime @default(now())
+  slug      String     @unique
+  color     String     @default("#D97706")
+  count     Int        @default(0)
+  createdAt DateTime   @default(now())
+  topicTags TopicTag[] // Research Storage v1: normalized tag relation
 }
 
 model Topic {
@@ -36,11 +37,11 @@ model Topic {
   slug          String          @unique
   categoryId    String
   category      Category        @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  type          String          // 'phat-hoc' | 'huyen-hoc'
+  type          String          // CategoryType — configurable, not hardcoded
   parentId      String?
   description   String          @default("")
   content       String          @default("")
-  tags          String[]        @default([])
+  tags          String[]        @default([]) // Kept as denormalized cache for backward compat
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   notes         Note[]
@@ -48,19 +49,26 @@ model Topic {
   studyProgress StudyProgress?
   sourceLinks   KnowledgeLink[] @relation("SourceLinks")
   targetLinks   KnowledgeLink[] @relation("TargetLinks")
+  // Research Storage v1: additive relations
+  noteLinks     NoteTopicLink[] // multi-topic notes
+  topicTags     TopicTag[]      // normalized tag relation
+  snapshots     KnowledgeProgressSnapshot[] // append-only progress history
 }
 
 model Note {
-  id        String   @id @default(uuid())
-  topicId   String
-  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  title     String
-  content   String
-  type      String   @default("insight") // 'study' | 'insight' | 'question' | 'summary'
-  isPrivate Boolean  @default(false)
-  tags      String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  topicId    String
+  topic      Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  sourcePath String?  // nullable — matches Note.sourcePath in types/index.ts
+  type       String   @default("insight") // 'study' | 'insight' | 'question' | 'summary'
+  isPrivate  Boolean  @default(false)
+  tags       String[] @default([])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  // Research Storage v1: additive multi-topic relation
+  additionalTopics NoteTopicLink[]
 }
 
 model Resource {
@@ -114,4 +122,35 @@ model SyncSession {
   processedAt     DateTime @default(now())
   status          String   @default("completed") // 'pending' | 'completed' | 'failed'
   summary         Json
+}
+
+// ─── Research Storage v1: Additive Models ──────────────────────────────────────
+
+// Multi-topic note join table
+model NoteTopicLink {
+  id      String @id @default(uuid())
+  noteId  String
+  note    Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  topicId String
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  @@unique([noteId, topicId])
+}
+
+// Normalized tag-topic relation (Topic.tags String[] kept as denormalized cache)
+model TopicTag {
+  topicId String
+  topic   Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  tagId   String
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([topicId, tagId])
+}
+
+// Append-only progress snapshot — never updated, only inserted
+model KnowledgeProgressSnapshot {
+  id            String   @id @default(uuid())
+  topicId       String
+  topic         Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  capturedAt    DateTime @default(now())
+  progressData  Json     // immutable copy of StudyProgress at capture time
+  triggerReason String?  // 'manual' | 'session_complete' | 'milestone'
 }

@@ -11,3 +11,4 @@ coverage/
 backups/*.json
 backups/*.tmp
 !backups/.gitkeep
+.cache/

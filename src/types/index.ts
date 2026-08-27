@@ -32,7 +32,8 @@ export type NoteType = 'study' | 'insight' | 'question' | 'summary';
 
 export interface Note {
   id: string;
-  topicId: string;
+  topicId: string;          // Primary FK — kept for backward compatibility
+  topicIds?: string[];      // Optional multi-topic support (additive)
   topicTitle?: string;
   title: string;
   content: string; // Markdown formatted
@@ -57,7 +58,19 @@ export interface Resource {
   type: ResourceType;
   author?: string;
   notes?: string;
+  sourceRegistryId?: string; // Optional — populated by buildSourceRegistry()
   createdAt: string;
+}
+
+// Research Storage v1: append-only progress history snapshot
+export type SnapshotTriggerReason = 'manual' | 'session_complete' | 'milestone';
+
+export interface KnowledgeProgressSnapshot {
+  id: string;
+  topicId: string;
+  capturedAt: string;           // ISO string
+  progressData: StudyProgress;  // Immutable copy — do NOT mutate
+  triggerReason?: SnapshotTriggerReason;
 }
 
 export interface StudyProgress {
