@@ -42,23 +42,70 @@ export function useSyncQueue(
     return unsubscribe;
   }, [syncQueueService]);
 
-  // Sync state with Browser online/offline events
+  // Sync state with Browser online/offline events & debounced auto-sync trigger
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    let reconnectTimer: NodeJS.Timeout | number | null = null;
+
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      reconnectTimer = setTimeout(() => {
+        syncQueueService.flushQueue(apiBaseUrl, { bypassBackoff: false });
+      }, 300);
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+    };
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
     return () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
-  }, []);
+  }, [syncQueueService, apiBaseUrl]);
+
+  // Scheduled auto-retry when earliest failed mutation cooldown expires
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const futureRetries = queue
+      .filter((m) => m.status === "failed" && m.nextRetryAt)
+      .map((m) => new Date(m.nextRetryAt!).getTime())
+      .filter((time) => time > Date.now());
+
+    if (futureRetries.length === 0) {
+      return;
+    }
+
+    const earliestNextRetryAt = Math.min(...futureRetries);
+    const delayMs = Math.max(0, earliestNextRetryAt - Date.now());
+
+    const timer = setTimeout(() => {
+      syncQueueService.flushQueue(apiBaseUrl, { bypassBackoff: false });
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [queue, syncQueueService, apiBaseUrl]);
 
   const pendingCount = useMemo(
     () => queue.filter((m) => m.status === "pending").length,
