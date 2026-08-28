@@ -4,6 +4,10 @@ import {
   packageSourceForNotebookLM,
   generateNotebookLMTaskPrompt,
 } from './notebooklm';
+import {
+  safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+} from './storage';
 
 export type AntigravityJobStatus = 'queued' | 'processing' | 'success' | 'failed';
 
@@ -22,13 +26,85 @@ export interface AntigravityHandoffJob {
   errorMessage?: string;
 }
 
+export interface AntigravityJobManifest {
+  version: string;
+  jobId: string;
+  pipeline: string;
+  topic: {
+    id: string;
+    title: string;
+  };
+  artifactType: NotebookLMArtifactType;
+  files: {
+    source: string;
+    prompt: string;
+    manifest: string;
+    result?: string;
+  };
+  createdAt: string;
+}
+
+export interface ManifestValidationResult {
+  valid: boolean;
+  manifest?: AntigravityJobManifest;
+  errors?: string[];
+}
+
 export const ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY = 'phat_hoc_antigravity_handoff_jobs_v1';
+
+/**
+ * Validates the schema and completeness of an inter-process Antigravity Job Manifest.
+ */
+export function validateAntigravityJobManifest(rawManifest: unknown): ManifestValidationResult {
+  const errors: string[] = [];
+  if (!rawManifest) {
+    return { valid: false, errors: ['Manifest payload is empty or null'] };
+  }
+
+  let parsed: any = rawManifest;
+  if (typeof rawManifest === 'string') {
+    try {
+      parsed = JSON.parse(rawManifest);
+    } catch {
+      return { valid: false, errors: ['Invalid JSON format in manifest'] };
+    }
+  }
+
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { valid: false, errors: ['Manifest must be a JSON object'] };
+  }
+
+  if (!parsed.jobId || typeof parsed.jobId !== 'string') {
+    errors.push("Missing or invalid 'jobId'");
+  }
+  if (!parsed.version || typeof parsed.version !== 'string') {
+    errors.push("Missing or invalid 'version'");
+  }
+  if (!parsed.topic || typeof parsed.topic !== 'object' || !parsed.topic.id || !parsed.topic.title) {
+    errors.push("Missing or invalid 'topic' metadata (must contain id and title)");
+  }
+  if (
+    !parsed.files ||
+    typeof parsed.files !== 'object' ||
+    !parsed.files.source ||
+    !parsed.files.prompt ||
+    !parsed.files.manifest
+  ) {
+    errors.push("Missing or invalid 'files' mapping (must contain source, prompt, and manifest paths)");
+  }
+
+  if (errors.length > 0) {
+    return { valid: false, errors };
+  }
+
+  return { valid: true, manifest: parsed as AntigravityJobManifest };
+}
 
 /**
  * Tuần tự hóa manifest JSON làm Inter-process Handoff Artifact giữa Knowledge OS và Antigravity 2.0
  */
 export function serializeAntigravityJobManifest(job: AntigravityHandoffJob): string {
-  const manifestData = {
+  const manifestData: AntigravityJobManifest = {
     version: '1.0',
     jobId: job.jobId,
     pipeline: 'antigravity-notebooklm-mediator',
@@ -108,14 +184,13 @@ export function createAntigravityHandoffJob(
 }
 
 /**
- * Truy xuất danh sách Job trong UI Tracker từ LocalStorage
+ * Truy xuất danh sách Job trong UI Tracker từ LocalStorage an toàn
  */
 export function getStoredHandoffJobs(): AntigravityHandoffJob[] {
-  if (typeof localStorage === 'undefined') return [];
+  const raw = safeGetLocalStorageItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY);
+  if (!raw) return [];
   try {
-    const saved = localStorage.getItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY);
-    if (!saved) return [];
-    const parsed = JSON.parse(saved);
+    const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed;
   } catch {
@@ -124,16 +199,19 @@ export function getStoredHandoffJobs(): AntigravityHandoffJob[] {
 }
 
 /**
- * Lưu hoặc cập nhật Job trong UI Tracker LocalStorage
+ * Lưu hoặc cập nhật Job trong UI Tracker LocalStorage (giới hạn rolling buffer 50 bản ghi)
  */
 export function saveHandoffJob(job: AntigravityHandoffJob): void {
-  if (typeof localStorage === 'undefined') return;
   try {
     const list = getStoredHandoffJobs().filter((item) => item.jobId !== job.jobId);
     list.unshift(job);
-    localStorage.setItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY, JSON.stringify(list));
+    const boundedList = list.slice(0, 50);
+    safeSetLocalStorageItem(
+      ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY,
+      JSON.stringify(boundedList)
+    );
   } catch {
-    // Silent fail
+    // Graceful silent fail
   }
 }
 
@@ -145,7 +223,6 @@ export function updateHandoffJobStatus(
   status: AntigravityJobStatus,
   errorMessage?: string
 ): void {
-  if (typeof localStorage === 'undefined') return;
   try {
     const list = getStoredHandoffJobs();
     const target = list.find((item) => item.jobId === jobId);
@@ -155,10 +232,13 @@ export function updateHandoffJobStatus(
       if (errorMessage !== undefined) {
         target.errorMessage = errorMessage;
       }
-      localStorage.setItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY, JSON.stringify(list));
+      safeSetLocalStorageItem(
+        ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY,
+        JSON.stringify(list)
+      );
     }
   } catch {
-    // Silent fail
+    // Graceful silent fail
   }
 }
 
@@ -166,12 +246,14 @@ export function updateHandoffJobStatus(
  * Xóa bản ghi Job khỏi UI Tracker
  */
 export function deleteHandoffJob(jobId: string): void {
-  if (typeof localStorage === 'undefined') return;
   try {
     const list = getStoredHandoffJobs().filter((item) => item.jobId !== jobId);
-    localStorage.setItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY, JSON.stringify(list));
+    safeSetLocalStorageItem(
+      ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY,
+      JSON.stringify(list)
+    );
   } catch {
-    // Silent fail
+    // Graceful silent fail
   }
 }
 
@@ -188,7 +270,7 @@ export function completeMatchingHandoffJob(params: {
   artifactType?: NotebookLMArtifactType;
   jobId?: string;
 }): AntigravityHandoffJob | null {
-  if (typeof localStorage === 'undefined' || !params || !params.topicId) return null;
+  if (!params || !params.topicId) return null;
   try {
     const list = getStoredHandoffJobs();
     if (!list || list.length === 0) return null;
@@ -215,7 +297,10 @@ export function completeMatchingHandoffJob(params: {
     target.status = 'success';
     target.updatedAt = new Date().toISOString();
 
-    localStorage.setItem(ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY, JSON.stringify(list));
+    safeSetLocalStorageItem(
+      ANTIGRAVITY_HANDOFF_JOBS_STORAGE_KEY,
+      JSON.stringify(list)
+    );
     return target;
   } catch {
     return null;
