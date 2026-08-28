@@ -4,6 +4,7 @@ import {
   safeSetLocalStorageItem,
   safeRemoveLocalStorageItem,
 } from "../lib/storage";
+import { SyncQueueService } from "./syncQueue";
 import {
   ValidatedHydrateInput,
   ValidatedHydrateResponse,
@@ -323,14 +324,18 @@ export class LocalStorageDataRepository implements IDataRepository {
  */
 export class ApiDataRepository implements IDataRepository {
   private localFallback: LocalStorageDataRepository;
+  private syncQueue: SyncQueueService;
   private apiBaseUrl: string;
 
   constructor(
     apiBaseUrl = "/api",
     localFallback = new LocalStorageDataRepository(),
+    syncQueue = new SyncQueueService(),
   ) {
     this.apiBaseUrl = apiBaseUrl;
     this.localFallback = localFallback;
+    this.syncQueue = syncQueue;
+    this.syncQueue.listenForOnlineEvents(apiBaseUrl);
   }
 
   private getUrl(path: string): string | null {
@@ -477,13 +482,34 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl("/notes");
     if (url) {
       try {
-        await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(note),
         });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "note",
+            action: "save",
+            entityId: note.id,
+            payload: note,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "note",
+          action: "save",
+          entityId: note.id,
+          payload: note,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return note;
@@ -494,9 +520,28 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl(`/notes/${noteId}`);
     if (url) {
       try {
-        await fetch(url, { method: "DELETE" });
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "note",
+            action: "delete",
+            entityId: noteId,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "note",
+          action: "delete",
+          entityId: noteId,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return true;
