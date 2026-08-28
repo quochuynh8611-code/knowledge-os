@@ -15,6 +15,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "postinstall": "prisma generate",
     "snapshot:create": "tsx scripts/backup-snapshot.ts",
     "snapshot:dry-run": "tsx scripts/backup-snapshot.ts --dry-run",
     "snapshot:verify": "tsx scripts/backup-snapshot.ts --verify",

@@ -40,9 +40,19 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
         let linksCount = 0;
         let progressCount = 0;
 
+        // Category ID resolution map (resolves by id or slug to real database category id)
+        const categoryIdMap = new Map<string, string>();
+        if (typeof tx.category?.findMany === "function") {
+          const existingDbCategories = (await tx.category.findMany()) || [];
+          for (const c of existingDbCategories) {
+            if (c.id) categoryIdMap.set(c.id, c.id);
+            if (c.slug) categoryIdMap.set(c.slug, c.id);
+          }
+        }
+
         // Categories
         for (const cat of payload.categories) {
-          await tx.category.upsert({
+          const savedCat = await tx.category.upsert({
             where: { slug: cat.slug },
             create: {
               id: cat.id,
@@ -65,6 +75,12 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             },
           });
           categoriesCount++;
+          if (savedCat?.id) {
+            categoryIdMap.set(savedCat.id, savedCat.id);
+            if (savedCat.slug) categoryIdMap.set(savedCat.slug, savedCat.id);
+          }
+          if (cat.id && savedCat?.id) categoryIdMap.set(cat.id, savedCat.id);
+          if (cat.slug && savedCat?.id) categoryIdMap.set(cat.slug, savedCat.id);
         }
 
         // Tags
@@ -90,6 +106,15 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
         // Topics
         for (const topic of payload.topics) {
           const normTags = normalizeTopicTags(topic.tags || []);
+          const resolvedCategoryId =
+            categoryIdMap.get(topic.categoryId) || topic.categoryId;
+
+          // Fail fast with explicit descriptive error if category does not exist
+          if (categoryIdMap.size > 0 && !categoryIdMap.has(topic.categoryId)) {
+            throw new Error(
+              `Foreign key guard: Danh mục với ID/Slug '${topic.categoryId}' không tồn tại cho chủ đề '${topic.title}' (slug: ${topic.slug}).`
+            );
+          }
 
           await tx.topic.upsert({
             where: { slug: topic.slug },
@@ -97,7 +122,7 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
               id: topic.id,
               title: topic.title,
               slug: topic.slug,
-              categoryId: topic.categoryId,
+              categoryId: resolvedCategoryId,
               type: topic.type,
               parentId: topic.parentId,
               description: topic.description,
@@ -106,7 +131,7 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             },
             update: {
               title: topic.title,
-              categoryId: topic.categoryId,
+              categoryId: resolvedCategoryId,
               type: topic.type,
               description: topic.description,
               content: topic.content,

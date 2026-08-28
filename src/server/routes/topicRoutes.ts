@@ -115,12 +115,23 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
       const normalizedTags = normalizeTopicTags(parsed.data.tags || []);
 
       let resolvedType = parsed.data.type;
-      if (!resolvedType || resolvedType === "general") {
-        const cat = await prisma.category.findUnique({
-          where: { id: parsed.data.categoryId },
+      let targetCategoryId = parsed.data.categoryId;
+
+      // Validate & resolve category by id or slug if category model is available
+      if (typeof prisma.category?.findUnique === "function") {
+        let cat = await prisma.category.findUnique({
+          where: { id: targetCategoryId },
         });
+        if (!cat) {
+          cat = await prisma.category.findUnique({
+            where: { slug: targetCategoryId },
+          });
+        }
         if (cat) {
-          resolvedType = (cat.type || cat.slug) as any;
+          targetCategoryId = cat.id;
+          if (!resolvedType || resolvedType === "general") {
+            resolvedType = (cat.type || cat.slug) as any;
+          }
         }
       }
 
@@ -132,7 +143,7 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
             slug:
               parsed.data.slug ||
               parsed.data.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-            categoryId: parsed.data.categoryId,
+            categoryId: targetCategoryId,
             type: resolvedType || "general",
             parentId: parsed.data.parentId,
             description: parsed.data.description,
@@ -162,6 +173,19 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
     }
     try {
       const updateData = { ...parsed.data };
+      if (updateData.categoryId && typeof prisma.category?.findUnique === "function") {
+        let cat = await prisma.category.findUnique({
+          where: { id: updateData.categoryId },
+        });
+        if (!cat) {
+          cat = await prisma.category.findUnique({
+            where: { slug: updateData.categoryId },
+          });
+        }
+        if (cat) {
+          updateData.categoryId = cat.id;
+        }
+      }
       let normalizedTags: string[] | undefined;
       if (updateData.tags) {
         normalizedTags = normalizeTopicTags(updateData.tags);

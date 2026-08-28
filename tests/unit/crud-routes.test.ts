@@ -40,10 +40,17 @@ describe("CRUD Routes Contract (Categories, Notes, Resources)", () => {
   });
 
   describe("Notes CRUD", () => {
-    it("GET /notes trả về danh sách notes", async () => {
+    it("GET /notes trả về danh sách notes kèm additionalTopics đã map thành topicIds", async () => {
       const mockPrisma: any = {
         note: {
-          findMany: vi.fn().mockResolvedValue([{ id: "n-1", title: "Ghi chú 1" }]),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "n-1",
+              topicId: "top-1",
+              title: "Ghi chú 1",
+              additionalTopics: [{ topicId: "top-2" }],
+            },
+          ]),
         },
       };
       const app = express();
@@ -51,7 +58,12 @@ describe("CRUD Routes Contract (Categories, Notes, Resources)", () => {
 
       const res = await request(app).get("/api/notes");
       expect(res.status).toBe(200);
-      expect(res.body).toEqual([{ id: "n-1", title: "Ghi chú 1" }]);
+      expect(mockPrisma.note.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: { additionalTopics: true },
+        })
+      );
+      expect(res.body[0].topicIds).toEqual(["top-1", "top-2"]);
     });
 
     it("DELETE /notes/:id xóa note thành công", async () => {

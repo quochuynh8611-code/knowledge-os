@@ -130,4 +130,48 @@ describe("Topic Routes Contract", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ success: true, id: "top-1" });
   });
+
+  it("5. POST /topics tự động tìm và gán Category ID khi user truyền category slug", async () => {
+    const mockPrisma: any = {
+      category: {
+        findUnique: vi
+          .fn()
+          .mockResolvedValueOnce(null) // by id -> null
+          .mockResolvedValueOnce({
+            id: "cat-uuid-phathoc",
+            slug: "phat-hoc",
+            type: "phat-hoc",
+          }), // by slug -> found
+      },
+      topic: {
+        create: vi.fn().mockImplementation(async ({ data }) => ({
+          id: "new-top-slug",
+          ...data,
+        })),
+      },
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createTopicRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/topics")
+      .send({
+        title: "Tứ Niệm Xứ",
+        categoryId: "phat-hoc", // Dùng slug
+        type: "phat-hoc",
+        description: "Khảo cứu thực hành",
+        content: "Nội dung",
+      });
+
+    expect(response.status).toBe(201);
+    expect(mockPrisma.topic.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          categoryId: "cat-uuid-phathoc",
+        }),
+      })
+    );
+  });
 });

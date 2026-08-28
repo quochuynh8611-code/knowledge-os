@@ -166,4 +166,127 @@ describe("Sync Routes Contract", () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toBeDefined();
   });
+
+  it("4. POST /sync/hydrate chặn fail-fast với lỗi rõ ràng khi topic chứa categoryId không tồn tại (FK Guard)", async () => {
+    const mockTx: any = {
+      category: {
+        findMany: vi.fn().mockResolvedValue([]),
+        upsert: vi.fn().mockResolvedValue({ id: "cat-valid", slug: "phat-hoc" }),
+      },
+      tag: { upsert: vi.fn().mockResolvedValue({}) },
+      topic: { upsert: vi.fn().mockResolvedValue({}) },
+      studyProgress: { upsert: vi.fn().mockResolvedValue({}) },
+      note: { upsert: vi.fn().mockResolvedValue({}) },
+      resource: { upsert: vi.fn().mockResolvedValue({}) },
+      syncSession: { create: vi.fn().mockResolvedValue({}) },
+    };
+
+    const mockPrisma: any = {
+      syncSession: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn().mockImplementation(async (callback) => {
+        return callback(mockTx);
+      }),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createSyncRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/sync/hydrate")
+      .send({
+        clientSyncId: "session-invalid-cat",
+        clientTimestamp: "2026-08-27T10:00:00Z",
+        categories: [
+          {
+            id: "cat-valid",
+            name: "Phật Học",
+            slug: "phat-hoc",
+            type: "phat-hoc",
+          },
+        ],
+        tags: [],
+        topics: [
+          {
+            id: "top-1",
+            title: "Chủ đề lỗi",
+            slug: "chu-de-loi",
+            categoryId: "cat-non-existent",
+            type: "phat-hoc",
+          },
+        ],
+        notes: [],
+        resources: [],
+      });
+
+    expect(response.status).toBe(500);
+    expect(response.body.error).toContain("Foreign key guard");
+    expect(response.body.error).toContain("cat-non-existent");
+  });
+
+  it("5. POST /sync/hydrate tự động map category slug sang DB category id khi topic dùng slug", async () => {
+    const mockTx: any = {
+      category: {
+        findMany: vi.fn().mockResolvedValue([{ id: "db-cat-uuid-1", slug: "phat-hoc" }]),
+        upsert: vi.fn().mockResolvedValue({ id: "db-cat-uuid-1", slug: "phat-hoc" }),
+      },
+      tag: { upsert: vi.fn().mockResolvedValue({}) },
+      topic: { upsert: vi.fn().mockResolvedValue({}) },
+      studyProgress: { upsert: vi.fn().mockResolvedValue({}) },
+      note: { upsert: vi.fn().mockResolvedValue({}) },
+      resource: { upsert: vi.fn().mockResolvedValue({}) },
+      syncSession: { create: vi.fn().mockResolvedValue({}) },
+    };
+
+    const mockPrisma: any = {
+      syncSession: {
+        findUnique: vi.fn().mockResolvedValue(null),
+      },
+      $transaction: vi.fn().mockImplementation(async (callback) => {
+        return callback(mockTx);
+      }),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createSyncRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/sync/hydrate")
+      .send({
+        clientSyncId: "session-slug-resolve",
+        clientTimestamp: "2026-08-27T10:00:00Z",
+        categories: [
+          {
+            id: "client-custom-id",
+            name: "Phật Học",
+            slug: "phat-hoc",
+            type: "phat-hoc",
+          },
+        ],
+        tags: [],
+        topics: [
+          {
+            id: "top-1",
+            title: "Chủ đề 1",
+            slug: "chu-de-1",
+            categoryId: "phat-hoc", // Dùng slug thay vì id
+            type: "phat-hoc",
+          },
+        ],
+        notes: [],
+        resources: [],
+      });
+
+    expect(response.status).toBe(200);
+    expect(mockTx.topic.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          categoryId: "db-cat-uuid-1",
+        }),
+      })
+    );
+  });
 });
