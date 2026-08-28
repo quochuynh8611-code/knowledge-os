@@ -32,11 +32,14 @@ export function SyncStatusBadge({
     failedCount,
     isFlushing,
     isOnline,
+    telemetryEvents,
+    telemetryStats,
     flush,
     discardFailedMutation,
   } = useSyncQueue(syncQueueService, apiBaseUrl);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"queue" | "telemetry">("queue");
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(
     null
   );
@@ -134,6 +137,23 @@ export function SyncStatusBadge({
     }
   };
 
+  const getTelemetryEventBadge = (type: string) => {
+    switch (type) {
+      case "MUTATION_ENQUEUED":
+        return { label: "Thêm mới", color: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300" };
+      case "REPLAY_SUCCESS":
+        return { label: "Thành công", color: "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300" };
+      case "REPLAY_FAILED":
+        return { label: "Thất bại", color: "bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300" };
+      case "MUTATION_DISCARDED":
+        return { label: "Đã bỏ qua", color: "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300" };
+      case "QUEUE_FLUSH_COMPLETED":
+        return { label: "Đồng bộ xong", color: "bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300" };
+      default:
+        return { label: type, color: "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300" };
+    }
+  };
+
   const formatTimestamp = (isoString: string) => {
     try {
       const date = new Date(isoString);
@@ -147,13 +167,13 @@ export function SyncStatusBadge({
     }
   };
 
-  // ─── 3. Badge Trigger Rendering ───────────────────────────────────────────
+  // ─── 3. Dynamic Status Rendering ──────────────────────────────────────────
 
   const renderBadgeContent = () => {
     if (isFlushing) {
       return (
         <>
-          <RefreshCw className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+          <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
           <span className="hidden sm:inline">Đang đồng bộ...</span>
         </>
       );
@@ -162,20 +182,18 @@ export function SyncStatusBadge({
     if (failedCount > 0) {
       return (
         <>
-          <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+          <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
           <span className="hidden sm:inline">{failedCount} lỗi</span>
-          {isOnline && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                flush();
-              }}
-              className="ml-0.5 px-1.5 py-0.5 text-[11px] font-semibold bg-rose-200 dark:bg-rose-900/80 hover:bg-rose-300 dark:hover:bg-rose-800 text-rose-900 dark:text-rose-200 rounded-md transition cursor-pointer"
-            >
-              Thử lại
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              flush();
+            }}
+            className="ml-0.5 px-1.5 py-0.5 text-[11px] font-semibold bg-rose-200 dark:bg-rose-900/80 hover:bg-rose-300 dark:hover:bg-rose-800 text-rose-900 dark:text-rose-200 rounded-md transition cursor-pointer"
+          >
+            Thử lại
+          </button>
         </>
       );
     }
@@ -184,9 +202,16 @@ export function SyncStatusBadge({
       return (
         <>
           <CloudOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-          <span className="hidden sm:inline">
-            Ngoại tuyến {pendingCount > 0 ? `(${pendingCount})` : ""}
-          </span>
+          <span className="hidden sm:inline">Ngoại tuyến ({pendingCount})</span>
+        </>
+      );
+    }
+
+    if (pendingCount > 0) {
+      return (
+        <>
+          <RefreshCw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <span className="hidden sm:inline">Chờ đồng bộ ({pendingCount})</span>
         </>
       );
     }
@@ -240,7 +265,7 @@ export function SyncStatusBadge({
           className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-xl z-50 p-4 text-stone-900 dark:text-stone-100 animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
+          <div className="flex items-center justify-between pb-2.5 border-b border-stone-100 dark:border-stone-800">
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
                 Hàng Đợi Đồng Bộ
@@ -253,151 +278,301 @@ export function SyncStatusBadge({
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+              className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
               aria-label="Đóng"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Queue Items List (FIFO Order) */}
-          <div className="py-2 max-h-64 overflow-y-auto space-y-2">
-            {queue.length === 0 ? (
-              <div className="py-6 text-center text-xs text-stone-500 dark:text-stone-400">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5 opacity-80" />
-                Hàng đợi trống. Toàn bộ dữ liệu đã được đồng bộ an toàn.
-              </div>
-            ) : (
-              queue.map((mutation) => {
-                const { label: entityLabel, icon: EntityIcon } = getEntityInfo(
-                  mutation.entityType
-                );
-                const isFailed = mutation.status === "failed";
-
-                return (
-                  <div
-                    key={mutation.id}
-                    data-testid="sync-queue-item"
-                    className={`p-2.5 rounded-xl border text-xs transition ${
-                      isFailed
-                        ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/80"
-                        : "bg-stone-50/80 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 font-medium truncate">
-                        <EntityIcon className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400 shrink-0" />
-                        <span className="font-semibold text-stone-800 dark:text-stone-200">
-                          {entityLabel}
-                        </span>
-                        <span className="text-stone-400 dark:text-stone-500">
-                          •
-                        </span>
-                        <span className="text-stone-600 dark:text-stone-300 uppercase text-[10px] font-bold">
-                          {mutation.action === "save" ? "Lưu" : "Xóa"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${
-                            isFailed
-                              ? "bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300"
-                              : "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300"
-                          }`}
-                        >
-                          {isFailed
-                            ? mutation.retryCount > 0
-                              ? `Lỗi (${mutation.retryCount} lần)`
-                              : "Lỗi"
-                            : "Chờ đồng bộ"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-1 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                      <span>
-                        ID: {mutation.entityId}
-                        {isFailed && mutation.retryCount > 0 && (
-                          <span className="ml-1 text-rose-600 dark:text-rose-400 font-sans font-normal">
-                            • Đã thử {mutation.retryCount} lần
-                          </span>
-                        )}
-                        {isFailed && (
-                          <span className="ml-1 text-stone-500 dark:text-stone-400 font-sans font-normal">
-                            • {getBackoffStatusText(mutation, nowMs)}
-                          </span>
-                        )}
-                      </span>
-                      <span>{formatTimestamp(mutation.clientTimestamp)}</span>
-                    </div>
-
-                    {isFailed && mutation.lastError && (
-                      <div className="mt-1.5 p-1.5 bg-rose-100/70 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-800 dark:text-rose-300 text-[11px]">
-                        <strong>Lỗi:</strong> {mutation.lastError}
-                      </div>
-                    )}
-
-                    {/* Failed Mutation Operator Discard Control */}
-                    {isFailed && (
-                      <div className="mt-2 pt-1.5 border-t border-rose-200/50 dark:border-rose-900/50">
-                        {confirmingDiscardId === mutation.id ? (
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-rose-800 dark:text-rose-300 font-medium">
-                              Bỏ qua mục này?
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  discardFailedMutation(mutation.id);
-                                  setConfirmingDiscardId(null);
-                                }}
-                                className="px-2 py-0.5 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-md transition cursor-pointer"
-                              >
-                                Xác nhận bỏ qua
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmingDiscardId(null)}
-                                className="px-2 py-0.5 text-[10px] font-medium bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 rounded-md transition cursor-pointer"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setConfirmingDiscardId(mutation.id)
-                            }
-                            className="text-[11px] font-medium text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-200 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            Bỏ qua mục lỗi này
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+          {/* Tab Switcher */}
+          <div
+            role="tablist"
+            className="flex items-center gap-1 my-2.5 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl text-xs font-semibold"
+          >
+            <button
+              type="button"
+              role="tab"
+              id="tab-queue"
+              aria-selected={activeTab === "queue"}
+              aria-controls="panel-queue"
+              onClick={() => setActiveTab("queue")}
+              className={`flex-1 py-1 px-2 text-center rounded-lg transition cursor-pointer select-none ${
+                activeTab === "queue"
+                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs font-bold"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
+              }`}
+            >
+              Hàng đợi ({queue.length})
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="tab-telemetry"
+              aria-selected={activeTab === "telemetry"}
+              aria-controls="panel-telemetry"
+              onClick={() => setActiveTab("telemetry")}
+              className={`flex-1 py-1 px-2 text-center rounded-lg transition cursor-pointer select-none ${
+                activeTab === "telemetry"
+                  ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs font-bold"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200"
+              }`}
+            >
+              Nhật ký & Thống kê
+            </button>
           </div>
 
-          {/* Footer Action */}
-          {queue.length > 0 && isOnline && (
-            <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex justify-end">
-              <button
-                type="button"
-                onClick={() => flush()}
-                disabled={isFlushing}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-800 hover:bg-amber-900 disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 ${isFlushing ? "animate-spin" : ""}`}
-                />
-                <span>{isFlushing ? "Đang đồng bộ..." : "Đồng bộ ngay"}</span>
-              </button>
+          {/* Tab 1: Queue View */}
+          {activeTab === "queue" && (
+            <div id="panel-queue" role="tabpanel" aria-labelledby="tab-queue">
+              <div className="py-2 max-h-64 overflow-y-auto space-y-2">
+                {queue.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-stone-500 dark:text-stone-400">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5 opacity-80" />
+                    Hàng đợi trống. Toàn bộ dữ liệu đã được đồng bộ an toàn.
+                  </div>
+                ) : (
+                  queue.map((mutation) => {
+                    const { label: entityLabel, icon: EntityIcon } = getEntityInfo(
+                      mutation.entityType
+                    );
+                    const isFailed = mutation.status === "failed";
+
+                    return (
+                      <div
+                        key={mutation.id}
+                        data-testid="sync-queue-item"
+                        className={`p-2.5 rounded-xl border text-xs transition ${
+                          isFailed
+                            ? "bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-800/80"
+                            : "bg-stone-50/80 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 font-medium truncate">
+                            <EntityIcon className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400 shrink-0" />
+                            <span className="font-semibold text-stone-800 dark:text-stone-200">
+                              {entityLabel}
+                            </span>
+                            <span className="text-stone-400 dark:text-stone-500">
+                              •
+                            </span>
+                            <span className="text-stone-600 dark:text-stone-300 uppercase text-[10px] font-bold">
+                              {mutation.action === "save" ? "Lưu" : "Xóa"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span
+                              className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${
+                                isFailed
+                                  ? "bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300"
+                                  : "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300"
+                              }`}
+                            >
+                              {isFailed
+                                ? mutation.retryCount > 0
+                                  ? `Lỗi (${mutation.retryCount} lần)`
+                                  : "Lỗi"
+                                : "Chờ đồng bộ"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-1 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 font-mono">
+                          <span>
+                            ID: {mutation.entityId}
+                            {isFailed && mutation.retryCount > 0 && (
+                              <span className="ml-1 text-rose-600 dark:text-rose-400 font-sans font-normal">
+                                • Đã thử {mutation.retryCount} lần
+                              </span>
+                            )}
+                            {isFailed && (
+                              <span className="ml-1 text-stone-500 dark:text-stone-400 font-sans font-normal">
+                                • {getBackoffStatusText(mutation, nowMs)}
+                              </span>
+                            )}
+                          </span>
+                          <span>{formatTimestamp(mutation.clientTimestamp)}</span>
+                        </div>
+
+                        {isFailed && mutation.lastError && (
+                          <div className="mt-1.5 p-1.5 bg-rose-100/70 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 rounded-lg text-rose-800 dark:text-rose-300 text-[11px]">
+                            <strong>Lỗi:</strong> {mutation.lastError}
+                          </div>
+                        )}
+
+                        {/* Failed Mutation Operator Discard Control */}
+                        {isFailed && (
+                          <div className="mt-2 pt-1.5 border-t border-rose-200/50 dark:border-rose-900/50">
+                            {confirmingDiscardId === mutation.id ? (
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] text-rose-800 dark:text-rose-300 font-medium">
+                                  Bỏ qua mục này?
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      discardFailedMutation(mutation.id);
+                                      setConfirmingDiscardId(null);
+                                    }}
+                                    className="px-2 py-0.5 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-md transition cursor-pointer"
+                                  >
+                                    Xác nhận bỏ qua
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmingDiscardId(null)}
+                                    className="px-2 py-0.5 text-[10px] font-medium bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 rounded-md transition cursor-pointer"
+                                  >
+                                    Hủy
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmingDiscardId(mutation.id)
+                                }
+                                className="text-[11px] font-medium text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-200 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                Bỏ qua mục lỗi này
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer Action */}
+              {queue.length > 0 && isOnline && (
+                <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => flush()}
+                    disabled={isFlushing}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-800 hover:bg-amber-900 disabled:opacity-50 text-white rounded-xl shadow-xs transition cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={`w-3.5 h-3.5 ${isFlushing ? "animate-spin" : ""}`}
+                    />
+                    <span>{isFlushing ? "Đang đồng bộ..." : "Đồng bộ ngay"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Telemetry Read Model & Debug Panel */}
+          {activeTab === "telemetry" && (
+            <div
+              id="panel-telemetry"
+              role="tabpanel"
+              aria-labelledby="tab-telemetry"
+              data-testid="sync-telemetry-panel"
+            >
+              {/* Metric Summary Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 py-2">
+                <div className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-800 text-center">
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-medium">
+                    Tỉ lệ thành công
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {telemetryStats.successRate}%
+                  </span>
+                </div>
+                <div className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-800 text-center">
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-medium">
+                    Đã đồng bộ
+                  </span>
+                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                    {telemetryStats.successCount}
+                  </span>
+                </div>
+                <div className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-800 text-center">
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-medium">
+                    Lỗi
+                  </span>
+                  <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                    {telemetryStats.failureCount}
+                  </span>
+                </div>
+                <div className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-800 text-center">
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-medium">
+                    Đã bỏ qua
+                  </span>
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                    {telemetryStats.discardedCount}
+                  </span>
+                </div>
+              </div>
+
+              {/* Recent Events List (Max 10, Newest on Top) */}
+              <div className="pt-1 pb-1">
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
+                  Sự kiện gần đây ({Math.min(10, telemetryEvents.length)}/10)
+                </h4>
+                <div className="max-h-56 overflow-y-auto space-y-1.5">
+                  {telemetryEvents.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-stone-500 dark:text-stone-400">
+                      Chưa có sự kiện nào được ghi nhận.
+                    </div>
+                  ) : (
+                    [...telemetryEvents]
+                      .sort(
+                        (a, b) =>
+                          new Date(b.timestamp).getTime() -
+                          new Date(a.timestamp).getTime()
+                      )
+                      .slice(0, 10)
+                      .map((evt) => {
+                        const badge = getTelemetryEventBadge(evt.type);
+                        const entityLabel = evt.entityType
+                          ? getEntityInfo(evt.entityType).label
+                          : null;
+                        return (
+                          <div
+                            key={evt.id}
+                            data-testid="sync-telemetry-item"
+                            className="p-2 rounded-xl border border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30 text-xs"
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span
+                                  className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${badge.color}`}
+                                >
+                                  {badge.label}
+                                </span>
+                                {entityLabel && (
+                                  <span className="font-semibold text-stone-700 dark:text-stone-300">
+                                    {entityLabel}
+                                  </span>
+                                )}
+                                {evt.entityId && (
+                                  <span className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
+                                    {evt.entityId}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-stone-400 dark:text-stone-500 shrink-0 font-mono">
+                                {formatTimestamp(evt.timestamp)}
+                              </span>
+                            </div>
+                            {evt.error && (
+                              <div className="mt-1 p-1 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/60 rounded text-rose-800 dark:text-rose-300 text-[10px]">
+                                {evt.error}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

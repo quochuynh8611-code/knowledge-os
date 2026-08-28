@@ -136,7 +136,7 @@ export class SyncQueueService {
   discard(mutationId: string): boolean {
     const queue = this.getQueue();
     const target = queue.find((m) => m.id === mutationId);
-    if (!target) {
+    if (!target || target.status !== "failed") {
       return false;
     }
     this.remove(mutationId);

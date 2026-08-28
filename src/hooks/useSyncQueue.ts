@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SyncQueueService, type FlushResult } from "../services/syncQueue";
 import type { SyncMutation } from "../lib/syncQueue";
+import type {
+  SyncTelemetryEvent,
+  SyncTelemetryStats,
+} from "../lib/syncTelemetry";
 
 export interface UseSyncQueueReturn {
   queue: SyncMutation[];
@@ -8,6 +12,8 @@ export interface UseSyncQueueReturn {
   failedCount: number;
   isFlushing: boolean;
   isOnline: boolean;
+  telemetryEvents: SyncTelemetryEvent[];
+  telemetryStats: SyncTelemetryStats;
   flush: () => Promise<FlushResult>;
   discardFailedMutation: (mutationId: string) => boolean;
 }
@@ -27,12 +33,20 @@ export function useSyncQueue(
   const [isOnline, setIsOnline] = useState<boolean>(() =>
     typeof navigator !== "undefined" ? navigator.onLine : true
   );
+  const [telemetryEvents, setTelemetryEvents] = useState<SyncTelemetryEvent[]>(
+    () => syncQueueService.getTelemetryEvents()
+  );
+  const [telemetryStats, setTelemetryStats] = useState<SyncTelemetryStats>(
+    () => syncQueueService.getTelemetryStats()
+  );
 
   // Sync state with SyncQueueService subscription
   useEffect(() => {
     const updateState = () => {
       setQueue(syncQueueService.getQueue());
       setIsFlushing(syncQueueService.getIsFlushing());
+      setTelemetryEvents(syncQueueService.getTelemetryEvents());
+      setTelemetryStats(syncQueueService.getTelemetryStats());
     };
 
     // Initial sync
@@ -123,13 +137,7 @@ export function useSyncQueue(
 
   const discardFailedMutation = useCallback(
     (mutationId: string): boolean => {
-      const currentQueue = syncQueueService.getQueue();
-      const target = currentQueue.find((m) => m.id === mutationId);
-      if (!target || target.status !== "failed") {
-        return false;
-      }
-      syncQueueService.remove(mutationId);
-      return true;
+      return syncQueueService.discard(mutationId);
     },
     [syncQueueService]
   );
@@ -140,6 +148,8 @@ export function useSyncQueue(
     failedCount,
     isFlushing,
     isOnline,
+    telemetryEvents,
+    telemetryStats,
     flush,
     discardFailedMutation,
   };
