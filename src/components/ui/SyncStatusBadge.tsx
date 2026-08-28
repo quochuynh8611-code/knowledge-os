@@ -40,6 +40,7 @@ export function SyncStatusBadge({
   const [confirmingDiscardId, setConfirmingDiscardId] = useState<string | null>(
     null
   );
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ─── 1. Keyboard & Click Outside Handlers ──────────────────────────────────
@@ -73,7 +74,48 @@ export function SyncStatusBadge({
     };
   }, [isOpen]);
 
-  // ─── 2. Entity Icon / Label Helper ────────────────────────────────────────
+  // ─── 1b. Scoped Live Ticker (1s Interval) ──────────────────────────────────
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const hasCooldown = queue.some((m) => {
+      if (m.status !== "failed" || !m.nextRetryAt) return false;
+      return new Date(m.nextRetryAt).getTime() > Date.now();
+    });
+
+    if (!hasCooldown) return;
+
+    setNowMs(Date.now());
+
+    const intervalId = setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isOpen, queue]);
+
+  // ─── 2. Entity Icon / Label & Backoff Helper ──────────────────────────────
+
+  const getBackoffStatusText = (mutation: SyncMutation, currentNowMs: number): string | null => {
+    if (mutation.status !== "failed") {
+      return null;
+    }
+    if (!mutation.nextRetryAt) {
+      return "Sẵn sàng thử lại";
+    }
+    const nextRetryMs = new Date(mutation.nextRetryAt).getTime();
+    if (currentNowMs >= nextRetryMs) {
+      return "Sẵn sàng thử lại";
+    }
+    const remainingSec = Math.max(1, Math.ceil((nextRetryMs - currentNowMs) / 1000));
+    if (remainingSec >= 60) {
+      return "Thử lại sau 1 phút";
+    }
+    return `Thử lại sau ${remainingSec}s`;
+  };
 
   const getEntityInfo = (entityType: SyncMutation["entityType"]) => {
     switch (entityType) {
@@ -278,6 +320,11 @@ export function SyncStatusBadge({
                         {isFailed && mutation.retryCount > 0 && (
                           <span className="ml-1 text-rose-600 dark:text-rose-400 font-sans font-normal">
                             • Đã thử {mutation.retryCount} lần
+                          </span>
+                        )}
+                        {isFailed && (
+                          <span className="ml-1 text-stone-500 dark:text-stone-400 font-sans font-normal">
+                            • {getBackoffStatusText(mutation, nowMs)}
                           </span>
                         )}
                       </span>
