@@ -104,7 +104,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       // Metrics check
       expect(within(panel).getByText(/tỉ lệ thành công/i)).toBeInTheDocument();
-      expect(within(panel).getByText(/100%/i)).toBeInTheDocument();
+      expect(within(panel).getAllByText(/100%/i).length).toBeGreaterThanOrEqual(1);
       expect(within(panel).getByText(/đã đồng bộ/i)).toBeInTheDocument();
       expect(within(panel).getByText("8")).toBeInTheDocument();
     });
@@ -203,6 +203,42 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       // Queue item still intact
       expect(screen.getByTestId("sync-queue-item")).toBeInTheDocument();
+    });
+  });
+
+  // ─── 5. Sync Health Status Banner in Telemetry Tab ─────────────────────────
+
+  describe("5. Sync Health Status Banner in Telemetry Tab", () => {
+    it("5.1. renders unknown health banner when queue is empty and no telemetry exists", () => {
+      render(<SyncStatusBadge syncQueueService={service} />);
+      openPopover();
+      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+
+      const banner = screen.getByTestId("sync-health-banner");
+      expect(banner).toBeInTheDocument();
+      expect(within(banner).getByText(/chưa có dữ liệu/i)).toBeInTheDocument();
+    });
+
+    it("5.2. renders degraded health banner when queue contains failed items", () => {
+      service.enqueue({
+        id: "mut-f-health",
+        entityType: "note",
+        action: "save",
+        entityId: "note-h-1",
+        payload: { title: "Note" },
+        clientTimestamp: "2026-08-28T12:00:00.000Z",
+        retryCount: 1,
+        status: "failed",
+      });
+
+      render(<SyncStatusBadge syncQueueService={service} />);
+      openPopover();
+      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+
+      const banner = screen.getByTestId("sync-health-banner");
+      expect(banner).toBeInTheDocument();
+      expect(within(banner).getByText(/gián đoạn nhẹ/i)).toBeInTheDocument();
+      expect(within(banner).getByText(/1 lỗi chờ thử lại/i)).toBeInTheDocument();
     });
   });
 });

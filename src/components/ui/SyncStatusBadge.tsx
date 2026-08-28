@@ -14,11 +14,42 @@ import {
 import { useSyncQueue } from "../../hooks/useSyncQueue";
 import { SyncQueueService } from "../../services/syncQueue";
 import type { SyncMutation } from "../../lib/syncQueue";
+import type { SyncHealthLevel } from "../../lib/syncTelemetry";
 
 export interface SyncStatusBadgeProps {
   syncQueueService?: SyncQueueService;
   apiBaseUrl?: string;
   className?: string;
+}
+
+function getHealthBadgeStyle(level?: SyncHealthLevel) {
+  switch (level) {
+    case "healthy":
+      return {
+        bg: "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/80 dark:border-emerald-800/60",
+        text: "text-emerald-800 dark:text-emerald-300",
+        indicator: "bg-emerald-500",
+      };
+    case "degraded":
+      return {
+        bg: "bg-amber-50/80 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60",
+        text: "text-amber-800 dark:text-amber-300",
+        indicator: "bg-amber-500",
+      };
+    case "critical":
+      return {
+        bg: "bg-rose-50/80 dark:bg-rose-950/40 border-rose-200/80 dark:border-rose-800/60",
+        text: "text-rose-800 dark:text-rose-300",
+        indicator: "bg-rose-500",
+      };
+    case "unknown":
+    default:
+      return {
+        bg: "bg-stone-50 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-800",
+        text: "text-stone-700 dark:text-stone-300",
+        indicator: "bg-stone-400",
+      };
+  }
 }
 
 export function SyncStatusBadge({
@@ -34,6 +65,7 @@ export function SyncStatusBadge({
     isOnline,
     telemetryEvents,
     telemetryStats,
+    syncHealth,
     flush,
     discardFailedMutation,
   } = useSyncQueue(syncQueueService, apiBaseUrl);
@@ -475,8 +507,44 @@ export function SyncStatusBadge({
               aria-labelledby="tab-telemetry"
               data-testid="sync-telemetry-panel"
             >
+              {/* Health Status Banner */}
+              {(() => {
+                const healthStyle = getHealthBadgeStyle(syncHealth?.level);
+                return (
+                  <div
+                    data-testid="sync-health-banner"
+                    className={`p-2.5 rounded-xl border mt-1 mb-2 flex items-center justify-between gap-2 ${healthStyle.bg}`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <span
+                        className={`w-2 h-2 rounded-full shrink-0 ${healthStyle.indicator}`}
+                      />
+                      <div className="truncate">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-xs font-bold ${healthStyle.text}`}
+                          >
+                            {syncHealth?.label || "Chưa có dữ liệu"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+                          {syncHealth?.reasons && syncHealth.reasons.length > 0
+                            ? syncHealth.reasons[0]
+                            : syncHealth?.summary}
+                        </p>
+                      </div>
+                    </div>
+                    {syncHealth?.level !== "unknown" && (
+                      <span className="text-[11px] font-mono font-semibold text-stone-500 dark:text-stone-400 shrink-0">
+                        {syncHealth?.successRate}%
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Metric Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 py-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 py-1">
                 <div className="p-2 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-800 text-center">
                   <span className="text-[10px] text-stone-500 dark:text-stone-400 block font-medium">
                     Tỉ lệ thành công

@@ -162,4 +162,30 @@ describe("Phase P2.4 — Sync Queue Observability & useSyncQueue Hook Integratio
       expect(result.current.isOnline).toBe(true);
     });
   });
+
+  // ─── 5. Sync Health Read Model Exposure ───────────────────────────────────
+
+  describe("5. Sync Health Read Model Exposure", () => {
+    it("5.1. exposes syncHealth object reflecting current queue and telemetry status", () => {
+      const { result } = renderHook(() => useSyncQueue(syncQueueService));
+
+      expect(result.current.syncHealth).toBeDefined();
+      expect(result.current.syncHealth.level).toBe("unknown");
+      expect(result.current.syncHealth.label).toBe("Chưa có dữ liệu");
+
+      // Enqueue a failed mutation
+      act(() => {
+        syncQueueService.enqueue({
+          ...sampleMutation,
+          id: "mut-f-hook",
+          status: "failed",
+          retryCount: 1,
+        });
+      });
+
+      expect(result.current.syncHealth.level).toBe("degraded");
+      expect(result.current.syncHealth.label).toBe("Gián đoạn nhẹ");
+      expect(result.current.syncHealth.activeFailures).toBe(1);
+    });
+  });
 });

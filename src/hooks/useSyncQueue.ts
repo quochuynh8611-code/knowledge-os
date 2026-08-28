@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { SyncQueueService, type FlushResult } from "../services/syncQueue";
 import type { SyncMutation } from "../lib/syncQueue";
-import type {
-  SyncTelemetryEvent,
-  SyncTelemetryStats,
+import {
+  type SyncTelemetryEvent,
+  type SyncTelemetryStats,
+  type SyncHealthReport,
+  evaluateSyncHealth,
 } from "../lib/syncTelemetry";
 
 export interface UseSyncQueueReturn {
@@ -14,6 +16,7 @@ export interface UseSyncQueueReturn {
   isOnline: boolean;
   telemetryEvents: SyncTelemetryEvent[];
   telemetryStats: SyncTelemetryStats;
+  syncHealth: SyncHealthReport;
   flush: () => Promise<FlushResult>;
   discardFailedMutation: (mutationId: string) => boolean;
 }
@@ -131,6 +134,11 @@ export function useSyncQueue(
     [queue]
   );
 
+  const syncHealth = useMemo(
+    () => evaluateSyncHealth(queue, telemetryStats, telemetryEvents),
+    [queue, telemetryStats, telemetryEvents]
+  );
+
   const flush = useCallback(async (): Promise<FlushResult> => {
     return syncQueueService.flushQueue(apiBaseUrl);
   }, [syncQueueService, apiBaseUrl]);
@@ -150,6 +158,7 @@ export function useSyncQueue(
     isOnline,
     telemetryEvents,
     telemetryStats,
+    syncHealth,
     flush,
     discardFailedMutation,
   };

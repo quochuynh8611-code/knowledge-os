@@ -145,3 +145,114 @@ export function deserializeTelemetryEvents(
     return [];
   }
 }
+
+// ─── Health Rules & Alerting Read Model ────────────────────────────────────
+
+export type SyncHealthLevel = "healthy" | "degraded" | "critical" | "unknown";
+
+export interface SyncHealthReport {
+  level: SyncHealthLevel;
+  label: string;
+  score: number; // 0 - 100
+  reasons: string[];
+  summary: string;
+  activeFailures: number;
+  successRate: number;
+}
+
+/**
+ * Pure deterministic sync health evaluator.
+ * Evaluates queue state and telemetry statistics to produce a structured health report.
+ */
+export function evaluateSyncHealth(
+  queue: Array<{ status?: string; retryCount?: number; [key: string]: any }>,
+  telemetryStats: SyncTelemetryStats,
+  _telemetryEvents?: SyncTelemetryEvent[]
+): SyncHealthReport {
+  const activeFailures = queue.filter((m) => m.status === "failed").length;
+  const hasExhaustedRetry = queue.some(
+    (m) =>
+      m.status === "failed" &&
+      typeof m.retryCount === "number" &&
+      m.retryCount >= 5
+  );
+  const totalReplayAttempts =
+    telemetryStats.successCount + telemetryStats.failureCount;
+  const hasSufficientSamples = totalReplayAttempts >= 3;
+  const successRate = telemetryStats.successRate;
+
+  // 1. Unknown
+  if (queue.length === 0 && telemetryStats.totalEvents === 0) {
+    return {
+      level: "unknown",
+      label: "Chưa có dữ liệu",
+      score: 100,
+      reasons: ["Chưa phát sinh hoạt động đồng bộ nào"],
+      summary: "Chưa có dữ liệu đồng bộ",
+      activeFailures: 0,
+      successRate: 0,
+    };
+  }
+
+  // 2. Critical
+  if (
+    hasExhaustedRetry ||
+    activeFailures >= 5 ||
+    (hasSufficientSamples && successRate < 50)
+  ) {
+    const reasons: string[] = [];
+    if (hasExhaustedRetry) {
+      reasons.push(
+        "Có đột biến bị lỗi lặp lại nhiều lần (vượt ngưỡng thử lại 5 lần)"
+      );
+    }
+    if (activeFailures >= 5) {
+      reasons.push(`Có ${activeFailures} lỗi đồng bộ đang bị tắc nghẽn`);
+    }
+    if (hasSufficientSamples && successRate < 50) {
+      reasons.push(`Tỉ lệ đồng bộ thành công thấp (${successRate}%)`);
+    }
+
+    return {
+      level: "critical",
+      label: "Lỗi nghiêm trọng",
+      score: Math.max(0, Math.min(40, successRate)),
+      reasons,
+      summary: "Hàng đợi đồng bộ gặp sự cố nghiêm trọng",
+      activeFailures,
+      successRate,
+    };
+  }
+
+  // 3. Degraded
+  if (activeFailures > 0 || (hasSufficientSamples && successRate < 90)) {
+    const reasons: string[] = [];
+    if (activeFailures > 0) {
+      reasons.push(`Đang có ${activeFailures} lỗi chờ thử lại theo backoff`);
+    }
+    if (hasSufficientSamples && successRate < 90) {
+      reasons.push(`Tỉ lệ đồng bộ thành công đạt ${successRate}%`);
+    }
+
+    return {
+      level: "degraded",
+      label: "Gián đoạn nhẹ",
+      score: Math.max(50, Math.min(85, successRate || 70)),
+      reasons,
+      summary: "Đang có đột biến gián đoạn chờ thử lại",
+      activeFailures,
+      successRate,
+    };
+  }
+
+  // 4. Healthy
+  return {
+    level: "healthy",
+    label: "Hoạt động tốt",
+    score: 100,
+    reasons: ["Toàn bộ dữ liệu đồng bộ an toàn"],
+    summary: "Hoạt động đồng bộ diễn ra bình thường",
+    activeFailures: 0,
+    successRate,
+  };
+}
