@@ -422,13 +422,34 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl("/categories");
     if (url) {
       try {
-        await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(resolvedCategory),
         });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "category",
+            action: "save",
+            entityId: resolvedCategory.id,
+            payload: resolvedCategory,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "category",
+          action: "save",
+          entityId: resolvedCategory.id,
+          payload: resolvedCategory,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return resolvedCategory;
@@ -439,9 +460,28 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl(`/categories/${categoryId}`);
     if (url) {
       try {
-        await fetch(url, { method: "DELETE" });
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "category",
+            action: "delete",
+            entityId: categoryId,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "category",
+          action: "delete",
+          entityId: categoryId,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return true;
@@ -452,13 +492,34 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl("/topics");
     if (url) {
       try {
-        await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(topic),
         });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "topic",
+            action: "save",
+            entityId: topic.id,
+            payload: topic,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "topic",
+          action: "save",
+          entityId: topic.id,
+          payload: topic,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return topic;
@@ -469,9 +530,28 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl(`/topics/${topicId}`);
     if (url) {
       try {
-        await fetch(url, { method: "DELETE" });
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "topic",
+            action: "delete",
+            entityId: topicId,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "topic",
+          action: "delete",
+          entityId: topicId,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return true;

@@ -102,6 +102,44 @@ export class SyncQueueService {
         ? window.location.origin
         : "";
 
+    if (mutation.entityType === "category") {
+      if (mutation.action === "save" && mutation.payload) {
+        const url = `${origin}${apiBaseUrl}/categories`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mutation.payload),
+        });
+        return res.ok;
+      }
+      if (mutation.action === "delete") {
+        const url = `${origin}${apiBaseUrl}/categories/${encodeURIComponent(mutation.entityId)}`;
+        const res = await fetch(url, {
+          method: "DELETE",
+        });
+        return res.ok;
+      }
+    }
+
+    if (mutation.entityType === "topic") {
+      if (mutation.action === "save" && mutation.payload) {
+        const url = `${origin}${apiBaseUrl}/topics`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mutation.payload),
+        });
+        return res.ok;
+      }
+      if (mutation.action === "delete") {
+        const url = `${origin}${apiBaseUrl}/topics/${encodeURIComponent(mutation.entityId)}`;
+        const res = await fetch(url, {
+          method: "DELETE",
+        });
+        return res.ok;
+      }
+    }
+
     if (mutation.entityType === "note") {
       if (mutation.action === "save" && mutation.payload) {
         const url = `${origin}${apiBaseUrl}/notes`;
