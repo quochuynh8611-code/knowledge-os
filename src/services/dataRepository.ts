@@ -632,13 +632,34 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl("/resources");
     if (url) {
       try {
-        await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(resource),
         });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "resource",
+            action: "save",
+            entityId: resource.id,
+            payload: resource,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "resource",
+          action: "save",
+          entityId: resource.id,
+          payload: resource,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return resource;
@@ -649,9 +670,28 @@ export class ApiDataRepository implements IDataRepository {
     const url = this.getUrl(`/resources/${resourceId}`);
     if (url) {
       try {
-        await fetch(url, { method: "DELETE" });
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "resource",
+            action: "delete",
+            entityId: resourceId,
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "resource",
+          action: "delete",
+          entityId: resourceId,
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return true;

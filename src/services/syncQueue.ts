@@ -159,6 +159,25 @@ export class SyncQueueService {
       }
     }
 
+    if (mutation.entityType === "resource") {
+      if (mutation.action === "save" && mutation.payload) {
+        const url = `${origin}${apiBaseUrl}/resources`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mutation.payload),
+        });
+        return res.ok;
+      }
+      if (mutation.action === "delete") {
+        const url = `${origin}${apiBaseUrl}/resources/${encodeURIComponent(mutation.entityId)}`;
+        const res = await fetch(url, {
+          method: "DELETE",
+        });
+        return res.ok;
+      }
+    }
+
     return false;
   }
 
