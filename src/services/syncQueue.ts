@@ -178,6 +178,23 @@ export class SyncQueueService {
       }
     }
 
+    if (mutation.entityType === "studyProgress") {
+      if (mutation.action === "save" && mutation.payload) {
+        const url = `${origin}${apiBaseUrl}/study-progress`;
+        const payload = {
+          topicId: mutation.payload.topicId || mutation.entityId,
+          quality: typeof mutation.payload.quality === "number" ? mutation.payload.quality : 4,
+          triggerReason: mutation.payload.triggerReason || "offline_replayed",
+        };
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        return res.ok;
+      }
+    }
+
     return false;
   }
 

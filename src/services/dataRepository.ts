@@ -704,14 +704,52 @@ export class ApiDataRepository implements IDataRepository {
     await this.localFallback.saveStudyProgress(topicId, progress);
     const url = this.getUrl("/study-progress");
     if (url) {
+      const reviewPayload = {
+        topicId,
+        quality:
+          typeof (progress as any).quality === "number"
+            ? (progress as any).quality
+            : 4,
+        triggerReason: (progress as any).triggerReason || "review_completed",
+      };
+
       try {
-        await fetch(url, {
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ topicId, progress }),
+          body: JSON.stringify(reviewPayload),
         });
+        if (!res.ok) {
+          this.syncQueue.enqueue({
+            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            entityType: "studyProgress",
+            action: "save",
+            entityId: topicId,
+            payload: {
+              topicId,
+              quality: reviewPayload.quality,
+              triggerReason: "offline_replayed",
+            },
+            clientTimestamp: new Date().toISOString(),
+            retryCount: 0,
+            status: "pending",
+          });
+        }
       } catch {
-        // Handled via local fallback
+        this.syncQueue.enqueue({
+          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          entityType: "studyProgress",
+          action: "save",
+          entityId: topicId,
+          payload: {
+            topicId,
+            quality: reviewPayload.quality,
+            triggerReason: "offline_replayed",
+          },
+          clientTimestamp: new Date().toISOString(),
+          retryCount: 0,
+          status: "pending",
+        });
       }
     }
     return progress;
