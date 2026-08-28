@@ -18,7 +18,7 @@ export type TopicStatus = 'not_started' | 'in_progress' | 'completed' | 'reviewi
 export type LinkType = 'related' | 'prerequisite' | 'advanced' | 'contradicts';
 
 export interface KnowledgeLink {
-  id: string;
+  id?: string;
   sourceId: string;
   targetId: string;
   sourceTitle?: string;
@@ -26,6 +26,7 @@ export interface KnowledgeLink {
   linkType: LinkType;
   strength: number; // 1-5
   notes?: string;
+  explanation?: string;
 }
 
 export type NoteType = 'study' | 'insight' | 'question' | 'summary';

@@ -100,6 +100,7 @@ describe('Phase 2C.4: Data Management Modal Component Tests', () => {
         connected: true,
         timestamp: new Date().toISOString(),
       } as ValidatedDbHealthResponse),
+      resetAllData: vi.fn().mockResolvedValue(true),
     };
   });
 

@@ -154,9 +154,25 @@ export class LocalStorageDataRepository implements IDataRepository {
     payload: ValidatedHydrateInput,
   ): Promise<ValidatedHydrateResponse> {
     const validated = HydratePayloadSchema.parse(payload);
+    const normalizedTopics: Topic[] = validated.topics.map((t) => ({
+      ...t,
+      createdAt: t.createdAt || new Date().toISOString(),
+      updatedAt: t.updatedAt || new Date().toISOString(),
+      studyProgress: t.studyProgress || {
+        topicId: t.id,
+        status: "not_started",
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
+    }));
+
     this._persist({
       categories: validated.categories,
-      topics: validated.topics,
+      topics: normalizedTopics,
       notes: validated.notes,
       resources: validated.resources,
       tags: validated.tags,
