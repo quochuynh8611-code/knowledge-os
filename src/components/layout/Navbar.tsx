@@ -15,6 +15,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
+import { SyncStatusBadge } from "../ui/SyncStatusBadge";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
@@ -202,6 +203,9 @@ export function Navbar({
               <span className="w-2 h-2 rounded-full bg-amber-600"></span>
               <span>Handoff</span>
             </button>
+
+            {/* Sync Queue Status Indicator */}
+            <SyncStatusBadge />
 
             {/* Dark / Light Theme Toggle */}
             <ThemeToggle />
