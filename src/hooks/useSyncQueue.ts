@@ -9,6 +9,7 @@ export interface UseSyncQueueReturn {
   isFlushing: boolean;
   isOnline: boolean;
   flush: () => Promise<FlushResult>;
+  discardFailedMutation: (mutationId: string) => boolean;
 }
 
 const defaultSyncQueueService = new SyncQueueService();
@@ -73,6 +74,19 @@ export function useSyncQueue(
     return syncQueueService.flushQueue(apiBaseUrl);
   }, [syncQueueService, apiBaseUrl]);
 
+  const discardFailedMutation = useCallback(
+    (mutationId: string): boolean => {
+      const currentQueue = syncQueueService.getQueue();
+      const target = currentQueue.find((m) => m.id === mutationId);
+      if (!target || target.status !== "failed") {
+        return false;
+      }
+      syncQueueService.remove(mutationId);
+      return true;
+    },
+    [syncQueueService]
+  );
+
   return {
     queue,
     pendingCount,
@@ -80,5 +94,6 @@ export function useSyncQueue(
     isFlushing,
     isOnline,
     flush,
+    discardFailedMutation,
   };
 }
