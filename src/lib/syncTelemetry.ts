@@ -4,6 +4,8 @@
  * All functions are pure, deterministic, and free of side-effects.
  */
 
+import type { SyncMutation } from "./syncQueue";
+
 export type SyncTelemetryEventType =
   | "MUTATION_ENQUEUED"
   | "REPLAY_SUCCESS"
@@ -165,7 +167,7 @@ export interface SyncHealthReport {
  * Evaluates queue state and telemetry statistics to produce a structured health report.
  */
 export function evaluateSyncHealth(
-  queue: Array<{ status?: string; retryCount?: number; [key: string]: any }>,
+  queue: Array<Pick<SyncMutation, "status" | "retryCount">>,
   telemetryStats: SyncTelemetryStats,
   _telemetryEvents?: SyncTelemetryEvent[]
 ): SyncHealthReport {

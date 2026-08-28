@@ -14,7 +14,10 @@ import {
 import { useSyncQueue } from "../../hooks/useSyncQueue";
 import { SyncQueueService } from "../../services/syncQueue";
 import type { SyncMutation } from "../../lib/syncQueue";
-import type { SyncHealthLevel } from "../../lib/syncTelemetry";
+import type {
+  SyncHealthLevel,
+  SyncTelemetryEventType,
+} from "../../lib/syncTelemetry";
 
 export interface SyncStatusBadgeProps {
   syncQueueService?: SyncQueueService;
@@ -169,7 +172,7 @@ export function SyncStatusBadge({
     }
   };
 
-  const getTelemetryEventBadge = (type: string) => {
+  const getTelemetryEventBadge = (type: SyncTelemetryEventType) => {
     switch (type) {
       case "MUTATION_ENQUEUED":
         return { label: "Thêm mới", color: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300" };
