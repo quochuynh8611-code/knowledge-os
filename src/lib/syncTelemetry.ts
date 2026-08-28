@@ -17,7 +17,7 @@ export interface SyncTelemetryEvent {
   id: string;
   timestamp: string; // ISO string
   type: SyncTelemetryEventType;
-  entityType?: "category" | "topic" | "note" | "resource" | "studyProgress";
+  entityType?: SyncMutation["entityType"];
   mutationId?: string;
   entityId?: string;
   action?: "save" | "delete";
@@ -38,7 +38,7 @@ export interface SyncTelemetryStats {
   successCount: number;
   failureCount: number;
   discardedCount: number;
-  byEntityType: Record<string, EntityTypeTelemetryStats>;
+  byEntityType: Partial<Record<SyncMutation["entityType"], EntityTypeTelemetryStats>>;
   successRate: number; // 0 - 100 (%)
 }
 
@@ -68,9 +68,11 @@ export function calculateSyncTelemetryStats(
   let successCount = 0;
   let failureCount = 0;
   let discardedCount = 0;
-  const byEntityType: Record<string, EntityTypeTelemetryStats> = {};
+  const byEntityType: Partial<
+    Record<SyncMutation["entityType"], EntityTypeTelemetryStats>
+  > = {};
 
-  const ensureEntity = (type?: string) => {
+  const ensureEntity = (type?: SyncMutation["entityType"]) => {
     if (!type) return null;
     if (!byEntityType[type]) {
       byEntityType[type] = { success: 0, failure: 0, discarded: 0 };
