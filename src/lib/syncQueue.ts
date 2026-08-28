@@ -117,6 +117,39 @@ export function dequeueMutation(
 }
 
 /**
+ * Sanitizes and truncates overly long error strings to prevent storage bloat.
+ */
+export function sanitizeMutationError(
+  error?: string,
+  maxLength = 500
+): string | undefined {
+  if (!error || typeof error !== "string") {
+    return undefined;
+  }
+  const trimmed = error.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (trimmed.length > maxLength) {
+    return trimmed.slice(0, maxLength);
+  }
+  return trimmed;
+}
+
+/**
+ * Prunes exhausted failed mutations with retryCount >= maxRetryThreshold to reclaim storage.
+ * Strictly preserves all 'pending' mutations.
+ */
+export function pruneExhaustedFailedMutations(
+  queue: SyncMutation[],
+  maxRetryThreshold = 10
+): SyncMutation[] {
+  return queue.filter(
+    (m) => !(m.status === "failed" && m.retryCount >= maxRetryThreshold)
+  );
+}
+
+/**
  * Marks a mutation as failed, increments its retry count, records the error,
  * and computes exponential backoff scheduling metadata.
  */
@@ -127,6 +160,7 @@ export function markMutationFailed(
 ): SyncMutation[] {
   const now = Date.now();
   const lastAttemptAt = new Date(now).toISOString();
+  const sanitizedError = sanitizeMutationError(error);
 
   return queue.map((m) => {
     if (m.id === mutationId) {
@@ -138,7 +172,7 @@ export function markMutationFailed(
         ...m,
         retryCount: newRetryCount,
         status: "failed",
-        lastError: error,
+        lastError: sanitizedError,
         lastAttemptAt,
         backoffDelayMs,
         nextRetryAt,

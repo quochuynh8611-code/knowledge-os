@@ -6,6 +6,7 @@ import {
   serializeSyncQueue,
   deserializeSyncQueue,
   isMutationEligibleForReplay,
+  pruneExhaustedFailedMutations,
 } from "../lib/syncQueue";
 import {
   type SyncTelemetryEvent,
@@ -94,10 +95,53 @@ export class SyncQueueService {
     return deserializeSyncQueue(raw);
   }
 
-  private saveQueue(queue: SyncMutation[]): void {
+  private saveQueue(queue: SyncMutation[]): boolean {
     const serialized = serializeSyncQueue(queue);
-    safeSetLocalStorageItem(this.storageKey, serialized);
-    this.notifyListeners();
+    const success = safeSetLocalStorageItem(this.storageKey, serialized);
+    if (success) {
+      this.notifyListeners();
+      return true;
+    }
+
+    // Tier 1: Trim telemetry log down to 5 events to reclaim space, then retry
+    try {
+      const telemetryEvents = this.getTelemetryEvents();
+      if (telemetryEvents.length > 5) {
+        const trimmed = telemetryEvents.slice(telemetryEvents.length - 5);
+        safeSetLocalStorageItem(
+          this.telemetryStorageKey,
+          serializeTelemetryEvents(trimmed)
+        );
+      }
+    } catch {
+      // Ignore telemetry trim errors
+    }
+
+    const tier1RetrySuccess = safeSetLocalStorageItem(
+      this.storageKey,
+      serialized
+    );
+    if (tier1RetrySuccess) {
+      this.notifyListeners();
+      return true;
+    }
+
+    // Tier 2: Prune exhausted failed mutations (retryCount >= 10) and retry
+    const prunedQueue = pruneExhaustedFailedMutations(queue, 10);
+    if (prunedQueue.length < queue.length) {
+      const prunedSerialized = serializeSyncQueue(prunedQueue);
+      const tier2RetrySuccess = safeSetLocalStorageItem(
+        this.storageKey,
+        prunedSerialized
+      );
+      if (tier2RetrySuccess) {
+        this.notifyListeners();
+        return true;
+      }
+    }
+
+    // Tier 3: All recovery tiers failed, return false without corrupting previous storage
+    return false;
   }
 
   // ─── Telemetry Storage & Query Helpers ─────────────────────────────────────
@@ -136,16 +180,20 @@ export class SyncQueueService {
     }
   }
 
-  enqueue(mutation: SyncMutation): void {
+  enqueue(mutation: SyncMutation): boolean {
     const queue = this.getQueue();
     const updated = enqueueMutation(queue, mutation);
-    this.saveQueue(updated);
-    this.recordTelemetryEvent("MUTATION_ENQUEUED", {
-      mutationId: mutation.id,
-      entityType: mutation.entityType,
-      entityId: mutation.entityId,
-      action: mutation.action,
-    });
+    const saved = this.saveQueue(updated);
+    if (saved) {
+      this.recordTelemetryEvent("MUTATION_ENQUEUED", {
+        mutationId: mutation.id,
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        action: mutation.action,
+        retryCount: mutation.retryCount,
+      });
+    }
+    return saved;
   }
 
   remove(mutationId: string): void {
