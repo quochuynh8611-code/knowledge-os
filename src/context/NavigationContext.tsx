@@ -4,21 +4,18 @@ import React, {
   useState,
   useMemo,
   useCallback,
+  useEffect,
+  useRef,
   ReactNode,
 } from "react";
+import {
+  parseLocationHash,
+  buildLocationHash,
+  type ActiveTab,
+  type NavigationRouteState,
+} from "../lib/urlRouting";
 
-export type ActiveTab =
-  | "dashboard"
-  | "topics"
-  | "graph"
-  | "progress"
-  | "notes"
-  | "resources"
-  | "search"
-  | "ai_studio"
-  | "abhidharma_matrix"
-  | "divination_matrix"
-  | "lexicon";
+export type { ActiveTab, NavigationRouteState };
 
 export interface NavigationContextType {
   activeTab: ActiveTab;
@@ -40,19 +37,122 @@ const NavigationContext = createContext<NavigationContextType | undefined>(
 );
 
 export function NavigationProvider({ children }: { children: ReactNode }) {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
-  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<
-    string | null
-  >(null);
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(
-    null,
+  // Hydrate initial state from window.location.hash (SSR-safe)
+  const initialState = useMemo(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location &&
+      window.location.hash
+    ) {
+      return parseLocationHash(window.location.hash);
+    }
+    return {
+      activeTab: "dashboard" as ActiveTab,
+      selectedTopicId: null,
+      searchQuery: "",
+      selectedCategoryFilter: null,
+      selectedTagFilter: null,
+    };
+  }, []);
+
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(
+    initialState.activeTab,
   );
+  const [selectedTopicId, setSelectedTopicIdState] = useState<string | null>(
+    initialState.selectedTopicId,
+  );
+  const [searchQuery, setSearchQueryState] = useState(initialState.searchQuery);
+  const [selectedCategoryFilter, setSelectedCategoryFilterState] = useState<
+    string | null
+  >(initialState.selectedCategoryFilter);
+  const [selectedTagFilter, setSelectedTagFilterState] = useState<
+    string | null
+  >(initialState.selectedTagFilter);
+
+  const isSyncingFromHash = useRef(false);
+
+  // Sync state changes to window.location.hash
+  useEffect(() => {
+    if (typeof window === "undefined" || isSyncingFromHash.current) {
+      return;
+    }
+    const targetHash = buildLocationHash({
+      activeTab,
+      selectedTopicId,
+      searchQuery,
+      selectedCategoryFilter,
+      selectedTagFilter,
+    });
+    if (window.location.hash !== targetHash) {
+      if (
+        (window.location.hash === "" ||
+          window.location.hash === "#" ||
+          window.location.hash === "#/") &&
+        targetHash === "#/"
+      ) {
+        return;
+      }
+      window.location.hash = targetHash;
+    }
+  }, [
+    activeTab,
+    selectedTopicId,
+    searchQuery,
+    selectedCategoryFilter,
+    selectedTagFilter,
+  ]);
+
+  // Listen to hashchange events (Browser Back/Forward or manual URL hash updates)
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleHashChange = () => {
+      const parsed = parseLocationHash(window.location.hash);
+      isSyncingFromHash.current = true;
+      setActiveTabState(parsed.activeTab);
+      setSelectedTopicIdState(parsed.selectedTopicId);
+      setSearchQueryState(parsed.searchQuery);
+      setSelectedCategoryFilterState(parsed.selectedCategoryFilter);
+      setSelectedTagFilterState(parsed.selectedTagFilter);
+      setTimeout(() => {
+        isSyncingFromHash.current = false;
+      }, 0);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+    };
+  }, []);
+
+  const setActiveTab = useCallback((tab: ActiveTab) => {
+    setActiveTabState(tab);
+    if (tab !== "topics") {
+      setSelectedTopicIdState(null);
+    }
+  }, []);
+
+  const setSelectedTopicId = useCallback((id: string | null) => {
+    setSelectedTopicIdState(id);
+  }, []);
+
+  const setSearchQuery = useCallback((query: string) => {
+    setSearchQueryState(query);
+  }, []);
+
+  const setSelectedCategoryFilter = useCallback((catId: string | null) => {
+    setSelectedCategoryFilterState(catId);
+  }, []);
+
+  const setSelectedTagFilter = useCallback((tag: string | null) => {
+    setSelectedTagFilterState(tag);
+  }, []);
 
   const openTopicDetail = useCallback((topicId: string) => {
-    setSelectedTopicId(topicId);
-    setActiveTab("topics");
+    setSelectedTopicIdState(topicId);
+    setActiveTabState("topics");
   }, []);
 
   const value = useMemo<NavigationContextType>(
