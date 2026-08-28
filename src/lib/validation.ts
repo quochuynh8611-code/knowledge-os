@@ -111,6 +111,7 @@ export const SM2ReviewInputSchema = z.object({
     .int("Chất lượng ôn tập phải là số nguyên từ 0 đến 5")
     .min(0, "Chất lượng ôn tập phải từ 0 đến 5")
     .max(5, "Chất lượng ôn tập phải từ 0 đến 5"),
+  triggerReason: z.string().optional(),
 });
 
 // ==========================================
