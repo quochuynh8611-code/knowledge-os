@@ -41,11 +41,15 @@ const AntigravityHandoffModal = React.lazy(() =>
 export interface NavbarProps {
   onOpenCommandPalette?: () => void;
   onOpenShortcutsModal?: () => void;
+  onOpenNotebookLMModal?: () => void;
+  onOpenAntigravityModal?: () => void;
 }
 
 export function Navbar({
   onOpenCommandPalette,
   onOpenShortcutsModal,
+  onOpenNotebookLMModal,
+  onOpenAntigravityModal,
 }: NavbarProps = {}) {
   const {
     searchQuery,
@@ -186,7 +190,13 @@ export function Navbar({
 
             {/* NotebookLM Hub trigger */}
             <button
-              onClick={() => setShowNotebookLMModal(true)}
+              onClick={() => {
+                if (onOpenNotebookLMModal) {
+                  onOpenNotebookLMModal();
+                } else {
+                  setShowNotebookLMModal(true);
+                }
+              }}
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800 rounded-xl text-xs font-semibold transition"
               title="Đóng gói Google NotebookLM & Audio Overview"
             >
@@ -196,7 +206,13 @@ export function Navbar({
 
             {/* Antigravity Handoff trigger */}
             <button
-              onClick={() => setShowAntigravityModal(true)}
+              onClick={() => {
+                if (onOpenAntigravityModal) {
+                  onOpenAntigravityModal();
+                } else {
+                  setShowAntigravityModal(true);
+                }
+              }}
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800 rounded-xl text-xs font-semibold transition"
               title="Đóng gói Antigravity AI Handoff Bundle"
             >

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { DataProvider, useData } from "./context/DataContext";
 import { AppErrorBoundary } from "./components/error/AppErrorBoundary";
 import { Navbar } from "./components/layout/Navbar";
@@ -9,7 +9,6 @@ import { TopicDetail } from "./components/topics/TopicDetail";
 import { NotesManager } from "./components/notes/NotesManager";
 import { ResourcesManager } from "./components/resources/ResourcesManager";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useCommandPalette } from "./hooks/useCommandPalette";
 import { useTheme } from "./hooks/useTheme";
 import { CommandPalette } from "./components/search/CommandPalette";
 import { ShortcutsModal } from "./components/modals/ShortcutsModal";
@@ -22,7 +21,12 @@ import {
   Library,
   Search,
   Sparkles,
+  Brain,
 } from "lucide-react";
+import {
+  useCommandPalette,
+  CommandPaletteItem,
+} from "./hooks/useCommandPalette";
 
 // Lazy-loaded heavy & specialized workspace tabs
 const KnowledgeGraph = React.lazy(() =>
@@ -60,6 +64,16 @@ const MultilingualLexicon = React.lazy(() =>
     default: m.MultilingualLexicon,
   }))
 );
+const NotebookLMStudioModal = React.lazy(() =>
+  import("./components/integrations/NotebookLMStudioModal").then((m) => ({
+    default: m.NotebookLMStudioModal,
+  }))
+);
+const AntigravityHandoffModal = React.lazy(() =>
+  import("./components/integrations/AntigravityHandoffModal").then((m) => ({
+    default: m.AntigravityHandoffModal,
+  }))
+);
 
 function TabLoadingFallback() {
   return (
@@ -77,9 +91,53 @@ function AppContent() {
     useData();
   const { toggleTheme } = useTheme();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
+  const [showAntigravityModal, setShowAntigravityModal] = useState(false);
+
+  const customPaletteItems: CommandPaletteItem[] = useMemo(
+    () => [
+      {
+        id: "act-open-notebooklm",
+        title: "Mở NotebookLM Studio",
+        description:
+          "Sinh bản đồ tri thức, podcast âm thanh và câu hỏi trắc nghiệm",
+        category: "Hành động nhanh",
+        icon: Sparkles,
+        keywords: [
+          "notebooklm",
+          "studio",
+          "gemini",
+          "ai podcast",
+          "audio overview",
+          "study guide",
+          "tong hop",
+        ],
+        action: () => setShowNotebookLMModal(true),
+      },
+      {
+        id: "act-open-antigravity",
+        title: "Chuẩn Bị Antigravity Handoff",
+        description:
+          "Đóng gói bối cảnh khảo cứu gửi Antigravity AI Scholar (.agents/handoffs/)",
+        category: "Hành động nhanh",
+        icon: Brain,
+        keywords: [
+          "antigravity",
+          "handoff",
+          "ai scholar",
+          "agent",
+          "xuat goi",
+          "chuyen giao",
+        ],
+        action: () => setShowAntigravityModal(true),
+      },
+    ],
+    []
+  );
 
   // Command Palette hook
   const palette = useCommandPalette({
+    customItems: customPaletteItems,
     onNavigateTab: (tab) => setActiveTab(tab as any),
     onOpenTopic: (id) => openTopicDetail(id),
     onToggleTheme: () => toggleTheme(),
@@ -161,6 +219,8 @@ function AppContent() {
       <Navbar
         onOpenCommandPalette={palette.openPalette}
         onOpenShortcutsModal={() => setShowShortcutsModal(true)}
+        onOpenNotebookLMModal={() => setShowNotebookLMModal(true)}
+        onOpenAntigravityModal={() => setShowAntigravityModal(true)}
       />
 
       {/* Main Container: Sidebar + Content */}
@@ -254,6 +314,24 @@ function AppContent() {
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
       />
+
+      {/* Global Phase 5 Integration Modals */}
+      {showNotebookLMModal && (
+        <React.Suspense fallback={null}>
+          <NotebookLMStudioModal
+            isOpen={showNotebookLMModal}
+            onClose={() => setShowNotebookLMModal(false)}
+          />
+        </React.Suspense>
+      )}
+      {showAntigravityModal && (
+        <React.Suspense fallback={null}>
+          <AntigravityHandoffModal
+            isOpen={showAntigravityModal}
+            onClose={() => setShowAntigravityModal(false)}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 }

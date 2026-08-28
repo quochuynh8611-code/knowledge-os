@@ -13,6 +13,14 @@ export interface CommandPaletteProps {
   onExecuteItem: (item: CommandPaletteItem) => void;
 }
 
+const CATEGORY_ORDER: string[] = [
+  "Gần đây",
+  "Hành động nhanh",
+  "Điều hướng",
+  "Chủ đề",
+  "Ghi chú",
+];
+
 export function CommandPalette({
   isOpen,
   onClose,
@@ -81,8 +89,16 @@ export function CommandPalette({
 
   if (!isOpen) return null;
 
-  // Group items by category
-  const categories = Array.from(new Set(items.map((it) => it.category)));
+  // Group items by deterministic category order
+  const uniqueCategories = Array.from(new Set(items.map((it) => it.category)));
+  const categories = uniqueCategories.sort((a, b) => {
+    const idxA = CATEGORY_ORDER.indexOf(a);
+    const idxB = CATEGORY_ORDER.indexOf(b);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
 
   return (
     <div
