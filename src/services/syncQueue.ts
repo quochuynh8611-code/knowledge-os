@@ -34,6 +34,7 @@ export class SyncQueueService {
   private telemetryStorageKey: string;
   private isFlushing = false;
   private listeners: Array<() => void> = [];
+  private handleStorageEvent?: (event: StorageEvent) => void;
 
   constructor(
     storageKey = "phat_hoc_huyen_hoc_sync_queue",
@@ -45,6 +46,18 @@ export class SyncQueueService {
       (storageKey === "phat_hoc_huyen_hoc_sync_queue"
         ? "phat_hoc_huyen_hoc_sync_telemetry"
         : `${storageKey}_telemetry`);
+
+    if (typeof window !== "undefined") {
+      this.handleStorageEvent = (event: StorageEvent) => {
+        if (
+          event.key === this.storageKey ||
+          event.key === this.telemetryStorageKey
+        ) {
+          this.notifyListeners();
+        }
+      };
+      window.addEventListener("storage", this.handleStorageEvent);
+    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -52,6 +65,14 @@ export class SyncQueueService {
     return () => {
       this.listeners = this.listeners.filter((l) => l !== listener);
     };
+  }
+
+  destroy(): void {
+    if (typeof window !== "undefined" && this.handleStorageEvent) {
+      window.removeEventListener("storage", this.handleStorageEvent);
+      this.handleStorageEvent = undefined;
+    }
+    this.listeners = [];
   }
 
   private notifyListeners(): void {
@@ -176,6 +197,12 @@ export class SyncQueueService {
       const queue = this.getQueue();
       const now = Date.now();
       for (const mutation of queue) {
+        // Pre-replay existence guard: skip if mutation was already dequeued by another tab
+        const currentQueue = this.getQueue();
+        if (!currentQueue.some((m) => m.id === mutation.id)) {
+          continue;
+        }
+
         if (
           !isMutationEligibleForReplay(
             mutation,
