@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   render,
   screen,
@@ -154,4 +154,210 @@ describe("Command Palette & useCommandPalette Hook (Phase 1B)", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("Phase P5.0: Recent History & Injected Custom Deep Actions", () => {
+    beforeEach(() => {
+      localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    it("1. [P5.0] merges and executes customItems injected via the extension seam without owning modal state", () => {
+      const handleOpenNotebookLM = vi.fn();
+      const customItem = {
+        id: "act-open-notebooklm",
+        title: "Mở NotebookLM Studio",
+        description: "Sinh bản đồ tri thức và podcast âm thanh",
+        category: "Hành động nhanh" as const,
+        keywords: ["notebooklm", "studio", "gemini", "ai"],
+        action: handleOpenNotebookLM,
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: [customItem],
+        }),
+      );
+
+      act(() => {
+        result.current.openPalette();
+      });
+
+      // Assert customItem is present in filteredItems
+      const found = result.current.filteredItems.find(
+        (it) => it.id === "act-open-notebooklm",
+      );
+      expect(found).toBeDefined();
+      expect(found?.title).toBe("Mở NotebookLM Studio");
+
+      // Execute custom item
+      act(() => {
+        result.current.executeItem(found!);
+      });
+
+      expect(handleOpenNotebookLM).toHaveBeenCalledTimes(1);
+      expect(result.current.isOpen).toBe(false);
+    });
+
+    it("2. [P5.0] maintains an LRU rolling buffer of max 5 recent items with deduplication by id", () => {
+      const { result } = renderHook(() => useCommandPalette());
+
+      const itemsToExecute = result.current.filteredItems.slice(0, 6);
+      expect(itemsToExecute.length).toBeGreaterThanOrEqual(6);
+
+      // Execute 6 distinct items in sequence
+      for (const item of itemsToExecute) {
+        act(() => {
+          result.current.executeItem(item);
+        });
+      }
+
+      // Recent items should hold exactly 5 items, with the 6th executed item at index 0
+      expect(result.current.recentItems).toBeDefined();
+      expect(result.current.recentItems.length).toBe(5);
+      expect(result.current.recentItems[0].id).toBe(itemsToExecute[5].id);
+
+      // Re-execute an earlier item (itemsToExecute[2]) -> should dedupe and move to index 0
+      act(() => {
+        result.current.executeItem(itemsToExecute[2]);
+      });
+
+      expect(result.current.recentItems.length).toBe(5);
+      expect(result.current.recentItems[0].id).toBe(itemsToExecute[2].id);
+    });
+
+    it("3. [P5.0] safely falls back to in-memory history when localStorage is unavailable or blocked", () => {
+      // Mock localStorage.setItem to throw SecurityError
+      vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+        throw new Error("SecurityError: Storage access is denied");
+      });
+
+      const { result } = renderHook(() => useCommandPalette());
+
+      const item = result.current.filteredItems[0];
+      expect(() => {
+        act(() => {
+          result.current.executeItem(item);
+        });
+      }).not.toThrow();
+
+      expect(result.current.recentItems).toBeDefined();
+      expect(result.current.recentItems.length).toBe(1);
+      expect(result.current.recentItems[0].id).toBe(item.id);
+    });
+
+    it("4. [P5.0] displays 'Gần đây' section when query is empty and hides it when query is non-empty", () => {
+      const mockRecentItem = {
+        id: "recent-1",
+        title: "Chủ Đề Nghiên Cứu Gần Đây",
+        description: "Mô tả gần đây",
+        category: "Gần đây" as any,
+        action: vi.fn(),
+      };
+
+      const mockStandardItem = {
+        id: "std-1",
+        title: "Tổng Quan",
+        description: "Dashboard",
+        category: "Điều hướng" as const,
+        action: vi.fn(),
+      };
+
+      // 1. Empty query -> Render 'Gần đây' section
+      const { rerender } = render(
+        <CommandPalette
+          isOpen={true}
+          onClose={vi.fn()}
+          query=""
+          onQueryChange={vi.fn()}
+          items={[mockRecentItem, mockStandardItem]}
+          selectedIndex={0}
+          onSelectIndex={vi.fn()}
+          onExecuteItem={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Gần đây")).toBeInTheDocument();
+      expect(screen.getByText("Chủ Đề Nghiên Cứu Gần Đây")).toBeInTheDocument();
+
+      // 2. Non-empty query -> 'Gần đây' section heading is hidden
+      rerender(
+        <CommandPalette
+          isOpen={true}
+          onClose={vi.fn()}
+          query="Tổng"
+          onQueryChange={vi.fn()}
+          items={[mockStandardItem]}
+          selectedIndex={0}
+          onSelectIndex={vi.fn()}
+          onExecuteItem={vi.fn()}
+        />,
+      );
+
+      expect(screen.queryByText("Gần đây")).not.toBeInTheDocument();
+      expect(screen.getByText("Tổng Quan")).toBeInTheDocument();
+    });
+
+    it("5. [P5.0] matches search queries against title, description, category, and keywords metadata", () => {
+      const customItem = {
+        id: "topic-bat-chanh-dao",
+        title: "Bát Chánh Đạo",
+        description: "Con đường tám nhánh đưa đến giải thoát",
+        category: "Chủ đề" as const,
+        keywords: ["bat-chanh-dao", "dao-de", "ariya-atthangika-magga"],
+        action: vi.fn(),
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: [customItem],
+        }),
+      );
+
+      // Match via keyword slug
+      act(() => {
+        result.current.setQuery("bat-chanh-dao");
+      });
+      expect(result.current.filteredItems.some((it) => it.id === "topic-bat-chanh-dao")).toBe(true);
+
+      // Match via keyword Pali
+      act(() => {
+        result.current.setQuery("atthangika");
+      });
+      expect(result.current.filteredItems.some((it) => it.id === "topic-bat-chanh-dao")).toBe(true);
+
+      // Match via description
+      act(() => {
+        result.current.setQuery("tam nhanh");
+      });
+      expect(result.current.filteredItems.some((it) => it.id === "topic-bat-chanh-dao")).toBe(true);
+    });
+
+    it("6. [P5.0] restores recent items from stored string IDs and legacy object arrays with live action bindings", () => {
+      const handleNavigate = vi.fn();
+
+      // Seed localStorage with legacy object array + string id
+      localStorage.setItem(
+        "phat_hoc_recent_commands_v1",
+        JSON.stringify([{ id: "nav-dashboard" }, "nav-topics"]),
+      );
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          onNavigateTab: handleNavigate,
+        }),
+      );
+
+      expect(result.current.recentItems.length).toBe(2);
+      expect(result.current.recentItems[0].id).toBe("nav-dashboard");
+      expect(result.current.recentItems[1].id).toBe("nav-topics");
+
+      // Verify that executing restored recent item invokes live action
+      act(() => {
+        result.current.executeItem(result.current.recentItems[0]);
+      });
+
+      expect(handleNavigate).toHaveBeenCalledWith("dashboard");
+    });
+  });
 });
+

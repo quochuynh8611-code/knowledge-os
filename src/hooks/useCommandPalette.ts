@@ -16,12 +16,29 @@ import {
   Download,
 } from "lucide-react";
 import { normalizeScholarText } from "../lib/scholarSearch";
+import {
+  safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+} from "../lib/storage";
+
+export const COMMAND_PALETTE_RECENT_STORAGE_KEY = "phat_hoc_recent_commands_v1";
+const MAX_RECENT_ITEMS = 5;
+
+export type CommandPaletteCategory =
+  | "Điều hướng"
+  | "Hành động nhanh"
+  | "Chủ đề"
+  | "Ghi chú";
+
+export type CommandPaletteDisplayCategory =
+  | "Gần đây"
+  | CommandPaletteCategory;
 
 export interface CommandPaletteItem {
   id: string;
   title: string;
   description?: string;
-  category: "Điều hướng" | "Hành động nhanh" | "Chủ đề" | "Ghi chú";
+  category: CommandPaletteDisplayCategory;
   icon?: React.ComponentType<{ className?: string }>;
   action: () => void;
   keywords?: string[];
@@ -41,6 +58,19 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    const raw = safeGetLocalStorageItem(COMMAND_PALETTE_RECENT_STORAGE_KEY);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((it) => (typeof it === "string" ? it : it?.id))
+        .filter((id): id is string => typeof id === "string" && id.length > 0);
+    } catch {
+      return [];
+    }
+  });
 
   // Default Command Palette Items
   const baseItems: CommandPaletteItem[] = useMemo(() => {
@@ -191,10 +221,25 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
     return items;
   }, [options]);
 
+  // Dynamically resolve recent items with live action closures and components from baseItems
+  const recentItems: CommandPaletteItem[] = useMemo(() => {
+    const itemMap = new Map(baseItems.map((it) => [it.id, it]));
+    return recentIds
+      .map((id) => itemMap.get(id))
+      .filter((it): it is CommandPaletteItem => it !== undefined);
+  }, [baseItems, recentIds]);
+
   // Filter Items based on Query using Scholar Search normalization
   const filteredItems = useMemo(() => {
     const normQ = normalizeScholarText(query);
-    if (!normQ) return baseItems;
+    if (!normQ) {
+      if (recentItems.length === 0) return baseItems;
+      const mappedRecent: CommandPaletteItem[] = recentItems.map((it) => ({
+        ...it,
+        category: "Gần đây",
+      }));
+      return [...mappedRecent, ...baseItems];
+    }
 
     return baseItems.filter((item) => {
       const matchTitle = normalizeScholarText(item.title).includes(normQ);
@@ -207,9 +252,21 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       );
       return matchTitle || matchDesc || matchCategory || matchKeywords;
     });
-  }, [baseItems, query]);
+  }, [baseItems, query, recentItems]);
 
   const executeItem = useCallback((item: CommandPaletteItem) => {
+    setRecentIds((prev) => {
+      const next = [item.id, ...prev.filter((id) => id !== item.id)].slice(
+        0,
+        MAX_RECENT_ITEMS,
+      );
+      safeSetLocalStorageItem(
+        COMMAND_PALETTE_RECENT_STORAGE_KEY,
+        JSON.stringify(next),
+      );
+      return next;
+    });
+
     item.action();
     setIsOpen(false);
     setQuery("");
@@ -237,6 +294,7 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
     setQuery,
     selectedIndex,
     setSelectedIndex,
+    recentItems,
     filteredItems,
     executeItem,
   };
