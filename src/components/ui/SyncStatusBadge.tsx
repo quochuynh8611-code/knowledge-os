@@ -263,13 +263,24 @@ export function SyncStatusBadge({
                               : "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300"
                           }`}
                         >
-                          {isFailed ? "Lỗi" : "Chờ đồng bộ"}
+                          {isFailed
+                            ? mutation.retryCount > 0
+                              ? `Lỗi (${mutation.retryCount} lần)`
+                              : "Lỗi"
+                            : "Chờ đồng bộ"}
                         </span>
                       </div>
                     </div>
 
                     <div className="mt-1 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                      <span>ID: {mutation.entityId}</span>
+                      <span>
+                        ID: {mutation.entityId}
+                        {isFailed && mutation.retryCount > 0 && (
+                          <span className="ml-1 text-rose-600 dark:text-rose-400 font-sans font-normal">
+                            • Đã thử {mutation.retryCount} lần
+                          </span>
+                        )}
+                      </span>
                       <span>{formatTimestamp(mutation.clientTimestamp)}</span>
                     </div>
 
