@@ -284,66 +284,138 @@ Nếu chỉ nhớ một điều, hãy nhớ điều này:
 > Làm đều như vậy, app sẽ dần trở thành bộ não thứ hai của bạn.
 
 
-# Knowledge OS — Developer README
+# 🛠️ Knowledge OS — Developer Guide & Local Onboarding
 
-Knowledge OS là ứng dụng dashboard phục vụ học tập, nghiên cứu và hệ thống hóa tri thức Phật học, Huyền học và workflow khảo cứu có hỗ trợ AI. Repository này hiện đóng vai trò là trung tâm cấu trúc hóa dữ liệu, quản lý tiến độ học, ghi chú, tài nguyên và cầu nối sang Obsidian, NotebookLM và Antigravity.
-
----
-
-## 1. Mục tiêu của repository
-
-Repository này phục vụ 4 mục tiêu chính:
-
-1. Quản lý hệ tri thức canonical theo topic/category/note/resource/tag.
-2. Theo dõi tiến độ học tập với workflow review và học hằng ngày.
-3. Cung cấp trải nghiệm nghiên cứu đa nền tảng qua:
-   - Obsidian Bridge
-   - NotebookLM Studio
-   - Antigravity handoff
-4. Cho phép ứng dụng hoạt động theo cơ chế dual-tier persistence:
-   - ưu tiên backend/API khi khả dụng,
-   - fallback sang LocalStorage khi môi trường database/backend chưa sẵn sàng.
+Knowledge OS là ứng dụng dashboard phục vụ học tập, nghiên cứu và hệ thống hóa tri thức Phật học, Huyền học và workflow khảo cứu có hỗ trợ AI. Repository đóng vai trò là trung tâm cấu trúc hóa dữ liệu (Canonical Data Center), quản lý tiến độ học (Spaced Repetition SM-2), ghi chú, tài nguyên và cầu nối đa nền tảng sang Obsidian, NotebookLM và Antigravity.
 
 ---
 
-## 2. Tech stack
+## 1. Yêu Cầu Môi Trường (Prerequisites)
 
-### Frontend
-- React
-- TypeScript
-- Vite
-
-### Backend / runtime server
-- Express
-- tsx để chạy `server.ts` trong môi trường dev
-- esbuild để bundle server production
-
-### Data / validation
-- Prisma
-- PostgreSQL (khi khả dụng)
-- LocalStorage fallback
-- Schema validation nội bộ cho resource/topic payload
-
-### Testing
-- Vitest
-- Testing Library
-- jsdom
+- **Node.js**: `>= 18.0.0`
+- **npm**: `>= 9.0.0`
+- **PostgreSQL**: Đang chạy local trên cổng `5432` (mặc định user `postgres`, password `postgres` hoặc tùy chỉnh qua `.env`).
 
 ---
 
-## 3. Scripts chính
+## 2. Cấu Hình Môi Trường (.env)
 
-Các script hiện có trong `package.json`:
+Tạo hoặc kiểm tra file `.env` tại thư mục gốc repository:
 
-```json
-{
-  "dev": "tsx server.ts",
-  "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-  "start": "node dist/server.cjs",
-  "preview": "vite preview",
-  "clean": "rm -rf dist server.js",
-  "lint": "tsc --noEmit",
-  "test": "vitest run",
-  "test:watch": "vitest",
-  "db:seed": "tsx prisma/seed.ts"
-}
+```env
+# Google Gemini API Key cho AI Research Studio & Scholar Analysis
+GEMINI_API_KEY="your-gemini-api-key"
+
+# URL của ứng dụng
+APP_URL="http://localhost:3000"
+
+# Kết nối PostgreSQL Database (Prisma)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/knowledge_os?schema=public"
+```
+
+---
+
+## 3. Khởi Tạo Cơ Sở Dữ Liệu & Prisma (Database Bootstrap)
+
+Thực hiện tuần tự 4 bước sau để khởi tạo môi trường local hoàn chỉnh:
+
+### Bước 1: Tạo Database PostgreSQL `knowledge_os`
+Nếu database chưa tồn tại, tạo database bằng lệnh `psql` hoặc `createdb`:
+```bash
+# Sử dụng psql:
+psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE knowledge_os;"
+
+# Hoặc sử dụng CLI createdb (macOS / Linux):
+createdb -U postgres knowledge_os
+```
+
+### Bước 2: Cài đặt Dependencies & Generate Prisma Client
+```bash
+npm install
+```
+> **Ghi chú**: Lệnh `npm install` sẽ tự động kích hoạt `postinstall` script để chạy `prisma generate`.
+
+### Bước 3: Đồng bộ Schema vào Database (`db:push`)
+Đẩy cấu trúc bảng và quan hệ từ `prisma/schema.prisma` vào PostgreSQL:
+```bash
+npm run db:push
+```
+
+### Bước 4: Nạp Dữ Liệu Canonical Mẫu (`db:seed`)
+Nạp toàn bộ 10 Categories, 12 Tags, 35 Topics, 35 StudyProgress, 77 KnowledgeLinks, 5 Notes, 4 Resources:
+```bash
+npm run db:seed
+```
+
+---
+
+## 4. Vòng Đời Prisma Client (Prisma Client Lifecycle)
+
+- **Tự động (`postinstall`)**: Mỗi khi chạy `npm install` hoặc cập nhật dependencies, `prisma generate` sẽ tự động chạy để tạo mới `@prisma/client`.
+- **Thủ công (`npm run db:generate`)**: Chạy lệnh này bất cứ khi nào bạn chỉnh sửa file `prisma/schema.prisma` (thêm model, relation, hoặc field mới) để tránh lỗi runtime mismatch.
+- **Đồng bộ trực tiếp (`npm run db:push`)**: Vừa cập nhật schema vào DB vừa tự động generate lại Prisma Client.
+
+---
+
+## 5. Chạy Ứng Dụng & Kiểm Tra
+
+### Khởi động Development Server:
+```bash
+npm run dev
+```
+Ứng dụng sẽ chạy tại: **`http://localhost:3000`** (Tích hợp Express Backend + Vite React SPA).
+
+### Các lệnh kiểm tra & chất lượng mã nguồn:
+```bash
+# Kiểm tra TypeScript & Typecheck
+npm run lint
+
+# Chạy toàn bộ Test Suite (129 files, 828+ tests)
+npm run test
+
+# Chạy test ở chế độ watch
+npm run test:watch
+
+# Build production bundle
+npm run build
+```
+
+---
+
+## 6. Xử Lý Sự Cố Thường Gặp (Troubleshooting)
+
+### 🔴 Lỗi 1: `Database knowledge_os does not exist on the database server`
+- **Nguyên nhân**: PostgreSQL local đang chạy nhưng database `knowledge_os` chưa được tạo.
+- **Khắc phục**:
+  ```bash
+  psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE knowledge_os;"
+  npm run db:push
+  npm run db:seed
+  ```
+
+### 🔴 Lỗi 2: `Unknown field <fieldName> for include statement on model <ModelName>` (Prisma Client Stale)
+- **Nguyên nhân**: File `prisma/schema.prisma` đã có field/relation mới (ví dụ: `additionalTopics` trên model `Note`), nhưng thư viện `@prisma/client` trong `node_modules` chưa được build lại.
+- **Khắc phục**:
+  ```bash
+  npm run db:generate
+  ```
+
+### 🔴 Lỗi 3: `Foreign key constraint violated: Topic_categoryId_fkey` hoặc `Foreign key guard`
+- **Nguyên nhân**: Payload sync hoặc topic create/update chứa `categoryId` không tồn tại trong bảng `Category`.
+- **Cơ chế phòng vệ đã tích hợp**:
+  - Hệ thống tự động phân giải `categoryId` theo cả **ID** (`cat-abhidharma`) và **Slug** (`abhidharma`).
+  - Khi phát hiện `categoryId` không tồn tại ở bất kỳ danh mục nào, backend sẽ chặn lại an toàn (*fail-fast*) và trả về thông báo lỗi chi tiết thay vì để Postgres crash giao dịch không kiểm soát.
+
+---
+
+## 7. Bảng Tổng Hợp Scripts Trong `package.json`
+
+| Script | Lệnh | Mô tả |
+| :--- | :--- | :--- |
+| `npm run dev` | `tsx server.ts` | Chạy dev server tích hợp Express + Vite SPA |
+| `npm run lint` | `tsc --noEmit` | Kiểm tra lỗi type TypeScript toàn dự án |
+| `npm run test` | `vitest run` | Chạy toàn bộ test suite |
+| `npm run db:push` | `prisma db push` | Đẩy schema Prisma trực tiếp vào PostgreSQL |
+| `npm run db:generate` | `prisma generate` | Tạo lại type-safe `@prisma/client` |
+| `npm run db:seed` | `tsx prisma/seed.ts` | Nạp dữ liệu mẫu chuẩn (Canonical Seeding) |
+| `npm run build` | `vite build && esbuild ...` | Build bundle cho frontend và production server |
