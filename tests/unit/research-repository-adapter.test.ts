@@ -82,9 +82,17 @@ describe('ResearchRepositoryV2 — Adapter backward compat', () => {
       'exportBackupSnapshot',
       'restoreBackupSnapshot',
       'getDbHealth',
+      'resetAllData',
     ];
     for (const method of requiredMethods) {
       expect(typeof (adapter as unknown as Record<string, unknown>)[method]).toBe('function');
     }
+  });
+
+  it('27. adapter.resetAllData delegates to base repo resetAllData', async () => {
+    const resetSpy = vi.spyOn(baseRepo, 'resetAllData').mockResolvedValue(true);
+    const result = await adapter.resetAllData();
+    expect(resetSpy).toHaveBeenCalledOnce();
+    expect(result).toBe(true);
   });
 });

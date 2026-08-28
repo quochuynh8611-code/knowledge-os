@@ -117,4 +117,8 @@ export class ResearchRepositoryV2 implements IDataRepository {
   async getDbHealth(): Promise<ValidatedDbHealthResponse> {
     return this.base.getDbHealth();
   }
+
+  async resetAllData(): Promise<boolean> {
+    return this.base.resetAllData();
+  }
 }

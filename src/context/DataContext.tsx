@@ -53,15 +53,17 @@ import {
   ActiveTab,
   NavigationContextType,
 } from "./NavigationContext";
+import { ResearchRepositoryV2 } from "../services/researchRepositoryV2";
 
 export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation };
 export type { TimerMode, StudyTimerContextType, ActiveTab, NavigationContextType };
 
 const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
-const dataRepository: IDataRepository =
+const baseDataRepository: IDataRepository =
   typeof window !== "undefined"
     ? new ApiDataRepository("/api", new LocalStorageDataRepository(STORAGE_KEY))
     : new LocalStorageDataRepository(STORAGE_KEY);
+const dataRepository: IDataRepository = new ResearchRepositoryV2(baseDataRepository);
 
 interface DataContextType {
   // State
@@ -476,9 +478,18 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   ): string => {
     const newId = `note-${Date.now()}`;
     const now = new Date().toISOString();
+    const resolvedTopicIds =
+      noteData.topicIds && noteData.topicIds.length > 0
+        ? noteData.topicIds
+        : undefined;
+    const primaryTopicId = resolvedTopicIds
+      ? resolvedTopicIds[0]
+      : noteData.topicId;
     const newNote: Note = {
       ...noteData,
       id: newId,
+      topicId: primaryTopicId,
+      topicIds: resolvedTopicIds,
       createdAt: now,
       updatedAt: now,
     };
@@ -491,9 +502,21 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     setNotes((prev) =>
       prev.map((n) => {
         if (n.id === id) {
+          const resolvedTopicIds =
+            noteData.topicIds !== undefined
+              ? noteData.topicIds.length > 0
+                ? noteData.topicIds
+                : undefined
+              : n.topicIds;
+          const primaryTopicId =
+            resolvedTopicIds && resolvedTopicIds.length > 0
+              ? resolvedTopicIds[0]
+              : noteData.topicId || n.topicId;
           const updated = {
             ...n,
             ...noteData,
+            topicId: primaryTopicId,
+            topicIds: resolvedTopicIds,
             updatedAt: new Date().toISOString(),
           };
           dataRepository.saveNote(updated).catch(console.error);
@@ -736,9 +759,6 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     setNotes(INITIAL_NOTES);
     setResources(INITIAL_RESOURCES);
     setTags(INITIAL_TAGS);
-    setActiveTimerTopicId(null);
-    setIsTimerRunning(false);
-    setTimerSeconds(0);
   };
 
   // Rehydration Action (Phase 2C - Post Restore / Manual Sync)
