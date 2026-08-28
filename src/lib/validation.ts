@@ -171,6 +171,7 @@ export const TopicUpdateSchema = TopicCreateSchema.partial();
 export const NoteSchema = z.object({
   id: z.string().min(1, "Note ID không được để trống"),
   topicId: z.string().min(1, "Topic ID không được để trống"),
+  topicIds: z.array(z.string()).optional(),
   topicTitle: z.string().optional(),
   title: z.string().min(1, "Tiêu đề ghi chú không được để trống"),
   content: z.string().min(1, "Nội dung ghi chú không được để trống"),
@@ -188,18 +189,35 @@ export const NoteSchema = z.object({
     .default(() => new Date().toISOString()),
 });
 
-export const NoteCreateSchema = z.object({
-  topicId: z.string().min(1, "Topic ID không được để trống"),
-  topicTitle: z.string().optional(),
-  title: z.string().min(1, "Tiêu đề ghi chú không được để trống"),
-  content: z.string().min(1, "Nội dung ghi chú không được để trống"),
-  sourcePath: z.string().optional(),
-  type: NoteTypeEnum.optional().default("insight"),
-  isPrivate: z.boolean().optional().default(false),
-  tags: z.array(z.string()).optional().default([]),
-});
+export const NoteCreateSchema = z
+  .object({
+    topicId: z.string().optional(),
+    topicIds: z.array(z.string()).optional(),
+    topicTitle: z.string().optional(),
+    title: z.string().min(1, "Tiêu đề ghi chú không được để trống"),
+    content: z.string().min(1, "Nội dung ghi chú không được để trống"),
+    sourcePath: z.string().optional(),
+    type: NoteTypeEnum.optional().default("insight"),
+    isPrivate: z.boolean().optional().default(false),
+    tags: z.array(z.string()).optional().default([]),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.topicId || (data.topicIds && data.topicIds.length > 0)),
+    { message: "Topic ID không được để trống", path: ["topicId"] }
+  );
 
-export const NoteUpdateSchema = NoteCreateSchema.partial();
+export const NoteUpdateSchema = z.object({
+  topicId: z.string().optional(),
+  topicIds: z.array(z.string()).optional(),
+  topicTitle: z.string().optional(),
+  title: z.string().min(1, "Tiêu đề ghi chú không được để trống").optional(),
+  content: z.string().min(1, "Nội dung ghi chú không được để trống").optional(),
+  sourcePath: z.string().optional(),
+  type: NoteTypeEnum.optional(),
+  isPrivate: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+});
 
 // ==========================================
 // 8. RESOURCE SCHEMAS

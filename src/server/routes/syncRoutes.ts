@@ -4,6 +4,7 @@ import { HydratePayloadSchema } from "../../lib/validation";
 import {
   normalizeTopicTags,
   generateTagSlug,
+  resolveTopicIds,
 } from "../../lib/researchStorageHelpers";
 
 export function createSyncRouter(prisma: PrismaClient | any): Router {
@@ -183,26 +184,51 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
 
         // Notes
         for (const note of payload.notes) {
+          const resolvedTopicIds = resolveTopicIds(note as any);
+          const primaryTopicId = resolvedTopicIds[0] || note.topicId;
+
           await tx.note.upsert({
             where: { id: note.id },
             create: {
               id: note.id,
-              topicId: note.topicId,
+              topicId: primaryTopicId,
               title: note.title,
               content: note.content,
+              sourcePath: (note as any).sourcePath,
               type: note.type,
               isPrivate: note.isPrivate ?? false,
               tags: note.tags,
             },
             update: {
+              topicId: primaryTopicId,
               title: note.title,
               content: note.content,
+              sourcePath: (note as any).sourcePath,
               type: note.type,
               isPrivate: note.isPrivate ?? false,
               tags: note.tags,
             },
           });
           notesCount++;
+
+          // Dual-write NoteTopicLink relations
+          if (tx.noteTopicLink && resolvedTopicIds.length > 0) {
+            for (const tid of resolvedTopicIds) {
+              await tx.noteTopicLink.upsert({
+                where: {
+                  noteId_topicId: {
+                    noteId: note.id,
+                    topicId: tid,
+                  },
+                },
+                create: {
+                  noteId: note.id,
+                  topicId: tid,
+                },
+                update: {},
+              });
+            }
+          }
         }
 
         // Resources
