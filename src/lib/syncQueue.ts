@@ -14,6 +14,51 @@ export interface SyncMutation {
   retryCount: number;
   status: "pending" | "processing" | "failed";
   lastError?: string;
+  // ─── P2.7b Scheduling & Backoff Metadata ───
+  lastAttemptAt?: string;
+  nextRetryAt?: string;
+  backoffDelayMs?: number;
+}
+
+/**
+ * Calculates the exponential backoff delay in milliseconds based on retry count.
+ * Formula: delay = min(baseDelayMs * 2^(retryCount - 1), maxDelayMs) for retryCount >= 1.
+ */
+export function calculateBackoffDelay(
+  retryCount: number,
+  baseDelayMs = 1000,
+  maxDelayMs = 60000
+): number {
+  if (retryCount <= 1) {
+    return baseDelayMs;
+  }
+  const exponent = retryCount - 1;
+  const delay = baseDelayMs * Math.pow(2, exponent);
+  return Math.min(delay, maxDelayMs);
+}
+
+/**
+ * Checks if a mutation is eligible for replay based on its status and backoff scheduling.
+ * - Always returns true if bypassBackoff is true (e.g. manual user override).
+ * - Always returns true for pending mutations.
+ * - For failed mutations with nextRetryAt, returns true only if currentTimeMs >= nextRetryAt.
+ */
+export function isMutationEligibleForReplay(
+  mutation: SyncMutation,
+  currentTimeMs = Date.now(),
+  bypassBackoff = false
+): boolean {
+  if (bypassBackoff) {
+    return true;
+  }
+  if (mutation.status === "pending") {
+    return true;
+  }
+  if (!mutation.nextRetryAt) {
+    return true;
+  }
+  const nextRetryTimeMs = new Date(mutation.nextRetryAt).getTime();
+  return currentTimeMs >= nextRetryTimeMs;
 }
 
 /**
@@ -72,20 +117,31 @@ export function dequeueMutation(
 }
 
 /**
- * Marks a mutation as failed, increments its retry count, and records the error message.
+ * Marks a mutation as failed, increments its retry count, records the error,
+ * and computes exponential backoff scheduling metadata.
  */
 export function markMutationFailed(
   queue: SyncMutation[],
   mutationId: string,
   error?: string
 ): SyncMutation[] {
+  const now = Date.now();
+  const lastAttemptAt = new Date(now).toISOString();
+
   return queue.map((m) => {
     if (m.id === mutationId) {
+      const newRetryCount = m.retryCount + 1;
+      const backoffDelayMs = calculateBackoffDelay(newRetryCount);
+      const nextRetryAt = new Date(now + backoffDelayMs).toISOString();
+
       return {
         ...m,
-        retryCount: m.retryCount + 1,
+        retryCount: newRetryCount,
         status: "failed",
         lastError: error,
+        lastAttemptAt,
+        backoffDelayMs,
+        nextRetryAt,
       };
     }
     return m;

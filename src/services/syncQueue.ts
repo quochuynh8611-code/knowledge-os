@@ -5,6 +5,7 @@ import {
   markMutationFailed,
   serializeSyncQueue,
   deserializeSyncQueue,
+  isMutationEligibleForReplay,
 } from "../lib/syncQueue";
 import {
   safeGetLocalStorageItem,
@@ -14,6 +15,10 @@ import {
 export interface FlushResult {
   syncedCount: number;
   failedCount: number;
+}
+
+export interface FlushOptions {
+  bypassBackoff?: boolean;
 }
 
 export class SyncQueueService {
@@ -77,8 +82,12 @@ export class SyncQueueService {
 
   /**
    * Replays pending mutations in FIFO order against REST API endpoints.
+   * Respects exponential backoff delay unless bypassBackoff is set to true.
    */
-  async flushQueue(apiBaseUrl = "/api"): Promise<FlushResult> {
+  async flushQueue(
+    apiBaseUrl = "/api",
+    options?: FlushOptions
+  ): Promise<FlushResult> {
     if (this.isFlushing) {
       return { syncedCount: 0, failedCount: 0 };
     }
@@ -89,7 +98,18 @@ export class SyncQueueService {
 
     try {
       const queue = this.getQueue();
+      const now = Date.now();
       for (const mutation of queue) {
+        if (
+          !isMutationEligibleForReplay(
+            mutation,
+            now,
+            options?.bypassBackoff
+          )
+        ) {
+          break; // Stop FIFO replay when head mutation is in backoff cooldown
+        }
+
         try {
           const success = await this.replayMutation(mutation, apiBaseUrl);
           if (success) {
