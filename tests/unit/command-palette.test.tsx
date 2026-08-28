@@ -359,5 +359,142 @@ describe("Command Palette & useCommandPalette Hook (Phase 1B)", () => {
       expect(handleNavigate).toHaveBeenCalledWith("dashboard");
     });
   });
+
+  describe("Phase P5.2: Result Ranking, Deduplication & Relevance", () => {
+    it("1. [P5.2] ranks exact title matches higher than description and keyword substring matches", () => {
+      const customItem = {
+        id: "nav-custom-graph",
+        title: "Đồ Thị Mạng Lưới",
+        description: "Xem tổng quan không gian nghiên cứu",
+        category: "Điều hướng" as const,
+        action: vi.fn(),
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: [customItem],
+        }),
+      );
+
+      act(() => {
+        result.current.setQuery("tong quan");
+      });
+
+      // "Tổng quan" (exact title match, score 100) must rank before "Đồ Thị Mạng Lưới" (desc match, score 20)
+      expect(result.current.filteredItems[0].id).toBe("nav-dashboard");
+      expect(result.current.filteredItems[0].title).toBe("Tổng quan");
+    });
+
+    it("2. [P5.2] ranks title prefix matches higher than title substring matches", () => {
+      const itemSub = {
+        id: "item-substring",
+        title: "Bản Đồ Tổng Quan Tri Thức",
+        category: "Chủ đề" as const,
+        action: vi.fn(),
+      };
+      const itemPre = {
+        id: "item-prefix",
+        title: "Tổng Quan Bản Đồ Tri Thức",
+        category: "Chủ đề" as const,
+        action: vi.fn(),
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          // Injected with itemSub first to test non-trivial sorting
+          customItems: [itemSub, itemPre],
+        }),
+      );
+
+      act(() => {
+        result.current.setQuery("tong quan");
+      });
+
+      const ids = result.current.filteredItems.map((it) => it.id);
+      const idxPre = ids.indexOf("item-prefix");
+      const idxSub = ids.indexOf("item-substring");
+
+      // item-prefix (score 80) must rank before item-substring (score 60)
+      expect(idxPre).toBeLessThan(idxSub);
+    });
+
+    it("3. [P5.2] overrides base item when custom item with matching ID is injected (deduplication)", () => {
+      const overriddenThemeItem = {
+        id: "act-toggle-theme",
+        title: "Custom Theme Switcher Pro",
+        description: "Giao diện tùy biến",
+        category: "Hành động nhanh" as const,
+        action: vi.fn(),
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: [overriddenThemeItem],
+        }),
+      );
+
+      const matchingItems = result.current.filteredItems.filter(
+        (it) => it.id === "act-toggle-theme",
+      );
+
+      // Must deduplicate by id (exactly 1 item) and reflect the overridden title
+      expect(matchingItems.length).toBe(1);
+      expect(matchingItems[0].title).toBe("Custom Theme Switcher Pro");
+    });
+
+    it("4. [P5.2] applies recency boost during non-empty query to elevate recently used items among same-tier matches", () => {
+      // Seed act-add-note in recent history
+      localStorage.setItem(
+        "phat_hoc_recent_commands_v1",
+        JSON.stringify(["act-add-note"]),
+      );
+
+      const { result } = renderHook(() => useCommandPalette());
+
+      act(() => {
+        result.current.setQuery("them");
+      });
+
+      const ids = result.current.filteredItems.map((it) => it.id);
+      const idxNote = ids.indexOf("act-add-note");
+      const idxTopic = ids.indexOf("act-add-topic");
+
+      // Both match prefix "Thêm..." (score 80), but act-add-note has +5 recency boost (score 85)
+      expect(idxNote).toBeLessThan(idxTopic);
+    });
+
+    it("5. [P5.2] applies deterministic tie-break ordering (score desc -> category order -> original stable index)", () => {
+      const itemAction = {
+        id: "custom-act-test",
+        title: "Khảo cứu chuyên sâu",
+        category: "Hành động nhanh" as const,
+        action: vi.fn(),
+      };
+      const itemNav = {
+        id: "custom-nav-test",
+        title: "Khảo cứu học thuật",
+        category: "Điều hướng" as const,
+        action: vi.fn(),
+      };
+
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          // Injected with itemNav first
+          customItems: [itemNav, itemAction],
+        }),
+      );
+
+      act(() => {
+        result.current.setQuery("khao cuu");
+      });
+
+      const ids = result.current.filteredItems.map((it) => it.id);
+      const idxAct = ids.indexOf("custom-act-test");
+      const idxNav = ids.indexOf("custom-nav-test");
+
+      // Both match prefix (score 80). By category order, "Hành động nhanh" must precede "Điều hướng".
+      expect(idxAct).toBeLessThan(idxNav);
+    });
+  });
 });
 

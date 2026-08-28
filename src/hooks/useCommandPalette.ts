@@ -34,6 +34,50 @@ export type CommandPaletteDisplayCategory =
   | "Gần đây"
   | CommandPaletteCategory;
 
+export const CATEGORY_ORDER: CommandPaletteDisplayCategory[] = [
+  "Gần đây",
+  "Hành động nhanh",
+  "Điều hướng",
+  "Chủ đề",
+  "Ghi chú",
+];
+
+function calculateItemMatchScore(
+  item: CommandPaletteItem,
+  normQ: string,
+  isRecent: boolean,
+): number {
+  const normTitle = normalizeScholarText(item.title);
+  let baseScore = 0;
+
+  if (normTitle === normQ) {
+    baseScore = 100;
+  } else if (normTitle.startsWith(normQ)) {
+    baseScore = 80;
+  } else if (normTitle.includes(normQ)) {
+    baseScore = 60;
+  } else if (
+    item.keywords?.some((k) => {
+      const normK = normalizeScholarText(k);
+      return (
+        normK === normQ || normK.startsWith(normQ) || normK.includes(normQ)
+      );
+    })
+  ) {
+    baseScore = 40;
+  } else if (
+    item.description &&
+    normalizeScholarText(item.description).includes(normQ)
+  ) {
+    baseScore = 20;
+  } else if (normalizeScholarText(item.category).includes(normQ)) {
+    baseScore = 10;
+  }
+
+  if (baseScore === 0) return 0;
+  return isRecent ? baseScore + 5 : baseScore;
+}
+
 export interface CommandPaletteItem {
   id: string;
   title: string;
@@ -215,10 +259,12 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       },
     ];
 
+    const itemMap = new Map<string, CommandPaletteItem>();
+    items.forEach((it) => itemMap.set(it.id, it));
     if (options.customItems) {
-      return [...items, ...options.customItems];
+      options.customItems.forEach((it) => itemMap.set(it.id, it));
     }
-    return items;
+    return Array.from(itemMap.values());
   }, [options]);
 
   // Dynamically resolve recent items with live action closures and components from baseItems
@@ -229,7 +275,7 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       .filter((it): it is CommandPaletteItem => it !== undefined);
   }, [baseItems, recentIds]);
 
-  // Filter Items based on Query using Scholar Search normalization
+  // Filter and rank Items based on Query using Scholar Search normalization
   const filteredItems = useMemo(() => {
     const normQ = normalizeScholarText(query);
     if (!normQ) {
@@ -241,18 +287,40 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       return [...mappedRecent, ...baseItems];
     }
 
-    return baseItems.filter((item) => {
-      const matchTitle = normalizeScholarText(item.title).includes(normQ);
-      const matchDesc = item.description
-        ? normalizeScholarText(item.description).includes(normQ)
-        : false;
-      const matchCategory = normalizeScholarText(item.category).includes(normQ);
-      const matchKeywords = item.keywords?.some((k) =>
-        normalizeScholarText(k).includes(normQ),
-      );
-      return matchTitle || matchDesc || matchCategory || matchKeywords;
+    const recentIdSet = new Set(recentIds);
+    const scored: Array<{
+      item: CommandPaletteItem;
+      score: number;
+      originalIndex: number;
+    }> = [];
+
+    baseItems.forEach((item, index) => {
+      const isRecent = recentIdSet.has(item.id);
+      const score = calculateItemMatchScore(item, normQ, isRecent);
+      if (score > 0) {
+        scored.push({ item, score, originalIndex: index });
+      }
     });
-  }, [baseItems, query, recentItems]);
+
+    scored.sort((a, b) => {
+      // 1. Score descending
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      // 2. Category order priority ascending
+      const catIdxA = CATEGORY_ORDER.indexOf(a.item.category);
+      const catIdxB = CATEGORY_ORDER.indexOf(b.item.category);
+      const orderA = catIdxA !== -1 ? catIdxA : 999;
+      const orderB = catIdxB !== -1 ? catIdxB : 999;
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+      // 3. Original stable insertion order
+      return a.originalIndex - b.originalIndex;
+    });
+
+    return scored.map((s) => s.item);
+  }, [baseItems, query, recentIds, recentItems]);
 
   const executeItem = useCallback((item: CommandPaletteItem) => {
     setRecentIds((prev) => {
