@@ -19,9 +19,31 @@ export interface FlushResult {
 export class SyncQueueService {
   private storageKey: string;
   private isFlushing = false;
+  private listeners: Array<() => void> = [];
 
   constructor(storageKey = "phat_hoc_huyen_hoc_sync_queue") {
     this.storageKey = storageKey;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    for (const listener of this.listeners) {
+      try {
+        listener();
+      } catch {
+        // Safe subscriber execution
+      }
+    }
+  }
+
+  getIsFlushing(): boolean {
+    return this.isFlushing;
   }
 
   getQueue(): SyncMutation[] {
@@ -32,6 +54,7 @@ export class SyncQueueService {
   private saveQueue(queue: SyncMutation[]): void {
     const serialized = serializeSyncQueue(queue);
     safeSetLocalStorageItem(this.storageKey, serialized);
+    this.notifyListeners();
   }
 
   enqueue(mutation: SyncMutation): void {
@@ -60,6 +83,7 @@ export class SyncQueueService {
       return { syncedCount: 0, failedCount: 0 };
     }
     this.isFlushing = true;
+    this.notifyListeners();
     let syncedCount = 0;
     let failedCount = 0;
 
@@ -85,6 +109,7 @@ export class SyncQueueService {
       }
     } finally {
       this.isFlushing = false;
+      this.notifyListeners();
     }
 
     return { syncedCount, failedCount };
