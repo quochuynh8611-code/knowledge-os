@@ -8,6 +8,14 @@ import {
   isMutationEligibleForReplay,
 } from "../lib/syncQueue";
 import {
+  type SyncTelemetryEvent,
+  type SyncTelemetryStats,
+  appendTelemetryEvent,
+  calculateSyncTelemetryStats,
+  serializeTelemetryEvents,
+  deserializeTelemetryEvents,
+} from "../lib/syncTelemetry";
+import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
 } from "../lib/storage";
@@ -23,11 +31,20 @@ export interface FlushOptions {
 
 export class SyncQueueService {
   private storageKey: string;
+  private telemetryStorageKey: string;
   private isFlushing = false;
   private listeners: Array<() => void> = [];
 
-  constructor(storageKey = "phat_hoc_huyen_hoc_sync_queue") {
+  constructor(
+    storageKey = "phat_hoc_huyen_hoc_sync_queue",
+    telemetryStorageKey?: string
+  ) {
     this.storageKey = storageKey;
+    this.telemetryStorageKey =
+      telemetryStorageKey ??
+      (storageKey === "phat_hoc_huyen_hoc_sync_queue"
+        ? "phat_hoc_huyen_hoc_sync_telemetry"
+        : `${storageKey}_telemetry`);
   }
 
   subscribe(listener: () => void): () => void {
@@ -62,16 +79,75 @@ export class SyncQueueService {
     this.notifyListeners();
   }
 
+  // ─── Telemetry Storage & Query Helpers ─────────────────────────────────────
+
+  getTelemetryEvents(): SyncTelemetryEvent[] {
+    try {
+      const raw = safeGetLocalStorageItem(this.telemetryStorageKey);
+      return deserializeTelemetryEvents(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  getTelemetryStats(): SyncTelemetryStats {
+    const events = this.getTelemetryEvents();
+    return calculateSyncTelemetryStats(events);
+  }
+
+  private recordTelemetryEvent(
+    type: SyncTelemetryEvent["type"],
+    details?: Partial<Omit<SyncTelemetryEvent, "id" | "timestamp" | "type">>
+  ): void {
+    try {
+      const currentEvents = this.getTelemetryEvents();
+      const newEvent: SyncTelemetryEvent = {
+        id: `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        type,
+        ...details,
+      };
+      const updated = appendTelemetryEvent(currentEvents, newEvent, 50);
+      const serialized = serializeTelemetryEvents(updated);
+      safeSetLocalStorageItem(this.telemetryStorageKey, serialized);
+    } catch {
+      // Fault-tolerant: telemetry write errors are safely swallowed
+    }
+  }
+
   enqueue(mutation: SyncMutation): void {
     const queue = this.getQueue();
     const updated = enqueueMutation(queue, mutation);
     this.saveQueue(updated);
+    this.recordTelemetryEvent("MUTATION_ENQUEUED", {
+      mutationId: mutation.id,
+      entityType: mutation.entityType,
+      entityId: mutation.entityId,
+      action: mutation.action,
+    });
   }
 
   remove(mutationId: string): void {
     const queue = this.getQueue();
     const updated = dequeueMutation(queue, mutationId);
     this.saveQueue(updated);
+  }
+
+  discard(mutationId: string): boolean {
+    const queue = this.getQueue();
+    const target = queue.find((m) => m.id === mutationId);
+    if (!target) {
+      return false;
+    }
+    this.remove(mutationId);
+    this.recordTelemetryEvent("MUTATION_DISCARDED", {
+      mutationId: target.id,
+      entityType: target.entityType,
+      entityId: target.entityId,
+      action: target.action,
+      retryCount: target.retryCount,
+    });
+    return true;
   }
 
   markFailed(mutationId: string, error?: string): void {
@@ -115,21 +191,46 @@ export class SyncQueueService {
           if (success) {
             this.remove(mutation.id);
             syncedCount++;
+            this.recordTelemetryEvent("REPLAY_SUCCESS", {
+              mutationId: mutation.id,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              action: mutation.action,
+            });
           } else {
             this.markFailed(mutation.id, "HTTP error during replay");
             failedCount++;
+            this.recordTelemetryEvent("REPLAY_FAILED", {
+              mutationId: mutation.id,
+              entityType: mutation.entityType,
+              entityId: mutation.entityId,
+              action: mutation.action,
+              retryCount: mutation.retryCount + 1,
+              error: "HTTP error during replay",
+            });
             break; // Stop FIFO replay on first network failure to preserve order
           }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Replay failure";
           this.markFailed(mutation.id, msg);
           failedCount++;
+          this.recordTelemetryEvent("REPLAY_FAILED", {
+            mutationId: mutation.id,
+            entityType: mutation.entityType,
+            entityId: mutation.entityId,
+            action: mutation.action,
+            retryCount: mutation.retryCount + 1,
+            error: msg,
+          });
           break;
         }
       }
     } finally {
       this.isFlushing = false;
       this.notifyListeners();
+      this.recordTelemetryEvent("QUEUE_FLUSH_COMPLETED", {
+        metadata: { syncedCount, failedCount },
+      });
     }
 
     return { syncedCount, failedCount };
