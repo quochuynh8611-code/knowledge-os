@@ -18,6 +18,7 @@ import {
   exportMatrixRelationsToCSL,
   triggerBatchDownload,
 } from '../../lib/scholarCitation/batchMatrix';
+import { getScholarCitationBatchFilename } from '../../lib/scholarCitation/filename';
 
 export interface CittaItem {
   id: string;
@@ -120,12 +121,14 @@ export function AbhidharmaMatrix() {
 
   const handleBatchBibTeX = () => {
     const bib = exportMatrixRelationsToBibTeX(associatedRelations);
-    triggerBatchDownload(`matrix_relations_${selectedCitta.namePali}.bib`, bib, 'application/x-bibtex');
+    const filename = getScholarCitationBatchFilename(selectedCitta.namePali, 'bib');
+    triggerBatchDownload(filename, bib, 'application/x-bibtex');
   };
 
   const handleBatchCSL = () => {
     const csl = exportMatrixRelationsToCSL(associatedRelations);
-    triggerBatchDownload(`matrix_relations_${selectedCitta.namePali}.json`, JSON.stringify(csl, null, 2), 'application/json');
+    const filename = getScholarCitationBatchFilename(selectedCitta.namePali, 'json');
+    triggerBatchDownload(filename, JSON.stringify(csl, null, 2), 'application/json');
   };
 
   return (

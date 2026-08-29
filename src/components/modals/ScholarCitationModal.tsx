@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import {
   generateScholarCitations,
   ScholarCitationFormat,
 } from '../../lib/scholarCitation/generator';
+import { getScholarCitationSingleFilename } from '../../lib/scholarCitation/filename';
 import {
   X,
   Copy,
@@ -37,6 +38,27 @@ export function ScholarCitationModal({
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
+
+  const feedbackTimerRef = useRef<NodeJS.Timeout | number | null>(null);
+
+  // Clear timer when modal unmounts
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleFeedbackReset = (callback: () => void, delayMs = 2000) => {
+    if (feedbackTimerRef.current) {
+      clearTimeout(feedbackTimerRef.current);
+    }
+    feedbackTimerRef.current = setTimeout(() => {
+      callback();
+      feedbackTimerRef.current = null;
+    }, delayMs);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -90,7 +112,7 @@ export function ScholarCitationModal({
         setCopied(true);
         setCopyError(null);
         setStatusMessage(`Đã sao chép trích dẫn định dạng ${format.toUpperCase()} vào clipboard.`);
-        setTimeout(() => {
+        scheduleFeedbackReset(() => {
           setCopied(false);
           setStatusMessage('');
         }, 2000);
@@ -101,7 +123,7 @@ export function ScholarCitationModal({
       setCopied(false);
       setCopyError('Không thể sao chép vào clipboard. Vui lòng chọn và sao chép thủ công.');
       setStatusMessage('Lỗi sao chép trích dẫn vào clipboard.');
-      setTimeout(() => {
+      scheduleFeedbackReset(() => {
         setCopyError(null);
         setStatusMessage('');
       }, 3000);
@@ -114,7 +136,7 @@ export function ScholarCitationModal({
 
     const mime = type === 'bib' ? 'text/plain;charset=utf-8' : 'application/json;charset=utf-8';
     const blob = new Blob([content], { type: mime });
-    const filename = `${viewModel.citationKey || 'citation'}.${type}`;
+    const filename = getScholarCitationSingleFilename(viewModel.citationKey || 'citation', type);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -124,8 +146,9 @@ export function ScholarCitationModal({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setStatusMessage(`Đã tải tệp .${type} thành công.`);
-    setTimeout(() => setStatusMessage(''), 2000);
+    scheduleFeedbackReset(() => setStatusMessage(''), 2000);
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
