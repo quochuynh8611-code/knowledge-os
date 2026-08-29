@@ -14,12 +14,14 @@ import {
   Plus,
   Moon,
   Download,
+  Bookmark,
 } from "lucide-react";
 import { normalizeScholarText } from "../lib/scholarSearch";
 import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
 } from "../lib/storage";
+import type { SavedSearchView } from "../lib/savedViewStorage";
 
 export const COMMAND_PALETTE_RECENT_STORAGE_KEY = "phat_hoc_recent_commands_v1";
 const MAX_RECENT_ITEMS = 5;
@@ -90,6 +92,8 @@ export interface CommandPaletteItem {
 
 export interface UseCommandPaletteOptions {
   customItems?: CommandPaletteItem[];
+  savedViews?: SavedSearchView[];
+  onApplySavedView?: (view: SavedSearchView) => void;
   onNavigateTab?: (tab: string) => void;
   onOpenTopic?: (id: string) => void;
   onToggleTheme?: () => void;
@@ -213,6 +217,29 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
         keywords: ["tu dien", "lexicon", "pali", "sanskrit", "han co", "thuat ngu"],
         action: () => options.onNavigateTab?.("lexicon"),
       },
+
+      // Saved Views (received via options)
+      ...(options.savedViews || []).map((sv): CommandPaletteItem => ({
+        id: `saved-view-${sv.id}`,
+        title: `[Góc nhìn] ${sv.name}`,
+        description: sv.query
+          ? `Từ khóa: "${sv.query}"`
+          : "Góc nhìn lọc nâng cao",
+        category: "Điều hướng",
+        icon: Bookmark,
+        keywords: [
+          "goc nhin",
+          "saved view",
+          sv.name,
+          sv.query || "",
+          sv.filters?.domain || "",
+          sv.filters?.tag || "",
+        ].filter(Boolean),
+        action: () => {
+          options.onApplySavedView?.(sv);
+          options.onNavigateTab?.("search");
+        },
+      })),
 
       // 2. Quick Actions
       {

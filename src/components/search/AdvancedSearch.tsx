@@ -10,6 +10,9 @@ import {
   ArrowRight,
   Filter,
   Tag as TagIcon,
+  Bookmark,
+  Pin,
+  X,
 } from "lucide-react";
 import { SearchFilters, SearchFiltersState } from "./SearchFilters";
 import { EmptyState } from "../ui/EmptyState";
@@ -19,6 +22,14 @@ import {
 } from "../../lib/spaced-repetition";
 import { searchScholarCollections } from "../../lib/scholarSearch";
 import { toReadablePlainTextPreview } from "../../lib/markdownReadability";
+import {
+  getSavedSearchViews,
+  createSavedSearchView,
+  togglePinSavedSearchView,
+  deleteSavedSearchView,
+  isSavedViewInputValid,
+  SavedSearchView,
+} from "../../lib/savedViewStorage";
 
 export function AdvancedSearch() {
   const {
@@ -42,7 +53,65 @@ export function AdvancedSearch() {
     status: "all",
   });
 
+  const [savedViews, setSavedViews] = useState<SavedSearchView[]>(() =>
+    getSavedSearchViews(),
+  );
+  const [isSavePanelOpen, setIsSavePanelOpen] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+  const [newViewPinned, setNewViewPinned] = useState(false);
+
   const q = searchQuery.toLowerCase().trim();
+
+  const refreshSavedViews = () => {
+    setSavedViews(getSavedSearchViews());
+  };
+
+  const canSaveCurrentView = isSavedViewInputValid(
+    "valid",
+    searchQuery,
+    filters,
+  );
+
+  const handleSaveViewSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newViewName.trim()) return;
+
+    createSavedSearchView({
+      name: newViewName.trim(),
+      query: searchQuery,
+      filters,
+      pinned: newViewPinned,
+    });
+
+    refreshSavedViews();
+    setIsSavePanelOpen(false);
+    setNewViewName("");
+    setNewViewPinned(false);
+  };
+
+  const handleApplyView = (view: SavedSearchView) => {
+    setSearchQuery(view.query);
+    if (view.filters) {
+      setFilters({
+        domain: view.filters.domain || "all",
+        categoryId: view.filters.categoryId || null,
+        tag: view.filters.tag || null,
+        status: view.filters.status || "all",
+      });
+    }
+  };
+
+  const handleTogglePin = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    togglePinSavedSearchView(id);
+    refreshSavedViews();
+  };
+
+  const handleDeleteView = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    deleteSavedSearchView(id);
+    refreshSavedViews();
+  };
 
   const searchResults = useMemo(() => {
     return searchScholarCollections({
@@ -126,7 +195,7 @@ export function AdvancedSearch() {
           />
         </div>
 
-        {/* View mode buttons */}
+        {/* View mode buttons & Saved Views actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="text-stone-500 dark:text-stone-400 font-medium mr-1">
@@ -154,7 +223,116 @@ export function AdvancedSearch() {
               </button>
             ))}
           </div>
+
+          {canSaveCurrentView && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsSavePanelOpen(!isSavePanelOpen);
+                if (!isSavePanelOpen && !newViewName) {
+                  setNewViewName(
+                    searchQuery
+                      ? `Góc nhìn: ${searchQuery}`
+                      : "Góc nhìn bộ lọc",
+                  );
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>Lưu góc nhìn</span>
+            </button>
+          )}
         </div>
+
+        {/* Inline Save View Panel */}
+        {isSavePanelOpen && (
+          <form
+            onSubmit={handleSaveViewSubmit}
+            className="p-3.5 bg-amber-50/70 dark:bg-stone-800/80 border border-amber-200 dark:border-amber-900/50 rounded-xl flex flex-wrap items-center gap-3 text-xs animate-in fade-in duration-150"
+          >
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={newViewName}
+                onChange={(e) => setNewViewName(e.target.value)}
+                placeholder="Tên góc nhìn nghiên cứu..."
+                className="w-full px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs focus:ring-1 focus:ring-amber-700 font-medium text-stone-900 dark:text-stone-100"
+                autoFocus
+              />
+            </div>
+            <label className="flex items-center gap-1.5 cursor-pointer text-stone-700 dark:text-stone-300 select-none">
+              <input
+                type="checkbox"
+                checked={newViewPinned}
+                onChange={(e) => setNewViewPinned(e.target.checked)}
+                className="rounded text-amber-700 focus:ring-amber-700"
+              />
+              <span>Ghim lên đầu</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={!newViewName.trim()}
+                className="px-3 py-1.5 bg-amber-800 text-white font-semibold rounded-lg hover:bg-amber-900 transition disabled:opacity-50 cursor-pointer"
+              >
+                Xác nhận lưu
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSavePanelOpen(false)}
+                className="px-2 py-1.5 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 cursor-pointer"
+              >
+                Hủy
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Saved Views Chip List */}
+        {savedViews.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-stone-100 dark:border-stone-800 text-xs">
+            <span className="text-stone-500 dark:text-stone-400 font-medium mr-1 flex items-center gap-1">
+              <Bookmark className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              Góc nhìn đã lưu:
+            </span>
+            {savedViews.map((sv) => (
+              <div
+                key={sv.id}
+                onClick={() => handleApplyView(sv)}
+                className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium cursor-pointer transition select-none ${
+                  sv.pinned
+                    ? "bg-amber-100/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200"
+                    : "bg-stone-100 dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => handleTogglePin(e, sv.id)}
+                  title={`Ghim góc nhìn '${sv.name}'`}
+                  className="p-0.5 hover:text-amber-700 dark:hover:text-amber-400 rounded transition cursor-pointer"
+                >
+                  <Pin
+                    className={`w-3 h-3 ${
+                      sv.pinned
+                        ? "fill-amber-700 dark:fill-amber-400 text-amber-700 dark:text-amber-400"
+                        : "text-stone-400"
+                    }`}
+                  />
+                </button>
+                <span>{sv.name}</span>
+                <button
+                  type="button"
+                  onClick={(e) => handleDeleteView(e, sv.id)}
+                  title={`Xóa góc nhìn '${sv.name}'`}
+                  className="p-0.5 text-stone-400 hover:text-red-600 dark:hover:text-red-400 rounded transition cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Deep Multidimensional Filters */}
