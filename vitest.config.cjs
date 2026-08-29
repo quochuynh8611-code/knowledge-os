@@ -1,9 +1,9 @@
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+const { defineConfig } = require('vitest/config');
+const react = require('@vitejs/plugin-react');
+const path = require('path');
 
-export default defineConfig({
-  plugins: [react()],
+module.exports = defineConfig({
+  plugins: [typeof react === 'function' ? react() : react.default()],
   cacheDir: path.resolve(__dirname, '.cache/vitest'),
   test: {
     globals: true,
