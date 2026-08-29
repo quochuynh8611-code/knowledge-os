@@ -6,9 +6,116 @@ import type {
   CompletenessState,
   SourceAttribution,
 } from '../../types/scholarSuite';
+import type { TerminologyEntry, KnowledgeDomain } from '../../types/terminology';
 import { LEXICON_REGISTRY } from '../../data/scholarSuite/lexiconRegistry';
 import { SYSTEM_NODE_REGISTRY } from '../../data/scholarSuite/systemRegistry';
 import { MATRIX_RELATION_REGISTRY } from '../../data/scholarSuite/matrixRegistry';
+import { scholarLexiconDictionary } from '../terminology/lexiconDictionary';
+
+export interface LexiconItemView {
+  id: string;
+  pali: string;
+  sanskrit: string;
+  hanTu: string;
+  pinyin: string;
+  vietnamese: string;
+  category: KnowledgeDomain;
+  definition: string;
+  canonicalRef: string;
+  tags: string[];
+}
+
+/**
+ * Maps a generic TerminologyEntry into a LexiconItemView for presentation.
+ */
+export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): LexiconItemView {
+  const sourceRef =
+    entry.sources && entry.sources.length > 0
+      ? entry.sources.map((s) => `${s.sourceTitle} ${s.sectionRef}`).join('; ')
+      : entry.provenanceNote ?? 'Tham chiếu học thuật';
+
+  return {
+    id: entry.id,
+    pali: entry.aliases?.pali ?? '—',
+    sanskrit: entry.aliases?.sanskrit ?? '—',
+    hanTu: entry.aliases?.hanTu ?? '—',
+    pinyin: entry.aliases?.pinyin ?? '—',
+    vietnamese: entry.aliases?.vietnamese ?? entry.title,
+    category: entry.domain,
+    definition: entry.summary ?? '',
+    canonicalRef: sourceRef,
+    tags: [entry.domain],
+  };
+}
+
+/**
+ * Pure selector to retrieve and filter Lexicon Item Views backed by the Terminology Dictionary.
+ * Canonical selector for presentation layers.
+ */
+export function getTerminologyLexiconItems(filter?: {
+  domain?: string;
+  query?: string;
+}): LexiconItemView[] {
+  let entries = scholarLexiconDictionary.listAll?.() ?? [];
+
+  if (filter?.domain && filter.domain !== 'all') {
+    entries = entries.filter((e) => e.domain === filter.domain);
+  }
+
+  if (filter?.query && filter.query.trim()) {
+    const q = filter.query.toLowerCase().trim();
+    entries = entries.filter((e) => {
+      const matchTitle = e.title.toLowerCase().includes(q);
+      const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
+      const matchCode = e.code?.toLowerCase().includes(q) ?? false;
+      const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
+      const matchAlias = e.aliases
+        ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
+        : false;
+      return matchTitle || matchSummary || matchCode || matchCanonical || matchAlias;
+    });
+  }
+
+  return entries.map(mapTerminologyEntryToLexiconItemView);
+}
+
+/**
+ * Pure selector to retrieve Terminology entries backed by the Terminology Dictionary.
+ * Canonical selector for data and citation pipelines.
+ */
+export function getTerminologyEntries(filter?: {
+  domain?: string;
+  query?: string;
+}): TerminologyEntry[] {
+  let entries = scholarLexiconDictionary.listAll?.() ?? [];
+
+  if (filter?.domain && filter.domain !== 'all') {
+    entries = entries.filter((e) => e.domain === filter.domain);
+  }
+
+  if (filter?.query && filter.query.trim()) {
+    const q = filter.query.toLowerCase().trim();
+    entries = entries.filter((e) => {
+      const matchTitle = e.title.toLowerCase().includes(q);
+      const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
+      const matchCode = e.code?.toLowerCase().includes(q) ?? false;
+      const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
+      const matchAlias = e.aliases
+        ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
+        : false;
+      return matchTitle || matchSummary || matchCode || matchCanonical || matchAlias;
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Pure O(1) selector to retrieve a single TerminologyEntry by ID.
+ */
+export function getTerminologyEntryById(id: string): TerminologyEntry | undefined {
+  return scholarLexiconDictionary.getEntry(id);
+}
 
 /**
  * Validates the core attribution invariant:
@@ -40,9 +147,12 @@ export interface LexiconFilterOptions {
 }
 
 /**
- * Pure selector to retrieve and filter Lexicon entries
+ * @deprecated Legacy selector reading raw LexiconEntry from LEXICON_REGISTRY.
+ * Maintained for backward compatibility and wave completeness test coverage.
+ * For new features and presentation layers, use getTerminologyLexiconItems() or getTerminologyEntries().
  */
 export function getLexiconEntries(filter?: LexiconFilterOptions): LexiconEntry[] {
+
   let entries = [...LEXICON_REGISTRY];
 
   if (!filter) {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
+import type { TerminologyEntry } from '../../types/terminology';
 import {
   generateScholarCitations,
   ScholarCitationFormat,
@@ -22,10 +23,11 @@ import {
 export interface ScholarCitationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  entry?: LexiconEntry | null;
+  entry?: LexiconEntry | TerminologyEntry | null;
   node?: SystemNode | null;
   relation?: MatrixRelation | null;
 }
+
 
 export function ScholarCitationModal({
   isOpen,

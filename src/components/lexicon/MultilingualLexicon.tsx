@@ -11,55 +11,56 @@ import {
   List,
   Quote,
 } from 'lucide-react';
-import { getLexiconEntries } from '../../lib/scholarSuite/selectors';
-import type { LexiconEntry } from '../../types/scholarSuite';
+import {
+  getTerminologyLexiconItems,
+  getTerminologyEntryById,
+  LexiconItemView,
+} from '../../lib/scholarSuite/selectors';
+import type { TerminologyEntry } from '../../types/terminology';
 import { ScholarCitationModal } from '../modals/ScholarCitationModal';
 
-export interface LexiconItemView {
-  id: string;
-  pali: string;
-  sanskrit: string;
-  hanTu: string;
-  pinyin: string;
-  vietnamese: string;
-  category: 'phat-hoc' | 'huyen-hoc';
-  definition: string;
-  canonicalRef: string;
-  tags: string[];
+export type { LexiconItemView };
+
+function getCategoryBadge(category: string, compact = false) {
+  switch (category) {
+    case 'phat-hoc':
+      return {
+        label: compact ? 'Phật' : 'Phật Học',
+        className: 'bg-amber-100 text-amber-900 border border-amber-200',
+      };
+    case 'huyen-hoc':
+      return {
+        label: compact ? 'Dịch' : 'Huyền Học',
+        className: 'bg-indigo-100 text-indigo-900 border border-indigo-200',
+      };
+    case 'triet-hoc':
+      return {
+        label: compact ? 'Triết' : 'Triết Học',
+        className: 'bg-emerald-100 text-emerald-900 border border-emerald-200',
+      };
+    case 'khoa-hoc-tam-thuc':
+      return {
+        label: compact ? 'Tâm Thức' : 'Khoa Học Tâm Thức',
+        className: 'bg-sky-100 text-sky-900 border border-sky-200',
+      };
+    default:
+      return {
+        label: compact ? category.slice(0, 4) : category,
+        className: 'bg-stone-100 text-stone-800 border border-stone-200',
+      };
+  }
 }
 
 export function MultilingualLexicon() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc' | string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
-  const [selectedCitationEntry, setSelectedCitationEntry] = useState<LexiconEntry | null>(null);
-
-  const rawEntries = useMemo(() => {
-    return getLexiconEntries();
-  }, []);
+  const [selectedCitationEntry, setSelectedCitationEntry] = useState<TerminologyEntry | null>(null);
 
   const lexiconItems: LexiconItemView[] = useMemo(() => {
-    return rawEntries.map((e) => {
-      const sourceRef =
-        e.sources && e.sources.length > 0
-          ? e.sources.map((s) => `${s.sourceTitle} ${s.sectionRef}`).join('; ')
-          : e.provenanceNote ?? 'Tham chiếu học thuật';
-
-      return {
-        id: e.id,
-        pali: e.terms.pali ?? '—',
-        sanskrit: e.terms.sanskrit ?? '—',
-        hanTu: e.terms.hanTu ?? '—',
-        pinyin: e.terms.pinyin ?? '—',
-        vietnamese: e.terms.vietnamese,
-        category: e.domain === 'phat-hoc' ? 'phat-hoc' : 'huyen-hoc',
-        definition: e.canonicalDefinition,
-        canonicalRef: sourceRef,
-        tags: [e.subCategory, e.domain],
-      };
-    });
-  }, [rawEntries]);
+    return getTerminologyLexiconItems();
+  }, []);
 
   const filteredEntries = useMemo(() => {
     return lexiconItems.filter((entry) => {
@@ -90,11 +91,12 @@ export function MultilingualLexicon() {
   };
 
   const handleOpenCitation = (entryId: string) => {
-    const raw = rawEntries.find((e) => e.id === entryId);
-    if (raw) {
-      setSelectedCitationEntry(raw);
+    const entry = getTerminologyEntryById(entryId);
+    if (entry) {
+      setSelectedCitationEntry(entry);
     }
   };
+
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-5">
@@ -257,15 +259,16 @@ export function MultilingualLexicon() {
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${
-                          entry.category === 'phat-hoc'
-                            ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                            : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
-                        }`}
-                      >
-                        {entry.category === 'phat-hoc' ? 'Phật' : 'Dịch'}
-                      </span>
+                      {(() => {
+                        const badge = getCategoryBadge(entry.category, true);
+                        return (
+                          <span
+                            className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                       <span className="text-xs font-serif font-bold text-stone-900">{entry.hanTu}</span>
                     </div>
 
@@ -325,19 +328,21 @@ export function MultilingualLexicon() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span
-                          className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${
-                            entry.category === 'phat-hoc'
-                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
-                              : 'bg-indigo-100 text-indigo-900 border border-indigo-200'
-                          }`}
-                        >
-                          {entry.category === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}
-                        </span>
+                        {(() => {
+                          const badge = getCategoryBadge(entry.category, false);
+                          return (
+                            <span
+                              className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${badge.className}`}
+                            >
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
                         <span className="text-sm font-serif font-bold text-stone-900">{entry.hanTu}</span>
                       </div>
                       <h3 className="text-base font-bold text-stone-900 leading-snug">{entry.vietnamese}</h3>
                     </div>
+
 
                     <div className="flex items-center gap-1.5">
                       <button
