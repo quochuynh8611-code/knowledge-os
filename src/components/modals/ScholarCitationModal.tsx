@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import {
   generateScholarCitations,
@@ -14,6 +14,8 @@ import {
   FileText,
   Download,
   AlertTriangle,
+  Info,
+  Layers,
 } from 'lucide-react';
 
 export interface ScholarCitationModalProps {
@@ -33,6 +35,20 @@ export function ScholarCitationModal({
 }: ScholarCitationModalProps) {
   const [format, setFormat] = useState<ScholarCitationFormat>('bibtex');
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const targetItem = entry || node || relation;
 
@@ -71,12 +87,24 @@ export function ScholarCitationModal({
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(currentPreview);
+        setCopied(true);
+        setCopyError(null);
+        setStatusMessage(`Đã sao chép trích dẫn định dạng ${format.toUpperCase()} vào clipboard.`);
+        setTimeout(() => {
+          setCopied(false);
+          setStatusMessage('');
+        }, 2000);
+      } else {
+        throw new Error('Clipboard API not available');
       }
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied(false);
+      setCopyError('Không thể sao chép vào clipboard. Vui lòng chọn và sao chép thủ công.');
+      setStatusMessage('Lỗi sao chép trích dẫn vào clipboard.');
+      setTimeout(() => {
+        setCopyError(null);
+        setStatusMessage('');
+      }, 3000);
     }
   };
 
@@ -95,11 +123,18 @@ export function ScholarCitationModal({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    setStatusMessage(`Đã tải tệp .${type} thành công.`);
+    setTimeout(() => setStatusMessage(''), 2000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
       <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        {/* Live status announcement for screen readers */}
+        <div role="status" aria-live="polite" className="sr-only">
+          {statusMessage}
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
           <div className="flex items-center gap-2.5">
@@ -116,7 +151,8 @@ export function ScholarCitationModal({
           <button
             onClick={onClose}
             className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg transition cursor-pointer"
-            title="Đóng"
+            title="Đóng (Esc)"
+            aria-label="Đóng hộp thoại trích dẫn"
           >
             <X className="w-5 h-5" />
           </button>
@@ -126,7 +162,7 @@ export function ScholarCitationModal({
         {!isBlocked && (
           <div className="flex flex-wrap border-b border-stone-200 px-4 bg-stone-100/50">
             <button
-              onClick={() => { setFormat('bibtex'); setCopied(false); }}
+              onClick={() => { setFormat('bibtex'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'bibtex'
                   ? 'border-amber-700 text-amber-900'
@@ -136,7 +172,7 @@ export function ScholarCitationModal({
               <Code className="w-3.5 h-3.5" /> BibTeX
             </button>
             <button
-              onClick={() => { setFormat('csl'); setCopied(false); }}
+              onClick={() => { setFormat('csl'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'csl'
                   ? 'border-amber-700 text-amber-900'
@@ -146,7 +182,7 @@ export function ScholarCitationModal({
               <FileText className="w-3.5 h-3.5" /> CSL JSON
             </button>
             <button
-              onClick={() => { setFormat('apa'); setCopied(false); }}
+              onClick={() => { setFormat('apa'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'apa'
                   ? 'border-amber-700 text-amber-900'
@@ -156,7 +192,7 @@ export function ScholarCitationModal({
               <BookOpen className="w-3.5 h-3.5" /> APA 7th
             </button>
             <button
-              onClick={() => { setFormat('chicago'); setCopied(false); }}
+              onClick={() => { setFormat('chicago'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'chicago'
                   ? 'border-amber-700 text-amber-900'
@@ -166,7 +202,7 @@ export function ScholarCitationModal({
               Chicago
             </button>
             <button
-              onClick={() => { setFormat('mla'); setCopied(false); }}
+              onClick={() => { setFormat('mla'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'mla'
                   ? 'border-amber-700 text-amber-900'
@@ -176,7 +212,7 @@ export function ScholarCitationModal({
               MLA 9th
             </button>
             <button
-              onClick={() => { setFormat('harvard'); setCopied(false); }}
+              onClick={() => { setFormat('harvard'); setCopied(false); setCopyError(null); }}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1 cursor-pointer ${
                 format === 'harvard'
                   ? 'border-amber-700 text-amber-900'
@@ -190,6 +226,51 @@ export function ScholarCitationModal({
 
         {/* Body & Citation Preview */}
         <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+          {/* Relational Evidence & Context Isolation */}
+          {relation && (
+            <div className="p-3 bg-stone-100 rounded-xl border border-stone-200 space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-amber-800" />
+                  <span className="font-bold text-stone-800 uppercase tracking-wide text-[11px]">
+                    Ngữ Cảnh Quan Hệ Ma Trận
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-amber-200 text-amber-900 uppercase">
+                    {relation.relationType}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded font-mono font-bold bg-stone-200 text-stone-700 border border-stone-300">
+                    {relation.evidenceLevel}
+                  </span>
+                </div>
+              </div>
+
+              {relation.canonicalEvidence && (
+                <div className="p-2.5 bg-white rounded-lg border border-stone-200/80 space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-amber-900 block">
+                    Bằng chứng văn bản nguyên bản:
+                  </span>
+                  <p className="text-xs text-stone-700 italic leading-relaxed">
+                    {relation.canonicalEvidence}
+                  </p>
+                </div>
+              )}
+
+              {relation.interpretiveNote && (
+                <div className="p-2.5 bg-amber-50/70 rounded-lg border border-amber-200/70 space-y-1">
+                  <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-amber-950">
+                    <Info className="w-3 h-3 text-amber-700" />
+                    <span>Chú giải phân tích học thuật (Không phải nguồn nguyên bản):</span>
+                  </div>
+                  <p className="text-xs text-stone-700 leading-relaxed">
+                    {relation.interpretiveNote}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {isBlocked ? (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
               <div className="flex items-center gap-2 text-amber-800 font-bold text-xs">
@@ -238,6 +319,11 @@ export function ScholarCitationModal({
               {copied && (
                 <span className="text-emerald-700 font-semibold flex items-center gap-1">
                   <Check className="w-3.5 h-3.5" /> Đã sao chép
+                </span>
+              )}
+              {copyError && (
+                <span className="text-rose-700 font-semibold flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" /> {copyError}
                 </span>
               )}
             </div>

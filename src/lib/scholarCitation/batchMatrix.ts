@@ -45,6 +45,36 @@ export function exportMatrixRelationsToCSL(relations: MatrixRelation[]): CSLItem
 }
 
 /**
+ * Statistics on batch matrix relation exports.
+ */
+export interface BatchMatrixExportStats {
+  total: number;
+  exportedCount: number;
+  skippedCount: number;
+}
+
+/**
+ * Computes exact count of exported vs skipped relations for batch export operations.
+ */
+export function getBatchMatrixExportStats(relations: MatrixRelation[]): BatchMatrixExportStats {
+  const total = relations.length;
+  let exportedCount = 0;
+
+  for (const rel of relations) {
+    const vm = normalizeMatrixRelation(rel);
+    if (vm.sufficiency !== 'internal_note_only') {
+      exportedCount += 1;
+    }
+  }
+
+  return {
+    total,
+    exportedCount,
+    skippedCount: total - exportedCount,
+  };
+}
+
+/**
  * Helper function to trigger browser download for batch matrix citation files.
  */
 export function triggerBatchDownload(filename: string, content: string, mimeType: string): void {
