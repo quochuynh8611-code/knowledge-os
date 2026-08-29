@@ -26,8 +26,9 @@ export function normalizeLexiconEntry(entry: LexiconEntry): ScholarCitationViewM
   const primarySource = entry.sources?.[0];
 
   const canonicalTerm = entry.terms.pali || entry.terms.sanskrit || entry.slug;
-  const title = entry.terms.pali
-    ? `${entry.terms.pali} (${entry.terms.vietnamese})`
+  const canonicalName = entry.terms.pali || entry.terms.sanskrit;
+  const title = canonicalName
+    ? `${canonicalName} (${entry.terms.vietnamese})`
     : entry.terms.vietnamese;
 
   const citationKey = sufficiency !== 'internal_note_only'

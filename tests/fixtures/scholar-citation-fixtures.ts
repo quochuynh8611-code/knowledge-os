@@ -93,3 +93,26 @@ export const specialCharsNodeFixture: SystemNode = {
   ],
   coverage: 'canonical',
 };
+
+export const taishoLexiconFixture: LexiconEntry = {
+  id: 'lex-taisho-sample',
+  slug: 'madhyamaka',
+  terms: {
+    vietnamese: 'Trung Luận (Trung Quán Luận)',
+    sanskrit: 'Mūlamadhyamakakārikā',
+    hanTu: '中論',
+    english: 'Fundamental Verses on the Middle Way',
+  },
+  domain: 'phat-hoc',
+  subCategory: 'Trung Quan',
+  canonicalDefinition: 'Khảo luận nền tảng về tính Không (Śūnyatā).',
+  sources: [
+    {
+      sourceTitle: 'Trung Luận (Mūlamadhyamakakārikā)',
+      sectionRef: 'Quán Nhân Duyên Phẩm § 1',
+      taishoRef: 'T30n1564',
+    },
+  ],
+  coverage: 'canonical',
+};
+
