@@ -16,7 +16,7 @@ vi.mock('../../src/context/DataContext', () => ({
   }),
 }));
 
-describe('Phase B: ScholarSuite UI Component Registry Binding', () => {
+describe('ScholarSuite UI Components & Lexicon UX Polish', () => {
   describe('1. AbhidharmaMatrix Component', () => {
     it('renders citta nodes sourced from scholarSuite systemRegistry', () => {
       render(<AbhidharmaMatrix />);
@@ -69,7 +69,7 @@ describe('Phase B: ScholarSuite UI Component Registry Binding', () => {
     });
   });
 
-  describe('3. MultilingualLexicon Component', () => {
+  describe('3. MultilingualLexicon Component & UX Polish', () => {
     it('renders lexicon entries sourced from scholarSuite lexiconRegistry', () => {
       render(<MultilingualLexicon />);
 
@@ -88,6 +88,64 @@ describe('Phase B: ScholarSuite UI Component Registry Binding', () => {
       fireEvent.click(phatHocBtn);
 
       expect(screen.getByText(/Tâm \/ Thức/i)).toBeInTheDocument();
+    });
+
+    it('renders result count summary for total registered entries by default', () => {
+      render(<MultilingualLexicon />);
+      const registeredEntries = getLexiconEntries();
+      expect(
+        screen.getByText(new RegExp(`Hiển thị ${registeredEntries.length} \\/ ${registeredEntries.length} thuật ngữ`, 'i'))
+      ).toBeInTheDocument();
+    });
+
+    it('updates result summary count dynamically when typing search query', () => {
+      render(<MultilingualLexicon />);
+      const registeredEntries = getLexiconEntries();
+      const searchInput = screen.getByPlaceholderText(/Tra cứu/i);
+
+      fireEvent.change(searchInput, { target: { value: 'Citta' } });
+      expect(
+        screen.getByText(new RegExp(`Hiển thị [1-9][0-9]* \\/ ${registeredEntries.length} thuật ngữ`, 'i'))
+      ).toBeInTheDocument();
+    });
+
+    it('renders "Đặt lại bộ lọc" button when search/filter active, and clicking it resets search and filters', () => {
+      render(<MultilingualLexicon />);
+      const registeredEntries = getLexiconEntries();
+      const searchInput = screen.getByPlaceholderText(/Tra cứu/i) as HTMLInputElement;
+
+      fireEvent.change(searchInput, { target: { value: 'Duyên' } });
+      const resetBtn = screen.getByRole('button', { name: /Đặt lại bộ lọc/i });
+      expect(resetBtn).toBeInTheDocument();
+
+      fireEvent.click(resetBtn);
+      expect(searchInput.value).toBe('');
+      expect(
+        screen.getByText(new RegExp(`Hiển thị ${registeredEntries.length} \\/ ${registeredEntries.length} thuật ngữ`, 'i'))
+      ).toBeInTheDocument();
+    });
+
+    it('renders polite empty state with reset button when search yields no matches', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu/i);
+
+      fireEvent.change(searchInput, { target: { value: 'ThuatNguKhongTonTai999' } });
+      expect(screen.getByText(/Không tìm thấy thuật ngữ phù hợp/i)).toBeInTheDocument();
+      
+      const resetButtons = screen.getAllByRole('button', { name: /Đặt lại bộ lọc/i });
+      expect(resetButtons.length).toBeGreaterThanOrEqual(1);
+
+      fireEvent.click(resetButtons[0]);
+      expect(screen.getByText(/Tâm \/ Thức/i)).toBeInTheDocument();
+    });
+
+    it('toggles between detailed and compact view modes properly', () => {
+      render(<MultilingualLexicon />);
+      const compactToggleBtn = screen.getByRole('button', { name: /Thu gọn|Compact/i });
+      expect(compactToggleBtn).toBeInTheDocument();
+
+      fireEvent.click(compactToggleBtn);
+      expect(screen.getByRole('button', { name: /Chi tiết|Detailed/i })).toBeInTheDocument();
     });
   });
 });

@@ -148,8 +148,8 @@ export function Sidebar() {
         }}
         className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
           isActive
-            ? 'bg-amber-100 text-amber-900 font-semibold shadow-2xs'
-            : 'text-stone-700 hover:bg-stone-200/70 hover:text-stone-900'
+            ? 'bg-amber-100 text-amber-950 font-semibold shadow-2xs border-l-[3px] border-amber-800 pl-2.5'
+            : 'text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 border-l-[3px] border-transparent pl-2.5'
         }`}
       >
         <div className="flex items-center gap-2.5">
@@ -185,8 +185,13 @@ export function Sidebar() {
 
       {/* Advanced / Specialized Tools Group */}
       <div className="px-3.5 pt-3 pb-2 border-t border-stone-200">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-stone-600 px-3 py-1.5">
-          Công cụ chuyên sâu
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+            Công cụ chuyên sâu
+          </span>
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200/60 font-semibold">
+            Scholar
+          </span>
         </div>
         <div className="space-y-1 mt-1">
           {specializedNavItems.map(renderNavButton)}
