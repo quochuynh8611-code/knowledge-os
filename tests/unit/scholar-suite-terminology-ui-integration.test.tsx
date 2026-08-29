@@ -156,23 +156,35 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
       });
     });
 
-    it('searches by Vietnamese keyword "nhận thức" and matches summary definitions', () => {
+    it('searches by canonical Vietnamese phrase "nhận biết" and displays matching Citta card', () => {
       render(<MultilingualLexicon />);
       const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
 
-      fireEvent.change(searchInput, { target: { value: 'nhận thức' } });
+      fireEvent.change(searchInput, { target: { value: 'nhận biết' } });
 
-      // Selector parity check
-      const expectedResults = getTerminologyLexiconItems({ query: 'nhận thức' });
+      // Selector parity check against actual registry data
+      const expectedResults = getTerminologyLexiconItems({ query: 'nhận biết' });
       expect(expectedResults.length).toBeGreaterThan(0);
 
-      // UI count indicator parity
+      // UI count indicator and card rendering parity
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('searches by canonical definition phrase "tâm lý" and displays matching Cetasika card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'tâm lý' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'tâm lý' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+
       expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
       expect(screen.getAllByText(/Tâm Sở/i).length).toBeGreaterThanOrEqual(1);
     });
 
-
-    it('searches by English alias "Consciousness" and displays matching Citta card', () => {
+    it('searches by English alias "Consciousness" and displays matching Citta and Cetasika cards', () => {
       render(<MultilingualLexicon />);
       const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
 
@@ -180,6 +192,20 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
 
       const expectedResults = getTerminologyLexiconItems({ query: 'Consciousness' });
       expect(expectedResults.length).toBeGreaterThan(0);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('searches by code/canonicalTerm "citta" with exact selector parity', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'citta' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'citta' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+      expect(expectedResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
 
       expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
       expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
