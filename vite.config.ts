@@ -5,7 +5,16 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    cacheDir: path.resolve(__dirname, '.cache/vite'),
     plugins: [react(), tailwindcss()],
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './tests/setup.ts',
+      cache: {
+        dir: path.resolve(__dirname, '.cache/vitest'),
+      },
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
