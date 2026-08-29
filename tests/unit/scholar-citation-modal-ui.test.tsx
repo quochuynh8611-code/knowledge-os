@@ -142,8 +142,8 @@ describe('Phase D: Scholar Citation Modal UI Component', () => {
   it('8. Opens citation modal from MultilingualLexicon entry card action', () => {
     render(<MultilingualLexicon />);
 
-    // Find the first "Trích dẫn" button in lexicon
-    const citeBtns = screen.getAllByRole('button', { name: /Trích dẫn/i });
+    // Find the first "Xuất trích dẫn" button in lexicon
+    const citeBtns = screen.getAllByText(/Xuất trích dẫn/i);
     expect(citeBtns.length).toBeGreaterThan(0);
 
     act(() => {
