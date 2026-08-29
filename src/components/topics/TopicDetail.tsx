@@ -122,7 +122,7 @@ export function TopicDetail() {
   const topicResources = resources.filter((r) => r.topicId === topic.id);
 
   // Linked topics
-  const linkedTopics = topic.links.map((link) => {
+  const linkedTopics = (topic.links ?? []).map((link) => {
     const linked = topics.find((t) => t.id === link.targetId);
     return {
       ...link,
@@ -358,8 +358,7 @@ export function TopicDetail() {
               : "border-transparent text-stone-600 hover:text-stone-900"
           }`}
         >
-          <Share2 className="w-4 h-4" /> Liên Kết Tri Thức ({topic.links.length}
-          )
+          <Share2 className="w-4 h-4" /> Liên Kết Tri Thức ({topic.links?.length ?? 0})
         </button>
 
         <button
@@ -405,7 +404,7 @@ export function TopicDetail() {
             <span className="text-xs text-stone-500 font-medium mr-1 flex items-center gap-1">
               <TagIcon className="w-3.5 h-3.5 text-stone-400" /> Thẻ chủ đề:
             </span>
-            {topic.tags.map((tg) => (
+            {(topic.tags ?? []).map((tg) => (
               <span
                 key={tg}
                 className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg text-xs font-medium"
@@ -477,7 +476,7 @@ export function TopicDetail() {
 
                   <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
                     <div className="flex flex-wrap gap-1">
-                      {note.tags.map((t) => (
+                      {(note.tags ?? []).map((t) => (
                         <span
                           key={t}
                           className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]"
