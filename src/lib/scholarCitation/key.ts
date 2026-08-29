@@ -1,6 +1,6 @@
 export interface CitationKeyParams {
   domain: string;
-  entityType: 'lex' | 'sys';
+  entityType: 'lex' | 'sys' | 'rel';
   slugOrCode: string;
   sourceTitle?: string;
   sectionRef?: string;

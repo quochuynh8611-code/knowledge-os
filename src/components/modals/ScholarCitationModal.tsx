@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { LexiconEntry, SystemNode } from '../../types/scholarSuite';
+import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import {
   generateScholarCitations,
   ScholarCitationFormat,
@@ -21,6 +21,7 @@ export interface ScholarCitationModalProps {
   onClose: () => void;
   entry?: LexiconEntry | null;
   node?: SystemNode | null;
+  relation?: MatrixRelation | null;
 }
 
 export function ScholarCitationModal({
@@ -28,11 +29,12 @@ export function ScholarCitationModal({
   onClose,
   entry,
   node,
+  relation,
 }: ScholarCitationModalProps) {
   const [format, setFormat] = useState<ScholarCitationFormat>('bibtex');
   const [copied, setCopied] = useState(false);
 
-  const targetItem = entry || node;
+  const targetItem = entry || node || relation;
 
   const result = useMemo(() => {
     if (!targetItem) return null;

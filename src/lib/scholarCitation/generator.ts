@@ -1,6 +1,6 @@
-import type { LexiconEntry, SystemNode } from '../../types/scholarSuite';
+import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import type { ScholarCitationViewModel, CSLItem } from '../../types/scholarCitation';
-import { normalizeLexiconEntry, normalizeSystemNode } from './normalizer';
+import { normalizeLexiconEntry, normalizeSystemNode, normalizeMatrixRelation } from './normalizer';
 import { formatBibTeX } from './formatters/bibtex';
 import { formatCSLJSON } from './formatters/csl';
 import { formatAPA7 } from './formatters/apa';
@@ -23,15 +23,20 @@ export interface ScholarCitationResult {
 }
 
 /**
- * Pure generator to orchestrate all 6 citation formats for any LexiconEntry or SystemNode.
+ * Pure generator to orchestrate all 6 citation formats for any LexiconEntry, SystemNode, or MatrixRelation.
  */
 export function generateScholarCitations(
-  item: LexiconEntry | SystemNode
+  item: LexiconEntry | SystemNode | MatrixRelation
 ): ScholarCitationResult {
-  const isLexicon = 'terms' in item && 'canonicalDefinition' in item;
-  const viewModel = isLexicon
-    ? normalizeLexiconEntry(item as LexiconEntry)
-    : normalizeSystemNode(item as SystemNode);
+  let viewModel: ScholarCitationViewModel;
+
+  if ('matrixType' in item && 'rowNodeId' in item) {
+    viewModel = normalizeMatrixRelation(item as MatrixRelation);
+  } else if ('terms' in item && 'canonicalDefinition' in item) {
+    viewModel = normalizeLexiconEntry(item as LexiconEntry);
+  } else {
+    viewModel = normalizeSystemNode(item as SystemNode);
+  }
 
   const isBlocked = viewModel.sufficiency === 'internal_note_only';
 

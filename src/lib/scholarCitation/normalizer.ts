@@ -1,5 +1,6 @@
-import type { LexiconEntry, SystemNode } from '../../types/scholarSuite';
+import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import type { ScholarCitationViewModel, CitationSufficiency } from '../../types/scholarCitation';
+import { SYSTEM_NODE_REGISTRY } from '../../data/scholarSuite/systemRegistry';
 import { generateCitationKey } from './key';
 
 /**
@@ -87,6 +88,61 @@ export function normalizeSystemNode(node: SystemNode): ScholarCitationViewModel 
     taishoRef: primarySource?.taishoRef,
     standardEdition: primarySource?.standardEdition,
     provenanceNote: node.provenanceNote,
+    sufficiency,
+    cslType: 'chapter',
+  };
+}
+
+/**
+ * Adapts a MatrixRelation into ScholarCitationViewModel with link resolution.
+ */
+export function normalizeMatrixRelation(
+  relation: MatrixRelation,
+  rowNode?: SystemNode,
+  colNode?: SystemNode
+): ScholarCitationViewModel {
+  const sufficiency = evaluateSufficiency(relation.sources);
+  const primarySource = relation.sources?.[0];
+
+  // Resolve row and column system nodes
+  const resolvedRow = rowNode || SYSTEM_NODE_REGISTRY.find((n) => n.id === relation.rowNodeId);
+  const resolvedCol = colNode || SYSTEM_NODE_REGISTRY.find((n) => n.id === relation.colNodeId);
+
+  const rowTitle = resolvedRow ? resolvedRow.title : relation.rowNodeId;
+  const colTitle = resolvedCol ? resolvedCol.title : relation.colNodeId;
+
+  const rowSlug = resolvedRow?.code || relation.rowNodeId;
+  const colSlug = resolvedCol?.code || relation.colNodeId;
+
+  const title = `${rowTitle} (${relation.relationType}) → ${colTitle}`;
+  const canonicalTerm = `${rowSlug}_${colSlug}`;
+
+  const domain = relation.matrixType === 'cross_domain_synthesis'
+    ? 'da-nganh'
+    : 'phat-hoc';
+
+  const citationKey = sufficiency !== 'internal_note_only'
+    ? generateCitationKey({
+        domain,
+        entityType: 'rel',
+        slugOrCode: `${rowSlug}_${colSlug}_${relation.relationType}`,
+        sourceTitle: primarySource?.sourceTitle,
+        sectionRef: primarySource?.sectionRef,
+        fallbackId: relation.id,
+      })
+    : '';
+
+  return {
+    citationKey,
+    title,
+    canonicalTerm,
+    domain,
+    sourceTitle: primarySource?.sourceTitle ?? '',
+    sectionRef: primarySource?.sectionRef ?? '',
+    ptsRef: primarySource?.ptsRef,
+    taishoRef: primarySource?.taishoRef,
+    standardEdition: primarySource?.standardEdition,
+    provenanceNote: relation.provenanceNote,
     sufficiency,
     cslType: 'chapter',
   };
