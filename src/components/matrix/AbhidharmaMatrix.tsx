@@ -1,7 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import { Sparkles, Brain, Search, Filter, BookOpen, Layers, CheckCircle2, ChevronRight } from 'lucide-react';
+import {
+  Sparkles,
+  Brain,
+  Search,
+  BookOpen,
+  ChevronRight,
+  Quote,
+  FileDown,
+  Layers,
+} from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { getSystemNodes } from '../../lib/scholarSuite/selectors';
+import { getSystemNodes, getMatrixRelations } from '../../lib/scholarSuite/selectors';
+import type { SystemNode, MatrixRelation } from '../../types/scholarSuite';
+import { ScholarCitationModal } from '../modals/ScholarCitationModal';
+import {
+  exportMatrixRelationsToBibTeX,
+  exportMatrixRelationsToCSL,
+  triggerBatchDownload,
+} from '../../lib/scholarCitation/batchMatrix';
 
 export interface CittaItem {
   id: string;
@@ -45,10 +61,23 @@ export function AbhidharmaMatrix() {
   const { openTopicDetail } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [citationNode, setCitationNode] = useState<SystemNode | null>(null);
+  const [citationRelation, setCitationRelation] = useState<MatrixRelation | null>(null);
+
+  const rawCittaNodes = useMemo(() => {
+    return getSystemNodes('citta_89_121');
+  }, []);
+
+  const allSystemNodes = useMemo(() => {
+    return getSystemNodes();
+  }, []);
+
+  const allMatrixRelations = useMemo(() => {
+    return getMatrixRelations();
+  }, []);
 
   const cittaList: CittaItem[] = useMemo(() => {
-    const nodes = getSystemNodes('citta_89_121');
-    return nodes.map((node) => ({
+    return rawCittaNodes.map((node) => ({
       id: node.id,
       nameVi: node.title,
       namePali: node.code,
@@ -59,13 +88,23 @@ export function AbhidharmaMatrix() {
       cetasikaCount: node.attributes.associatedCetasikaCount,
       description: node.canonicalMeaning,
     }));
-  }, []);
+  }, [rawCittaNodes]);
 
   const [selectedCittaId, setSelectedCittaId] = useState<string>(cittaList[0]?.id ?? '');
 
   const selectedCitta = useMemo(() => {
     return cittaList.find((c) => c.id === selectedCittaId) ?? cittaList[0];
   }, [cittaList, selectedCittaId]);
+
+  const rawSelectedCittaNode = useMemo(() => {
+    return rawCittaNodes.find((n) => n.id === selectedCittaId) ?? rawCittaNodes[0];
+  }, [rawCittaNodes, selectedCittaId]);
+
+  const associatedRelations = useMemo(() => {
+    return allMatrixRelations.filter(
+      (r) => r.rowNodeId === selectedCittaId || r.colNodeId === selectedCittaId
+    );
+  }, [allMatrixRelations, selectedCittaId]);
 
   const filteredCittas = useMemo(() => {
     return cittaList.filter((c) => {
@@ -78,6 +117,16 @@ export function AbhidharmaMatrix() {
       return matchesSearch && matchesCat;
     });
   }, [cittaList, searchTerm, selectedCategory]);
+
+  const handleBatchBibTeX = () => {
+    const bib = exportMatrixRelationsToBibTeX(associatedRelations);
+    triggerBatchDownload(`matrix_relations_${selectedCitta.namePali}.bib`, bib, 'application/x-bibtex');
+  };
+
+  const handleBatchCSL = () => {
+    const csl = exportMatrixRelationsToCSL(associatedRelations);
+    triggerBatchDownload(`matrix_relations_${selectedCitta.namePali}.json`, JSON.stringify(csl, null, 2), 'application/json');
+  };
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -207,9 +256,20 @@ export function AbhidharmaMatrix() {
         <div className="lg:col-span-5">
           <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-xs sticky top-20 space-y-5">
             <div className="border-b border-stone-200 pb-4">
-              <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-800 uppercase mb-1">
-                <Brain className="w-4 h-4" />
-                <span>Khảo Cứu Tâm Học Vi Diệu Pháp</span>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-amber-800 uppercase">
+                  <Brain className="w-4 h-4" />
+                  <span>Khảo Cứu Tâm Học Vi Diệu Pháp</span>
+                </div>
+                <button
+                  onClick={() => setCitationNode(rawSelectedCittaNode)}
+                  className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-medium flex items-center gap-1.5 transition shadow-2xs"
+                  title="Trích dẫn học thuật cho Tâm này"
+                  aria-label="Trích Dẫn Tâm"
+                >
+                  <Quote className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Trích Dẫn Tâm</span>
+                </button>
               </div>
               <h2 className="text-lg font-bold text-stone-900 leading-tight">
                 {selectedCitta.nameVi}
@@ -257,6 +317,81 @@ export function AbhidharmaMatrix() {
               </p>
             </div>
 
+            {/* Associated Matrix Relations */}
+            {associatedRelations.length > 0 && (
+              <div className="space-y-2.5 pt-2 border-t border-stone-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-900">
+                    <Layers className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Quan Hệ Phối Hợp &amp; Duyên Hệ ({associatedRelations.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleBatchBibTeX}
+                      className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded text-[10px] font-semibold flex items-center gap-1 transition"
+                      title="Xuất tệp BibTeX chứa toàn bộ quan hệ của tâm này"
+                      aria-label="Xuất .bib"
+                    >
+                      <FileDown className="w-3 h-3" />
+                      <span>Xuất .bib</span>
+                    </button>
+                    <button
+                      onClick={handleBatchCSL}
+                      className="px-2 py-0.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded text-[10px] font-semibold flex items-center gap-1 transition"
+                      title="Xuất tệp CSL JSON chứa toàn bộ quan hệ của tâm này"
+                      aria-label="Xuất .json"
+                    >
+                      <FileDown className="w-3 h-3" />
+                      <span>Xuất .json</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {associatedRelations.map((rel) => {
+                    const targetNodeId = rel.rowNodeId === selectedCittaId ? rel.colNodeId : rel.rowNodeId;
+                    const targetNode = allSystemNodes.find((n) => n.id === targetNodeId);
+                    const targetTitle = targetNode ? targetNode.title : targetNodeId;
+
+                    return (
+                      <div
+                        key={rel.id}
+                        className="p-2.5 rounded-xl border border-amber-200/80 bg-amber-50/40 text-xs space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-1.5 py-0.5 bg-amber-200/80 text-amber-900 rounded text-[10px] font-mono font-bold uppercase">
+                              {rel.relationType}
+                            </span>
+                            <span className="font-semibold text-stone-900 truncate max-w-[140px]">
+                              {targetTitle}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.2 bg-stone-100 text-stone-600 rounded border border-stone-200 font-mono">
+                              {rel.evidenceLevel}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setCitationRelation(rel)}
+                            className="px-2 py-0.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-medium flex items-center gap-1 shrink-0 transition"
+                            title="Trích dẫn quan hệ này"
+                            aria-label={`Trích dẫn quan hệ ${selectedCitta.nameVi} - ${targetTitle}`}
+                          >
+                            <Quote className="w-3 h-3 text-amber-700" />
+                            <span>Trích dẫn</span>
+                          </button>
+                        </div>
+                        {rel.canonicalEvidence && (
+                          <p className="text-[11px] text-stone-600 line-clamp-2 italic">
+                            {rel.canonicalEvidence}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Quick Action */}
             <button
               onClick={() => openTopicDetail('topic-1')}
@@ -268,6 +403,17 @@ export function AbhidharmaMatrix() {
           </div>
         </div>
       </div>
+
+      {/* Citation Modal */}
+      <ScholarCitationModal
+        isOpen={Boolean(citationNode || citationRelation)}
+        onClose={() => {
+          setCitationNode(null);
+          setCitationRelation(null);
+        }}
+        node={citationNode}
+        relation={citationRelation}
+      />
     </div>
   );
 }

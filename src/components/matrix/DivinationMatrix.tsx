@@ -1,7 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Compass, Sparkles, RefreshCw, Layers, BookOpen, Clock, Moon, Sun, ArrowRight } from 'lucide-react';
+import {
+  Compass,
+  Sparkles,
+  BookOpen,
+  Quote,
+} from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { getSystemNodes } from '../../lib/scholarSuite/selectors';
+import { getSystemNodes, getMatrixRelations } from '../../lib/scholarSuite/selectors';
+import type { SystemNode, MatrixRelation } from '../../types/scholarSuite';
+import { ScholarCitationModal } from '../modals/ScholarCitationModal';
 
 export interface Hexagram {
   number: number;
@@ -28,10 +35,23 @@ export interface QiMenPalace {
 export function DivinationMatrix() {
   const { openTopicDetail } = useData();
   const [activeTab, setActiveTab] = useState<'iching' | 'qimen'>('iching');
+  const [citationNode, setCitationNode] = useState<SystemNode | null>(null);
+  const [citationRelation, setCitationRelation] = useState<MatrixRelation | null>(null);
+
+  const rawHexNodes = useMemo(() => {
+    return getSystemNodes('iching_64');
+  }, []);
+
+  const rawQiMenNodes = useMemo(() => {
+    return getSystemNodes('qimen_9');
+  }, []);
+
+  const crossDomainRelations = useMemo(() => {
+    return getMatrixRelations('cross_domain_synthesis');
+  }, []);
 
   const hexagramList: Hexagram[] = useMemo(() => {
-    const nodes = getSystemNodes('iching_64');
-    return nodes.map((node) => ({
+    return rawHexNodes.map((node) => ({
       number: node.attributes.hexagramNumber,
       nameVi: node.title,
       nameHán: node.code,
@@ -42,11 +62,10 @@ export function DivinationMatrix() {
       meaning: node.canonicalMeaning,
       philosophicalInsight: node.crossDomainAnalogy ?? node.canonicalMeaning,
     }));
-  }, []);
+  }, [rawHexNodes]);
 
   const palaceList: QiMenPalace[] = useMemo(() => {
-    const nodes = getSystemNodes('qimen_9');
-    return nodes.map((node) => ({
+    return rawQiMenNodes.map((node) => ({
       id: node.attributes.palaceNumber,
       name: node.title,
       element: node.attributes.element,
@@ -55,7 +74,7 @@ export function DivinationMatrix() {
       deity: node.attributes.deity,
       meaning: node.canonicalMeaning,
     }));
-  }, []);
+  }, [rawQiMenNodes]);
 
   const [selectedHexNumber, setSelectedHexNumber] = useState<number>(hexagramList[0]?.number ?? 1);
   const [selectedPalaceId, setSelectedPalaceId] = useState<number>(palaceList[0]?.id ?? 1);
@@ -63,6 +82,17 @@ export function DivinationMatrix() {
   const selectedHexagram = useMemo(() => {
     return hexagramList.find((h) => h.number === selectedHexNumber) ?? hexagramList[0];
   }, [hexagramList, selectedHexNumber]);
+
+  const rawSelectedHexNode = useMemo(() => {
+    return rawHexNodes.find((n) => n.attributes.hexagramNumber === selectedHexNumber) ?? rawHexNodes[0];
+  }, [rawHexNodes, selectedHexNumber]);
+
+  const synthesisRelation = useMemo(() => {
+    if (!rawSelectedHexNode) return null;
+    return crossDomainRelations.find(
+      (r) => r.rowNodeId === rawSelectedHexNode.id || r.colNodeId === rawSelectedHexNode.id
+    ) ?? null;
+  }, [crossDomainRelations, rawSelectedHexNode]);
 
   const selectedPalace = useMemo(() => {
     return palaceList.find((p) => p.id === selectedPalaceId) ?? palaceList[0];
@@ -142,13 +172,26 @@ export function DivinationMatrix() {
           <div className="lg:col-span-5">
             <div className="bg-white border border-stone-200 rounded-3xl p-6 shadow-xs sticky top-20 space-y-5">
               <div className="border-b border-stone-200 pb-4">
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-indigo-800 uppercase mb-1">
-                  <span>Quẻ Thứ {selectedHexagram.number} Chu Dịch</span>
-                  <span className="text-sm font-serif text-stone-900">{selectedHexagram.nameHán}</span>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="text-xs font-mono font-bold text-indigo-800 uppercase">
+                    <span>Quẻ Thứ {selectedHexagram.number} Chu Dịch</span>
+                  </div>
+                  <button
+                    onClick={() => setCitationNode(rawSelectedHexNode)}
+                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-lg text-xs font-medium flex items-center gap-1.5 transition shadow-2xs"
+                    title="Trích dẫn học thuật cho Quẻ này"
+                    aria-label="Trích Dẫn Quẻ"
+                  >
+                    <Quote className="w-3.5 h-3.5 text-indigo-700" />
+                    <span>Trích Dẫn Quẻ</span>
+                  </button>
                 </div>
-                <h2 className="text-xl font-bold text-stone-900">
-                  {selectedHexagram.nameVi}
-                </h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-stone-900">
+                    {selectedHexagram.nameVi}
+                  </h2>
+                  <span className="text-sm font-serif text-stone-900 font-bold">{selectedHexagram.nameHán}</span>
+                </div>
                 <p className="text-xs text-indigo-900 italic font-mono mt-0.5">
                   {selectedHexagram.pinyin}
                 </p>
@@ -175,10 +218,23 @@ export function DivinationMatrix() {
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-700" />
-                  Đối Chiếu Tâm Học Phật Giáo:
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-700" />
+                    Đối Chiếu Tâm Học Phật Giáo:
+                  </span>
+                  {synthesisRelation && (
+                    <button
+                      onClick={() => setCitationRelation(synthesisRelation)}
+                      className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded text-[10px] font-medium flex items-center gap-1 transition"
+                      title="Trích dẫn quan hệ đối chiếu này"
+                      aria-label={`Trích dẫn đối chiếu ${selectedHexagram.nameVi}`}
+                    >
+                      <Quote className="w-3 h-3 text-indigo-700" />
+                      <span>Trích dẫn đối chiếu</span>
+                    </button>
+                  )}
+                </div>
                 <p className="text-xs text-indigo-950 leading-relaxed bg-indigo-50/80 p-3.5 rounded-xl border border-indigo-200/80">
                   {selectedHexagram.philosophicalInsight}
                 </p>
@@ -281,6 +337,17 @@ export function DivinationMatrix() {
           </div>
         </div>
       )}
+
+      {/* Citation Modal */}
+      <ScholarCitationModal
+        isOpen={Boolean(citationNode || citationRelation)}
+        onClose={() => {
+          setCitationNode(null);
+          setCitationRelation(null);
+        }}
+        node={citationNode}
+        relation={citationRelation}
+      />
     </div>
   );
 }
