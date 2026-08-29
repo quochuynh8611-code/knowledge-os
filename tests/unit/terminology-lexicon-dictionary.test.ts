@@ -92,13 +92,55 @@ describe('Phase P9.2: Read-Only Terminology Dictionary Adapter for Lexicon Regis
       expect(literalResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
     });
 
-    it('7. Lists all mapped entries without mutating the source registry', () => {
+    it('7. Searches with NFD decomposed Unicode input (macOS IME format) and matches Citta', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const nfdQuery = 'nhận thức'.normalize('NFD');
+      const nfdResults = dict.search(nfdQuery);
+      expect(nfdResults.length).toBeGreaterThan(0);
+      expect(nfdResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
+    });
+
+    it('8. Searches with unaccented Vietnamese query (e.g. "nhan thuc") and matches Citta', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const unaccentedResults = dict.search('nhan thuc');
+      expect(unaccentedResults.length).toBeGreaterThan(0);
+      expect(unaccentedResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
+    });
+
+    it('9. Searches with title-case NFD query "Nhận Thức" and matches Citta', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const titleCaseNfd = 'Nhận Thức'.normalize('NFD');
+      const results = dict.search(titleCaseNfd);
+      expect(results.length).toBeGreaterThan(0);
+      expect(results.some((e) => e.id === 'lex-pali-citta')).toBe(true);
+    });
+
+    it('10. Searches with IAST diacritics folding (e.g. "sobhana" matching "Sobhana / Śobhana")', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const iastResults = dict.search('sobhana');
+      expect(iastResults.length).toBeGreaterThan(0);
+      expect(iastResults.some((e) => e.id === 'lex-pali-sobhana')).toBe(true);
+    });
+
+    it('11. Lists all mapped entries without mutating the source registry', () => {
       const originalCount = LEXICON_REGISTRY.length;
       const allEntries = scholarLexiconDictionary.listAll?.();
 
       expect(allEntries).toBeDefined();
       expect(allEntries?.length).toBe(originalCount);
       expect(LEXICON_REGISTRY.length).toBe(originalCount);
+    });
+
+    it('12. Regression Guard: Standalone Lexicon Dictionary maintains exact 19-entry boundary', () => {
+      const standaloneDict = createLexiconDictionary(LEXICON_REGISTRY);
+      expect(standaloneDict.listAll?.().length).toBe(19);
+      expect(standaloneDict.getEntry('lex-pali-citta')).toBeDefined();
+      // Standalone lexicon dictionary should not contain system nodes
+      expect(standaloneDict.getEntry('sys-iching-01')).toBeUndefined();
     });
   });
 });

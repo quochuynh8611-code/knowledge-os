@@ -1,6 +1,7 @@
 import type { LexiconEntry } from '../../types/scholarSuite';
 import type { TerminologyEntry, TerminologyDictionary, KnowledgeDomain } from '../../types/terminology';
 import { LEXICON_REGISTRY } from '../../data/scholarSuite/lexiconRegistry';
+import { normalizeScholarText } from '../scholarSearch';
 
 /**
  * Maps a Scholar Suite LexiconEntry to a domain-agnostic TerminologyEntry.
@@ -72,20 +73,28 @@ export function createLexiconDictionary(
       if (!query || !query.trim()) {
         return [];
       }
-      const q = query.trim().toLowerCase();
+      const qNorm = normalizeScholarText(query);
+      if (!qNorm) {
+        return [];
+      }
+
+      const matchField = (field?: string): boolean => {
+        if (!field) return false;
+        return normalizeScholarText(field).includes(qNorm);
+      };
 
       return mappedEntries.filter((item) => {
-        if (item.title.toLowerCase().includes(q)) return true;
-        if (item.summary && item.summary.toLowerCase().includes(q)) return true;
-        if (item.etymology?.root && item.etymology.root.toLowerCase().includes(q)) return true;
-        if (item.etymology?.morphology && item.etymology.morphology.toLowerCase().includes(q)) return true;
-        if (item.etymology?.literalMeaning && item.etymology.literalMeaning.toLowerCase().includes(q)) return true;
-        if (item.provenanceNote && item.provenanceNote.toLowerCase().includes(q)) return true;
-        if (item.code && item.code.toLowerCase().includes(q)) return true;
-        if (item.canonicalTerm && item.canonicalTerm.toLowerCase().includes(q)) return true;
+        if (matchField(item.title)) return true;
+        if (matchField(item.summary)) return true;
+        if (matchField(item.etymology?.root)) return true;
+        if (matchField(item.etymology?.morphology)) return true;
+        if (matchField(item.etymology?.literalMeaning)) return true;
+        if (matchField(item.provenanceNote)) return true;
+        if (matchField(item.code)) return true;
+        if (matchField(item.canonicalTerm)) return true;
         if (item.aliases) {
           for (const val of Object.values(item.aliases)) {
-            if (val.toLowerCase().includes(q)) return true;
+            if (matchField(val)) return true;
           }
         }
         return false;
@@ -96,8 +105,6 @@ export function createLexiconDictionary(
     },
   };
 }
-
-
 
 /**
  * Singleton instance of the Scholar Suite Lexicon Dictionary.
