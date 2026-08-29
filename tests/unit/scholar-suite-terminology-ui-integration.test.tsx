@@ -223,5 +223,80 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
       expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
       expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
     });
+
+    it('searches with macOS NFD decomposed input "nhận thức" and displays matching Citta card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      const nfdQuery = 'nhận thức'.normalize('NFD');
+      fireEvent.change(searchInput, { target: { value: nfdQuery } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: nfdQuery });
+      expect(expectedResults.length).toBeGreaterThan(0);
+      expect(expectedResults.some((item) => item.id === 'lex-pali-citta')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('searches with unaccented Vietnamese query "nhan thuc" and displays matching Citta card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'nhan thuc' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'nhan thuc' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+      expect(expectedResults.some((item) => item.id === 'lex-pali-citta')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('searches with IAST diacritics folding "sobhana" and displays matching Sobhana card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'sobhana' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'sobhana' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+      expect(expectedResults.some((item) => item.id === 'lex-pali-sobhana')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Sobhana/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('Phase P11 RED: searches by system code "Q01" and displays matching adapted I Ching hexagram card in UI', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'Q01' } });
+
+      // In P11, getTerminologyLexiconItems should include sys-iching-01
+      const expectedResults = getTerminologyLexiconItems({ query: 'Q01' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+      expect(expectedResults.some((item) => item.id === 'sys-iching-01')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Thuần Càn/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('Phase P11 RED: searches by dual-concept term "Thuần Càn" and renders both lexical root and system node cards in UI', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'Thuần Càn' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'Thuần Càn' });
+      expect(expectedResults.length).toBeGreaterThanOrEqual(2);
+      expect(expectedResults.some((item) => item.id === 'lex-iching-qian')).toBe(true);
+      expect(expectedResults.some((item) => item.id === 'sys-iching-01')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      // Verifies distinct cards rendered for both lexical concept and system node
+      expect(screen.getByText(/Trời \/ Cương Kiện/i)).toBeInTheDocument();
+      expect(screen.getByText(/Bát Thuần Càn/i)).toBeInTheDocument();
+    });
   });
 });

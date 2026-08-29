@@ -11,6 +11,7 @@ import { LEXICON_REGISTRY } from '../../data/scholarSuite/lexiconRegistry';
 import { SYSTEM_NODE_REGISTRY } from '../../data/scholarSuite/systemRegistry';
 import { MATRIX_RELATION_REGISTRY } from '../../data/scholarSuite/matrixRegistry';
 import { scholarLexiconDictionary } from '../terminology/lexiconDictionary';
+import { scholarUnifiedDictionary } from '../terminology/unifiedDictionary';
 
 export interface LexiconItemView {
   id: string;
@@ -23,6 +24,7 @@ export interface LexiconItemView {
   definition: string;
   canonicalRef: string;
   tags: string[];
+  code?: string;
 }
 
 /**
@@ -45,11 +47,12 @@ export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): L
     definition: entry.summary ?? '',
     canonicalRef: sourceRef,
     tags: [entry.domain],
+    code: entry.code,
   };
 }
 
 /**
- * Pure selector to retrieve Terminology entries backed by the Terminology Dictionary.
+ * Pure selector to retrieve Terminology entries backed by the Unified Terminology Dictionary.
  * Canonical selector for data and citation pipelines.
  */
 export function getTerminologyEntries(filter?: {
@@ -59,9 +62,9 @@ export function getTerminologyEntries(filter?: {
   let entries: TerminologyEntry[];
 
   if (filter?.query && filter.query.trim()) {
-    entries = scholarLexiconDictionary.search(filter.query.trim());
+    entries = scholarUnifiedDictionary.search(filter.query.trim());
   } else {
-    entries = scholarLexiconDictionary.listAll?.() ?? [];
+    entries = scholarUnifiedDictionary.listAll?.() ?? [];
   }
 
   if (filter?.domain && filter.domain !== 'all') {
@@ -72,7 +75,7 @@ export function getTerminologyEntries(filter?: {
 }
 
 /**
- * Pure selector to retrieve and filter Lexicon Item Views backed by the Terminology Dictionary.
+ * Pure selector to retrieve and filter Lexicon Item Views backed by the Unified Terminology Dictionary.
  * Canonical selector for presentation layers.
  */
 export function getTerminologyLexiconItems(filter?: {
@@ -82,15 +85,13 @@ export function getTerminologyLexiconItems(filter?: {
   return getTerminologyEntries(filter).map(mapTerminologyEntryToLexiconItemView);
 }
 
-
-
-
 /**
  * Pure O(1) selector to retrieve a single TerminologyEntry by ID.
  */
 export function getTerminologyEntryById(id: string): TerminologyEntry | undefined {
-  return scholarLexiconDictionary.getEntry(id);
+  return scholarUnifiedDictionary.getEntry(id);
 }
+
 
 /**
  * Validates the core attribution invariant:

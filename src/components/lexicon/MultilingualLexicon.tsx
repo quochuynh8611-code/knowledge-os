@@ -57,6 +57,7 @@ export function MultilingualLexicon() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [selectedCitationEntry, setSelectedCitationEntry] = useState<TerminologyEntry | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(60);
 
   const totalCount = useMemo(() => {
     return getTerminologyLexiconItems().length;
@@ -69,12 +70,18 @@ export function MultilingualLexicon() {
     });
   }, [categoryFilter, searchTerm]);
 
+  const displayedEntries = useMemo(() => {
+    return filteredEntries.slice(0, visibleLimit);
+  }, [filteredEntries, visibleLimit]);
+
   const isFilterActive = searchTerm.trim() !== '' || categoryFilter !== 'all';
 
   const handleResetFilters = () => {
     setSearchTerm('');
     setCategoryFilter('all');
+    setVisibleLimit(60);
   };
+
 
   const handleCopy = (entry: LexiconItemView) => {
     const text = `${entry.vietnamese}\n- Pali: ${entry.pali}\n- Sanskrit: ${entry.sanskrit}\n- Hán Tự: ${entry.hanTu} (${entry.pinyin})\n- Định nghĩa: ${entry.definition}\n- Xuất xứ: ${entry.canonicalRef}`;
@@ -241,168 +248,195 @@ export function MultilingualLexicon() {
         </div>
       ) : viewMode === 'compact' ? (
         /* Compact View Mode (Dense horizontal cards) */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filteredEntries.map((entry) => {
-            const isCopied = copiedId === entry.id;
-            return (
-              <div
-                key={entry.id}
-                className="bg-white border border-stone-200 rounded-xl p-3.5 shadow-2xs hover:border-stone-300 transition flex flex-col justify-between gap-2"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-1.5">
-                      {(() => {
-                        const badge = getCategoryBadge(entry.category, true);
-                        return (
-                          <span
-                            className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        );
-                      })()}
-                      <span className="text-xs font-serif font-bold text-stone-900">{entry.hanTu}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenCitation(entry.id)}
-                        className="p-1 text-stone-400 hover:text-amber-800 rounded hover:bg-amber-50 transition cursor-pointer"
-                        title="Trích dẫn học thuật"
-                        aria-label="Trích dẫn"
-                      >
-                        <Quote className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleCopy(entry)}
-                        className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-100 transition cursor-pointer"
-                        title="Sao chép thuật ngữ"
-                      >
-                        {isCopied ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <h3 className="text-xs font-bold text-stone-900 truncate" title={entry.vietnamese}>
-                    {entry.vietnamese}
-                  </h3>
-
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-stone-600 mt-1">
-                    <span className="truncate text-amber-950 font-medium">{entry.pali}</span>
-                    <span>•</span>
-                    <span className="truncate text-stone-600">{entry.pinyin}</span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-stone-600 line-clamp-2 leading-snug pt-1.5 border-t border-stone-100">
-                  {entry.definition}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        /* Detailed View Mode (Standard 2-tier cards) */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredEntries.map((entry) => {
-            const isCopied = copiedId === entry.id;
-            return (
-              <div
-                key={entry.id}
-                className="bg-white border border-stone-200 rounded-2xl p-5 shadow-2xs space-y-3.5 hover:border-stone-300 transition flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  {/* Tier 1: Fast scan header & multilingual parallel terms */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {displayedEntries.map((entry) => {
+              const isCopied = copiedId === entry.id;
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-white border border-stone-200 rounded-xl p-3.5 shadow-2xs hover:border-stone-300 transition flex flex-col justify-between gap-2"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-1.5">
                         {(() => {
-                          const badge = getCategoryBadge(entry.category, false);
+                          const badge = getCategoryBadge(entry.category, true);
                           return (
                             <span
-                              className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${badge.className}`}
+                              className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${badge.className}`}
                             >
                               {badge.label}
                             </span>
                           );
                         })()}
-                        <span className="text-sm font-serif font-bold text-stone-900">{entry.hanTu}</span>
+                        <span className="text-xs font-serif font-bold text-stone-900">{entry.hanTu}</span>
                       </div>
-                      <h3 className="text-base font-bold text-stone-900 leading-snug">{entry.vietnamese}</h3>
-                    </div>
 
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenCitation(entry.id)}
-                        className="px-2.5 py-1 rounded-lg transition flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 cursor-pointer"
-                        title="Trích dẫn học thuật"
-                      >
-                        <Quote className="w-3.5 h-3.5" />
-                        <span>Trích dẫn</span>
-                      </button>
-                      <button
-                        onClick={() => handleCopy(entry)}
-                        className={`p-1.5 rounded-lg transition flex items-center gap-1 text-xs cursor-pointer ${
-                          isCopied
-                            ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200'
-                            : 'text-stone-400 hover:text-stone-800 hover:bg-stone-100'
-                        }`}
-                        title="Sao chép thuật ngữ"
-                      >
-                        {isCopied ? (
-                          <>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenCitation(entry.id)}
+                          className="p-1 text-stone-400 hover:text-amber-800 rounded hover:bg-amber-50 transition cursor-pointer"
+                          title="Trích dẫn học thuật"
+                          aria-label="Trích dẫn"
+                        >
+                          <Quote className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleCopy(entry)}
+                          className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-100 transition cursor-pointer"
+                          title="Sao chép thuật ngữ"
+                        >
+                          {isCopied ? (
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-[10px]">Đã chép</span>
-                          </>
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xs font-bold text-stone-900 truncate" title={entry.vietnamese}>
+                      {entry.vietnamese}
+                    </h3>
+
+                    <div className="flex items-center gap-2 text-[10px] font-mono text-stone-600 mt-1">
+                      <span className="truncate text-amber-950 font-medium">{entry.pali}</span>
+                      <span>•</span>
+                      <span className="truncate text-stone-600">{entry.pinyin}</span>
                     </div>
                   </div>
 
-                  {/* Multilingual Parallel Terms */}
-                  <div className="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-xl text-[11px] font-mono border border-stone-150">
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-stone-500 block">Pāli (IAST)</span>
-                      <span className="text-amber-950 font-semibold truncate block">{entry.pali}</span>
+                  <p className="text-[11px] text-stone-600 line-clamp-2 leading-snug pt-1.5 border-t border-stone-100">
+                    {entry.definition}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredEntries.length > displayedEntries.length && (
+            <div className="text-center pt-2">
+              <button
+                onClick={() => setVisibleLimit((prev) => prev + 60)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Hiển thị thêm {Math.min(60, filteredEntries.length - displayedEntries.length)} thuật ngữ (còn {filteredEntries.length - displayedEntries.length})
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Detailed View Mode (Standard 2-tier cards) */
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {displayedEntries.map((entry) => {
+              const isCopied = copiedId === entry.id;
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-white border border-stone-200 rounded-2xl p-5 shadow-2xs space-y-3.5 hover:border-stone-300 transition flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    {/* Tier 1: Fast scan header & multilingual parallel terms */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          {(() => {
+                            const badge = getCategoryBadge(entry.category, false);
+                            return (
+                              <span
+                                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${badge.className}`}
+                              >
+                                {badge.label}
+                              </span>
+                            );
+                          })()}
+                          <span className="text-sm font-serif font-bold text-stone-900">{entry.hanTu}</span>
+                        </div>
+                        <h3 className="text-base font-bold text-stone-900 leading-snug">{entry.vietnamese}</h3>
+                      </div>
+
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenCitation(entry.id)}
+                          className="px-2.5 py-1 rounded-lg transition flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 cursor-pointer"
+                          title="Trích dẫn học thuật"
+                        >
+                          <Quote className="w-3.5 h-3.5" />
+                          <span>Trích dẫn</span>
+                        </button>
+                        <button
+                          onClick={() => handleCopy(entry)}
+                          className={`p-1.5 rounded-lg transition flex items-center gap-1 text-xs cursor-pointer ${
+                            isCopied
+                              ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200'
+                              : 'text-stone-400 hover:text-stone-800 hover:bg-stone-100'
+                          }`}
+                          title="Sao chép thuật ngữ"
+                        >
+                          {isCopied ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-[10px]">Đã chép</span>
+                            </>
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-stone-500 block">Sanskrit</span>
-                      <span className="text-purple-950 font-semibold truncate block">{entry.sanskrit}</span>
+
+                    {/* Multilingual Parallel Terms */}
+                    <div className="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-xl text-[11px] font-mono border border-stone-150">
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-stone-500 block">Pāli (IAST)</span>
+                        <span className="text-amber-950 font-semibold truncate block">{entry.pali}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-stone-500 block">Sanskrit</span>
+                        <span className="text-purple-950 font-semibold truncate block">{entry.sanskrit}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-stone-500 block">Pinyin</span>
+                        <span className="text-stone-700 font-semibold truncate block">{entry.pinyin}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-stone-500 block">Pinyin</span>
-                      <span className="text-stone-700 font-semibold truncate block">{entry.pinyin}</span>
-                    </div>
+
+                    {/* Tier 2: Deep Reading - Canonical Definition */}
+                    <p className="text-xs text-stone-700 leading-relaxed">{entry.definition}</p>
                   </div>
 
-                  {/* Tier 2: Deep Reading - Canonical Definition */}
-                  <p className="text-xs text-stone-700 leading-relaxed">{entry.definition}</p>
+                  {/* Canonical Reference Footer */}
+                  <div className="text-[10px] text-stone-600 pt-2 border-t border-stone-100 flex items-center justify-between">
+                    <span className="italic">Nguồn: {entry.canonicalRef}</span>
+                    <button
+                      onClick={() => handleOpenCitation(entry.id)}
+                      className="text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1 hover:underline transition cursor-pointer"
+                    >
+                      <Quote className="w-3 h-3" />
+                      <span>Xuất trích dẫn</span>
+                    </button>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Canonical Reference Footer */}
-                <div className="text-[10px] text-stone-600 pt-2 border-t border-stone-100 flex items-center justify-between">
-                  <span className="italic">Nguồn: {entry.canonicalRef}</span>
-                  <button
-                    onClick={() => handleOpenCitation(entry.id)}
-                    className="text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1 hover:underline transition cursor-pointer"
-                  >
-                    <Quote className="w-3 h-3" />
-                    <span>Xuất trích dẫn</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {filteredEntries.length > displayedEntries.length && (
+            <div className="text-center pt-2">
+              <button
+                onClick={() => setVisibleLimit((prev) => prev + 60)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Hiển thị thêm {Math.min(60, filteredEntries.length - displayedEntries.length)} thuật ngữ (còn {filteredEntries.length - displayedEntries.length})
+              </button>
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Scholar Citation Modal */}
       <ScholarCitationModal
