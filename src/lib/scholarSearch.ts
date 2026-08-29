@@ -92,6 +92,15 @@ export function calculateScholarRelevance(params: ScholarRelevanceParams): numbe
       score += 80;
     } else if (normTitle.includes(normQuery)) {
       score += 50;
+    } else {
+      // 1b. Multi-token Title Coverage (Additive Affinity Bonus +15 over baseline 50)
+      const queryTokens = normQuery.split(/\s+/).filter(Boolean);
+      if (
+        queryTokens.length > 1 &&
+        queryTokens.every((token) => normTitle.includes(token))
+      ) {
+        score += 65;
+      }
     }
   }
 
@@ -120,6 +129,12 @@ export function calculateScholarRelevance(params: ScholarRelevanceParams): numbe
   // 4. Description Matching
   if (normDesc && normDesc.includes(normQuery)) {
     score += 30;
+    // Word-boundary bonus (+10) when query is matched with whitespace or boundary
+    const escapedQuery = normQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const boundaryRegex = new RegExp(`(?:^|\\s)${escapedQuery}(?:$|\\s)`, "i");
+    if (boundaryRegex.test(normDesc)) {
+      score += 10;
+    }
   }
 
   // 5. Content / Notes / FilePath Matching (Metadata only)
