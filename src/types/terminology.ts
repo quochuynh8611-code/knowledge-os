@@ -36,6 +36,15 @@ export interface TerminologySource {
 }
 
 /**
+ * Granular etymology and morphological structure for classical and modern terms.
+ */
+export interface TerminologyEtymology {
+  readonly root?: string;
+  readonly morphology?: string;
+  readonly literalMeaning?: string;
+}
+
+/**
  * Canonical immutable data contract for a standalone Terminology Entry across any knowledge domain.
  */
 export interface TerminologyEntry {
@@ -46,9 +55,11 @@ export interface TerminologyEntry {
   readonly canonicalTerm?: string;
   readonly aliases?: Record<string, string>;
   readonly summary?: string;
+  readonly etymology?: TerminologyEtymology;
   readonly provenanceNote?: string;
   readonly sources?: TerminologySource[];
 }
+
 
 /**
  * Standard interface for terminology dictionaries, registries, or ontology stores.

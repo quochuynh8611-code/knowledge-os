@@ -33,10 +33,20 @@ describe('Phase P9.2: Read-Only Terminology Dictionary Adapter for Lexicon Regis
       expect(entry.sources?.[0].sourceTitle).toBe('Dhammasaṅgaṇī');
       expect(entry.sources?.[0].ptsRef).toBe('Dhs 1-9');
     });
+
+    it('2. Preserves etymology (root, morphology, literalMeaning) on TerminologyEntry', () => {
+      const rawCitta = LEXICON_REGISTRY.find((e) => e.id === 'lex-pali-citta')!;
+      const entry = mapLexiconEntryToTerminology(rawCitta);
+
+      expect(entry.etymology).toBeDefined();
+      expect(entry.etymology?.root).toContain('nhận thức');
+      expect(entry.etymology?.literalMeaning).toContain('tích lũy');
+    });
   });
 
+
   describe('TerminologyDictionary implementation', () => {
-    it('2. Retrieves entries by ID through getEntry(id)', () => {
+    it('3. Retrieves entries by ID through getEntry(id)', () => {
       const dict = createLexiconDictionary(LEXICON_REGISTRY);
 
       const citta = dict.getEntry('lex-pali-citta');
@@ -48,7 +58,7 @@ describe('Phase P9.2: Read-Only Terminology Dictionary Adapter for Lexicon Regis
       expect(nonExistent).toBeUndefined();
     });
 
-    it('3. Searches entries deterministically across title, summary, aliases, and code', () => {
+    it('4. Searches entries deterministically across title, summary, aliases, and code', () => {
       const dict = createLexiconDictionary(LEXICON_REGISTRY);
 
       // Search by English alias
@@ -66,7 +76,23 @@ describe('Phase P9.2: Read-Only Terminology Dictionary Adapter for Lexicon Regis
       expect(paramatthaResults.length).toBeGreaterThan(0);
     });
 
-    it('4. Lists all mapped entries without mutating the source registry', () => {
+    it('5. Searches entries across etymology root (e.g., "nhận thức") and matches Citta', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const rootResults = dict.search('nhận thức');
+      expect(rootResults.length).toBeGreaterThan(0);
+      expect(rootResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
+    });
+
+    it('6. Searches entries across etymology literalMeaning (e.g., "tích lũy") and matches Citta', () => {
+      const dict = createLexiconDictionary(LEXICON_REGISTRY);
+
+      const literalResults = dict.search('tích lũy');
+      expect(literalResults.length).toBeGreaterThan(0);
+      expect(literalResults.some((e) => e.id === 'lex-pali-citta')).toBe(true);
+    });
+
+    it('7. Lists all mapped entries without mutating the source registry', () => {
       const originalCount = LEXICON_REGISTRY.length;
       const allEntries = scholarLexiconDictionary.listAll?.();
 

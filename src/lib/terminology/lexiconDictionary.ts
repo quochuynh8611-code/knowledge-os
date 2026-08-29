@@ -29,6 +29,13 @@ export function mapLexiconEntryToTerminology(entry: LexiconEntry): TerminologyEn
     canonicalTerm: entry.terms.pali || entry.terms.sanskrit || entry.slug,
     aliases,
     summary: entry.canonicalDefinition,
+    etymology: entry.etymology
+      ? {
+          root: entry.etymology.root,
+          morphology: entry.etymology.morphology,
+          literalMeaning: entry.etymology.literalMeaning,
+        }
+      : undefined,
     provenanceNote: entry.provenanceNote || entry.interpretiveNotes,
     sources: entry.sources.map((s) => ({
       sourceTitle: s.sourceTitle,
@@ -70,6 +77,9 @@ export function createLexiconDictionary(
       return mappedEntries.filter((item) => {
         if (item.title.toLowerCase().includes(q)) return true;
         if (item.summary && item.summary.toLowerCase().includes(q)) return true;
+        if (item.etymology?.root && item.etymology.root.toLowerCase().includes(q)) return true;
+        if (item.etymology?.morphology && item.etymology.morphology.toLowerCase().includes(q)) return true;
+        if (item.etymology?.literalMeaning && item.etymology.literalMeaning.toLowerCase().includes(q)) return true;
         if (item.provenanceNote && item.provenanceNote.toLowerCase().includes(q)) return true;
         if (item.code && item.code.toLowerCase().includes(q)) return true;
         if (item.canonicalTerm && item.canonicalTerm.toLowerCase().includes(q)) return true;
@@ -86,6 +96,7 @@ export function createLexiconDictionary(
     },
   };
 }
+
 
 
 /**

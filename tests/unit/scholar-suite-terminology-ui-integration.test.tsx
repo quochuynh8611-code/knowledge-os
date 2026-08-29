@@ -210,5 +210,18 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
       expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
       expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
     });
+
+    it('searches by etymology root keyword "nhận thức" and displays matching Citta card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'nhận thức' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'nhận thức' });
+      expect(expectedResults.some((item) => item.id === 'lex-pali-citta')).toBe(true);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

@@ -49,38 +49,6 @@ export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): L
 }
 
 /**
- * Pure selector to retrieve and filter Lexicon Item Views backed by the Terminology Dictionary.
- * Canonical selector for presentation layers.
- */
-export function getTerminologyLexiconItems(filter?: {
-  domain?: string;
-  query?: string;
-}): LexiconItemView[] {
-  let entries = scholarLexiconDictionary.listAll?.() ?? [];
-
-  if (filter?.domain && filter.domain !== 'all') {
-    entries = entries.filter((e) => e.domain === filter.domain);
-  }
-
-  if (filter?.query && filter.query.trim()) {
-    const q = filter.query.toLowerCase().trim();
-    entries = entries.filter((e) => {
-      const matchTitle = e.title.toLowerCase().includes(q);
-      const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
-      const matchProvenance = e.provenanceNote?.toLowerCase().includes(q) ?? false;
-      const matchCode = e.code?.toLowerCase().includes(q) ?? false;
-      const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
-      const matchAlias = e.aliases
-        ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
-        : false;
-      return matchTitle || matchSummary || matchProvenance || matchCode || matchCanonical || matchAlias;
-    });
-  }
-
-  return entries.map(mapTerminologyEntryToLexiconItemView);
-}
-
-/**
  * Pure selector to retrieve Terminology entries backed by the Terminology Dictionary.
  * Canonical selector for data and citation pipelines.
  */
@@ -88,29 +56,33 @@ export function getTerminologyEntries(filter?: {
   domain?: string;
   query?: string;
 }): TerminologyEntry[] {
-  let entries = scholarLexiconDictionary.listAll?.() ?? [];
+  let entries: TerminologyEntry[];
+
+  if (filter?.query && filter.query.trim()) {
+    entries = scholarLexiconDictionary.search(filter.query.trim());
+  } else {
+    entries = scholarLexiconDictionary.listAll?.() ?? [];
+  }
 
   if (filter?.domain && filter.domain !== 'all') {
     entries = entries.filter((e) => e.domain === filter.domain);
   }
 
-  if (filter?.query && filter.query.trim()) {
-    const q = filter.query.toLowerCase().trim();
-    entries = entries.filter((e) => {
-      const matchTitle = e.title.toLowerCase().includes(q);
-      const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
-      const matchProvenance = e.provenanceNote?.toLowerCase().includes(q) ?? false;
-      const matchCode = e.code?.toLowerCase().includes(q) ?? false;
-      const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
-      const matchAlias = e.aliases
-        ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
-        : false;
-      return matchTitle || matchSummary || matchProvenance || matchCode || matchCanonical || matchAlias;
-    });
-  }
-
   return entries;
 }
+
+/**
+ * Pure selector to retrieve and filter Lexicon Item Views backed by the Terminology Dictionary.
+ * Canonical selector for presentation layers.
+ */
+export function getTerminologyLexiconItems(filter?: {
+  domain?: string;
+  query?: string;
+}): LexiconItemView[] {
+  return getTerminologyEntries(filter).map(mapTerminologyEntryToLexiconItemView);
+}
+
+
 
 
 /**

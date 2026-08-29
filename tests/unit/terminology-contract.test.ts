@@ -119,4 +119,21 @@ describe('Phase P9.0: Universal Terminology Contract', () => {
     expect(dict.search('chu dịch')[0].id).toBe('term-qian');
     expect(dict.listAll()).toHaveLength(2);
   });
+
+  it('5. Supports optional first-class etymology structure on TerminologyEntry', () => {
+    const entryWithEtymology: TerminologyEntry = {
+      id: 'term-citta-etym',
+      title: 'Citta (Tâm)',
+      domain: 'phat-hoc',
+      etymology: {
+        root: '√cit (nhận thức, tư duy)',
+        morphology: 'cintetīti cittaṁ',
+        literalMeaning: 'Cái gì tích lũy và nhận biết đối tượng',
+      },
+    };
+
+    expect(entryWithEtymology.etymology?.root).toContain('nhận thức');
+    expect(entryWithEtymology.etymology?.morphology).toBe('cintetīti cittaṁ');
+    expect(entryWithEtymology.etymology?.literalMeaning).toContain('tích lũy');
+  });
 });
