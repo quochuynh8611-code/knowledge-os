@@ -13,7 +13,7 @@ export interface CitationKeyParams {
 function removeDiacritics(str: string): string {
   return str
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // remove combining diacritical marks
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[đĐ]/g, 'd')
     .replace(/[ṅṄ]/g, 'n')
     .replace(/[ñÑ]/g, 'n')
@@ -45,33 +45,41 @@ function sanitizeToken(str: string): string {
  *      "Chu Dịch (Zhou Yi)" -> "chu_dich"
  */
 function extractSourceToken(sourceTitle: string): string {
-  // Strip parenthetical translations first: "Chu Dịch (Zhou Yi)" -> "Chu Dịch"
   const baseTitle = sourceTitle.replace(/\s*\([^)]*\)/g, '').trim();
   const sanitized = sanitizeToken(baseTitle);
   const parts = sanitized.split('_').filter(Boolean);
-  // Keep up to first 2 words for brevity
   return parts.slice(0, 2).join('_');
 }
 
 /**
  * Extracts a concise section locator token.
  * e.g. "Mātika & Citta § 1" -> "1"
+ *      "Thoán Truyện & Tượng Truyện - Quẻ Càn" -> "can"
  *      "Quẻ Càn" -> "can"
- *      "Phẩm #1 {A}" -> "1"
  */
 function extractSectionToken(sectionRef: string): string {
-  // Check if there is an explicit section number (§ 1, #1, 1-9)
+  // 1. Check for explicit number (§ 1, #1, 1-9)
   const numberMatch = sectionRef.match(/(?:§|#|chương|tập|quẻ\s*số)?\s*(\d+(?:[-_]\d+)?)/i);
   if (numberMatch && numberMatch[1]) {
     return numberMatch[1].replace('-', '_');
   }
 
-  // Otherwise sanitize and remove generic words like "que", "chuong", "pham"
-  const sanitized = sanitizeToken(sectionRef);
+  // 2. If contains a dash (e.g. "Thoán Truyện - Quẻ Càn"), use the specific part after dash
+  let targetRef = sectionRef;
+  if (sectionRef.includes('-')) {
+    const afterDash = sectionRef.split('-').slice(-1)[0].trim();
+    if (afterDash) {
+      targetRef = afterDash;
+    }
+  }
+
+  // 3. Sanitize and remove generic helper words
+  const sanitized = sanitizeToken(targetRef);
   const parts = sanitized
     .split('_')
-    .filter((p) => p && !['que', 'chuong', 'pham', 'section', 'part', 'thiet'].includes(p));
-  return parts[0] || parts.slice(-1)[0] || '';
+    .filter((p) => p && !['que', 'chuong', 'pham', 'section', 'part', 'thiet', 'truyen', 'thoan', 'tuong'].includes(p));
+
+  return parts.slice(-1)[0] || sanitized.split('_').filter(Boolean)[0] || '';
 }
 
 /**
@@ -99,7 +107,6 @@ export function generateCitationKey(params: CitationKeyParams): string {
     }
   }
 
-  // If collision fallback provided and no source info
   if (params.fallbackId && (!params.sourceTitle || !params.sourceTitle.trim())) {
     const fallbackToken = sanitizeToken(params.fallbackId);
     const suffix = fallbackToken.slice(-4);
@@ -110,7 +117,6 @@ export function generateCitationKey(params: CitationKeyParams): string {
 
   let key = parts.filter(Boolean).join('_').replace(/_+/g, '_');
 
-  // Enforce max length of 48 characters while keeping boundary clean
   if (key.length > 48) {
     key = key.slice(0, 48).replace(/_+$/, '');
   }
