@@ -9,8 +9,11 @@ import {
   SearchX,
   LayoutGrid,
   List,
+  Quote,
 } from 'lucide-react';
 import { getLexiconEntries } from '../../lib/scholarSuite/selectors';
+import type { LexiconEntry } from '../../types/scholarSuite';
+import { ScholarCitationModal } from '../modals/ScholarCitationModal';
 
 export interface LexiconItemView {
   id: string;
@@ -30,6 +33,7 @@ export function MultilingualLexicon() {
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
+  const [selectedCitationEntry, setSelectedCitationEntry] = useState<LexiconEntry | null>(null);
 
   const rawEntries = useMemo(() => {
     return getLexiconEntries();
@@ -83,6 +87,13 @@ export function MultilingualLexicon() {
     navigator.clipboard.writeText(text);
     setCopiedId(entry.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleOpenCitation = (entryId: string) => {
+    const raw = rawEntries.find((e) => e.id === entryId);
+    if (raw) {
+      setSelectedCitationEntry(raw);
+    }
   };
 
   return (
@@ -258,17 +269,27 @@ export function MultilingualLexicon() {
                       <span className="text-xs font-serif font-bold text-stone-900">{entry.hanTu}</span>
                     </div>
 
-                    <button
-                      onClick={() => handleCopy(entry)}
-                      className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-100 transition"
-                      title="Sao chép thuật ngữ"
-                    >
-                      {isCopied ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenCitation(entry.id)}
+                        className="p-1 text-stone-400 hover:text-amber-800 rounded hover:bg-amber-50 transition cursor-pointer"
+                        title="Trích dẫn học thuật"
+                        aria-label="Trích dẫn"
+                      >
+                        <Quote className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleCopy(entry)}
+                        className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-100 transition cursor-pointer"
+                        title="Sao chép thuật ngữ"
+                      >
+                        {isCopied ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <h3 className="text-xs font-bold text-stone-900 truncate" title={entry.vietnamese}>
@@ -318,24 +339,34 @@ export function MultilingualLexicon() {
                       <h3 className="text-base font-bold text-stone-900 leading-snug">{entry.vietnamese}</h3>
                     </div>
 
-                    <button
-                      onClick={() => handleCopy(entry)}
-                      className={`p-1.5 rounded-lg transition flex items-center gap-1 text-xs ${
-                        isCopied
-                          ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200'
-                          : 'text-stone-400 hover:text-stone-800 hover:bg-stone-100'
-                      }`}
-                      title="Sao chép thuật ngữ"
-                    >
-                      {isCopied ? (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="text-[10px]">Đã chép</span>
-                        </>
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleOpenCitation(entry.id)}
+                        className="px-2.5 py-1 rounded-lg transition flex items-center gap-1 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200/80 cursor-pointer"
+                        title="Trích dẫn học thuật"
+                      >
+                        <Quote className="w-3.5 h-3.5" />
+                        <span>Trích dẫn</span>
+                      </button>
+                      <button
+                        onClick={() => handleCopy(entry)}
+                        className={`p-1.5 rounded-lg transition flex items-center gap-1 text-xs cursor-pointer ${
+                          isCopied
+                            ? 'bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200'
+                            : 'text-stone-400 hover:text-stone-800 hover:bg-stone-100'
+                        }`}
+                        title="Sao chép thuật ngữ"
+                      >
+                        {isCopied ? (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[10px]">Đã chép</span>
+                          </>
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Multilingual Parallel Terms */}
@@ -361,12 +392,27 @@ export function MultilingualLexicon() {
                 {/* Canonical Reference Footer */}
                 <div className="text-[10px] text-stone-600 pt-2 border-t border-stone-100 flex items-center justify-between">
                   <span className="italic">Nguồn: {entry.canonicalRef}</span>
+                  <button
+                    onClick={() => handleOpenCitation(entry.id)}
+                    className="text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1 hover:underline transition cursor-pointer"
+                  >
+                    <Quote className="w-3 h-3" />
+                    <span>Xuất trích dẫn</span>
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Scholar Citation Modal */}
+      <ScholarCitationModal
+        isOpen={Boolean(selectedCitationEntry)}
+        onClose={() => setSelectedCitationEntry(null)}
+        entry={selectedCitationEntry}
+      />
     </div>
   );
 }
+
