@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, BookA, Sparkles, Copy, CheckCircle2, Bookmark, Filter } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { getLexiconEntries } from '../../lib/scholarSuite/selectors';
 
-interface LexiconEntry {
+export interface LexiconItemView {
   id: string;
   pali: string;
   sanskrit: string;
@@ -15,98 +16,51 @@ interface LexiconEntry {
   tags: string[];
 }
 
-const LEXICON_ENTRIES: LexiconEntry[] = [
-  {
-    id: 'lex-1',
-    pali: 'Citta',
-    sanskrit: 'Citta (चित्त)',
-    hanTu: '心',
-    pinyin: 'Xīn',
-    vietnamese: 'Tâm / Thức (Khả năng nhận biết cảnh)',
-    category: 'phat-hoc',
-    definition: 'Thực tại tối hậu có đặc tính nhận biết đối tượng (Arammaṇa). Trong Abhidhamma chia làm 89 hoặc 121 tâm.',
-    canonicalRef: 'Dhammasaṅgaṇī § 1; Abhidhammattha-saṅgaha Ch. 1',
-    tags: ['Abhidhamma', 'Paramattha', 'Tam Tạng'],
-  },
-  {
-    id: 'lex-2',
-    pali: 'Cetasika',
-    sanskrit: 'Caitasika (चैतसिक)',
-    hanTu: '心所',
-    pinyin: 'Xīnsuǒ',
-    vietnamese: 'Tâm Sở / Sở Hữu Tâm (52 Tâm sở)',
-    category: 'phat-hoc',
-    definition: 'Các trạng thái tâm lý đồng sanh, đồng diệt, đồng nương một căn và đồng bắt một cảnh với Tâm. Gồm 7 Biến hành, 6 Biệt cảnh, 14 Bất thiện và 25 Tịnh quang.',
-    canonicalRef: 'Abhidhammattha-saṅgaha Ch. 2; Vibhaṅga',
-    tags: ['Abhidhamma', 'Tâm Sở'],
-  },
-  {
-    id: 'lex-3',
-    pali: 'Paṭiccasamuppāda',
-    sanskrit: 'Pratītyasamutpāda (प्रतीत्यसमुत्पाद)',
-    hanTu: '十二因緣 / 緣起',
-    pinyin: 'Yuánqǐ',
-    vietnamese: 'Duyên Khởi / Thập Nhị Nhân Duyên',
-    category: 'phat-hoc',
-    definition: 'Quy luật vũ trụ về sự tương tức tương sinh: "Cái này có thì cái kia có, cái này sinh thì cái kia sinh; cái này không có thì cái kia không có, cái này diệt thì cái kia diệt".',
-    canonicalRef: 'Saṁyutta Nikāya (SN 12 - Nidāna Saṁyutta)',
-    tags: ['Kinh Tạng', 'Duyên Khởi'],
-  },
-  {
-    id: 'lex-4',
-    pali: 'Vipassanā-ñāṇa',
-    sanskrit: 'Vipaśyanā-jñāna (विपश्यना ज्ञान)',
-    hanTu: '觀智 / 內觀智',
-    pinyin: 'Guānzhì',
-    vietnamese: 'Tuệ Minh Sát (16 Tầng Tuệ Quán)',
-    category: 'phat-hoc',
-    definition: 'Tiến trình trí tuệ trực nhận Tam Tướng (Vô Thường - Khổ - Vô Ngã) từ Tuệ Phân Biệt Danh Sắc (Nāmarūpapariccheda-ñāṇa) đến Tuệ Đạo (Magga-ñāṇa).',
-    canonicalRef: 'Visuddhimagga (Thanh Tịnh Đạo) Ch. XX-XXII',
-    tags: ['Thiền Định', 'Vipassana'],
-  },
-  {
-    id: 'lex-5',
-    pali: '—',
-    sanskrit: '—',
-    hanTu: '奇門遁甲',
-    pinyin: 'Qí Mén Dùn Jiǎ',
-    vietnamese: 'Kỳ Môn Độn Giáp (Tam Thức)',
-    category: 'huyen-hoc',
-    definition: 'Đỉnh cao của thuật số phương Đông dự đoán không-thời gian dựa trên Cửu Cung, Tam Kỳ (Ất Bính Đinh), Lục Nghi (Mậu Kỷ Canh Tân Nhâm Quý), Cửu Tinh, Bát Môn và Bát Thần.',
-    canonicalRef: 'Kỳ Môn Độn Giáp Bí Kíp Toàn Thư (Hoàng Đế Âm Phù Kinh)',
-    tags: ['Tam Thức', 'Kỳ Môn'],
-  },
-  {
-    id: 'lex-6',
-    pali: '—',
-    sanskrit: '—',
-    hanTu: '易經 / 陰陽五行',
-    pinyin: 'Yì Jīng / Yīn Yáng',
-    vietnamese: 'Kinh Dịch & Âm Dương Biến Dịch',
-    category: 'huyen-hoc',
-    definition: 'Hệ thống triết học vũ trụ luận phương Đông biểu thị sự vận động không ngừng của vạn vật qua Thái Cực, Lưỡng Nghi, Tứ Tượng và 64 Quẻ.',
-    canonicalRef: 'Chu Dịch (Thập Dực - Hệ Từ Thượng/Hạ)',
-    tags: ['Dịch Học', 'Kinh Dịch'],
-  },
-];
-
 export function MultilingualLexicon() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const filteredEntries = LEXICON_ENTRIES.filter((entry) => {
-    const matchesSearch =
-      entry.pali.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.sanskrit.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.hanTu.includes(searchTerm) ||
-      entry.vietnamese.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.definition.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = categoryFilter === 'all' || entry.category === categoryFilter;
-    return matchesSearch && matchesCat;
-  });
+  const rawEntries = useMemo(() => {
+    return getLexiconEntries();
+  }, []);
 
-  const handleCopy = (entry: LexiconEntry) => {
+  const lexiconItems: LexiconItemView[] = useMemo(() => {
+    return rawEntries.map((e) => {
+      const sourceRef =
+        e.sources && e.sources.length > 0
+          ? e.sources.map((s) => `${s.sourceTitle} ${s.sectionRef}`).join('; ')
+          : e.provenanceNote ?? 'Tham chiếu học thuật';
+
+      return {
+        id: e.id,
+        pali: e.terms.pali ?? '—',
+        sanskrit: e.terms.sanskrit ?? '—',
+        hanTu: e.terms.hanTu ?? '—',
+        pinyin: e.terms.pinyin ?? '—',
+        vietnamese: e.terms.vietnamese,
+        category: e.domain === 'phat-hoc' ? 'phat-hoc' : 'huyen-hoc',
+        definition: e.canonicalDefinition,
+        canonicalRef: sourceRef,
+        tags: [e.subCategory, e.domain],
+      };
+    });
+  }, [rawEntries]);
+
+  const filteredEntries = useMemo(() => {
+    return lexiconItems.filter((entry) => {
+      const matchesSearch =
+        entry.pali.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.sanskrit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.hanTu.includes(searchTerm) ||
+        entry.vietnamese.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        entry.definition.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCat = categoryFilter === 'all' || entry.category === categoryFilter;
+      return matchesSearch && matchesCat;
+    });
+  }, [lexiconItems, searchTerm, categoryFilter]);
+
+  const handleCopy = (entry: LexiconItemView) => {
     const text = `${entry.vietnamese}\n- Pali: ${entry.pali}\n- Sanskrit: ${entry.sanskrit}\n- Hán Tự: ${entry.hanTu} (${entry.pinyin})\n- Định nghĩa: ${entry.definition}\n- Xuất xứ: ${entry.canonicalRef}`;
     navigator.clipboard.writeText(text);
     setCopiedId(entry.id);

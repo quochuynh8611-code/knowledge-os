@@ -1,0 +1,93 @@
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { AbhidharmaMatrix } from '../../src/components/matrix/AbhidharmaMatrix';
+import { DivinationMatrix } from '../../src/components/matrix/DivinationMatrix';
+import { MultilingualLexicon } from '../../src/components/lexicon/MultilingualLexicon';
+import {
+  getSystemNodes,
+  getLexiconEntries,
+} from '../../src/lib/scholarSuite/selectors';
+
+// Mock useData context
+vi.mock('../../src/context/DataContext', () => ({
+  useData: () => ({
+    openTopicDetail: vi.fn(),
+  }),
+}));
+
+describe('Phase B: ScholarSuite UI Component Registry Binding', () => {
+  describe('1. AbhidharmaMatrix Component', () => {
+    it('renders citta nodes sourced from scholarSuite systemRegistry', () => {
+      render(<AbhidharmaMatrix />);
+
+      const registeredCittas = getSystemNodes('citta_89_121');
+      expect(registeredCittas.length).toBeGreaterThanOrEqual(2);
+
+      // Verify first registered citta is present
+      const firstCitta = registeredCittas[0];
+      expect(screen.getAllByText(firstCitta.title).length).toBeGreaterThanOrEqual(1);
+
+      // Verify cetasika count badge is rendered correctly from attributes
+      expect(
+        screen.getAllByText(`${firstCitta.attributes.associatedCetasikaCount} Tâm sở`).length
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    it('filters cittas by search query matching title or roots', () => {
+      render(<AbhidharmaMatrix />);
+      const searchInput = screen.getByPlaceholderText(/Tìm theo tên Việt, Pali/i);
+
+      fireEvent.change(searchInput, { target: { value: 'Tâm Tham' } });
+      expect(screen.getAllByText(/Tâm Tham.*tà kiến/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('2. DivinationMatrix Component', () => {
+    it('renders I Ching hexagrams sourced from scholarSuite systemRegistry', () => {
+      render(<DivinationMatrix />);
+
+      const registeredHexagrams = getSystemNodes('iching_64');
+      expect(registeredHexagrams.length).toBeGreaterThanOrEqual(2);
+
+      // Verify Quẻ Thuần Càn (#1) is rendered
+      expect(screen.getAllByText(/Thuần Càn/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('Quẻ #1')).toBeInTheDocument();
+    });
+
+    it('switches to Qi Men tab and renders Qi Men palaces from scholarSuite', () => {
+      render(<DivinationMatrix />);
+
+      const qimenTabBtn = screen.getByRole('button', { name: /Kỳ Môn Cửu Cung/i });
+      fireEvent.click(qimenTabBtn);
+
+      const registeredQiMen = getSystemNodes('qimen_9');
+      expect(registeredQiMen.length).toBeGreaterThanOrEqual(1);
+
+      // Verify Khảm 1 Cung is rendered
+      expect(screen.getAllByText(/Khảm 1 Cung/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('3. MultilingualLexicon Component', () => {
+    it('renders lexicon entries sourced from scholarSuite lexiconRegistry', () => {
+      render(<MultilingualLexicon />);
+
+      const registeredEntries = getLexiconEntries();
+      expect(registeredEntries.length).toBeGreaterThanOrEqual(4);
+
+      // Verify Citta and Thuần Càn are rendered
+      expect(screen.getByText(registeredEntries[0].terms.vietnamese)).toBeInTheDocument();
+      expect(screen.getByText(registeredEntries[2].terms.vietnamese)).toBeInTheDocument();
+    });
+
+    it('filters lexicon entries by domain button', () => {
+      render(<MultilingualLexicon />);
+
+      const phatHocBtn = screen.getByRole('button', { name: /Phật Học/i });
+      fireEvent.click(phatHocBtn);
+
+      expect(screen.getByText(/Tâm \/ Thức/i)).toBeInTheDocument();
+    });
+  });
+});

@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Sparkles, Brain, Search, Filter, BookOpen, Layers, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { getSystemNodes } from '../../lib/scholarSuite/selectors';
 
-interface CittaItem {
+export interface CittaItem {
   id: string;
   nameVi: string;
   namePali: string;
-  category: 'Kāmāvacara-Akusala' | 'Kāmāvacara-Ahetuka' | 'Kāmāvacara-Sobhana' | 'Rūpāvacara' | 'Arūpāvacara' | 'Lokuttara';
+  category: string;
   subCategory: string;
   vedana: string;
   hetu: string;
@@ -14,137 +15,69 @@ interface CittaItem {
   description: string;
 }
 
-const CITTA_DATABASE: CittaItem[] = [
-  // 12 Bất thiện tâm (Akusala Citta)
-  {
-    id: 'citta-1',
-    nameVi: 'Tâm Tham tương ưng tà kiến, vô trợ',
-    namePali: 'Somanassa-sahagataṁ diṭṭhigata-sampayuttaṁ asaṅkhārikaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '8 Tâm Tham (Lobha-mūla)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: 'Tham, Si',
-    cetasikaCount: 19,
-    description: 'Tâm khởi lên hoan hỷ, gắn liền với quan điểm sai lạc (tà kiến) mà không cần sự thúc đẩy hay xúi giục từ bên ngoài.',
-  },
-  {
-    id: 'citta-2',
-    nameVi: 'Tâm Tham tương ưng tà kiến, hữu trợ',
-    namePali: 'Somanassa-sahagataṁ diṭṭhigata-sampayuttaṁ sasaṅkhārikaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '8 Tâm Tham (Lobha-mūla)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: 'Tham, Si',
-    cetasikaCount: 21,
-    description: 'Tâm khởi lên hoan hỷ, đi kèm tà kiến, nhưng cần có sự tác động, xúi giục hoặc suy nghĩ đắn đo trước khi sanh khởi.',
-  },
-  {
-    id: 'citta-3',
-    nameVi: 'Tâm Tham bất tương ưng tà kiến, vô trợ',
-    namePali: 'Somanassa-sahagataṁ diṭṭhigata-vippayuttaṁ asaṅkhārikaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '8 Tâm Tham (Lobha-mūla)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: 'Tham, Si',
-    cetasikaCount: 19,
-    description: 'Tâm yêu thích, đam mê đối tượng nhưng hiểu rõ nhân quả (không chấp tà kiến), sanh khởi tự nhiên không cần thúc giục.',
-  },
-  {
-    id: 'citta-4',
-    nameVi: 'Tâm Tham bất tương ưng tà kiến, hữu trợ',
-    namePali: 'Somanassa-sahagataṁ diṭṭhigata-vippayuttaṁ sasaṅkhārikaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '8 Tâm Tham (Lobha-mūla)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: 'Tham, Si',
-    cetasikaCount: 21,
-    description: 'Tâm hoan hỷ đam mê không tà kiến, nhưng cần tác động xúi giục, có thể phối hợp tâm sở Ngã Mạn (Māna).',
-  },
-  {
-    id: 'citta-9',
-    nameVi: 'Tâm Sân tương ưng phẫn uất, vô trợ',
-    namePali: 'Domanassa-sahagataṁ paṭigha-sampayuttaṁ asaṅkhārikaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '2 Tâm Sân (Dosa-mūla)',
-    vedana: 'Domanassa (Ưu)',
-    hetu: 'Sân, Si',
-    cetasikaCount: 18,
-    description: 'Tâm bực tức, bất bình, căm phẫn khởi lên ngay tức khắc khi gặp đối tượng bất toại nguyện, đi kèm thọ Ưu.',
-  },
-  {
-    id: 'citta-11',
-    nameVi: 'Tâm Si tương ưng hoài nghi',
-    namePali: 'Upekkhā-sahagataṁ vicikicchā-sampayuttaṁ',
-    category: 'Kāmāvacara-Akusala',
-    subCategory: '2 Tâm Si (Moha-mūla)',
-    vedana: 'Upekkhā (Xả)',
-    hetu: 'Si',
-    cetasikaCount: 15,
-    description: 'Tâm phân vân, không quyết đoán, nghi ngờ về Phật, Pháp, Tăng, Tam Thế Nhân Quả và Tứ Thánh Đế.',
-  },
-  // Đại Thiện Tâm (Mahā-kusala)
-  {
-    id: 'citta-31',
-    nameVi: 'Đại Thiện Tâm tương ưng trí, vô trợ',
-    namePali: 'Somanassa-sahagataṁ ñāṇa-sampayuttaṁ asaṅkhārikaṁ',
-    category: 'Kāmāvacara-Sobhana',
-    subCategory: '8 Đại Thiện Tâm (Mahā-kusala)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: 'Vô Tham, Vô Sân, Vô Si (Trí Tuệ)',
-    cetasikaCount: 38,
-    description: 'Tâm làm việc phước thiện (bố thí, trì giới, thiền định) với niềm hoan hỷ và thấu hiểu rõ lý nhân quả, sanh khởi tự nhiên không do dự.',
-  },
-  {
-    id: 'citta-35',
-    nameVi: 'Đại Thiện Tâm thọ Xả, tương ưng trí, vô trợ',
-    namePali: 'Upekkhā-sahagataṁ ñāṇa-sampayuttaṁ asaṅkhārikaṁ',
-    category: 'Kāmāvacara-Sobhana',
-    subCategory: '8 Đại Thiện Tâm (Mahā-kusala)',
-    vedana: 'Upekkhā (Xả)',
-    hetu: 'Vô Tham, Vô Sân, Vô Si',
-    cetasikaCount: 37,
-    description: 'Tâm làm thiện pháp với tâm thái xả ly thanh tịnh, đi kèm trí tuệ sâu sắc, đặc trưng của bậc hành thiền có chánh niệm vững vàng.',
-  },
-  // Sắc Giới (Rūpāvacara)
-  {
-    id: 'citta-51',
-    nameVi: 'Tâm Sơ Thiền Thiện (Sắc Giới)',
-    namePali: 'Vitakka-vicāra-pīti-sukh’ekaggatā-sahitaṁ Paṭhamajjhāna-kusala-cittaṁ',
-    category: 'Rūpāvacara',
-    subCategory: 'Sơ Thiền (5 Thiền Chi)',
-    vedana: 'Somanassa (Hỷ)',
-    hetu: '3 Căn Thiện (Alobha, Adosa, Amoha)',
-    cetasikaCount: 35,
-    description: 'Định tâm lắng đọng hoàn toàn 5 triền cái, đầy đủ 5 chi thiền: Tầm (Vitakka), Tứ (Vicāra), Hỷ (Pīti), Lạc (Sukha), và Nhất Tâm (Ekaggatā).',
-  },
-  // Siêu Thế (Lokuttara)
-  {
-    id: 'citta-81',
-    nameVi: 'Tâm Sơ Đạo (Sotāpatti-magga)',
-    namePali: 'Sotāpatti-magga-cittaṁ',
-    category: 'Lokuttara',
-    subCategory: '4 Tâm Đạo Siêu Thế',
-    vedana: 'Somanassa (Hỷ) / Upekkhā (Xả)',
-    hetu: '3 Căn Thiện Siêu Thế',
-    cetasikaCount: 36,
-    description: 'Tâm đắc quả vị Dự Lưu (Thất Lai), đoạn trừ tận gốc 3 kiết sử đầu tiên: Thân Kiến (Sakkāya-diṭṭhi), Hoài Nghi (Vicikicchā), và Giới Cấm Thủ (Sīlabbata-parāmāsa).',
-  },
-];
+function mapFeelingToLabel(feeling: string): string {
+  switch (feeling) {
+    case 'somanassa':
+      return 'Somanassa (Hỷ)';
+    case 'domanassa':
+      return 'Domanassa (Ưu)';
+    case 'upekkhā':
+      return 'Upekkhā (Xả)';
+    case 'sukha':
+      return 'Sukha (Lạc)';
+    case 'dukkha':
+      return 'Dukkha (Khổ)';
+    default:
+      return feeling;
+  }
+}
+
+function mapPlaneToCategory(plane: string, cittaType: string): string {
+  if (plane === 'kāmāvacara' && cittaType === 'akusala') return 'Kāmāvacara-Akusala';
+  if (plane === 'kāmāvacara' && (cittaType === 'kusala' || cittaType === 'sobhana')) return 'Kāmāvacara-Sobhana';
+  if (plane === 'rūpāvacara') return 'Rūpāvacara';
+  if (plane === 'arūpāvacara') return 'Arūpāvacara';
+  if (plane === 'lokuttara') return 'Lokuttara';
+  return 'Kāmāvacara-Sobhana';
+}
 
 export function AbhidharmaMatrix() {
   const { openTopicDetail } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedCitta, setSelectedCitta] = useState<CittaItem>(CITTA_DATABASE[0]);
 
-  const filteredCittas = CITTA_DATABASE.filter((c) => {
-    const matchesSearch =
-      c.nameVi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.namePali.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCat = selectedCategory === 'all' || c.category === selectedCategory;
-    return matchesSearch && matchesCat;
-  });
+  const cittaList: CittaItem[] = useMemo(() => {
+    const nodes = getSystemNodes('citta_89_121');
+    return nodes.map((node) => ({
+      id: node.id,
+      nameVi: node.title,
+      namePali: node.code,
+      category: mapPlaneToCategory(node.attributes.plane, node.attributes.cittaType),
+      subCategory: node.attributes.cittaType === 'akusala' ? 'Bất Thiện Tâm' : 'Đại Thiện Tâm',
+      vedana: mapFeelingToLabel(node.attributes.feeling),
+      hetu: node.attributes.roots.join(', '),
+      cetasikaCount: node.attributes.associatedCetasikaCount,
+      description: node.canonicalMeaning,
+    }));
+  }, []);
+
+  const [selectedCittaId, setSelectedCittaId] = useState<string>(cittaList[0]?.id ?? '');
+
+  const selectedCitta = useMemo(() => {
+    return cittaList.find((c) => c.id === selectedCittaId) ?? cittaList[0];
+  }, [cittaList, selectedCittaId]);
+
+  const filteredCittas = useMemo(() => {
+    return cittaList.filter((c) => {
+      const matchesSearch =
+        c.nameVi.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.namePali.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.hetu.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCat = selectedCategory === 'all' || c.category === selectedCategory;
+      return matchesSearch && matchesCat;
+    });
+  }, [cittaList, searchTerm, selectedCategory]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -226,7 +159,7 @@ export function AbhidharmaMatrix() {
             return (
               <div
                 key={citta.id}
-                onClick={() => setSelectedCitta(citta)}
+                onClick={() => setSelectedCittaId(citta.id)}
                 className={`p-4 rounded-2xl border transition cursor-pointer flex items-start justify-between gap-3 ${
                   isSelected
                     ? 'bg-amber-50/90 border-amber-400 shadow-xs'

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Compass, Sparkles, RefreshCw, Layers, BookOpen, Clock, Moon, Sun, ArrowRight } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { getSystemNodes } from '../../lib/scholarSuite/selectors';
 
-interface Hexagram {
+export interface Hexagram {
   number: number;
   nameVi: string;
   nameHán: string;
@@ -14,93 +15,58 @@ interface Hexagram {
   philosophicalInsight: string;
 }
 
-const HEXAGRAMS: Hexagram[] = [
-  {
-    number: 1,
-    nameVi: 'Thuần Càn',
-    nameHán: '乾為天',
-    pinyin: 'Qián wéi Tiān',
-    upperTrigram: 'Càn (Trời / Kim)',
-    lowerTrigram: 'Càn (Trời / Kim)',
-    nature: 'Đại Cát - Nguyên Hanh Lợi Trinh',
-    meaning: 'Sức mạnh cương kiện, chủ động sáng tạo của Vũ trụ, tượng trưng cho Đạo của bậc Quân tử không ngừng tự cường.',
-    philosophicalInsight: 'Đối chiếu Phật học: Tương ứng với Tinh Tấn Căn (Viriya) và Đại Nguyện Bồ Đề Tâm kiên cố không thối chuyển.',
-  },
-  {
-    number: 2,
-    nameVi: 'Thuần Khôn',
-    nameHán: '坤為地',
-    pinyin: 'Kūn wéi Dì',
-    upperTrigram: 'Khôn (Đất / Thổ)',
-    lowerTrigram: 'Khôn (Đất / Thổ)',
-    nature: 'Đại Cát - Hậu Đức Tải Vật',
-    meaning: 'Đức nhu thuận, bao dung, tiếp nhận vạn vật, chở che nuôi dưỡng muôn loài vô điều kiện.',
-    philosophicalInsight: 'Đối chiếu Phật học: Tương ứng với Tâm Từ Vô Lượng (Mettā) và Hạnh Nhẫn Nhục Ba La Mật (Khanti).',
-  },
-  {
-    number: 11,
-    nameVi: 'Địa Thiên Thái',
-    nameHán: '地天泰',
-    pinyin: 'Dì Tiān Tài',
-    upperTrigram: 'Khôn (Đất)',
-    lowerTrigram: 'Càn (Trời)',
-    nature: 'Tiểu Vãng Đại Lai - Cát Hanh',
-    meaning: 'Khí trời giáng xuống, khí đất bốc lên, âm dương giao hòa, vạn vật thông suốt, xã hội thái bình thịnh trị.',
-    philosophicalInsight: 'Đối chiếu Phật học: Trạng thái Tâm Thiện tương ưng Trí Tuệ (Ñāṇa-sampayutta), Danh Sắc hòa hợp thanh tịnh.',
-  },
-  {
-    number: 12,
-    nameVi: 'Thiên Địa Bĩ',
-    nameHán: '天地否',
-    pinyin: 'Tiān Dì Pǐ',
-    upperTrigram: 'Càn (Trời)',
-    lowerTrigram: 'Khôn (Đất)',
-    nature: 'Đại Vãng Tiểu Lai - Bế Tắc',
-    meaning: 'Trời ở trên cao không đoái hoài, đất ở dưới thấp không thấu cảm, âm dương cách trở, thời vận bế tắc.',
-    philosophicalInsight: 'Đối chiếu Phật học: Biểu hiện của Vô Minh (Avijjā) và Ái Dục ngăn che thực tướng, dẫn đến luân hồi khổ não.',
-  },
-  {
-    number: 63,
-    nameVi: 'Thủy Hỏa Ký Tế',
-    nameHán: '水火既濟',
-    pinyin: 'Shuǐ Huǒ Jì Jì',
-    upperTrigram: 'Khảm (Nước)',
-    lowerTrigram: 'Ly (Lửa)',
-    nature: 'Tiểu Hanh - Đã Hoàn Thành',
-    meaning: 'Nước ở trên lửa nấu chín thức ăn, mọi việc đã an bài đúng vị trí, hoàn tất một chu kỳ chuyển dịch.',
-    philosophicalInsight: 'Đối chiếu Phật học: Đắc định tịch tĩnh, các kiết sử tạm thời được lắng dịu (Tương tợ Đạo Quả).',
-  },
-  {
-    number: 64,
-    nameVi: 'Hỏa Thủy Vị Tế',
-    nameHán: '火水未濟',
-    pinyin: 'Huǒ Shuǐ Wèi Jì',
-    upperTrigram: 'Ly (Lửa)',
-    lowerTrigram: 'Khảm (Nước)',
-    nature: 'Chưa Hoàn Thành - Khởi Đầu Mới',
-    meaning: 'Lửa bốc lên cao, nước chảy xuống dưới không gặp nhau; việc chưa xong nhưng mở ra tiềm năng tiến hóa vô tận.',
-    philosophicalInsight: 'Đối chiếu Phật học: Chân lý Vô Thường (Anicca) và Duyên Sanh (Paṭiccasamuppāda) không ngừng vận động biến dịch.',
-  },
-];
-
-// 9 Cung Kỳ Môn Độn Giáp
-const QI_MEN_PALACES = [
-  { id: 4, name: 'Tốn 4 (Đông Nam)', element: 'Mộc', door: 'Đỗ Môn', star: 'Thiên Phụ', deity: 'Lục Hợp', meaning: 'Học vấn, khảo cứu, thiền tọa thanh tịnh' },
-  { id: 9, name: 'Ly 9 (Chính Nam)', element: 'Hỏa', door: 'Cảnh Môn', star: 'Thiên Anh', deity: 'Cửu Thiên', meaning: 'Trí tuệ quang minh, văn thư, hiển lộ' },
-  { id: 2, name: 'Khôn 2 (Tây Nam)', element: 'Thổ', door: 'Tử Môn', star: 'Thiên Nhuế', deity: 'Cửu Địa', meaning: 'Tĩnh dưỡng, chứa chấp, khảo cứu cổ thư' },
-  { id: 3, name: 'Chấn 3 (Chính Đông)', element: 'Mộc', door: 'Thương Môn', star: 'Thiên Xung', deity: 'Bạch Hổ', meaning: 'Hành động, khai phá đề tài mới' },
-  { id: 5, name: 'Trung Cung 5', element: 'Thổ', door: 'Trung Cung', star: 'Thiên Cầm', deity: 'Thái Cực', meaning: 'Tâm trung đạo, nhất tâm bất loạn' },
-  { id: 7, name: 'Đoài 7 (Chính Tây)', element: 'Kim', door: 'Kinh Môn', star: 'Thiên Trụ', deity: 'Huyền Vũ', meaning: 'Hùng biện, luận giải, vấn đáp học thuật' },
-  { id: 8, name: 'Cấn 8 (Đông Bắc)', element: 'Thổ', door: 'Sinh Môn', star: 'Thiên Nhậm', deity: 'Đằng Xà', meaning: 'Tài lộc, sinh khí, khởi đầu chu kỳ mới' },
-  { id: 1, name: 'Khảm 1 (Chính Bắc)', element: 'Thủy', door: 'Hưu Môn', star: 'Thiên Bồng', deity: 'Trực Phù', meaning: 'Nghỉ ngơi, thiền định thâm sâu, quý nhân' },
-  { id: 6, name: 'Càn 6 (Tây Bắc)', element: 'Kim', door: 'Khai Môn', star: 'Thiên Tâm', deity: 'Thái Thường', meaning: 'Khai mở trí tuệ lãnh đạo, đại cát hanh thông' },
-];
+export interface QiMenPalace {
+  id: number;
+  name: string;
+  element: string;
+  door: string;
+  star: string;
+  deity: string;
+  meaning: string;
+}
 
 export function DivinationMatrix() {
   const { openTopicDetail } = useData();
   const [activeTab, setActiveTab] = useState<'iching' | 'qimen'>('iching');
-  const [selectedHexagram, setSelectedHexagram] = useState<Hexagram>(HEXAGRAMS[0]);
-  const [selectedPalace, setSelectedPalace] = useState(QI_MEN_PALACES[8]);
+
+  const hexagramList: Hexagram[] = useMemo(() => {
+    const nodes = getSystemNodes('iching_64');
+    return nodes.map((node) => ({
+      number: node.attributes.hexagramNumber,
+      nameVi: node.title,
+      nameHán: node.code,
+      pinyin: `Hexagram #${node.attributes.hexagramNumber}`,
+      upperTrigram: node.attributes.upperTrigram,
+      lowerTrigram: node.attributes.lowerTrigram,
+      nature: node.attributes.nature,
+      meaning: node.canonicalMeaning,
+      philosophicalInsight: node.crossDomainAnalogy ?? node.canonicalMeaning,
+    }));
+  }, []);
+
+  const palaceList: QiMenPalace[] = useMemo(() => {
+    const nodes = getSystemNodes('qimen_9');
+    return nodes.map((node) => ({
+      id: node.attributes.palaceNumber,
+      name: node.title,
+      element: node.attributes.element,
+      door: node.attributes.door,
+      star: node.attributes.star,
+      deity: node.attributes.deity,
+      meaning: node.canonicalMeaning,
+    }));
+  }, []);
+
+  const [selectedHexNumber, setSelectedHexNumber] = useState<number>(hexagramList[0]?.number ?? 1);
+  const [selectedPalaceId, setSelectedPalaceId] = useState<number>(palaceList[0]?.id ?? 1);
+
+  const selectedHexagram = useMemo(() => {
+    return hexagramList.find((h) => h.number === selectedHexNumber) ?? hexagramList[0];
+  }, [hexagramList, selectedHexNumber]);
+
+  const selectedPalace = useMemo(() => {
+    return palaceList.find((p) => p.id === selectedPalaceId) ?? palaceList[0];
+  }, [palaceList, selectedPalaceId]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -146,12 +112,12 @@ export function DivinationMatrix() {
           {/* Left Hexagram Grid */}
           <div className="lg:col-span-7 space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {HEXAGRAMS.map((hex) => {
+              {hexagramList.map((hex) => {
                 const isSelected = selectedHexagram.number === hex.number;
                 return (
                   <div
                     key={hex.number}
-                    onClick={() => setSelectedHexagram(hex)}
+                    onClick={() => setSelectedHexNumber(hex.number)}
                     className={`p-4 rounded-2xl border transition cursor-pointer space-y-2 ${
                       isSelected
                         ? 'bg-indigo-50/90 border-indigo-400 shadow-xs'
@@ -233,12 +199,12 @@ export function DivinationMatrix() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7">
             <div className="grid grid-cols-3 gap-3 p-4 bg-stone-900 rounded-3xl border border-stone-800 shadow-2xl">
-              {QI_MEN_PALACES.map((palace) => {
+              {palaceList.map((palace) => {
                 const isSelected = selectedPalace.id === palace.id;
                 return (
                   <div
                     key={palace.id}
-                    onClick={() => setSelectedPalace(palace)}
+                    onClick={() => setSelectedPalaceId(palace.id)}
                     className={`p-4 rounded-2xl border transition cursor-pointer flex flex-col justify-between min-h-[140px] ${
                       isSelected
                         ? 'bg-indigo-900/90 border-indigo-400 text-white ring-2 ring-indigo-400'

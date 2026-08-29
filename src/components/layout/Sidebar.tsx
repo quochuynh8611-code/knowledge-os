@@ -24,6 +24,7 @@ import {
   resolveCategoryFilterToRootId,
 } from '../../lib/taxonomyMigration';
 import { getNeutralDomainStyle } from '../../lib/domainStyling';
+import { getScholarSuiteCounts } from '../../lib/scholarSuite/selectors';
 
 export function Sidebar() {
   const {
@@ -41,6 +42,8 @@ export function Sidebar() {
 
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [newDomainName, setNewDomainName] = useState('');
+
+  const scholarCounts = useMemo(() => getScholarSuiteCounts(), []);
 
   const rootCategories = useMemo(() => {
     return getRootCategories(categories);
@@ -116,8 +119,18 @@ export function Sidebar() {
   ];
 
   const specializedNavItems: NavItemConfig[] = [
-    { id: 'abhidharma_matrix', label: 'Ma trận phân tích', icon: Brain, badge: '89 Tâm' },
-    { id: 'divination_matrix', label: 'Mô hình hệ thống', icon: Compass, badge: '64 Quẻ' },
+    {
+      id: 'abhidharma_matrix',
+      label: 'Ma trận phân tích',
+      icon: Brain,
+      badge: `${scholarCounts.totalCittas} Tâm`,
+    },
+    {
+      id: 'divination_matrix',
+      label: 'Mô hình hệ thống',
+      icon: Compass,
+      badge: `${scholarCounts.totalHexagrams} Quẻ`,
+    },
     { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
   ];
 
