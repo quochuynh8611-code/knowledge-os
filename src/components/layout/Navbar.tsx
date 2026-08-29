@@ -112,16 +112,13 @@ export function Navbar({
 
           {/* Quick Search with Command Palette Hotkey Trigger */}
           <div className="flex-1 max-w-md hidden md:block">
-            <div className="relative">
+            <form onSubmit={handleSearchSubmit} className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  if (e.target.value.trim().length > 0) {
-                    setActiveTab("search");
-                  }
                 }}
                 placeholder="Tìm kiếm chủ đề, ghi chú, tài liệu, liên kết..."
                 className="w-full pl-9 pr-14 py-1.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/50 transition"
@@ -136,7 +133,7 @@ export function Navbar({
                   ⌘K
                 </button>
               )}
-            </div>
+            </form>
           </div>
 
           {/* Right Action Tools */}

@@ -52,8 +52,17 @@ export function DashboardHome() {
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [newDomainName, setNewDomainName] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
 
   const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
+
+  const handleQuickSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (localSearch.trim()) {
+      setSearchQuery(localSearch.trim());
+      setActiveTab('search');
+    }
+  };
 
   const handleCreateDomain = (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,28 +408,35 @@ export function DashboardHome() {
               <Search className="w-4 h-4 text-amber-700" />
               <span>Tìm kiếm nhanh</span>
             </div>
-            <div className="relative">
+            <form onSubmit={handleQuickSearch} className="relative">
               <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 placeholder="Tra cứu chủ đề, ghi chú, khái niệm học thuật..."
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (e.target.value.trim()) setActiveTab('search');
-                }}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-amber-700/40"
+                className="w-full pl-9 pr-16 py-2 text-xs bg-stone-50 border border-stone-200 rounded-xl text-stone-900 focus:bg-white focus:ring-2 focus:ring-amber-700/40"
               />
-            </div>
+              <button
+                type="submit"
+                disabled={!localSearch.trim()}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 bg-amber-800 hover:bg-amber-900 disabled:opacity-40 disabled:hover:bg-amber-800 text-white rounded-lg text-[11px] font-semibold transition cursor-pointer"
+              >
+                Tìm
+              </button>
+            </form>
             <div className="flex flex-wrap gap-1.5 pt-1 items-center">
               <span className="text-[11px] text-stone-600 font-medium">Từ khóa phổ biến:</span>
               {['Abhidharma', 'Vi Diệu Pháp', 'Kỳ Môn', 'Thiền Vipassana', 'Kinh Dịch', 'Thái Ất'].map((tag) => (
                 <button
                   key={tag}
+                  type="button"
                   onClick={() => {
+                    setLocalSearch(tag);
                     setSearchQuery(tag);
                     setActiveTab('search');
                   }}
-                  className="px-2 py-0.5 bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 rounded-md text-[11px] transition"
+                  className="px-2 py-0.5 bg-stone-100 hover:bg-amber-100 text-stone-700 hover:text-amber-900 rounded-md text-[11px] transition cursor-pointer"
                 >
                   #{tag}
                 </button>
