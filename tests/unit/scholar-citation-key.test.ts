@@ -57,4 +57,17 @@ describe('Phase B: Scholar Citation Key Generator (Deterministic & ASCII-safe)',
     expect(keyWithFallback.length).toBeGreaterThan(0);
     expect(keyWithFallback).toMatch(/^[a-z0-9_]+$/);
   });
+
+  it('5. Generates expected deterministic key for TerminologyEntry with entityType "term"', () => {
+    const key = generateCitationKey({
+      domain: 'phat-hoc',
+      entityType: 'term',
+      slugOrCode: 'anatta',
+      sourceTitle: 'Anattalakkhaṇa Sutta',
+      sectionRef: 'SN 22.59',
+    });
+
+    expect(key).toBe('phat_hoc_term_anatta_anattalakkhana_sutta_22');
+    expect(key).toMatch(/^[a-z0-9_]+$/);
+  });
 });

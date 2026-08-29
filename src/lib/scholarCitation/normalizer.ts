@@ -1,7 +1,13 @@
 import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import type { ScholarCitationViewModel, CitationSufficiency } from '../../types/scholarCitation';
+import type { TerminologyEntry } from '../../types/terminology';
 import { SYSTEM_NODE_REGISTRY } from '../../data/scholarSuite/systemRegistry';
-import { generateCitationKey } from './key';
+import { generateCitationKey, CitationEntityType } from './key';
+
+export interface NormalizeTerminologyOptions {
+  cslType?: 'entry-dictionary' | 'chapter';
+  entityType?: CitationEntityType;
+}
 
 /**
  * Determines citation sufficiency according to Phase P8.0 strict tripartite model.
@@ -17,6 +23,49 @@ function evaluateSufficiency(sources?: { ptsRef?: string; taishoRef?: string; st
   }
 
   return 'canonical_minimal';
+}
+
+/**
+ * Adapts any domain-agnostic TerminologyEntry into ScholarCitationViewModel.
+ */
+export function normalizeTerminologyEntry(
+  entry: TerminologyEntry,
+  options?: NormalizeTerminologyOptions
+): ScholarCitationViewModel {
+  const sufficiency = evaluateSufficiency(entry.sources);
+  const primarySource = entry.sources?.[0];
+
+  const entityType = options?.entityType ?? 'term';
+  const cslType = options?.cslType ?? 'entry-dictionary';
+
+  const slugOrCode = entry.code || entry.canonicalTerm || entry.id;
+
+  const citationKey = sufficiency !== 'internal_note_only'
+    ? generateCitationKey({
+        domain: entry.domain,
+        entityType,
+        slugOrCode,
+        sourceTitle: primarySource?.sourceTitle,
+        sectionRef: primarySource?.sectionRef,
+        fallbackId: entry.id,
+      })
+    : '';
+
+
+  return {
+    citationKey,
+    title: entry.title,
+    canonicalTerm: entry.canonicalTerm || entry.code,
+    domain: entry.domain,
+    sourceTitle: primarySource?.sourceTitle ?? '',
+    sectionRef: primarySource?.sectionRef ?? '',
+    ptsRef: primarySource?.ptsRef,
+    taishoRef: primarySource?.taishoRef,
+    standardEdition: primarySource?.standardEdition,
+    provenanceNote: entry.provenanceNote,
+    sufficiency,
+    cslType,
+  };
 }
 
 /**
@@ -58,6 +107,7 @@ export function normalizeLexiconEntry(entry: LexiconEntry): ScholarCitationViewM
     cslType: 'entry-dictionary',
   };
 }
+
 
 /**
  * Adapts a SystemNode into ScholarCitationViewModel.

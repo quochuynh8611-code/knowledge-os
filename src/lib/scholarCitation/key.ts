@@ -1,11 +1,14 @@
+export type CitationEntityType = 'term' | 'lex' | 'sys' | 'rel';
+
 export interface CitationKeyParams {
   domain: string;
-  entityType: 'lex' | 'sys' | 'rel';
+  entityType: CitationEntityType;
   slugOrCode: string;
   sourceTitle?: string;
   sectionRef?: string;
   fallbackId?: string;
 }
+
 
 /**
  * Removes Vietnamese and Pāli/Sanskrit diacritics to produce clean ASCII.

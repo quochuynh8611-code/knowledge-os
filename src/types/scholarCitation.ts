@@ -1,3 +1,6 @@
+import type { KnowledgeDomain } from './terminology';
+export type { KnowledgeDomain } from './terminology';
+
 /**
  * Minimal Viable Intermediate Representation for Scholar Citation Engine (v1)
  */
@@ -15,7 +18,7 @@ export interface ScholarCitationViewModel {
   readonly canonicalTerm?: string;
 
   /** Domain scope */
-  readonly domain: 'phat-hoc' | 'huyen-hoc' | 'triet-hoc' | 'khoa-hoc-tam-thuc' | 'da-nganh';
+  readonly domain: KnowledgeDomain;
 
   /** Canonical source document title (e.g. 'Dhammasaṅgaṇī', 'Chu Dịch') */
   readonly sourceTitle: string;
