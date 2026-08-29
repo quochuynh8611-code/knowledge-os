@@ -29,7 +29,7 @@ export function mapLexiconEntryToTerminology(entry: LexiconEntry): TerminologyEn
     canonicalTerm: entry.terms.pali || entry.terms.sanskrit || entry.slug,
     aliases,
     summary: entry.canonicalDefinition,
-    provenanceNote: entry.provenanceNote,
+    provenanceNote: entry.provenanceNote || entry.interpretiveNotes,
     sources: entry.sources.map((s) => ({
       sourceTitle: s.sourceTitle,
       sectionRef: s.sectionRef,
@@ -70,6 +70,7 @@ export function createLexiconDictionary(
       return mappedEntries.filter((item) => {
         if (item.title.toLowerCase().includes(q)) return true;
         if (item.summary && item.summary.toLowerCase().includes(q)) return true;
+        if (item.provenanceNote && item.provenanceNote.toLowerCase().includes(q)) return true;
         if (item.code && item.code.toLowerCase().includes(q)) return true;
         if (item.canonicalTerm && item.canonicalTerm.toLowerCase().includes(q)) return true;
         if (item.aliases) {
@@ -85,6 +86,7 @@ export function createLexiconDictionary(
     },
   };
 }
+
 
 /**
  * Singleton instance of the Scholar Suite Lexicon Dictionary.

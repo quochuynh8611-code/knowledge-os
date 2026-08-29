@@ -67,12 +67,13 @@ export function getTerminologyLexiconItems(filter?: {
     entries = entries.filter((e) => {
       const matchTitle = e.title.toLowerCase().includes(q);
       const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
+      const matchProvenance = e.provenanceNote?.toLowerCase().includes(q) ?? false;
       const matchCode = e.code?.toLowerCase().includes(q) ?? false;
       const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
       const matchAlias = e.aliases
         ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
         : false;
-      return matchTitle || matchSummary || matchCode || matchCanonical || matchAlias;
+      return matchTitle || matchSummary || matchProvenance || matchCode || matchCanonical || matchAlias;
     });
   }
 
@@ -98,17 +99,19 @@ export function getTerminologyEntries(filter?: {
     entries = entries.filter((e) => {
       const matchTitle = e.title.toLowerCase().includes(q);
       const matchSummary = e.summary?.toLowerCase().includes(q) ?? false;
+      const matchProvenance = e.provenanceNote?.toLowerCase().includes(q) ?? false;
       const matchCode = e.code?.toLowerCase().includes(q) ?? false;
       const matchCanonical = e.canonicalTerm?.toLowerCase().includes(q) ?? false;
       const matchAlias = e.aliases
         ? Object.values(e.aliases).some((v) => v.toLowerCase().includes(q))
         : false;
-      return matchTitle || matchSummary || matchCode || matchCanonical || matchAlias;
+      return matchTitle || matchSummary || matchProvenance || matchCode || matchCanonical || matchAlias;
     });
   }
 
   return entries;
 }
+
 
 /**
  * Pure O(1) selector to retrieve a single TerminologyEntry by ID.

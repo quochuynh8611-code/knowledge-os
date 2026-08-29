@@ -58,23 +58,16 @@ export function MultilingualLexicon() {
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [selectedCitationEntry, setSelectedCitationEntry] = useState<TerminologyEntry | null>(null);
 
-  const lexiconItems: LexiconItemView[] = useMemo(() => {
-    return getTerminologyLexiconItems();
+  const totalCount = useMemo(() => {
+    return getTerminologyLexiconItems().length;
   }, []);
 
   const filteredEntries = useMemo(() => {
-    return lexiconItems.filter((entry) => {
-      const q = searchTerm.toLowerCase();
-      const matchesSearch =
-        entry.pali.toLowerCase().includes(q) ||
-        entry.sanskrit.toLowerCase().includes(q) ||
-        entry.hanTu.includes(searchTerm) ||
-        entry.vietnamese.toLowerCase().includes(q) ||
-        entry.definition.toLowerCase().includes(q);
-      const matchesCat = categoryFilter === 'all' || entry.category === categoryFilter;
-      return matchesSearch && matchesCat;
+    return getTerminologyLexiconItems({
+      domain: categoryFilter === 'all' ? undefined : categoryFilter,
+      query: searchTerm,
     });
-  }, [lexiconItems, searchTerm, categoryFilter]);
+  }, [categoryFilter, searchTerm]);
 
   const isFilterActive = searchTerm.trim() !== '' || categoryFilter !== 'all';
 
@@ -96,7 +89,6 @@ export function MultilingualLexicon() {
       setSelectedCitationEntry(entry);
     }
   };
-
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-5">
@@ -202,14 +194,15 @@ export function MultilingualLexicon() {
         <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs text-stone-600">
           <div className="flex items-center gap-2">
             <span className="font-medium">
-              Hiển thị {filteredEntries.length} / {lexiconItems.length} thuật ngữ
+              Hiển thị {filteredEntries.length} / {totalCount} thuật ngữ
             </span>
             {categoryFilter !== 'all' && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-mono">
-                {categoryFilter === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}
+                {categoryFilter === 'phat-hoc' ? 'Phật Học' : categoryFilter === 'huyen-hoc' ? 'Huyền Học' : categoryFilter}
               </span>
             )}
           </div>
+
 
           {isFilterActive && (
             <button

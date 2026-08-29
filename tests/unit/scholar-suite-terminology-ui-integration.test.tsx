@@ -155,5 +155,34 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
         expect(screen.getByText(/Trích Dẫn Học Thuật/i)).toBeInTheDocument();
       });
     });
+
+    it('searches by Vietnamese keyword "nhận thức" and matches summary definitions', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'nhận thức' } });
+
+      // Selector parity check
+      const expectedResults = getTerminologyLexiconItems({ query: 'nhận thức' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+
+      // UI count indicator parity
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Tâm Sở/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+
+    it('searches by English alias "Consciousness" and displays matching Citta card', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+
+      fireEvent.change(searchInput, { target: { value: 'Consciousness' } });
+
+      const expectedResults = getTerminologyLexiconItems({ query: 'Consciousness' });
+      expect(expectedResults.length).toBeGreaterThan(0);
+
+      expect(screen.getByText(new RegExp(`Hiển thị ${expectedResults.length} /`, 'i'))).toBeInTheDocument();
+      expect(screen.getAllByText(/Citta/i).length).toBeGreaterThanOrEqual(1);
+    });
   });
 });
