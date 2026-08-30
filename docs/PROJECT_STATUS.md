@@ -1,15 +1,26 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-08-26
+> **Cập nhật lần cuối:** 2026-08-30
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–8 & DYNAMIC MULTI-DOMAIN HARDENING FULLY IMPLEMENTED & PRODUCTION-READY (80 / 80 TEST FILES PASS — 507 / 507 TESTS PASS 100% GREEN)**
+> **Trạng thái tổng thể:** 🟢 **PHASE P0–P12.3 (SCHOLAR SUITE, TCM REGISTRY, MULTI-FACET FILTERING & DOCS EXPLORER) FULLY IMPLEMENTED & PRODUCTION-READY (180 / 180 TEST FILES PASS — 1109 / 1109 TESTS PASS 100% GREEN)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / PHÂN TÍCH TIẾN ĐỘ ĐA LĨNH VỰC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (80 / 80 TEST FILES PASS — 507 / 507 TESTS PASS 100% GREEN)**.
-- **Tiến độ Các Phase Phổ Quát Hóa Đa Lĩnh Vực Mới Nhất (Recent Dynamic Domain Hardening Phases):**
+- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / TỪ ĐIỂN ĐA NGỮ / TRUNG TÂM TÀI LIỆU KIẾN TRÚC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (180 / 180 TEST FILES PASS — 1109 / 1109 TESTS PASS 100% GREEN)**.
+- **Tiến độ Các Phase Chuyên Sâu Học Giả & Khảo Cứu Mới Nhất (Recent Scholar Suite & Architecture Phases):**
+  - **Phase P12.3: In-App Docs Explorer & Markdown Architecture Viewer (Commit `97da2b4`):**
+    - **Mục tiêu:** Tích hợp trực tiếp trình duyệt tài liệu kiến trúc kỹ thuật (ADRs, Specs, Gherkin Features, Runbooks) vào Dashboard, đọc trực tiếp từ đĩa với độ trễ 0s và bảo vệ an toàn bằng `sanitizeDocsPath()`.
+    - **Giải pháp kỹ thuật:** Router Express `GET /api/docs` & `GET /api/docs/content`, bảo mật Path Traversal Guard, giao diện Split-Pane, TOC, nút sao chép và làm mới thời gian thực.
+    - **Kiểm thử:** 18/18 tests PASS trong 3 test suites (`server-docs-routes.test.ts`, `docs-routing.test.ts`, `docs-explorer-view.test.tsx`).
+  - **Phase P12.2 Wave 3: Multi-Facet Filtering Toolbar (Commit `795f564`):**
+    - **Mục tiêu:** Xây dựng thanh công cụ lọc thuật ngữ đa chiều trực giao 3 tầng (Domain, Source Type, Conditional TCM Subcategory), badge số đếm động runtime, logic AND intersection và nút reset tiện lợi.
+    - **Giải pháp kỹ thuật:** Selector thuần túy `getTerminologyFacetCounts` & `getTerminologyEntries` đa chiều, component `MultilingualLexicon.tsx` 3 tầng phân định trực quan.
+    - **Kiểm thử:** 10/10 tests PASS trong 2 test suites (`terminology-facet-counts.test.ts`, `scholar-suite-facet-toolbar-integration.test.tsx`).
+  - **Phase P12.1: TCM Registry Integration & Domain Taxonomy (Commit `df9eefd`):**
+    - **Mục tiêu:** Tích hợp kho Đông Y (Kinh Huyệt, Tạng Tượng, Dược Tính) vào hệ thống thuật ngữ hợp nhất.
+    - **Kiểm thử:** 15/15 tests PASS.
   - **Phase Study Analytics Multi-Domain Alignment (Commits `d7ad5b3`, `2b9e33f`):**
     - **Increment 1 (Core Engine Calculation Contract — `d7ad5b3`):** Phổ quát hóa hàm `calculateReviewForecast` hỗ trợ phân giải root domain động qua `getTopicRootDomain(topic, categories)`, bổ sung bản đồ `domainCounts` và mảng `domains` sắp xếp tất định (A-Z), bảo toàn tương thích ngược 100% cho `phatHocCount` / `huyenHocCount`, bổ sung `calculateDomainRetentionSummary`, và cố định tính tất định thời gian test bằng `vi.useFakeTimers()`.
     - **Increment 2 (UI Alignment & Neutral Presentation — `2b9e33f`):** Đồng bộ `StudyProgressView.tsx` render cột biểu đồ động, chú giải legend động, cân bằng lĩnh vực (PieChart) động theo root categories, và triển khai presentation resolver `getTopicPresentation` bảo đảm các domain mới có màu ngọc bích / trung tính (emerald/neutral), không bị gán nhầm sang Huyền Học.
