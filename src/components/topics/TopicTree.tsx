@@ -35,6 +35,12 @@ import {
   countTopicsForRootCategory,
 } from '../../lib/taxonomyMigration';
 
+const FIXED_ECONOMY_MERGE_TARGET_ID = 'cat-root-kinh-te-tai-chinh';
+
+const isEconomyMergeSource = (catId: string): boolean => {
+  return catId === 'cat-root-kinh-te' || catId === 'cat-root-kinh-te-hoc';
+};
+
 export function TopicTree() {
   const {
     topics,
@@ -46,6 +52,7 @@ export function TopicTree() {
     setSelectedTagFilter,
     deleteTopic,
     deleteCategory,
+    mergeCategories,
     hideTopic,
     restoreTopic,
     addCategory,
@@ -89,6 +96,36 @@ export function TopicTree() {
 
   const collapseAll = () => {
     setExpandedCategories({});
+  };
+
+  const handleCategoryDelete = (e: React.MouseEvent, cat: Category, topicCount: number) => {
+    e.stopPropagation();
+
+    if (isEconomyMergeSource(cat.id)) {
+      const confirmed = window.confirm(
+        `Danh mục "${cat.name}" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?`
+      );
+      if (!confirmed) return;
+
+      const result = mergeCategories(cat.id, FIXED_ECONOMY_MERGE_TARGET_ID);
+      if (!result.success) {
+        alert(`Không thể gộp danh mục: ${result.error || 'UNKNOWN_ERROR'}`);
+      }
+      return;
+    }
+
+    if (topicCount > 0) {
+      if (
+        !window.confirm(
+          `Danh mục "${cat.name}" đang có ${topicCount} chủ đề. Bạn có chắc muốn xóa danh mục này?`
+        )
+      ) {
+        return;
+      }
+    } else if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) {
+      return;
+    }
+    deleteCategory(cat.id);
   };
 
   const handleCreateDomain = (e?: React.FormEvent) => {
@@ -419,21 +456,8 @@ export function TopicTree() {
                   </span>
                   {!['cat-root-phat-hoc', 'cat-root-huyen-hoc', 'cat-root-dong-y', 'cat-root-ngon-ngu'].includes(cat.id) && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (catTopics.length > 0) {
-                          if (
-                            !window.confirm(
-                              `Danh mục "${cat.name}" đang có ${catTopics.length} chủ đề. Bạn có chắc muốn xóa danh mục này?`
-                            )
-                          ) {
-                            return;
-                          }
-                        } else if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) {
-                          return;
-                        }
-                        deleteCategory(cat.id);
-                      }}
+                      onClick={(e) => handleCategoryDelete(e, cat, catTopics.length)}
+                      data-testid={`delete-category-${cat.id}`}
                       className="p-1 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
                       title="Xóa danh mục"
                     >

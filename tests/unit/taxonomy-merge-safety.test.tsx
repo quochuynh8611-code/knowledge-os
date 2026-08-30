@@ -1,11 +1,30 @@
-import { describe, it, expect } from 'vitest';
+import React from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Category, Topic, Note, Resource } from '../../src/types';
 import {
   mergeCategoryData,
   MergeCategoriesResult,
 } from '../../src/lib/taxonomyMigration';
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { DataProvider, useData } from '../../src/context/DataContext';
+import { TopicTree } from '../../src/components/topics/TopicTree';
+import {
+  INITIAL_CATEGORIES,
+  INITIAL_TOPICS,
+  INITIAL_NOTES,
+  INITIAL_RESOURCES,
+} from '../../src/data/initialData';
 
-describe('Wave 16.1: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & Tài Chính as Canonical Root)', () => {
+describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & Tài Chính as Canonical Root)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
   // Mock Data Setup
   const sampleCategories: Category[] = [
     // Canonical Target Root: Kinh Tế & Tài Chính
@@ -297,7 +316,7 @@ describe('Wave 16.1: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & Tài Chí
       const { renderHook, act } = await import('@testing-library/react');
       const { DataProvider, useData } = await import('../../src/context/DataContext');
 
-      const { result } = renderHook(() => useData(), {
+      const { result, unmount } = renderHook(() => useData(), {
         wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
       });
 
@@ -358,13 +377,15 @@ describe('Wave 16.1: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & Tài Chí
       expect(remappedTopic?.categoryId).toBe(targetCatId);
       // Focus domain is redirected to target
       expect(result.current.focusDomainId).toBe(targetCatId);
+
+      unmount();
     });
 
     it('3.2. When merge fails, state remains completely unmutated and returns error', async () => {
       const { renderHook, act } = await import('@testing-library/react');
       const { DataProvider, useData } = await import('../../src/context/DataContext');
 
-      const { result } = renderHook(() => useData(), {
+      const { result, unmount } = renderHook(() => useData(), {
         wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
       });
 
@@ -380,18 +401,525 @@ describe('Wave 16.1: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & Tài Chí
       expect(mergeRes.error).toBeDefined();
       expect(result.current.categories.length).toBe(initialCatCount);
       expect(result.current.topics.length).toBe(initialTopicCount);
+
+      unmount();
     });
 
     it('3.3. Confirms legacy deleteCategory function is still available and unreplaced', async () => {
       const { renderHook } = await import('@testing-library/react');
       const { DataProvider, useData } = await import('../../src/context/DataContext');
 
-      const { result } = renderHook(() => useData(), {
+      const { result, unmount } = renderHook(() => useData(), {
         wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
       });
 
       expect(typeof result.current.deleteCategory).toBe('function');
       expect(typeof result.current.mergeCategories).toBe('function');
+      unmount();
+    });
+
+    it('3.4. Persistence Rehydration (LocalStorage): After mergeCategories, unmounting and remounting DataProvider retains merged state and does NOT resurrect source category', async () => {
+      const { renderHook, act, waitFor } = await import('@testing-library/react');
+      const { DataProvider, useData } = await import('../../src/context/DataContext');
+
+      // Offline mode: fetch rejects immediately to fallback to LocalStorage
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('Offline'));
+
+      // First mount
+      const { result: firstResult, unmount: firstUnmount } = renderHook(() => useData(), {
+        wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
+      });
+
+      let sourceCatId = 'cat-root-kinh-te';
+      let targetCatId = 'cat-root-kinh-te-tai-chinh';
+      let topicId: string = '';
+
+      act(() => {
+        firstResult.current.importAllDataJSON(
+          JSON.stringify({
+            categories: [
+              ...INITIAL_CATEGORIES,
+              {
+                id: sourceCatId,
+                name: 'Kinh Tế',
+                slug: 'kinh-te',
+                type: 'kinh-te',
+                parentId: null,
+              },
+              {
+                id: targetCatId,
+                name: 'Kinh Tế & Tài Chính',
+                slug: 'kinh-te-tai-chinh',
+                type: 'kinh-te-tai-chinh',
+                parentId: null,
+              },
+            ],
+            topics: [
+              {
+                id: 'topic-kt-123',
+                title: 'Kinh Tế Vĩ Mô',
+                slug: 'kinh-te-vi-mo',
+                categoryId: sourceCatId,
+                type: 'kinh-te',
+                createdAt: '2026-08-01T00:00:00.000Z',
+                updatedAt: '2026-08-01T00:00:00.000Z',
+                studyProgress: {
+                  topicId: 'topic-kt-123',
+                  status: 'in_progress',
+                  progress: 50,
+                },
+              },
+            ],
+            notes: [],
+            resources: [],
+            tags: [],
+            links: [],
+          })
+        );
+      });
+
+      // Wait for import persistence to settle
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(firstResult.current.categories.some((c) => c.id === sourceCatId)).toBe(true);
+
+      // Perform merge
+      act(() => {
+        const mergeRes = firstResult.current.mergeCategories(sourceCatId, targetCatId);
+        expect(mergeRes.success).toBe(true);
+      });
+
+      // Confirm in-memory state after merge
+      expect(firstResult.current.categories.some((c) => c.id === sourceCatId)).toBe(false);
+      expect(firstResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
+
+      // Wait for async persistence to write to storage
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      // Unmount first session
+      firstUnmount();
+
+      // Second mount (simulating full page reload / app restart)
+      const { result: secondResult, unmount: secondUnmount } = renderHook(() => useData(), {
+        wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
+      });
+
+      // Assert state after rehydration: source category must NOT resurrect!
+      await waitFor(() => {
+        expect(secondResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
+      });
+      expect(secondResult.current.categories.some((c) => c.id === sourceCatId)).toBe(false);
+      const rehydratedTopic = secondResult.current.topics.find((t) => t.id === 'topic-kt-123');
+      expect(rehydratedTopic?.categoryId).toBe(targetCatId);
+      expect(rehydratedTopic?.type).toBe('kinh-te-tai-chinh');
+
+      secondUnmount();
+      fetchSpy.mockRestore();
+    });
+
+    it('3.5. Persistence Rehydration (API / Server sync): mergeCategories triggers repository deletion and sync so server reloadAllData does not resurrect category', async () => {
+      const { renderHook, act, waitFor } = await import('@testing-library/react');
+      const { DataProvider, useData } = await import('../../src/context/DataContext');
+
+      let serverCategories = [
+        ...INITIAL_CATEGORIES,
+        {
+          id: 'cat-root-kinh-te-hoc',
+          name: 'Kinh Tế Học',
+          slug: 'kinh-te-hoc',
+          type: 'kinh-te-hoc',
+          parentId: null,
+        },
+        {
+          id: 'cat-root-kinh-te-tai-chinh',
+          name: 'Kinh Tế & Tài Chính',
+          slug: 'kinh-te-tai-chinh',
+          type: 'kinh-te-tai-chinh',
+          parentId: null,
+        },
+      ];
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+
+        if (url.includes('/api/categories/cat-root-kinh-te-hoc') && method === 'DELETE') {
+          serverCategories = serverCategories.filter((c) => c.id !== 'cat-root-kinh-te-hoc');
+          return { ok: true, json: async () => ({ success: true }) } as Response;
+        }
+
+        if (url.includes('/api/categories') && method === 'GET') {
+          return { ok: true, json: async () => serverCategories } as Response;
+        }
+
+        if (url.includes('/api/topics') && method === 'GET') {
+          return { ok: true, json: async () => INITIAL_TOPICS } as Response;
+        }
+
+        if (url.includes('/api/sync/hydrate') && method === 'POST') {
+          const body = JSON.parse(String(init?.body || '{}'));
+          if (body.categories) {
+            // Server updates
+          }
+          return { ok: true, json: async () => ({ success: true }) } as Response;
+        }
+
+        return { ok: true, json: async () => [] } as Response;
+      });
+
+      const { result, unmount } = renderHook(() => useData(), {
+        wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
+      });
+
+      act(() => {
+        result.current.importAllDataJSON(
+          JSON.stringify({
+            categories: serverCategories,
+            topics: INITIAL_TOPICS,
+            notes: [],
+            resources: [],
+            tags: [],
+            links: [],
+          })
+        );
+      });
+
+      // Merge Kinh Tế Học into Kinh Tế & Tài Chính
+      act(() => {
+        const res = result.current.mergeCategories('cat-root-kinh-te-hoc', 'cat-root-kinh-te-tai-chinh');
+        expect(res.success).toBe(true);
+      });
+
+      // Allow async repo delete to dispatch
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      unmount();
+
+      // Remount and call reloadAllData
+      const { result: secondResult, unmount: secondUnmount } = renderHook(() => useData(), {
+        wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
+      });
+
+      await act(async () => {
+        await secondResult.current.reloadAllData();
+      });
+
+      // Server data should reflect deletion and not resurrect Kinh Tế Học
+      await waitFor(() => {
+        expect(secondResult.current.categories.some((c) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
+      });
+      expect(secondResult.current.categories.some((c) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+
+      secondUnmount();
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe('4. UI Integration: TopicTree Category Deletion & Fixed Merge Flow', () => {
+    it('4.1. Case 1: Clicking delete on cat-root-kinh-te prompts merge confirm and calls mergeCategories("cat-root-kinh-te", "cat-root-kinh-te-tai-chinh")', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      const TestHarness = () => {
+        const { importAllDataJSON } = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-root-kinh-te',
+                        name: 'Kinh Tế',
+                        slug: 'kinh-te',
+                        type: 'kinh-te',
+                        parentId: null,
+                      },
+                      {
+                        id: 'cat-root-kinh-te-tai-chinh',
+                        name: 'Kinh Tế & Tài Chính',
+                        slug: 'kinh-te-tai-chinh',
+                        type: 'kinh-te-tai-chinh',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Data
+            </button>
+            <TopicTree />
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestHarness />
+        </DataProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Seed Data' }));
+
+      const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
+      fireEvent.click(deleteBtn);
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Danh mục "Kinh Tế" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
+      );
+      // Source category is removed from UI after merge
+      expect(screen.queryByTestId('delete-category-cat-root-kinh-te')).toBeNull();
+      confirmSpy.mockRestore();
+    });
+
+    it('4.2. Case 2: Clicking delete on cat-root-kinh-te-hoc prompts exact merge confirm for Kinh Tế Học', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      const TestHarness = () => {
+        const { importAllDataJSON } = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-root-kinh-te-hoc',
+                        name: 'Kinh Tế Học',
+                        slug: 'kinh-te-hoc',
+                        type: 'kinh-te-hoc',
+                        parentId: null,
+                      },
+                      {
+                        id: 'cat-root-kinh-te-tai-chinh',
+                        name: 'Kinh Tế & Tài Chính',
+                        slug: 'kinh-te-tai-chinh',
+                        type: 'kinh-te-tai-chinh',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Data
+            </button>
+            <TopicTree />
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestHarness />
+        </DataProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Seed Data' }));
+
+      const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te-hoc');
+      fireEvent.click(deleteBtn);
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Danh mục "Kinh Tế Học" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
+      );
+      // Source category is removed from UI after merge
+      expect(screen.queryByTestId('delete-category-cat-root-kinh-te-hoc')).toBeNull();
+      confirmSpy.mockRestore();
+    });
+
+    it('4.3. Case 3: Clicking delete on regular custom category prompts standard deletion confirm and does not merge', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      const TestHarness = () => {
+        const { importAllDataJSON } = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-custom-triet-hoc',
+                        name: 'Triết Học Tây Phương',
+                        slug: 'triet-hoc-tay-phuong',
+                        type: 'triet-hoc',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Data
+            </button>
+            <TopicTree />
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestHarness />
+        </DataProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Seed Data' }));
+
+      const deleteBtn = screen.getByTestId('delete-category-cat-custom-triet-hoc');
+      fireEvent.click(deleteBtn);
+
+      expect(confirmSpy).toHaveBeenCalledWith('Xóa danh mục "Triết Học Tây Phương"?');
+      expect(screen.queryByTestId('delete-category-cat-custom-triet-hoc')).toBeNull();
+      confirmSpy.mockRestore();
+    });
+
+    it('4.4. Case 4: When mergeCategories fails, triggers window.alert with error without crashing UI', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      const TestHarness = () => {
+        const { importAllDataJSON } = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-root-kinh-te',
+                        name: 'Kinh Tế',
+                        slug: 'kinh-te',
+                        type: 'kinh-te',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Data
+            </button>
+            <TopicTree />
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestHarness />
+        </DataProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Seed Data' }));
+
+      const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
+      fireEvent.click(deleteBtn);
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Không thể gộp danh mục')
+      );
+      // Category still remains because merge failed
+      expect(screen.getByTestId('delete-category-cat-root-kinh-te')).toBeInTheDocument();
+      confirmSpy.mockRestore();
+      alertSpy.mockRestore();
+    });
+
+    it('4.5. Case 5: When user cancels merge confirm prompt, mergeCategories is not called and category remains intact', () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+      const TestHarness = () => {
+        const { importAllDataJSON } = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-root-kinh-te',
+                        name: 'Kinh Tế',
+                        slug: 'kinh-te',
+                        type: 'kinh-te',
+                        parentId: null,
+                      },
+                      {
+                        id: 'cat-root-kinh-te-tai-chinh',
+                        name: 'Kinh Tế & Tài Chính',
+                        slug: 'kinh-te-tai-chinh',
+                        type: 'kinh-te-tai-chinh',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Data
+            </button>
+            <TopicTree />
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestHarness />
+        </DataProvider>
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Seed Data' }));
+
+      const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
+      fireEvent.click(deleteBtn);
+
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Danh mục "Kinh Tế" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
+      );
+      // Source category remains because user cancelled
+      expect(screen.getByTestId('delete-category-cat-root-kinh-te')).toBeInTheDocument();
+      confirmSpy.mockRestore();
     });
   });
 });

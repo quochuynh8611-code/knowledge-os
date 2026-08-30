@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
   ReactNode,
 } from "react";
 import {
@@ -309,8 +310,15 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
+  const isInitialMount = useRef(true);
+
   // Auto-sync to LocalStorage via repository (repository owns all storage I/O)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     dataRepository
       .syncHydrate({
         clientSyncId: `auto-sync-${Date.now()}`,
@@ -339,17 +347,24 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       parentId: categoryData.parentId || null,
     };
     setCategories((prev) => [...prev, newCategory]);
+    dataRepository.saveCategory(newCategory).catch(console.error);
     return newId;
   };
 
   const updateCategory = (id: string, categoryData: Partial<Category>) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...categoryData } : c)),
-    );
+    setCategories((prev) => {
+      const updated = prev.map((c) => (c.id === id ? { ...c, ...categoryData } : c));
+      const target = updated.find((c) => c.id === id);
+      if (target) {
+        dataRepository.saveCategory(target).catch(console.error);
+      }
+      return updated;
+    });
   };
 
   const deleteCategory = (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
+    dataRepository.deleteCategory(id).catch(console.error);
   };
 
   const mergeCategories = (
@@ -370,6 +385,27 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       if (focusDomainId === sourceCategoryId) {
         setFocusDomainId(targetCategoryId);
       }
+
+      // Persist state: syncHydrate first to guarantee topic remapping, then notify repo of category deletion
+      (async () => {
+        try {
+          await dataRepository.syncHydrate({
+            clientSyncId: `merge-${Date.now()}`,
+            version: "2.0.0",
+            clientTimestamp: new Date().toISOString(),
+            categories: result.updatedCategories,
+            topics: result.updatedTopics,
+            notes,
+            resources,
+            tags,
+            links: [],
+          });
+          await dataRepository.deleteCategory(sourceCategoryId);
+        } catch (err) {
+          console.error("Failed to sync merge state:", err);
+          dataRepository.deleteCategory(sourceCategoryId).catch(console.error);
+        }
+      })();
     }
 
     return result;
@@ -849,22 +885,60 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
         if (!Array.isArray(topicsData) || topicsData.length === 0) {
           return false;
         }
+        const categoriesRes = await fetch(
+          `${window.location.origin}/api/categories`,
+        ).catch(() => null);
+        const categoriesData =
+          categoriesRes && categoriesRes.ok ? await categoriesRes.json() : null;
+
+        const hasValidCategories =
+          Array.isArray(categoriesData) &&
+          categoriesData.length > 0 &&
+          typeof categoriesData[0]?.name === "string" &&
+          typeof categoriesData[0]?.slug === "string";
+
+        const normCats = hasValidCategories
+          ? normalizeCategories(categoriesData)
+          : categories;
+
+        if (hasValidCategories) {
+          setCategories(normCats);
+        }
+
         const notesRes = await fetch(
           `${window.location.origin}/api/notes`,
         ).catch(() => null);
         const notesData =
-          notesRes && notesRes.ok ? await notesRes.json() : [];
+          notesRes && notesRes.ok ? await notesRes.json() : null;
+
+        const hasValidNotes =
+          Array.isArray(notesData) &&
+          notesData.length > 0 &&
+          typeof notesData[0]?.content === "string" &&
+          (typeof notesData[0]?.topicId === "string" ||
+            Array.isArray(notesData[0]?.topicIds));
+
+        const safeNotes = hasValidNotes ? notesData : notes;
+        if (hasValidNotes) setNotes(safeNotes);
 
         const resourcesRes = await fetch(
           `${window.location.origin}/api/resources`,
         ).catch(() => null);
         const resourcesData =
-          resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
+          resourcesRes && resourcesRes.ok ? await resourcesRes.json() : null;
+
+        const hasValidResources =
+          Array.isArray(resourcesData) &&
+          resourcesData.length > 0 &&
+          ["book", "article", "video", "audio", "pdf"].includes(
+            resourcesData[0]?.type,
+          );
+
+        const safeResources = hasValidResources ? resourcesData : resources;
+        if (hasValidResources) setResources(safeResources);
 
         const normTopics = normalizeTopics(topicsData);
         setTopics(normTopics);
-        if (notesData) setNotes(notesData);
-        if (resourcesData) setResources(resourcesData);
 
         // Persist via repository (no raw localStorage calls here)
         dataRepository
@@ -872,10 +946,10 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
             clientSyncId: `reload-${Date.now()}`,
             version: "2.0.0",
             clientTimestamp: new Date().toISOString(),
-            categories,
+            categories: normCats,
             topics: normTopics,
-            notes: notesData,
-            resources: resourcesData,
+            notes: safeNotes,
+            resources: safeResources,
             tags,
             links: [],
           })
