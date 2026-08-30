@@ -27,6 +27,8 @@ import {
   useCommandPalette,
   CommandPaletteItem,
 } from "./hooks/useCommandPalette";
+import { ActiveLearningSessionBar } from "./components/dashboard/ActiveLearningSessionBar";
+import { SessionWrapupModal } from "./components/modals/SessionWrapupModal";
 
 // Lazy-loaded heavy & specialized workspace tabs
 const KnowledgeGraph = React.lazy(() =>
@@ -92,12 +94,16 @@ function TabLoadingFallback() {
 }
 
 function AppContent() {
-  const { activeTab, setActiveTab, selectedTopicId, openTopicDetail } =
-    useData();
+  const { activeTab, setActiveTab, selectedTopicId, openTopicDetail,
+    activeTimerTopicId, timerSeconds, isTimerRunning,
+    pauseStudyTimer, resumeStudyTimer, stopAndSaveStudyTimer,
+    logStudyTime, topics, addNote, updateTopicProgress,
+  } = useData();
   const { toggleTheme } = useTheme();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
+  const [showWrapupModal, setShowWrapupModal] = useState(false);
 
   const customPaletteItems: CommandPaletteItem[] = useMemo(
     () => [
@@ -343,9 +349,60 @@ function AppContent() {
           />
         </React.Suspense>
       )}
+
+      {/* Global Phase 17: Active Learning Session Bar */}
+      {activeTimerTopicId && (
+        <ActiveLearningSessionBar
+          topicId={activeTimerTopicId}
+          topicTitle={topics.find((t) => t.id === activeTimerTopicId)?.title ?? ''}
+          timerSeconds={timerSeconds}
+          isTimerRunning={isTimerRunning}
+          onPause={pauseStudyTimer}
+          onResume={resumeStudyTimer}
+          onOpenWrapup={() => setShowWrapupModal(true)}
+          onNavigateToTopic={(id) => openTopicDetail(id)}
+        />
+      )}
+
+      {/* Global Phase 17: Session Wrapup Modal */}
+      {showWrapupModal && (() => {
+        const activeTopic = topics.find((t) => t.id === activeTimerTopicId);
+        if (!activeTopic) return null;
+        const minutesSpent = Math.max(1, Math.round(timerSeconds / 60));
+        return (
+          <SessionWrapupModal
+            isOpen={showWrapupModal}
+            topic={activeTopic}
+            minutesSpent={minutesSpent}
+            onClose={() => setShowWrapupModal(false)}
+            onSaveWrapup={({ progress, status, takeaway }) => {
+              // 1. Log accumulated time then stop timer
+              logStudyTime(activeTimerTopicId!, minutesSpent);
+              stopAndSaveStudyTimer();
+              // 2. Update progress
+              updateTopicProgress(activeTimerTopicId!, progress, status);
+              // 3. Conditional note creation — only when takeaway is non-empty
+              if (takeaway && takeaway.trim().length > 0) {
+                const today = new Date().toLocaleDateString('vi-VN');
+                addNote({
+                  topicId: activeTimerTopicId!,
+                  topicTitle: activeTopic.title,
+                  title: `Đúc kết: ${activeTopic.title} (${today})`,
+                  content: takeaway.trim(),
+                  type: 'insight',
+                  isPrivate: false,
+                  tags: ['Takeaway', 'StudySession'],
+                });
+              }
+              setShowWrapupModal(false);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
+
 
 export function App() {
   return (

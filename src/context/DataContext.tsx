@@ -147,6 +147,7 @@ interface DataContextType {
   logStudyTime: (topicId: string, minutes: number) => void;
   startStudyTimer: (topicId: string, mode?: "stopwatch" | "pomodoro") => void;
   pauseStudyTimer: () => void;
+  resumeStudyTimer: () => void;
   stopAndSaveStudyTimer: () => void;
 
   // Analytics & Computed
@@ -192,6 +193,7 @@ export type DomainDataContextType = Omit<
   | "pomodoroTimeRemaining"
   | "startStudyTimer"
   | "pauseStudyTimer"
+  | "resumeStudyTimer"
   | "stopAndSaveStudyTimer"
 >;
 
@@ -1069,6 +1071,7 @@ function DataProviderBridge({
       pomodoroTimeRemaining: timer.pomodoroTimeRemaining,
       startStudyTimer: timer.startStudyTimer,
       pauseStudyTimer: timer.pauseStudyTimer,
+      resumeStudyTimer: timer.resumeStudyTimer,
       stopAndSaveStudyTimer: timer.stopAndSaveStudyTimer,
     }),
     [knowledgeValue, nav, timer],

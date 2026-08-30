@@ -19,6 +19,7 @@ export interface StudyTimerContextType {
 
   startStudyTimer: (topicId: string, mode?: TimerMode) => void;
   pauseStudyTimer: () => void;
+  resumeStudyTimer: () => void;
   stopAndSaveStudyTimer: () => void;
   resetTimer: () => void;
 }
@@ -81,6 +82,13 @@ export function StudyTimerProvider({
     setIsTimerRunning(false);
   }, []);
 
+  // resume: continues counting from where the timer was paused (no second reset)
+  const resumeStudyTimer = useCallback(() => {
+    if (activeTimerTopicId) {
+      setIsTimerRunning(true);
+    }
+  }, [activeTimerTopicId]);
+
   const resetTimer = useCallback(() => {
     setIsTimerRunning(false);
     setActiveTimerTopicId(null);
@@ -114,6 +122,7 @@ export function StudyTimerProvider({
       pomodoroTimeRemaining,
       startStudyTimer,
       pauseStudyTimer,
+      resumeStudyTimer,
       stopAndSaveStudyTimer,
       resetTimer,
     }),
@@ -125,6 +134,7 @@ export function StudyTimerProvider({
       pomodoroTimeRemaining,
       startStudyTimer,
       pauseStudyTimer,
+      resumeStudyTimer,
       stopAndSaveStudyTimer,
       resetTimer,
     ]
