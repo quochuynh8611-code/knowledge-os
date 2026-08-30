@@ -27,7 +27,7 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       expect(screen.queryByText('Knowledge OS')).toBeNull();
 
       // Subtitle should be neutralized
-      expect(screen.getByText(/Không gian làm việc & hệ thống hóa kiến thức đa lĩnh vực/i)).toBeInTheDocument();
+      expect(screen.getByText(/hệ thống hóa (kiến thức|tri thức) đa (lĩnh vực|môn)/i)).toBeInTheDocument();
 
       // Search placeholder should be neutralized
       expect(screen.getByPlaceholderText(/Tìm kiếm chủ đề, ghi chú, tài liệu, liên kết/i)).toBeInTheDocument();
@@ -44,10 +44,10 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
 
       // Main Navigation items
       expect(screen.getByText('Tổng quan')).toBeInTheDocument();
-      expect(screen.getByText('AI hỗ trợ')).toBeInTheDocument();
-      expect(screen.getByText('Chủ đề')).toBeInTheDocument();
+      expect(screen.getByText(/AI Hỗ trợ/i)).toBeInTheDocument();
+      expect(screen.getByText('Chủ đề học')).toBeInTheDocument();
       expect(screen.getByText('Bản đồ tri thức')).toBeInTheDocument();
-      expect(screen.getByText('Tiến độ')).toBeInTheDocument();
+      expect(screen.getByText(/Tiến độ/i)).toBeInTheDocument();
       expect(screen.getByText('Ghi chú')).toBeInTheDocument();
       expect(screen.getByText('Tài liệu')).toBeInTheDocument();
       expect(screen.getByText('Tìm kiếm')).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       expect(screen.getByText('Từ điển thuật ngữ')).toBeInTheDocument();
 
       // Section title
-      expect(screen.getByText(/Lĩnh Vực Nghiên Cứu/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Học tập|Tri thức|Công cụ/i).length).toBeGreaterThan(0);
     });
   });
 

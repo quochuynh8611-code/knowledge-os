@@ -51,11 +51,17 @@ export function LearningStateCard({
     dormant: 'bg-stone-400',
   }[status];
 
+  const cardContainerStyle = {
+    active: 'bg-white dark:bg-stone-900 border-stone-200/90 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-2xs',
+    maintenance: 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs',
+    dormant: 'bg-stone-50/60 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 opacity-85 hover:opacity-100 hover:border-stone-300 dark:hover:border-stone-700',
+  }[status];
+
   return (
     <div
       data-testid={`learning-state-card-${rootCategory.id}`}
       onClick={() => onSelectDomain(rootCategory.id)}
-      className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-md transition flex flex-col justify-between group cursor-pointer"
+      className={`border rounded-2xl p-4 sm:p-5 hover:shadow-md transition flex flex-col justify-between group cursor-pointer ${cardContainerStyle}`}
     >
       {/* 1. Header: Icon + Title + Status Badge */}
       <div>
@@ -97,7 +103,9 @@ export function LearningStateCard({
               className={`h-full rounded-full transition-all duration-700 ${
                 status === 'active'
                   ? 'bg-emerald-600 dark:bg-emerald-500'
-                  : 'bg-amber-600 dark:bg-amber-500'
+                  : status === 'maintenance'
+                  ? 'bg-amber-600 dark:bg-amber-500'
+                  : 'bg-stone-400 dark:bg-stone-600'
               }`}
               style={{ width: `${donePercent}%` }}
             />
@@ -134,7 +142,11 @@ export function LearningStateCard({
                     e.stopPropagation();
                     onStartStudyTopic(nextStepTopic.id);
                   }}
-                  className="w-full px-2.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-amber-800 dark:hover:bg-amber-400 text-white dark:text-stone-900 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer"
+                  className={`w-full px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-2xs cursor-pointer ${
+                    status === 'active'
+                      ? 'bg-stone-900 dark:bg-stone-100 hover:bg-amber-800 dark:hover:bg-amber-400 text-white dark:text-stone-900'
+                      : 'bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/80 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700'
+                  }`}
                 >
                   <Play className="w-3 h-3 fill-current" />
                   <span>Học bài này</span>

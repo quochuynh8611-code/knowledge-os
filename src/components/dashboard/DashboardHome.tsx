@@ -87,7 +87,7 @@ export function DashboardHome() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-7">
       {/* Khối 1: Today Recommendation & Action Hero */}
       <TodayLearningHero
         onStartStudy={handleStartStudy}
@@ -95,8 +95,8 @@ export function DashboardHome() {
       />
 
       {/* Khối 3: Multi-Disciplinary Learning State Hub */}
-      <section className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <section className="space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 font-serif-title flex items-center gap-2">
               <Folder className="w-4 h-4 text-amber-800 dark:text-amber-400" />
@@ -109,7 +109,7 @@ export function DashboardHome() {
 
           {/* Add Domain CTA Button / Inline Form */}
           {isAddingDomain ? (
-            <form onSubmit={handleCreateDomain} className="flex items-center gap-1.5">
+            <form onSubmit={handleCreateDomain} className="flex items-center gap-1.5 flex-wrap">
               <input
                 type="text"
                 value={newDomainName}
@@ -147,7 +147,7 @@ export function DashboardHome() {
         </div>
 
         {/* Dynamic Multi-Disciplinary Learning State Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
           {domainLearningStates.map((domainState) => (
             <LearningStateCard
               key={domainState.rootCategory.id}
@@ -175,22 +175,24 @@ export function DashboardHome() {
           />
         </div>
 
-        {/* Right 1 Col: Recent Notes & Resources */}
+        {/* Right 1 Col: Recent Context (Secondary Context Panel) */}
         <div className="space-y-4">
-          <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+          <div className="bg-stone-50/60 dark:bg-stone-900/40 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between border-b border-stone-200/60 dark:border-stone-800/80 pb-2.5">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-                <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">Ghi chú & Tài liệu mới</h2>
+                <Clock className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                <h2 className="font-semibold text-stone-700 dark:text-stone-300 text-xs uppercase tracking-wider">
+                  Ghi chú & Tài liệu gần đây
+                </h2>
               </div>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {recentNotes.map((note) => (
                 <div
                   key={note.id}
                   onClick={() => openTopicDetail(note.topicId)}
-                  className="p-2.5 rounded-xl border border-stone-100 dark:border-stone-800/80 bg-stone-50/60 dark:bg-stone-800/40 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:border-amber-200 dark:hover:border-amber-800 transition cursor-pointer"
+                  className="p-2 rounded-xl border border-stone-200/60 dark:border-stone-800/70 bg-white dark:bg-stone-800/50 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:border-amber-200 dark:hover:border-amber-800 transition cursor-pointer"
                 >
                   <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-0.5">
                     <span className="font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
@@ -209,7 +211,7 @@ export function DashboardHome() {
                 <div
                   key={res.id}
                   onClick={() => openTopicDetail(res.topicId)}
-                  className="p-2.5 rounded-xl border border-stone-100 dark:border-stone-800/80 bg-stone-50/60 dark:bg-stone-800/40 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition cursor-pointer"
+                  className="p-2 rounded-xl border border-stone-200/60 dark:border-stone-800/70 bg-white dark:bg-stone-800/50 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition cursor-pointer"
                 >
                   <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-0.5">
                     <span className="font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-400 flex items-center gap-1">
@@ -229,7 +231,7 @@ export function DashboardHome() {
       </section>
 
       {/* Khối 5: Utility Section - Bộ công cụ & Tiện ích chuyên sâu ở chân trang */}
-      <section className="bg-stone-50/80 dark:bg-stone-900/50 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-5 space-y-4">
+      <section className="bg-stone-50/80 dark:bg-stone-900/50 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Boxes className="w-4 h-4 text-stone-600 dark:text-stone-400" />
@@ -237,12 +239,12 @@ export function DashboardHome() {
               Công cụ & Tiện ích chuyên sâu
             </h3>
           </div>
-          <span className="text-[11px] text-stone-400 dark:text-stone-500">
+          <span className="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">
             Hỗ trợ nghiên cứu & phân tích
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           <button
             onClick={() => setActiveTab('ai_studio')}
             className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"

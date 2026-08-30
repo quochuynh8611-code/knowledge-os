@@ -29,7 +29,7 @@ export function ResumeStudyQueue({
   return (
     <section
       data-testid="resume-study-queue"
-      className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs space-y-4"
+      className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5 sm:space-y-4"
     >
       <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
         <div className="flex items-center gap-2">

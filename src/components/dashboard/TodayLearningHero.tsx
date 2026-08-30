@@ -88,36 +88,36 @@ export function TodayLearningHero({
   // 2. Dynamic Banner Background / Accent by Tier
   const tierConfig = {
     review_due: {
-      badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+      badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
       badgeIcon: Brain,
       primaryBtnText: 'Ôn tập ngay',
       primaryBtnIcon: Brain,
-      primaryBtnClass: 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/30',
-      headline: 'Hôm nay học gì: Củng cố trí nhớ',
+      primaryBtnClass: 'bg-amber-600 hover:bg-amber-500 text-white',
+      headline: 'Củng cố trí nhớ hôm nay',
     },
     in_progress: {
-      badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      badgeBg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
       badgeIcon: TrendingUp,
       primaryBtnText: 'Vào học tiếp',
       primaryBtnIcon: Play,
-      primaryBtnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30',
-      headline: 'Hôm nay học gì: Tiếp tục bài dở dang',
+      primaryBtnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white',
+      headline: 'Tiếp tục bài học dở dang',
     },
     next_step: {
-      badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      badgeBg: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
       badgeIcon: BookOpen,
       primaryBtnText: 'Bắt đầu học bài này',
       primaryBtnIcon: Play,
-      primaryBtnClass: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/30',
-      headline: `Hôm nay học gì: Bước tiếp theo (${rootCategory?.name || 'Môn học'})`,
+      primaryBtnClass: 'bg-indigo-600 hover:bg-indigo-500 text-white',
+      headline: `Bài học tiếp theo (${rootCategory?.name || 'Môn học'})`,
     },
     fallback: {
       badgeBg: 'bg-stone-500/20 text-stone-300 border-stone-500/30',
       badgeIcon: Sparkles,
-      primaryBtnText: 'Bắt đầu bài học',
+      primaryBtnText: 'Bắt đầu học',
       primaryBtnIcon: Play,
-      primaryBtnClass: 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/30',
-      headline: 'Hôm nay học gì: Khởi động bài học mới',
+      primaryBtnClass: 'bg-amber-600 hover:bg-amber-500 text-white',
+      headline: 'Khởi động bài học mới',
     },
   }[tier];
 
@@ -127,15 +127,11 @@ export function TodayLearningHero({
   return (
     <section
       data-testid="today-learning-hero"
-      className="bg-stone-900 text-stone-100 rounded-3xl p-6 sm:p-7 shadow-lg border border-stone-800 relative overflow-hidden"
+      className="bg-stone-900 text-stone-100 rounded-2xl p-5 sm:p-6 shadow-md border border-stone-800 relative overflow-hidden"
     >
-      {/* Subtle Background Glow */}
-      <div className="absolute -top-16 -right-16 w-56 h-56 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
         {/* Left Focus Info */}
-        <div className="space-y-2.5 max-w-2xl">
+        <div className="space-y-2 max-w-2xl">
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wide border ${tierConfig.badgeBg}`}
@@ -145,50 +141,50 @@ export function TodayLearningHero({
             </span>
 
             {rootCategory && (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-stone-800 text-stone-300 border border-stone-700 font-medium">
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-stone-800 text-stone-300 border border-stone-700/80 font-medium">
                 {rootCategory.name}
               </span>
             )}
           </div>
 
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-stone-400 mb-1">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400/90 mb-0.5">
               {tierConfig.headline}
             </div>
             <h1
               onClick={handleSecondaryAction}
-              className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif-title tracking-tight text-white hover:text-amber-300 transition cursor-pointer"
+              className="text-lg sm:text-xl lg:text-2xl font-bold font-serif-title tracking-tight text-white hover:text-amber-300 transition cursor-pointer"
             >
               {topic.title}
             </h1>
           </div>
 
-          <p className="text-xs sm:text-sm text-stone-300 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-stone-300 line-clamp-2 leading-relaxed">
             {topic.description || reason}
           </p>
 
-          {/* Quick Context Stats (Non-KPI) */}
-          <div className="flex items-center gap-4 text-xs text-stone-400 pt-1">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
-              {topic.studyProgress?.timeSpent ? `${topic.studyProgress.timeSpent} phút tích lũy` : 'Chưa có thời gian học'}
+          {/* Quick Context Stats (Non-KPI, calm & minimal) */}
+          <div className="flex items-center gap-3.5 text-[11px] text-stone-400 pt-0.5">
+            <span className="flex items-center gap-1 font-mono">
+              <Clock className="w-3.5 h-3.5 text-amber-400/90" />
+              <span>{topic.studyProgress?.timeSpent ? `${topic.studyProgress.timeSpent} phút tích lũy` : 'Chưa có thời gian học'}</span>
             </span>
             {progressPercent > 0 && (
-              <span className="flex items-center gap-1.5 font-medium">
+              <span className="flex items-center gap-1 font-mono">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                {progressPercent}% hoàn thành
+                <span>{progressPercent}% hoàn thành</span>
               </span>
             )}
           </div>
         </div>
 
         {/* Right 1-Click Action Cluster */}
-        <div className="flex flex-row md:flex-col sm:items-stretch items-center gap-2.5 shrink-0 pt-2 md:pt-0">
+        <div className="flex flex-row md:flex-col sm:items-stretch items-center gap-2 shrink-0 pt-1 md:pt-0">
           <button
             onClick={handlePrimaryAction}
-            className={`w-full px-5 py-3 rounded-2xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md cursor-pointer ${tierConfig.primaryBtnClass}`}
+            className={`w-full px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer ${tierConfig.primaryBtnClass}`}
           >
-            <PrimaryBtnIcon className="w-4 h-4 fill-current" />
+            <PrimaryBtnIcon className="w-3.5 h-3.5 fill-current" />
             <span>{tierConfig.primaryBtnText}</span>
           </button>
 

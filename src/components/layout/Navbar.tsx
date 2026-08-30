@@ -102,11 +102,11 @@ export function Navbar({
               <h1 className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base tracking-tight leading-tight flex items-center gap-2">
                 Nghiên Cứu
                 <span className="hidden sm:inline text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 rounded-full border border-amber-300 dark:border-amber-700">
-                  Workspace
+                  Học Tập
                 </span>
               </h1>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 hidden sm:block">
-                Không gian làm việc &amp; hệ thống hóa kiến thức đa lĩnh vực
+                Bàn điều phối học tập &amp; hệ thống hóa tri thức đa môn
               </p>
             </div>
           </div>

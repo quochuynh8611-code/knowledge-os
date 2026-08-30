@@ -116,7 +116,7 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
   });
 
   describe('4. Invariance & Preservation of Surrounding Dashboard Features', () => {
-    it('4.1. Khối "Tiếp tục bài học dở dang" và "Ghi chú & Tài liệu mới" hoạt động bình thường', () => {
+    it('4.1. Khối "Tiếp tục bài học dở dang" và "Ghi chú & Tài liệu gần đây" hoạt động bình thường', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
@@ -124,7 +124,7 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
       );
 
       expect(screen.getByText(/Tiếp tục bài học dở dang/i)).toBeInTheDocument();
-      expect(screen.getByText(/Ghi chú & Tài liệu mới/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ghi chú & Tài liệu (mới|gần đây)/i)).toBeInTheDocument();
     });
   });
 });
