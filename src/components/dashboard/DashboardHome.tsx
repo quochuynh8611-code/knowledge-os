@@ -10,6 +10,7 @@ import { ResumeStudyQueue } from './ResumeStudyQueue';
 import {
   getDomainLearningStates,
   getWeeklyLearningCadence,
+  sortDomainLearningStates,
 } from '../../lib/learningStateSelectors';
 import {
   Compass,
@@ -54,11 +55,7 @@ export function DashboardHome() {
 
   const domainLearningStates = useMemo(() => {
     const states = getDomainLearningStates(topics, categories, new Date(), focusDomainId);
-    return [...states].sort((a, b) => {
-      if (a.isFocus && !b.isFocus) return -1;
-      if (!a.isFocus && b.isFocus) return 1;
-      return 0;
-    });
+    return sortDomainLearningStates(states);
   }, [topics, categories, focusDomainId]);
 
   const handleCreateDomain = (e: React.FormEvent) => {

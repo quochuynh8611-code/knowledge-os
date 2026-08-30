@@ -55,7 +55,9 @@ export function SearchFilters({
     });
   };
 
-  const rootCategories = getRootCategories(categories);
+  const rootCategories = [...getRootCategories(categories)].sort((a, b) =>
+    a.name.localeCompare(b.name, "vi")
+  );
 
   const filteredCategories = categories.filter((cat) => {
     if (filters.domain === "all") return true;

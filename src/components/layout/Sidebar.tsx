@@ -39,6 +39,7 @@ export function Sidebar() {
     topics,
     addCategory,
     reviewQueue,
+    focusDomainId,
   } = useData();
 
   const [isAddingDomain, setIsAddingDomain] = useState(false);
@@ -83,6 +84,27 @@ export function Sidebar() {
 
     return map;
   }, [categories, rootCategories, topics]);
+
+  const sortedRootCategories = useMemo(() => {
+    const roots = getRootCategories(categories);
+    return [...roots].sort((a, b) => {
+      // 1. isFocus
+      const isFocusA = Boolean(focusDomainId && a.id === focusDomainId);
+      const isFocusB = Boolean(focusDomainId && b.id === focusDomainId);
+      if (isFocusA && !isFocusB) return -1;
+      if (!isFocusA && isFocusB) return 1;
+
+      // 2. totalTopics desc
+      const countA = domainStats[a.id]?.total || 0;
+      const countB = domainStats[b.id]?.total || 0;
+      if (countB !== countA) {
+        return countB - countA;
+      }
+
+      // 3. name A-Z
+      return a.name.localeCompare(b.name, 'vi');
+    });
+  }, [categories, domainStats, focusDomainId]);
 
   const handleCreateDomain = (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,7 +260,7 @@ export function Sidebar() {
         </div>
 
         <div className="space-y-1 mt-1">
-          {rootCategories.map((root) => {
+          {sortedRootCategories.map((root) => {
             const isSelected = canonicalFilterRootId === root.id;
             const domainStat = domainStats[root.id] || { total: 0, donePercent: 0 };
             const domainStyle = getNeutralDomainStyle(root);

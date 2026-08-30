@@ -432,6 +432,30 @@ export function getDomainLearningStates(
 }
 
 /**
+ * Sorts domain learning states by priority:
+ * 1. isFocus === true (pinned focus domain always in slot 1)
+ * 2. totalTopics descending (domain with more topics first)
+ * 3. Vietnamese alphabetical order (name A-Z) for stable tie-breaking
+ */
+export function sortDomainLearningStates(states: DomainLearningState[]): DomainLearningState[] {
+  if (!Array.isArray(states)) return [];
+
+  return [...states].sort((a, b) => {
+    // 1. isFocus
+    if (a.isFocus && !b.isFocus) return -1;
+    if (!a.isFocus && b.isFocus) return 1;
+
+    // 2. totalTopics desc
+    if (b.totalTopics !== a.totalTopics) {
+      return b.totalTopics - a.totalTopics;
+    }
+
+    // 3. name A-Z (localeCompare 'vi')
+    return a.rootCategory.name.localeCompare(b.rootCategory.name, 'vi');
+  });
+}
+
+/**
  * Returns the resume queue of in-progress topics sorted by recency.
  */
 export function getResumeQueue(topics: Topic[], limit: number = 5): Topic[] {
