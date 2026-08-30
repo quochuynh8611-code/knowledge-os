@@ -108,18 +108,30 @@ export function Sidebar() {
     highlight?: boolean;
   };
 
-  const coreNavItems: NavItemConfig[] = [
+  // Tầng 1: HỌC TẬP (Learning - Trọng tâm)
+  const learningNavItems: NavItemConfig[] = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-    { id: 'ai_studio', label: 'AI hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
-    { id: 'topics', label: 'Chủ đề', icon: FolderTree, badge: stats.totalTopics },
-    { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
-    { id: 'progress', label: 'Tiến độ', icon: TrendingUp, badge: reviewQueue.length > 0 ? reviewQueue.length : undefined },
+    {
+      id: 'progress',
+      label: 'Tiến độ & Ôn tập',
+      icon: TrendingUp,
+      badge: reviewQueue.length > 0 ? `${reviewQueue.length} cần ôn` : undefined,
+      highlight: reviewQueue.length > 0,
+    },
+    { id: 'topics', label: 'Chủ đề học', icon: FolderTree, badge: stats.totalTopics },
+  ];
+
+  // Tầng 2: TRI THỨC (Knowledge Base)
+  const knowledgeNavItems: NavItemConfig[] = [
     { id: 'notes', label: 'Ghi chú', icon: FileText, badge: stats.totalNotesCount },
     { id: 'resources', label: 'Tài liệu', icon: Library, badge: stats.totalResourcesCount },
+    { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
     { id: 'search', label: 'Tìm kiếm', icon: Search },
   ];
 
-  const specializedNavItems: NavItemConfig[] = [
+  // Tầng 3: CÔNG CỤ & TIỆN ÍCH (Tools & Scholar Suite)
+  const toolsNavItems: NavItemConfig[] = [
+    { id: 'ai_studio', label: 'AI Hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
     {
       id: 'abhidharma_matrix',
       label: 'Ma trận phân tích',
@@ -148,7 +160,7 @@ export function Sidebar() {
             setSelectedTopicId(null);
           }
         }}
-        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition ${
+        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition ${
           isActive
             ? 'bg-amber-100 text-amber-950 font-semibold shadow-2xs border-l-[3px] border-amber-800 pl-2.5'
             : 'text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 border-l-[3px] border-transparent pl-2.5'
@@ -177,26 +189,37 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 bg-stone-100/70 border-r border-stone-200/80 flex flex-col shrink-0 min-h-[calc(100vh-61px)]">
-      {/* Universal Core Navigation Links */}
-      <div className="p-3.5 space-y-1">
-        <div className="text-[11px] font-bold uppercase tracking-wider text-stone-600 px-3 py-1.5">
-          Danh mục chính
+      {/* Tầng 1: HỌC TẬP */}
+      <div className="p-3 space-y-0.5">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80 px-2.5 py-1 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+          <span>Học tập</span>
         </div>
-        {coreNavItems.map(renderNavButton)}
+        {learningNavItems.map(renderNavButton)}
       </div>
 
-      {/* Advanced / Specialized Tools Group */}
-      <div className="px-3.5 pt-3 pb-2 border-t border-stone-200">
-        <div className="flex items-center justify-between px-3 py-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
-            Công cụ chuyên sâu
-          </span>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-200/60 font-semibold">
-            Scholar
+      {/* Tầng 2: TRI THỨC */}
+      <div className="px-3 pt-2 pb-1 border-t border-stone-200/60 space-y-0.5">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-stone-500 px-2.5 py-1 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+          <span>Tri thức</span>
+        </div>
+        {knowledgeNavItems.map(renderNavButton)}
+      </div>
+
+      {/* Tầng 3: CÔNG CỤ & TIỆN ÍCH */}
+      <div className="px-3 pt-2 pb-2 border-t border-stone-200/60">
+        <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-500">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+            <span>Công cụ</span>
+          </div>
+          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-stone-200 text-stone-600 font-semibold">
+            Suite
           </span>
         </div>
-        <div className="space-y-1 mt-1">
-          {specializedNavItems.map(renderNavButton)}
+        <div className="space-y-0.5 mt-0.5">
+          {toolsNavItems.map(renderNavButton)}
         </div>
       </div>
 

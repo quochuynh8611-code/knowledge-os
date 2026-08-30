@@ -43,7 +43,7 @@ function DynamicDashboardConsumer() {
   );
 }
 
-describe('Post-Phase 5: Dynamic Dashboard Domain Cards for Root Categories', () => {
+describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integration)', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -74,7 +74,7 @@ describe('Post-Phase 5: Dynamic Dashboard Domain Cards for Root Categories', () 
   });
 
   describe('2. UI Integration: Dynamic Dashboard Domain Cards', () => {
-    it('renders root domain cards for default categories (Phật học & Huyền học) and system card "Đang học"', () => {
+    it('renders root domain cards for default categories (Phật học & Huyền học)', () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
@@ -84,9 +84,6 @@ describe('Post-Phase 5: Dynamic Dashboard Domain Cards for Root Categories', () 
       // Verify domain cards are rendered
       expect(screen.getAllByText(/Phật học/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/Huyền học/i).length).toBeGreaterThan(0);
-
-      // Verify system card "Đang học" is rendered
-      expect(screen.getByText(/Đang học/i)).toBeInTheDocument();
     });
 
     it('renders new domain card dynamically when a new root category is added', () => {
@@ -104,7 +101,7 @@ describe('Post-Phase 5: Dynamic Dashboard Domain Cards for Root Categories', () 
       expect(screen.getByText(/Kinh tế & Thị trường/i)).toBeInTheDocument();
     });
 
-    it('clicking a root domain card sets selectedCategoryFilter to root.id and changes activeTab to topics', () => {
+    it('clicking a root domain card title sets selectedCategoryFilter to root.id and changes activeTab to topics', () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
@@ -112,28 +109,23 @@ describe('Post-Phase 5: Dynamic Dashboard Domain Cards for Root Categories', () 
       );
 
       // Click "Phật học" card
-      const phatHocHeading = screen.getByText(/Phật học/i);
-      const card = phatHocHeading.closest('div[class*="cursor-pointer"]');
-      expect(card).not.toBeNull();
-      fireEvent.click(card!);
+      const phatHocCard = screen.getByTestId('learning-state-card-cat-root-phat-hoc');
+      fireEvent.click(phatHocCard);
 
       // Verify active tab switched to topics and filter is set
       expect(screen.getByTestId('current-tab').textContent).toBe('topics');
       expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-phat-hoc');
     });
 
-    it('clicking system card "Đang học" changes activeTab to progress without altering category filter', () => {
+    it('clicking "Tất cả tiến độ" in Resume Study Queue changes activeTab to progress', () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
         </TestHarness>
       );
 
-      // Click "Đang học" card
-      const dangHocHeading = screen.getByText(/Đang học/i);
-      const card = dangHocHeading.closest('div[class*="cursor-pointer"]');
-      expect(card).not.toBeNull();
-      fireEvent.click(card!);
+      const progressBtn = screen.getByRole('button', { name: /Tất cả tiến độ/i });
+      fireEvent.click(progressBtn);
 
       // Verify active tab switched to progress
       expect(screen.getByTestId('current-tab').textContent).toBe('progress');

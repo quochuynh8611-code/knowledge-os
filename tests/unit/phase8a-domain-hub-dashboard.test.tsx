@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
 
@@ -28,71 +28,62 @@ function TestDashboardHost() {
   );
 }
 
-describe('Phase 8A: Multi-Discipline Research Domain Hub (Dashboard Overview)', () => {
+describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard Overview)', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   describe('1. Domain Hub Section Header & Overview Presentation', () => {
-    it('1.1. Dashboard hiển thị tiêu đề phân khu "Lĩnh vực nghiên cứu" nổi bật', () => {
+    it('1.1. Dashboard hiển thị tiêu đề phân khu "Lĩnh vực học tập" nổi bật', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      // Section title for research domains must be visible as a distinct section
+      // Section title for learning domains must be visible as a distinct section
       expect(
-        screen.getByRole('heading', { name: /Lĩnh vực nghiên cứu|Trung tâm lĩnh vực/i })
+        screen.getByRole('heading', { name: /Lĩnh vực (học tập|nghiên cứu)|Trung tâm lĩnh vực/i })
       ).toBeInTheDocument();
     });
 
-    it('1.2. Hiển thị đầy đủ các thẻ Root Domain mặc định và thẻ hệ thống Đang học', () => {
+    it('1.2. Hiển thị đầy đủ các thẻ Root Domain mặc định (Phật Học & Huyền Học)', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      expect(screen.getByText('Phật Học')).toBeInTheDocument();
-      expect(screen.getByText('Huyền Học')).toBeInTheDocument();
-      expect(screen.getByText('Đang học')).toBeInTheDocument();
+      expect(screen.getAllByText(/Phật Học/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Huyền Học/i).length).toBeGreaterThan(0);
     });
   });
 
   describe('2. User Interaction & Navigation Flow', () => {
-    it('2.1. Nhấp vào thẻ lĩnh vực sẽ thiết lập selectedCategoryFilter và chuyển activeTab sang "topics"', () => {
+    it('2.1. Nhấp vào tên lĩnh vực sẽ thiết lập selectedCategoryFilter và chuyển activeTab sang "topics"', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      // Click on "Phật Học" domain card
-      const phatHocCard = screen.getByText('Phật Học').closest('div[class*="rounded-2xl"]');
-      expect(phatHocCard).toBeDefined();
+      const phatHocCard = screen.getByTestId('learning-state-card-cat-root-phat-hoc');
+      fireEvent.click(phatHocCard);
 
-      if (phatHocCard) {
-        fireEvent.click(phatHocCard);
-        expect(screen.getByTestId('current-tab').textContent).toBe('topics');
-        expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-phat-hoc');
-      }
+      expect(screen.getByTestId('current-tab').textContent).toBe('topics');
+      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-phat-hoc');
     });
 
-    it('2.2. Nhấp vào thẻ hệ thống "Đang học" chuyển sang tab "progress"', () => {
+    it('2.2. Nhấp vào nút "Tất cả tiến độ" chuyển sang tab "progress"', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      const dangHocCard = screen.getByText('Đang học').closest('div[class*="rounded-2xl"]');
-      expect(dangHocCard).toBeDefined();
-
-      if (dangHocCard) {
-        fireEvent.click(dangHocCard);
-        expect(screen.getByTestId('current-tab').textContent).toBe('progress');
-      }
+      const allProgressBtn = screen.getByRole('button', { name: /Tất cả tiến độ/i });
+      fireEvent.click(allProgressBtn);
+      expect(screen.getByTestId('current-tab').textContent).toBe('progress');
     });
   });
 
@@ -109,7 +100,6 @@ describe('Phase 8A: Multi-Discipline Research Domain Hub (Dashboard Overview)', 
 
       // New domain card must render in dashboard
       expect(screen.getByText('Khoa Học Tự Nhiên')).toBeInTheDocument();
-      expect(screen.getByText(/Vật lý lý thuyết/i)).toBeInTheDocument();
     });
 
     it('3.2. Domain Hub cung cấp CTA "+ Thêm lĩnh vực" trực tiếp trên Dashboard', () => {
@@ -126,15 +116,15 @@ describe('Phase 8A: Multi-Discipline Research Domain Hub (Dashboard Overview)', 
   });
 
   describe('4. Invariance & Preservation of Surrounding Dashboard Features', () => {
-    it('4.1. Khối "Tiến độ tuần này" và danh sách hoạt động gần đây hoạt động bình thường', () => {
+    it('4.1. Khối "Tiếp tục bài học dở dang" và "Ghi chú & Tài liệu mới" hoạt động bình thường', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      expect(screen.getByText(/Tiến độ tuần này/i)).toBeInTheDocument();
-      expect(screen.getByText(/Gần đây/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tiếp tục bài học dở dang/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ghi chú & Tài liệu mới/i)).toBeInTheDocument();
     });
   });
 });

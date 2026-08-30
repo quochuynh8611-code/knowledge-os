@@ -13,53 +13,46 @@ function SidebarWithActiveTab({ tab }: { tab: ActiveTab }) {
   return <Sidebar />;
 }
 
-describe('Phase 7D: Information Architecture & Navigation Refactoring', () => {
-  describe('1. Main Level-1 Navigation (Danh mục chính)', () => {
-    it('1.1. Khối "Danh mục chính" chỉ chứa 8 luồng công việc nghiên cứu phổ quát', () => {
-      const { container } = render(
-        <DataProvider>
-          <Sidebar />
-        </DataProvider>
-      );
-
-      // Locate the "Danh mục chính" section container
-      const heading = screen.getByText(/^Danh mục chính$/i);
-      expect(heading).toBeInTheDocument();
-      const mainNavSection = heading.parentElement;
-      expect(mainNavSection).toBeDefined();
-
-      if (mainNavSection) {
-        const withinMain = within(mainNavSection);
-        // Universal items MUST be present in main nav
-        expect(withinMain.getByText('Tổng quan')).toBeInTheDocument();
-        expect(withinMain.getByText('AI hỗ trợ')).toBeInTheDocument();
-        expect(withinMain.getByText('Chủ đề')).toBeInTheDocument();
-        expect(withinMain.getByText('Bản đồ tri thức')).toBeInTheDocument();
-        expect(withinMain.getByText('Tiến độ')).toBeInTheDocument();
-        expect(withinMain.getByText('Ghi chú')).toBeInTheDocument();
-        expect(withinMain.getByText('Tài liệu')).toBeInTheDocument();
-        expect(withinMain.getByText('Tìm kiếm')).toBeInTheDocument();
-
-        // Domain-specific tools MUST NOT be in main nav section
-        expect(withinMain.queryByText(/Ma trận phân tích/i)).toBeNull();
-        expect(withinMain.queryByText(/Mô hình hệ thống/i)).toBeNull();
-        expect(withinMain.queryByText(/Từ điển thuật ngữ/i)).toBeNull();
-      }
-    });
-  });
-
-  describe('2. Specialized / Advanced Tools Group (Công cụ chuyên sâu)', () => {
-    it('2.1. Có nhóm "Công cụ chuyên sâu" riêng biệt chứa các module phân tích chuyên ngành', () => {
+describe('Phase 7D / Phase 13: Information Architecture & Navigation Refactoring', () => {
+  describe('1. 3-Tier Navigation (Học tập, Tri thức, Công cụ)', () => {
+    it('1.1. Khối "Học tập" và "Tri thức" chứa các luồng công việc học tập và quản trị tri thức', () => {
       render(
         <DataProvider>
           <Sidebar />
         </DataProvider>
       );
 
-      // Section title for specialized tools must exist
-      expect(screen.getByText(/Công cụ chuyên sâu/i)).toBeInTheDocument();
+      // Verify 3 sections exist
+      expect(screen.getByText(/^Học tập$/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Tri thức$/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Công cụ$/i)).toBeInTheDocument();
 
-      // The 3 specialized tools must be present in Sidebar
+      // Learning items
+      expect(screen.getByText('Tổng quan')).toBeInTheDocument();
+      expect(screen.getByText(/Tiến độ/i)).toBeInTheDocument();
+      expect(screen.getByText('Chủ đề học')).toBeInTheDocument();
+
+      // Knowledge items
+      expect(screen.getByText('Ghi chú')).toBeInTheDocument();
+      expect(screen.getByText('Tài liệu')).toBeInTheDocument();
+      expect(screen.getByText('Bản đồ tri thức')).toBeInTheDocument();
+      expect(screen.getByText('Tìm kiếm')).toBeInTheDocument();
+    });
+  });
+
+  describe('2. Tools & Scholar Suite Group (Công cụ)', () => {
+    it('2.1. Có nhóm "Công cụ" riêng biệt chứa các module phân tích chuyên ngành', () => {
+      render(
+        <DataProvider>
+          <Sidebar />
+        </DataProvider>
+      );
+
+      // Section title for tools must exist
+      expect(screen.getByText(/^Công cụ$/i)).toBeInTheDocument();
+
+      // Specialized tools must be present in Sidebar
+      expect(screen.getByText('AI Hỗ trợ')).toBeInTheDocument();
       expect(screen.getByText('Ma trận phân tích')).toBeInTheDocument();
       expect(screen.getByText('Mô hình hệ thống')).toBeInTheDocument();
       expect(screen.getByText('Từ điển thuật ngữ')).toBeInTheDocument();

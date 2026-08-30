@@ -72,6 +72,7 @@ export function Navbar({
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showQuickAddMenu, setShowQuickAddMenu] = useState(false);
+  const [showIntegrationsMenu, setShowIntegrationsMenu] = useState(false);
 
   const activeTopic = topics.find((t) => t.id === activeTimerTopicId);
 
@@ -138,54 +139,60 @@ export function Navbar({
 
           {/* Right Action Tools */}
           <div className="flex items-center gap-2">
-            {/* Spaced Review Due Queue button */}
+            {/* Spaced Review Due Queue button - High Prominence */}
             {reviewQueue.length > 0 && (
               <button
                 onClick={() => setShowReviewModal(true)}
-                className="relative hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold border border-amber-300 dark:border-amber-700 transition"
-                title="Hôm nay có chủ đề cần ôn tập lại"
+                className="relative flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition animate-pulse"
+                title="Hôm nay có chủ đề cần ôn tập lại (SM-2)"
               >
-                <Brain className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
+                <Brain className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Ôn tập</span>
-                <span className="w-4 h-4 bg-amber-800 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
+                <span className="w-4 h-4 bg-amber-900 text-amber-100 rounded-full text-[10px] flex items-center justify-center font-bold">
                   {reviewQueue.length}
                 </span>
               </button>
             )}
 
-            {/* Live Study Timer Pill */}
+            {/* Live Study Timer CTA Pill */}
             <button
               onClick={() => setShowTimerModal(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition border shadow-2xs ${
                 isTimerRunning
-                  ? "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 animate-pulse"
-                  : "bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 animate-pulse"
+                  : "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/80 border-amber-300 dark:border-amber-700 text-amber-950 dark:text-amber-200"
               }`}
+              title={isTimerRunning ? "Đang đếm giờ học - Nhấn để quản lý" : "Khởi động phiên tính giờ học"}
             >
-              <Timer
-                className={`w-3.5 h-3.5 ${isTimerRunning ? "text-emerald-700 animate-spin" : "text-stone-500"}`}
-              />
-              <span className="font-mono">
+              {isTimerRunning ? (
+                <Timer className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-current text-amber-700 dark:text-amber-400" />
+              )}
+              <span className="font-mono font-bold">
                 {formatTimerMinSec(timerSeconds)}
               </span>
-              {isTimerRunning && activeTopic && (
-                <span className="hidden lg:inline text-[10px] font-normal text-emerald-800 truncate max-w-[90px]">
+              {isTimerRunning && activeTopic ? (
+                <span className="hidden lg:inline text-[10px] font-normal truncate max-w-[90px] opacity-90">
                   ({activeTopic.title})
+                </span>
+              ) : (
+                <span className="hidden sm:inline text-[10px] font-medium text-amber-900 dark:text-amber-300">
+                  Vào học
                 </span>
               )}
             </button>
 
-            {/* Obsidian Vault trigger */}
+            {/* Subordinated Integration Triggers - Low Visual Prominence */}
             <button
               onClick={() => setShowObsidianModal(true)}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-200 border border-purple-200/80 dark:border-purple-800 rounded-xl text-xs font-semibold transition"
+              className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-stone-500 dark:text-stone-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-xs transition"
               title="Đồng bộ Obsidian Vault (obsidian://)"
             >
-              <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-              <span>Obsidian</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+              <span className="text-[11px]">Obsidian</span>
             </button>
 
-            {/* NotebookLM Hub trigger */}
             <button
               onClick={() => {
                 if (onOpenNotebookLMModal) {
@@ -194,14 +201,13 @@ export function Navbar({
                   setShowNotebookLMModal(true);
                 }
               }}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800 rounded-xl text-xs font-semibold transition"
+              className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-stone-500 dark:text-stone-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-xs transition"
               title="Đóng gói Google NotebookLM & Audio Overview"
             >
-              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              <span>NotebookLM</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+              <span className="text-[11px]">NotebookLM</span>
             </button>
 
-            {/* Antigravity Handoff trigger */}
             <button
               onClick={() => {
                 if (onOpenAntigravityModal) {
@@ -210,11 +216,11 @@ export function Navbar({
                   setShowAntigravityModal(true);
                 }
               }}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800 rounded-xl text-xs font-semibold transition"
+              className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-stone-500 dark:text-stone-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-xs transition"
               title="Đóng gói Antigravity AI Handoff Bundle"
             >
-              <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-              <span>Handoff</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span className="text-[11px]">Handoff</span>
             </button>
 
             {/* Sync Queue Status Indicator */}
