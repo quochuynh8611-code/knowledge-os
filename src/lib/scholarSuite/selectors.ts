@@ -71,14 +71,61 @@ export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): L
   };
 }
 
+export interface TerminologyFilterParams {
+  domain?: string;
+  sourceType?: 'lexicon' | 'system_node' | 'tcm_registry' | 'custom_glossary' | 'all';
+  tcmCategory?: 'kinh-huyet' | 'tang-tuong' | 'duoc-tinh' | 'bat-cuong' | 'all';
+  query?: string;
+}
+
+export interface TerminologyFacetCounts {
+  total: number;
+  byDomain: Record<string, number>;
+  bySourceType: Record<string, number>;
+  byTcmCategory: Record<string, number>;
+}
+
+/**
+ * Pure selector to compute dynamic facet counts across all orthogonal layers.
+ * Supports optional search query scoping.
+ */
+export function getTerminologyFacetCounts(query?: string): TerminologyFacetCounts {
+  const baseEntries: TerminologyEntry[] =
+    query && query.trim()
+      ? scholarUnifiedDictionary.search(query.trim())
+      : scholarUnifiedDictionary.listAll?.() ?? [];
+
+  const counts: TerminologyFacetCounts = {
+    total: baseEntries.length,
+    byDomain: {},
+    bySourceType: {},
+    byTcmCategory: {},
+  };
+
+  for (const entry of baseEntries) {
+    // Domain count
+    if (entry.domain) {
+      counts.byDomain[entry.domain] = (counts.byDomain[entry.domain] || 0) + 1;
+    }
+    // Source Type count
+    if (entry.sourceType) {
+      counts.bySourceType[entry.sourceType] = (counts.bySourceType[entry.sourceType] || 0) + 1;
+    }
+    // TCM Category count
+    if (entry.tcmExtension?.category) {
+      const cat = entry.tcmExtension.category;
+      counts.byTcmCategory[cat] = (counts.byTcmCategory[cat] || 0) + 1;
+    }
+  }
+
+  return counts;
+}
+
 /**
  * Pure selector to retrieve Terminology entries backed by the Unified Terminology Dictionary.
  * Canonical selector for data and citation pipelines.
  */
-export function getTerminologyEntries(filter?: {
-  domain?: string;
-  query?: string;
-}): TerminologyEntry[] {
+export function getTerminologyEntries(filter?: TerminologyFilterParams): TerminologyEntry[] {
   let entries: TerminologyEntry[];
 
   if (filter?.query && filter.query.trim()) {
@@ -91,6 +138,14 @@ export function getTerminologyEntries(filter?: {
     entries = entries.filter((e) => e.domain === filter.domain);
   }
 
+  if (filter?.sourceType && filter.sourceType !== 'all') {
+    entries = entries.filter((e) => e.sourceType === filter.sourceType);
+  }
+
+  if (filter?.tcmCategory && filter.tcmCategory !== 'all') {
+    entries = entries.filter((e) => e.tcmExtension?.category === filter.tcmCategory);
+  }
+
   return entries;
 }
 
@@ -98,10 +153,7 @@ export function getTerminologyEntries(filter?: {
  * Pure selector to retrieve and filter Lexicon Item Views backed by the Unified Terminology Dictionary.
  * Canonical selector for presentation layers.
  */
-export function getTerminologyLexiconItems(filter?: {
-  domain?: string;
-  query?: string;
-}): LexiconItemView[] {
+export function getTerminologyLexiconItems(filter?: TerminologyFilterParams): LexiconItemView[] {
   return getTerminologyEntries(filter).map(mapTerminologyEntryToLexiconItemView);
 }
 

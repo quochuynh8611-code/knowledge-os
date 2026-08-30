@@ -14,6 +14,7 @@ import {
 import {
   getTerminologyLexiconItems,
   getTerminologyEntryById,
+  getTerminologyFacetCounts,
   LexiconItemView,
 } from '../../lib/scholarSuite/selectors';
 import type { TerminologyEntry } from '../../types/terminology';
@@ -32,6 +33,11 @@ function getCategoryBadge(category: string, compact = false) {
       return {
         label: compact ? 'Dịch' : 'Huyền Học',
         className: 'bg-indigo-100 text-indigo-900 border border-indigo-200',
+      };
+    case 'y-hoc-co-truyen':
+      return {
+        label: compact ? 'Đông Y' : 'Đông Y Học',
+        className: 'bg-teal-100 text-teal-900 border border-teal-200',
       };
     case 'triet-hoc':
       return {
@@ -63,6 +69,11 @@ function getSourceTypeBadge(sourceType?: string) {
         label: 'Ma Trận',
         className: 'bg-sky-50 text-sky-800 border border-sky-200',
       };
+    case 'tcm_registry':
+      return {
+        label: 'Đông Y',
+        className: 'bg-teal-50 text-teal-800 border border-teal-200',
+      };
     default:
       return null;
   }
@@ -70,7 +81,9 @@ function getSourceTypeBadge(sourceType?: string) {
 
 export function MultilingualLexicon() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc' | string>('all');
+  const [domainFilter, setDomainFilter] = useState<'all' | string>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'lexicon' | 'system_node' | 'tcm_registry'>('all');
+  const [tcmCategoryFilter, setTcmCategoryFilter] = useState<'all' | 'kinh-huyet' | 'tang-tuong' | 'duoc-tinh' | 'bat-cuong'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'detailed' | 'compact'>('detailed');
   const [selectedCitationEntry, setSelectedCitationEntry] = useState<TerminologyEntry | null>(null);
@@ -80,25 +93,38 @@ export function MultilingualLexicon() {
     return getTerminologyLexiconItems().length;
   }, []);
 
+  const facetCounts = useMemo(() => {
+    return getTerminologyFacetCounts(searchTerm);
+  }, [searchTerm]);
+
   const filteredEntries = useMemo(() => {
     return getTerminologyLexiconItems({
-      domain: categoryFilter === 'all' ? undefined : categoryFilter,
+      domain: domainFilter === 'all' ? undefined : domainFilter,
+      sourceType: sourceFilter === 'all' ? undefined : sourceFilter,
+      tcmCategory: tcmCategoryFilter === 'all' ? undefined : tcmCategoryFilter,
       query: searchTerm,
     });
-  }, [categoryFilter, searchTerm]);
+  }, [domainFilter, sourceFilter, tcmCategoryFilter, searchTerm]);
 
   const displayedEntries = useMemo(() => {
     return filteredEntries.slice(0, visibleLimit);
   }, [filteredEntries, visibleLimit]);
 
-  const isFilterActive = searchTerm.trim() !== '' || categoryFilter !== 'all';
+  const isTcmContext = domainFilter === 'y-hoc-co-truyen' || sourceFilter === 'tcm_registry';
+
+  const isFilterActive =
+    searchTerm.trim() !== '' ||
+    domainFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    tcmCategoryFilter !== 'all';
 
   const handleResetFilters = () => {
     setSearchTerm('');
-    setCategoryFilter('all');
+    setDomainFilter('all');
+    setSourceFilter('all');
+    setTcmCategoryFilter('all');
     setVisibleLimit(60);
   };
-
 
   const handleCopy = (entry: LexiconItemView) => {
     const text = `${entry.vietnamese}\n- Pali: ${entry.pali}\n- Sanskrit: ${entry.sanskrit}\n- Hán Tự: ${entry.hanTu} (${entry.pinyin})\n- Định nghĩa: ${entry.definition}\n- Xuất xứ: ${entry.canonicalRef}`;
@@ -126,16 +152,17 @@ export function MultilingualLexicon() {
             </span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-            Từ Điển Thuật Ngữ Đa Ngữ (Pali - Sanskrit - Hán Cổ - Việt)
+            Từ Điển Thuật Ngữ Đa Ngữ (Pali - Sanskrit - Hán Cổ - Việt - Đông Y)
           </h1>
           <p className="text-xs text-stone-300 max-w-2xl mt-1">
-            Tra cứu gốc từ, chiết tự, chỉ số đối chiếu xuất xứ Tam Tạng (PTS/Taisho) và cổ tịch Dịch học Đông phương.
+            Tra cứu gốc từ, chiết tự, chỉ số đối chiếu xuất xứ Tam Tạng (PTS/Taisho), Dịch học và Y Học Cổ Truyền Đông phương.
           </p>
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3">
+      {/* Multi-Facet Filtering and Search Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs space-y-3.5">
+        {/* Search Bar & View Mode Toggle */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
           <div className="relative w-full sm:w-96">
             <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -143,97 +170,244 @@ export function MultilingualLexicon() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tra cứu: Citta, Duyên Khởi, 心所, Kỳ Môn..."
+              placeholder="Tra cứu: Citta, Hợp Cốc, Nhân Sâm, 心, LI4..."
               className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-700 focus:outline-hidden"
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="flex gap-1.5 bg-stone-100 p-1 rounded-xl">
-              <button
-                onClick={() => setCategoryFilter('all')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  categoryFilter === 'all'
-                    ? 'bg-stone-800 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
-                }`}
-              >
-                Tất Cả
-              </button>
-              <button
-                onClick={() => setCategoryFilter('phat-hoc')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  categoryFilter === 'phat-hoc'
-                    ? 'bg-amber-800 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-amber-900 hover:bg-amber-100/60'
-                }`}
-              >
-                Phật Học
-              </button>
-              <button
-                onClick={() => setCategoryFilter('huyen-hoc')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  categoryFilter === 'huyen-hoc'
-                    ? 'bg-indigo-800 text-white shadow-xs'
-                    : 'text-stone-600 hover:text-indigo-900 hover:bg-indigo-100/60'
-                }`}
-              >
-                Huyền Học
-              </button>
-            </div>
-
-            {/* View Mode Toggle Switcher */}
-            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200/60 ml-auto sm:ml-0">
-              <button
-                onClick={() => setViewMode('detailed')}
-                className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
-                  viewMode === 'detailed'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Chế độ xem chi tiết"
-                aria-label="Chi tiết"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline text-[11px]">Chi tiết</span>
-              </button>
-              <button
-                onClick={() => setViewMode('compact')}
-                className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
-                  viewMode === 'compact'
-                    ? 'bg-white text-stone-900 shadow-2xs font-semibold'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
-                title="Chế độ xem thu gọn"
-                aria-label="Thu gọn"
-              >
-                <List className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline text-[11px]">Thu gọn</span>
-              </button>
-            </div>
+          <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200/60 ml-auto sm:ml-0">
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+                viewMode === 'detailed'
+                  ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                  : 'text-stone-500 hover:text-stone-800'
+              }`}
+              title="Chế độ xem chi tiết"
+              aria-label="Chi tiết"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline text-[11px]">Chi tiết</span>
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={`p-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition ${
+                viewMode === 'compact'
+                  ? 'bg-white text-stone-900 shadow-2xs font-semibold'
+                  : 'text-stone-500 hover:text-stone-800'
+              }`}
+              title="Chế độ xem thu gọn"
+              aria-label="Thu gọn"
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline text-[11px]">Thu gọn</span>
+            </button>
           </div>
         </div>
 
+        {/* Facet Layer 1: Domain Facets */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-stone-100">
+          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider min-w-28">
+            Miền Tri Thức:
+          </span>
+          <div
+            role="group"
+            aria-label="Bộ lọc miền tri thức"
+            className="flex flex-wrap gap-1.5 bg-stone-50 p-1 rounded-xl border border-stone-200/50"
+          >
+            <button
+              onClick={() => setDomainFilter('all')}
+              aria-pressed={domainFilter === 'all'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                domainFilter === 'all'
+                  ? 'bg-stone-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+              }`}
+            >
+              Tất Cả <span className="text-[10px] font-normal opacity-80">({facetCounts.total})</span>
+            </button>
+            <button
+              onClick={() => setDomainFilter('phat-hoc')}
+              aria-pressed={domainFilter === 'phat-hoc'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                domainFilter === 'phat-hoc'
+                  ? 'bg-amber-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-amber-900 hover:bg-amber-100/60'
+              }`}
+            >
+              Phật Học <span className="text-[10px] font-normal opacity-80">({facetCounts.byDomain['phat-hoc'] ?? 0})</span>
+            </button>
+            <button
+              onClick={() => setDomainFilter('huyen-hoc')}
+              aria-pressed={domainFilter === 'huyen-hoc'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                domainFilter === 'huyen-hoc'
+                  ? 'bg-indigo-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-indigo-900 hover:bg-indigo-100/60'
+              }`}
+            >
+              Huyền Học <span className="text-[10px] font-normal opacity-80">({facetCounts.byDomain['huyen-hoc'] ?? 0})</span>
+            </button>
+            <button
+              onClick={() => setDomainFilter('y-hoc-co-truyen')}
+              aria-pressed={domainFilter === 'y-hoc-co-truyen'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                domainFilter === 'y-hoc-co-truyen'
+                  ? 'bg-teal-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-teal-900 hover:bg-teal-100/60'
+              }`}
+            >
+              Đông Y Học <span className="text-[10px] font-normal opacity-80">({facetCounts.byDomain['y-hoc-co-truyen'] ?? 0})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Facet Layer 2: Source Type Facets */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider min-w-28">
+            Nguồn Cấu Trúc:
+          </span>
+          <div
+            role="group"
+            aria-label="Bộ lọc nguồn cấu trúc"
+            className="flex flex-wrap gap-1.5 bg-stone-50 p-1 rounded-xl border border-stone-200/50"
+          >
+            <button
+              onClick={() => setSourceFilter('all')}
+              aria-pressed={sourceFilter === 'all'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                sourceFilter === 'all'
+                  ? 'bg-stone-700 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+              }`}
+            >
+              Tất Cả Nguồn <span className="text-[10px] font-normal opacity-80">({facetCounts.total})</span>
+            </button>
+            <button
+              onClick={() => setSourceFilter('lexicon')}
+              aria-pressed={sourceFilter === 'lexicon'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                sourceFilter === 'lexicon'
+                  ? 'bg-stone-700 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-200/60'
+              }`}
+            >
+              Từ Điển <span className="text-[10px] font-normal opacity-80">({facetCounts.bySourceType['lexicon'] ?? 0})</span>
+            </button>
+            <button
+              onClick={() => setSourceFilter('system_node')}
+              aria-pressed={sourceFilter === 'system_node'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                sourceFilter === 'system_node'
+                  ? 'bg-sky-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-sky-900 hover:bg-sky-100/60'
+              }`}
+            >
+              Ma Trận <span className="text-[10px] font-normal opacity-80">({facetCounts.bySourceType['system_node'] ?? 0})</span>
+            </button>
+            <button
+              onClick={() => setSourceFilter('tcm_registry')}
+              aria-pressed={sourceFilter === 'tcm_registry'}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                sourceFilter === 'tcm_registry'
+                  ? 'bg-teal-800 text-white shadow-xs'
+                  : 'text-stone-600 hover:text-teal-900 hover:bg-teal-100/60'
+              }`}
+            >
+              Kho Đông Y <span className="text-[10px] font-normal opacity-80">({facetCounts.bySourceType['tcm_registry'] ?? 0})</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Facet Layer 3: Conditional TCM Subcategories */}
+        {isTcmContext && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-teal-100 bg-teal-50/40 p-2 rounded-xl">
+            <span className="text-[11px] font-bold text-teal-800 uppercase tracking-wider min-w-28">
+              Phân Nhóm Đông Y:
+            </span>
+            <div
+              role="group"
+              aria-label="Phân nhóm Đông Y"
+              className="flex flex-wrap gap-1.5"
+            >
+              <button
+                onClick={() => setTcmCategoryFilter('all')}
+                aria-pressed={tcmCategoryFilter === 'all'}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                  tcmCategoryFilter === 'all'
+                    ? 'bg-teal-800 text-white shadow-xs'
+                    : 'text-teal-800 hover:bg-teal-100/70 bg-white/70'
+                }`}
+              >
+                Tất Cả Đông Y <span className="text-[10px] font-normal opacity-80">({facetCounts.byDomain['y-hoc-co-truyen'] ?? 0})</span>
+              </button>
+              <button
+                onClick={() => setTcmCategoryFilter('kinh-huyet')}
+                aria-pressed={tcmCategoryFilter === 'kinh-huyet'}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                  tcmCategoryFilter === 'kinh-huyet'
+                    ? 'bg-teal-800 text-white shadow-xs'
+                    : 'text-teal-800 hover:bg-teal-100/70 bg-white/70'
+                }`}
+              >
+                Kinh Huyệt <span className="text-[10px] font-normal opacity-80">({facetCounts.byTcmCategory['kinh-huyet'] ?? 0})</span>
+              </button>
+              <button
+                onClick={() => setTcmCategoryFilter('tang-tuong')}
+                aria-pressed={tcmCategoryFilter === 'tang-tuong'}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                  tcmCategoryFilter === 'tang-tuong'
+                    ? 'bg-teal-800 text-white shadow-xs'
+                    : 'text-teal-800 hover:bg-teal-100/70 bg-white/70'
+                }`}
+              >
+                Tạng Tượng <span className="text-[10px] font-normal opacity-80">({facetCounts.byTcmCategory['tang-tuong'] ?? 0})</span>
+              </button>
+              <button
+                onClick={() => setTcmCategoryFilter('duoc-tinh')}
+                aria-pressed={tcmCategoryFilter === 'duoc-tinh'}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition ${
+                  tcmCategoryFilter === 'duoc-tinh'
+                    ? 'bg-teal-800 text-white shadow-xs'
+                    : 'text-teal-800 hover:bg-teal-100/70 bg-white/70'
+                }`}
+              >
+                Dược Tính <span className="text-[10px] font-normal opacity-80">({facetCounts.byTcmCategory['duoc-tinh'] ?? 0})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Result Summary Bar & Reset Action */}
         <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs text-stone-600">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">
               Hiển thị {filteredEntries.length} / {totalCount} thuật ngữ
             </span>
-            {categoryFilter !== 'all' && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 font-mono">
-                {categoryFilter === 'phat-hoc' ? 'Phật Học' : categoryFilter === 'huyen-hoc' ? 'Huyền Học' : categoryFilter}
+            {domainFilter !== 'all' && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 font-mono">
+                Miền: {domainFilter === 'phat-hoc' ? 'Phật Học' : domainFilter === 'huyen-hoc' ? 'Huyền Học' : domainFilter === 'y-hoc-co-truyen' ? 'Đông Y' : domainFilter}
+              </span>
+            )}
+            {sourceFilter !== 'all' && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-50 text-sky-900 border border-sky-200 font-mono">
+                Nguồn: {sourceFilter === 'lexicon' ? 'Từ Điển' : sourceFilter === 'system_node' ? 'Ma Trận' : 'Kho Đông Y'}
+              </span>
+            )}
+            {tcmCategoryFilter !== 'all' && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-900 border border-teal-200 font-mono">
+                Phân loại: {tcmCategoryFilter === 'kinh-huyet' ? 'Kinh Huyệt' : tcmCategoryFilter === 'tang-tuong' ? 'Tạng Tượng' : 'Dược Tính'}
               </span>
             )}
           </div>
 
-
           {isFilterActive && (
             <button
               onClick={handleResetFilters}
-              className="text-xs text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1 hover:underline transition cursor-pointer"
+              aria-label="Đặt lại bộ lọc"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-amber-900 hover:text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition shadow-2xs"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3 h-3 text-amber-700" />
               <span>Đặt lại bộ lọc</span>
             </button>
           )}
