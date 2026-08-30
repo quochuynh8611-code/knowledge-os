@@ -2,13 +2,13 @@
 
 > **Cập nhật lần cuối:** 2026-08-30
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE P0–P12.3 (SCHOLAR SUITE, TCM REGISTRY, MULTI-FACET FILTERING & DOCS EXPLORER) FULLY IMPLEMENTED & PRODUCTION-READY (180 / 180 TEST FILES PASS — 1109 / 1109 TESTS PASS 100% GREEN)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–16 (LEARNING-FIRST OVERVIEW, SCHOLAR SUITE, TCM REGISTRY, TAXONOMY CLEANUP & SAFE MERGE) FULLY IMPLEMENTED & PRODUCTION-READY (193 / 193 TEST FILES PASS — 1204 / 1204 TESTS PASS 100% GREEN)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / TỪ ĐIỂN ĐA NGỮ / TRUNG TÂM TÀI LIỆU KIẾN TRÚC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (180 / 180 TEST FILES PASS — 1109 / 1109 TESTS PASS 100% GREEN)**.
+- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / TỪ ĐIỂN ĐA NGỮ / TRUNG TÂM TÀI LIỆU KIẾN TRÚC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (193 / 193 TEST FILES PASS — 1204 / 1204 TESTS PASS 100% GREEN)**.
 - **Tiến độ Các Phase Chuyên Sâu Học Giả & Khảo Cứu Mới Nhất (Recent Scholar Suite & Architecture Phases):**
   - **Phase P12.3: In-App Docs Explorer & Markdown Architecture Viewer (Commit `97da2b4`):**
     - **Mục tiêu:** Tích hợp trực tiếp trình duyệt tài liệu kiến trúc kỹ thuật (ADRs, Specs, Gherkin Features, Runbooks) vào Dashboard, đọc trực tiếp từ đĩa với độ trễ 0s và bảo vệ an toàn bằng `sanitizeDocsPath()`.
@@ -176,14 +176,25 @@
 | **Phase 2c** | **Data Management Modal & Disaster Recovery (ADR-009 & Hardening):**<br>- Real-time Database Health Badge (Latency probe)<br>- Server-authoritative snapshot export (`exportBackupSnapshot`)<br>- Client-side Schema & Checksum validation (`calculateBackupChecksum`)<br>- Merge / Replace restore mode selector<br>- Confirmation Gate bắt buộc nhập `XÁC NHẬN THAY THẾ`<br>- Rehydration `reloadAllData()` & lỗi `rehydrate_failed` bảo toàn state<br>- Tách biệt rành mạch Capability Error (`UNSUPPORTED_OFFLINE_OPERATION`) vs Connectivity Error (`unhealthy`) | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 30/30 tests: 11/11 modal + 6/6 UI state + 8/8 repo + 5/5 health)* | **Hoàn tất 100% (Phase 2C.4 & 2C.4b verified)** |
 | **Phase 3** | **Antigravity Handoff Bundle:**<br>- Đóng gói 6 phần chuẩn (1-hop direct graph)<br>- An toàn Clipboard & File Download `Antigravity-Handoff-{Topic}.md`<br>- Sinh System Prompt theo 3 chế độ nghiên cứu<br>- Tích hợp trigger trên TopicDetail, AIStudio và Navbar | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 6/6 `antigravity-lib` + 4/4 `antigravity-handoff` tests)* | **Hoàn tất 100% (đã xác minh)** |
 | **Phase 4** | **Production Readiness & Hardening:**<br>- Rate limiting 10 req/min (`/api/gemini/*`) & 5 req/min (`/api/backup/restore`)<br>- Boundary validation (`MAX_PROMPT_LENGTH = 20k`, `MAX_HANDOFF_CONTEXT_LENGTH = 100k`)<br>- Health & Latency Policy: `<100ms` healthy, `100-1000ms` degraded, `>=1000ms` unhealthy<br>- Fast-fail non-retryable Gemini errors (400, 401, Invalid Arg)<br>- Bounded retry tối đa 2 lần cho 503/429/overload kèm model fallback queue<br>- Structured JSON Logging không lộ bí mật | 🟢 **IMPLEMENTED & VERIFIED**<br>*(Pass 13/13 tests trong `phase-4-production-hardening.test.ts`)* | **Hoàn tất 100% (đã xác minh - Commit `9cfdabe`)* |
-| **Phase 5** | **Evolution Planning & Operational Expansion (Hoàn Tất Cả 4 Workstreams):**<br>- **5D (Scholar Search & Metadata Filter):** Chuẩn hóa tiếng Việt/IAST, tìm kiếm hợp nhất 3 collections, xếp hạng độ liên quan, tích hợp Command Palette & Advanced Search.<br>- **5A (Knowledge Graph & Traversal Explorer):** Dựng đồ thị in-memory, duyệt $k$-hop có chặn trên, chống lặp, lọc quan hệ ngữ nghĩa, tính bậc kết nối Degree, Focus Mode.<br>- **5B (SM-2 Study Session Analytics):** Tỷ lệ ghi nhớ dự phóng Ebbinghaus, phân bố 4 giai đoạn thuần thục, dự báo hàng đợi 7 ngày, đường cong quên 30 ngày, Retention Dashboard.<br>- **5C (Snapshot Maintenance & Headless CLI):** Tạo snapshot tự động, ghi nguyên tử (.tmp $\rightarrow$ rename), kiểm tra 2 lớp (Schema + Checksum), dọn dẹp FIFO retention an toàn. | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 30/30 tests trên 4 workstreams)* | **Hoàn tất 100% Phase 5 (5D, 5A, 5B, 5C đã xác minh)** |
+| **Phase 5** | **Evolution Planning & Operational Expansion (4 Workstreams 5A-5D):**<br>- 5D Scholar Search & Fast Fuzzy Filter<br>- 5A Advanced Knowledge Graph Explorer<br>- 5B Spaced Repetition (SM-2) Analytics<br>- 5C Headless Automated Snapshot CLI | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 30/30 tests trên 4 workstreams)* | **Hoàn tất 100% Phase 5 (đã xác minh)** |
+| **Phase 6** | **File Library & 3-Tier Backup Architecture (Post-Phase 6a-6k):**<br>- 3 trụ cột sao lưu (Snapshot JSON + File Manifest + Physical Files)<br>- Quản lý thư viện chuẩn `Knowledge-Library/`<br>- Diễn tập khôi phục mô phỏng trong bộ nhớ (**Restore Drill** - In-Memory Dry Run)<br>- Đóng gói bằng chứng kiểm toán bất biến & Sổ tay vận hành `backup-restore-operator-runbook.vi.md` | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 45/45 tests từ 6a đến 6k)* | **Hoàn tất 100% Phase 6 (đã xác minh)** |
+| **Phase 7** | **Rebrand & Focus Reader UX (Phase 7a-7d):**<br>- Rebrand Research & Focus Navigation<br>- Focus Reader Modal & Markdown Readability Renderer (làm sạch cú pháp thô, typography rộng thoáng)<br>- Phân giải target mở tài liệu thông minh | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 31/31 tests)* | **Hoàn tất 100% Phase 7 (đã xác minh)** |
+| **Phase 8** | **Domain Hub Dashboard & Neutral Styling (Phase 8a-8c):**<br>- Bảng điều khiển Domain Hub đa lĩnh vực<br>- Bảng màu ngọc bích / trung tính (`getTopicPresentation`) cho các domain mới | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 18/18 tests)* | **Hoàn tất 100% Phase 8 (đã xác minh)** |
+| **Phase P0–P4** | **Knowledge Bridge, Data Layer & Sync Resilience:**<br>- Dual-tier persistence (LocalStorage + PostgreSQL)<br>- Offline sync queue & telemetry foundations<br>- Multi-tab synchronization & storage quota guards | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 85/85 tests)* | **Hoàn tất 100% (đã xác minh)** |
+| **Phase P5** | **Command Palette Deep Actions & Relevance Ranking:**<br>- Điều hướng phím tắt toàn năng `⌘K`<br>- Xếp hạng độ liên quan theo ngữ cảnh và phân loại tác vụ | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 15/15 tests)* | **Hoàn tất 100% (đã xác minh)** |
+| **Phase P8** | **Scholar Citation Engine & Matrix Export:**<br>- Sinh trích dẫn APA 7th, BibTeX, Chicago, MLA, Harvard, CSL-JSON<br>- Trích dẫn quan hệ ma trận đồ thị tri thức & xuất hàng loạt | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 42/42 tests)* | **Hoàn tất 100% (đã xác minh)** |
+| **Phase P9–P12** | **Unified Terminology, TCM Registry & In-App Docs Explorer:**<br>- Từ điển thuật ngữ hợp nhất đa ngữ (Phạn, Pali, Hán, Việt)<br>- Kho thuật ngữ Đông Y (TCM Registry)<br>- Thanh công cụ lọc đa chiều (Multi-Facet Filtering Toolbar)<br>- In-App Docs Explorer & Markdown Architecture Viewer (`GET /api/docs`) | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 65/65 tests)* | **Hoàn tất 100% (đã xác minh)** |
+| **Phase 13** | **Learning-First Overview Reframe:**<br>- Tái cấu trúc Dashboard thành giao diện học tập trọng tâm<br>- Thẻ học tập hàng ngày & điều hướng nhanh theo tiến độ | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 12/12 tests)* | **Hoàn tất 100% (Commit `73504d2`)* |
+| **Phase 14** | **Focus Domain Priority & Weekly Cadence Bar (Phase 14a-14c):**<br>- Ghim lĩnh vực trọng tâm (`focusDomainId`) trên Dashboard<br>- Thanh nhịp học tuần `WeeklyCadenceBar` (7 ngày ISO, 4 cấp bậc nhịp học) | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 27/27 tests)* | **Hoàn tất 100% (Commit `4f9f234`)* |
+| **Phase 15** | **Root Domain Expansion & Starter Topics Enrichment:**<br>- Khởi tạo lĩnh vực Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`)<br>- Làm giàu chủ đề mẫu chất lượng cao kèm metadata SM-2 | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 8/8 tests)* | **Hoàn tất 100% (Commit `6671e42`)* |
+| **Phase 16** | **Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence:**<br>- Gộp an toàn các danh mục kinh tế cũ vào `cat-root-kinh-te-tai-chinh`<br>- UI Confirmation Gate ngăn xóa nhầm và tự động gộp an toàn<br>- Gia cố Rehydration chống hồi sinh danh mục và làm sạch khi reset | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 27/27 tests)* | **Hoàn tất 100% (Commit `6d7e34c`)* |
 
 ---
 
 ## 📌 3. Trạng Thái Chi Tiết Các Workstream Phase 5 (Phase 5 Workstream Status)
 
 | Workstream | Tên Hạng Mục | Trạng Thái Kỹ Thuật | Bằng Chứng Xác Minh / Commit |
-| :--- | :--- | :---: | :--- |
+| :--- | :--- | :--- | :--- |
 | **5D** | **Scholar Search & Fast Fuzzy Metadata Filter** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5d-scholar-search.feature` (`d844530`)<br>• Core lib: `src/lib/scholarSearch.ts` + 8/8 tests (`8e09740`)<br>• UI: `useCommandPalette.ts` + `AdvancedSearch.tsx` (`5ee5d89`) |
 | **5A** | **Advanced Knowledge Graph & Multi-Hop Traversal Explorer** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5a-knowledge-graph.feature` (`613deed`)<br>• Core lib: `src/lib/knowledgeGraph.ts` + 6/6 tests (`613deed`)<br>• UI: `src/components/graph/KnowledgeGraph.tsx` + 4/4 tests (`4ee9f5c`) |
 | **5B** | **Spaced Repetition (SM-2) Study Session Analytics** | 🟢 **COMPLETED & VERIFIED** | • Đặc tả: `docs/gherkin/phase-5b-study-analytics.feature` (`c325e33`)<br>• Core lib: `src/lib/studyAnalytics.ts` + 6/6 tests (`c325e33`)<br>• UI: `src/components/progress/StudyProgressView.tsx` + 4/4 tests (`d912818`) |
@@ -217,14 +228,17 @@
 2. **Weekly Learning Cadence Bar & Habit Formation (Phase 14C):**
    - **Pure Selector:** [`src/lib/learningStateSelectors.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/learningStateSelectors.ts) cung cấp `getWeeklyLearningCadence` tính toán 7 ngày trong tuần ISO (T2 $\rightarrow$ CN) theo múi giờ địa phương, phân loại 4 cấp bậc nhịp học (`starting`, `building`, `consistent`, `strong`) và loại trừ các chủ đề ẩn.
    - **Component Trực Quan:** [`src/components/dashboard/WeeklyCadenceBar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/dashboard/WeeklyCadenceBar.tsx) hiển thị 7 ô ngày mini, chỉ báo hôm nay (`isToday`), ngày đã học (`isActive`) và huy hiệu tổng kết số ngày/chủ đề ngay dưới Hero của Overview.
-3. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
+3. **Root Domain Expansion & Starter Topics (Phase 15):**
+   - Khởi tạo 2 danh mục gốc Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`) cùng các chủ đề mẫu.
+   - Cung cấp đặc tả kỹ thuật [`docs/specs/phase-15-root-domain-expansion.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-15-root-domain-expansion.md) và kịch bản Gherkin [`docs/gherkin/phase-15-root-domain-expansion.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-15-root-domain-expansion.feature).
+4. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
    - **Hàm Hoàn Tất Khớp Nối Phân Cấp:** Hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job gần nhất (`queued` hoặc `processing`).
    - **Tích Hợp Nạp Artifact An Toàn:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) tự động gọi `completeMatchingHandoffJob` khi lưu thành công Artifact mới (qua upload tệp Markdown hoặc form thủ công) và cập nhật giao diện tracker.
    - **Minh Bạch Ngữ Nghĩa Trạng Thái:** Huy hiệu `success` (emerald) được giải thích rõ là *"Đã nạp kết quả vào app"*, hoàn toàn không tuyên bố tự động hóa nền hai chiều qua cloud hay auto-dispatch `agy -p`.
-4. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
+5. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
    - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
    - **Tách Biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (khi gặp lỗi `UNSUPPORTED_OFFLINE_OPERATION` từ kho lưu trữ LocalStorage) vs `connectionError` (khi gặp lỗi mạng/server 500 ném trạng thái `unhealthy` đỏ *"PostgreSQL Mất Kết Nối"*), xóa bỏ hoàn toàn sự nhập nhằng trong trải nghiệm người dùng.
-5. **Tính Toàn Vẹn Hệ Thống:**
+6. **Tính Toàn Vẹn Hệ Thống:**
    - [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
@@ -235,4 +249,19 @@
 
 1. **Blockers kỹ thuật:** **0 blocker**.
 2. **Trạng thái hệ thống:** **Phase 1–16 GREEN, 100% VERIFIED & PRODUCTION-READY (193 test files, 1204 tests passing)**.
+
+---
+
+## 📋 7. Bảng Theo Dõi Quyết Định Trì Hoãn & Backlog Tinh Gọn (Intentionally Deferred Backlog)
+
+Các hạng mục dưới đây đã được nghiên cứu, cân nhắc kỹ lưỡng và **chủ động trì hoãn hoặc quyết định không triển khai (Intentionally Deferred / Rejected by Design)** để bảo đảm tính ổn định, bảo mật và triết lý kiến trúc tinh gọn của Knowledge OS:
+
+| Mã Hạng Mục | Nội Dung Cân Nhắc | Quyết Định & Lý Do Trì Hoãn / Không Triển Khai | Kiến Trúc Thay Thế Hiện Hữu |
+| :--- | :--- | :--- | :--- |
+| **DEF-01** | **Auto-Sanitize Taxonomy on App Load:**<br>Tự động chạy ngầm migration gộp danh mục cũ mỗi khi nạp ứng dụng. | 🛑 **TRÌ HOÃN (Deferred):**<br>Tránh tạo tác dụng phụ ngầm (side-effects) trên luồng hydration, bảo đảm dữ liệu nạp vào luôn tất định và thụ động. | Sử dụng **UI Safe Guard** (`isEconomyMergeSource` + Dialog xác nhận gộp an toàn) và hàm `mergeCategories` do người dùng kích hoạt tường minh. |
+| **DEF-02** | **Rigid Root Domain Count Enforcement:**<br>Ràng buộc cố định số lượng root categories (ví dụ: bắt buộc đúng 4 root domains). | 🛑 **BÁC BỎ THEO THIẾT KẾ (Rejected by Design):**<br>Vi phạm kiến trúc phân loại động (Dynamic Taxonomy - ADR-016), làm mất khả năng thêm/bớt lĩnh vực tùy biến của học giả. | Hợp đồng phân loại động hoàn toàn: chấp nhận số lượng root domains linh hoạt tùy biến. |
+| **DEF-03** | **Direct CLI Auto-Dispatch (`agy -p`) from Browser Runtime:**<br>Tự động kích hoạt terminal/CLI từ client-side web browser. | 🛑 **TRÌ HOÃN (Deferred):**<br>Tránh rủi ro bảo mật sandbox trình duyệt, ngăn chặn tấn công command injection hoặc tiến trình mồ côi ngoài tầm kiểm soát. | **Giao thức Manifest Bàn Giao Trung Gian (ADR-015):** Đóng gói JSON manifest + sinh lệnh CLI xem trước kèm nút chép 1-click. |
+| **DEF-04** | **Direct Cloud Sync / Headless Scraping for Google NotebookLM:**<br>Tự động đồng bộ hai chiều trực tiếp với NotebookLM qua cloud scraper. | 🛑 **TRÌ HOÃN (Deferred):**<br>Tránh phụ thuộc vào API không chính thức dễ gãy vỡ, bảo vệ quyền riêng tư và quyền tự chủ dữ liệu cục bộ của học giả. | **Quy trình Điều phối Trung gian (ADR-012 Phase 2b):** Đóng gói Source Pack chuẩn mực và nạp kết quả qua Artifacts Locker. |
+| **DEF-05** | **Direct Raw Binary Ingestion (PDF / Media BLOB Storage):**<br>Lưu trực tiếp tệp nhị phân PDF, Audio, Video vào database PostgreSQL hoặc LocalStorage. | 🛑 **BÁC BỎ THEO THIẾT KẾ (Rejected by Design):**<br>Làm phình to cơ sở dữ liệu, phá vỡ hiệu năng snapshot JSON và rủi ro OOM (Out Of Memory) trình duyệt. | **Filesystem-First + Metadata Catalog (ADR-011, ADR-017):** Tệp vật lý nằm trên đĩa cục bộ, ứng dụng chỉ lưu trữ metadata (<2KB) và kiểm toán đường dẫn. |
+
 

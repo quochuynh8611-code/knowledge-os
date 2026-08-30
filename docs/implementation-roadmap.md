@@ -15,14 +15,24 @@
 [BƯỚC 3: TEST-FIRST GHERKIN] (Hoàn thành: 43 test suites / 303 tests)
        │
 [BƯỚC 4: TRIỂN KHAI & KIỂM CHỨNG TỪNG PHASE]
-       ├── PHASE 1:  Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
-       ├── PHASE 2A: Obsidian Open / Export UX Flow (obsidian://, ZIP export) [VERIFIED]
-       ├── PHASE 2B: Google NotebookLM Studio & Antigravity 2.0 Mediated Workflow [VERIFIED]
-       ├── PHASE 2C: Data Management Modal & Confirmation Gate UI (ADR-009 & Error Separation) [VERIFIED]
-       ├── PHASE 3:  Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
-       ├── PHASE 4:  Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
-       ├── PHASE 5:  Evolution Planning & Operational Expansion (ADR-014) [VERIFIED]
-       └── POST-PHASE 5: Scholar Citation, Batch Export, Preference, Antigravity Pipeline & Result Ingestion [VERIFIED]
+       ├── PHASE 1:   Local File Picker UX & Zero Binary Ingestion (ADR-011, ADR-012) [VERIFIED]
+       ├── PHASE 2A:  Obsidian Open / Export UX Flow (obsidian://, ZIP export) [VERIFIED]
+       ├── PHASE 2B:  Google NotebookLM Studio & Antigravity 2.0 Mediated Workflow [VERIFIED]
+       ├── PHASE 2C:  Data Management Modal & Confirmation Gate UI (ADR-009 & Error Separation) [VERIFIED]
+       ├── PHASE 3:   Antigravity Research Scholar Handoff Bundle (6 phần chuẩn) [VERIFIED]
+       ├── PHASE 4:   Production Readiness, Security Guardrails & Operational Hardening (ADR-013) [VERIFIED]
+       ├── PHASE 5:   Evolution Planning & Operational Expansion (ADR-014: 5A-5D) [VERIFIED]
+       ├── PHASE 6:   File Library & 3-Tier Backup Architecture (Post-Phase 6a-6k) [VERIFIED]
+       ├── PHASE 7:   Rebrand & Focus Reader UX (Phase 7a-7d) [VERIFIED]
+       ├── PHASE 8:   Domain Hub Dashboard & Neutral Styling (Phase 8a-8c) [VERIFIED]
+       ├── PHASE P0-P4: Knowledge Bridge, Data Layer & Sync Resilience [VERIFIED]
+       ├── PHASE P5:  Command Palette Deep Actions & Relevance Ranking [VERIFIED]
+       ├── PHASE P8:  Scholar Citation Engine & Matrix Export [VERIFIED]
+       ├── PHASE P9-P12: Unified Terminology, TCM Registry & In-App Docs Explorer [VERIFIED]
+       ├── PHASE 13:  Learning-First Overview Reframe [VERIFIED]
+       ├── PHASE 14:  Focus Domain Priority & Weekly Cadence Bar (Phase 14a-14c) [VERIFIED]
+       ├── PHASE 15:  Root Domain Expansion & Starter Topics Enrichment [VERIFIED]
+       └── PHASE 16:  Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence [VERIFIED]
 ```
 
 ---
@@ -296,6 +306,7 @@
 ---
 
 ### 🔹 PHASE 15: Root Domain Expansion & Starter Topics Enrichment (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/phase-15-root-domain-expansion.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-15-root-domain-expansion.md) · [`docs/gherkin/phase-15-root-domain-expansion.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-15-root-domain-expansion.feature)
 - **Trọng tâm:**
   - Khởi tạo 2 lĩnh vực gốc mới: Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`) với các chủ đề mẫu chất lượng cao.
   - Tối ưu hóa thứ tự ưu tiên hiển thị lĩnh vực trọng tâm trên Dashboard Overview.
@@ -311,6 +322,18 @@
   - Khóa rào chắn an toàn UI trên `TopicTree.tsx` chuyển hướng thao tác xóa thành xác nhận gộp an toàn.
   - Gia cố persistence rehydration chống hồi sinh category và đảm bảo `resetToDefaultData()` dọn sạch toàn bộ legacy economy IDs.
 - **Kiểm chứng:** 27/27 tests PASS (`taxonomy-migration.test.ts` 6/6 + `taxonomy-merge-safety.test.tsx` 21/21).
+
+---
+
+## 📋 QUYẾT ĐỊNH TRÌ HOÃN & BACKLOG TINH GỌN (INTENTIONALLY DEFERRED BACKLOG)
+
+Dưới đây là các hạng mục đã được nghiên cứu, cân nhắc và **chủ động trì hoãn hoặc quyết định không triển khai (Intentionally Deferred / Rejected by Design)** nhằm bảo toàn tính ổn định và kiến trúc tối giản:
+
+1. **DEF-01: Auto-Sanitize Taxonomy on App Load** $\rightarrow$ **Trì hoãn (Deferred)**: Tránh side-effects ngầm trong luồng hydration. Giữ cơ chế passive hydration kết hợp UI Guard và người dùng xác nhận gộp tường minh.
+2. **DEF-02: Rigid Root Domain Count Enforcement** $\rightarrow$ **Bác bỏ theo thiết kế (Rejected by Design)**: Vi phạm kiến trúc phân loại động (ADR-016), làm mất khả năng thêm/sửa lĩnh vực tùy biến.
+3. **DEF-03: Direct CLI Auto-Dispatch (`agy -p`) from Browser** $\rightarrow$ **Trì hoãn (Deferred)**: Tránh rủi ro command injection và bảo vệ sandbox trình duyệt. Duy trì giao thức Manifest Bàn Giao Trung Gian (ADR-015).
+4. **DEF-04: Direct Cloud Sync / Headless Scraping for Google NotebookLM** $\rightarrow$ **Trì hoãn (Deferred)**: Tránh API không chính thức dễ gãy vỡ, bảo vệ quyền riêng tư dữ liệu cục bộ. Duy trì quy trình đóng gói Source Pack (ADR-012).
+5. **DEF-05: Direct Raw Binary Ingestion (PDF / Media BLOB Storage)** $\rightarrow$ **Bác bỏ theo thiết kế (Rejected by Design)**: Tránh phình to cơ sở dữ liệu và lỗi tràn bộ nhớ (OOM). Duy trì kiến trúc Filesystem-First + Metadata Catalog (ADR-011, ADR-017).
 
 ---
 
