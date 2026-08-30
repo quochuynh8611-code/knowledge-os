@@ -461,3 +461,141 @@ export function getResumeQueue(topics: Topic[], limit: number = 5): Topic[] {
     })
     .slice(0, limit);
 }
+
+export type WeeklyCadenceStatus = 'starting' | 'building' | 'consistent' | 'strong';
+
+export interface DayCadenceItem {
+  /** Định dạng "YYYY-MM-DD" theo local timezone của client */
+  dateStr: string;
+  /** Nhãn ngày rút gọn: 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN' */
+  dayLabel: string;
+  /** Ngày trong tháng (1 - 31) */
+  dayNumber: number;
+  /** True nếu ngày này trùng với referenceDate (local calendar day) */
+  isToday: boolean;
+  /** True nếu ngày này nằm sau referenceDate trong tuần hiện tại */
+  isFuture: boolean;
+  /** True nếu có ít nhất 1 topic mà lastStudied rơi vào ngày này (local date) */
+  hasActivity: boolean;
+  /** Số lượng topic khác nhau có lastStudied rơi vào ngày này */
+  activeTopicCount: number;
+}
+
+export interface WeeklyCadenceSummary {
+  /** Số ngày trong tuần hiện tại (Thứ 2 -> Chủ Nhật) có hasActivity = true (từ 0 đến 7) */
+  activeDaysCount: number;
+  /** Tổng số topic khác nhau có lastStudied rơi vào tuần hiện tại */
+  activeTopicsCount: number;
+  /** Đúng 7 phần tử tương ứng Thứ 2 đến Chủ Nhật của tuần chứa referenceDate */
+  days: DayCadenceItem[];
+  /** Phân loại nhịp học tuần theo luật định lượng */
+  cadenceStatus: WeeklyCadenceStatus;
+  /** Thông điệp tóm tắt nhịp học trung thực với dữ liệu */
+  headlineMessage: string;
+}
+
+/**
+ * Pure selector tính toán nhịp học tuần hiện tại từ snapshot lastStudied của danh sách topics.
+ * Calendar week tính từ Thứ Hai (00:00:00) đến Chủ Nhật (23:59:59.999) theo local time.
+ */
+export function getWeeklyLearningCadence(
+  topics: Topic[],
+  referenceDate: Date = new Date()
+): WeeklyCadenceSummary {
+  const refYear = referenceDate.getFullYear();
+  const refMonth = referenceDate.getMonth();
+  const refDay = referenceDate.getDate();
+
+  // JavaScript getDay(): 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const dayOfWeek = referenceDate.getDay();
+  // Difference to Monday of current week:
+  // If Sunday (0), Monday was 6 days ago (-6). Otherwise, 1 - dayOfWeek.
+  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const mondayDate = new Date(refYear, refMonth, refDay + diffToMon, 0, 0, 0, 0);
+
+  const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+  const days: DayCadenceItem[] = [];
+
+  // Generate 7 days (Monday -> Sunday)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mondayDate.getFullYear(), mondayDate.getMonth(), mondayDate.getDate() + i, 0, 0, 0, 0);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${y}-${m}-${day}`;
+
+    const isToday = y === refYear && d.getMonth() === refMonth && d.getDate() === refDay;
+    const isFuture = d.getTime() > new Date(refYear, refMonth, refDay, 0, 0, 0, 0).getTime();
+
+    days.push({
+      dateStr,
+      dayLabel: dayLabels[i],
+      dayNumber: d.getDate(),
+      isToday,
+      isFuture,
+      hasActivity: false,
+      activeTopicCount: 0,
+    });
+  }
+
+  // Map dateStr to index in days array
+  const dateMap = new Map<string, number>();
+  days.forEach((item, index) => {
+    dateMap.set(item.dateStr, index);
+  });
+
+  // Filter valid active topics (exclude visibility === 'hidden')
+  const validTopics = (topics || []).filter((t) => t.visibility !== 'hidden');
+
+  validTopics.forEach((t) => {
+    const lastStudied = t.studyProgress?.lastStudied;
+    if (!lastStudied || typeof lastStudied !== 'string' || lastStudied.trim() === '') {
+      return;
+    }
+
+    const studyDate = new Date(lastStudied);
+    if (isNaN(studyDate.getTime())) {
+      return;
+    }
+
+    const sY = studyDate.getFullYear();
+    const sM = String(studyDate.getMonth() + 1).padStart(2, '0');
+    const sD = String(studyDate.getDate()).padStart(2, '0');
+    const studyDateStr = `${sY}-${sM}-${sD}`;
+
+    const dayIndex = dateMap.get(studyDateStr);
+    if (dayIndex !== undefined) {
+      days[dayIndex].activeTopicCount += 1;
+      days[dayIndex].hasActivity = true;
+    }
+  });
+
+  const activeDaysCount = days.filter((d) => d.hasActivity).length;
+  const activeTopicsCount = days.reduce((sum, d) => sum + d.activeTopicCount, 0);
+
+  let cadenceStatus: WeeklyCadenceStatus = 'starting';
+  if (activeDaysCount >= 5) {
+    cadenceStatus = 'strong';
+  } else if (activeDaysCount >= 3) {
+    cadenceStatus = 'consistent';
+  } else if (activeDaysCount >= 1) {
+    cadenceStatus = 'building';
+  }
+
+  let headlineMessage = 'Khởi động nhịp học tuần mới';
+  if (cadenceStatus === 'building') {
+    headlineMessage = `Đang tạo nhịp học: ${activeDaysCount}/7 ngày (${activeTopicsCount} chủ đề)`;
+  } else if (cadenceStatus === 'consistent') {
+    headlineMessage = `Nhịp học đều đặn: ${activeDaysCount}/7 ngày (${activeTopicsCount} chủ đề)`;
+  } else if (cadenceStatus === 'strong') {
+    headlineMessage = `Duy trì nhịp học xuất sắc: ${activeDaysCount}/7 ngày (${activeTopicsCount} chủ đề)`;
+  }
+
+  return {
+    activeDaysCount,
+    activeTopicsCount,
+    days,
+    cadenceStatus,
+    headlineMessage,
+  };
+}

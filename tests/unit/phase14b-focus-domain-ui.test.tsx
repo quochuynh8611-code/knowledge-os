@@ -77,4 +77,17 @@ describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () =>
     expect(hero).toBeInTheDocument();
     expect(hero.textContent).toContain('Huyền Học');
   });
+
+  it('4. Renders WeeklyCadenceBar below TodayLearningHero in DashboardHome', () => {
+    render(
+      <DataProvider>
+        <DashboardHome />
+      </DataProvider>
+    );
+
+    const cadenceBar = screen.getByTestId('weekly-cadence-bar');
+    expect(cadenceBar).toBeInTheDocument();
+    expect(screen.getByTestId('cadence-day-T2')).toBeInTheDocument();
+    expect(screen.getByTestId('cadence-day-CN')).toBeInTheDocument();
+  });
 });

@@ -4,9 +4,13 @@ import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { SpacedReviewModal } from '../modals/SpacedReviewModal';
 import { StudyTimerModal } from '../modals/StudyTimerModal';
 import { TodayLearningHero } from './TodayLearningHero';
+import { WeeklyCadenceBar } from './WeeklyCadenceBar';
 import { LearningStateCard } from './LearningStateCard';
 import { ResumeStudyQueue } from './ResumeStudyQueue';
-import { getDomainLearningStates } from '../../lib/learningStateSelectors';
+import {
+  getDomainLearningStates,
+  getWeeklyLearningCadence,
+} from '../../lib/learningStateSelectors';
 import {
   Compass,
   Share2,
@@ -43,6 +47,10 @@ export function DashboardHome() {
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [newDomainName, setNewDomainName] = useState('');
+
+  const weeklyCadence = useMemo(() => {
+    return getWeeklyLearningCadence(topics);
+  }, [topics]);
 
   const domainLearningStates = useMemo(() => {
     const states = getDomainLearningStates(topics, categories, new Date(), focusDomainId);
@@ -99,6 +107,9 @@ export function DashboardHome() {
         onStartStudy={handleStartStudy}
         onOpenReviewModal={() => setShowReviewModal(true)}
       />
+
+      {/* Khối 2: Weekly Learning Cadence & Momentum Horizon */}
+      <WeeklyCadenceBar cadence={weeklyCadence} />
 
       {/* Khối 3: Multi-Disciplinary Learning State Hub */}
       <section className="space-y-3.5 sm:space-y-4">
