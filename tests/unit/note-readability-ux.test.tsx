@@ -69,6 +69,8 @@ Tham chiếu đến [[Kỳ Môn Độn Giáp|Kỳ Môn]] trong phương pháp đ
         type: 'kinh-te-tai-chinh',
         createdAt: '2026-08-01T00:00:00Z',
         updatedAt: '2026-08-01T00:00:00Z',
+        description: 'Mô tả kinh tế',
+        content: 'Nội dung kinh tế',
         tags: [],
         links: [],
         studyProgress: {

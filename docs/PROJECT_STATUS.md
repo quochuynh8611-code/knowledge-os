@@ -193,20 +193,13 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **43 / 43 test files PASS — 303 / 303 tests PASS (100% GREEN in 10.53s)**.
-- **Phase 1 Suite:** ✅ `resource-form-modal-file-picker.test.tsx` (6/6 PASS).
-- **Phase 2a Suites:** ✅ `obsidian-lib.test.ts` (15/15 PASS) · `obsidian-bridge-integration.test.tsx` (8/8 PASS).
-- **Phase 2b Suites:** ✅ `notebooklm-lib.test.ts` (13/13 PASS) · `notebooklm-studio-integration.test.tsx` (10/10 PASS).
-- **Phase 2c Suites:** ✅ `phase2c-data-management-modal-component.test.tsx` (11/11 PASS) · `phase2c-data-management-ui.test.tsx` (6/6 PASS) · `phase2c-repository-methods.test.ts` (8/8 PASS) · `phase2c-health-badge.test.tsx` (5/5 PASS) *(Tổng 30/30 PASS)*.
-- **Phase 3 Suites:** ✅ `antigravity-lib.test.ts` (6/6 PASS) · `antigravity-handoff-integration.test.tsx` (4/4 PASS).
-- **Phase 4 Suite:** ✅ `phase-4-production-hardening.test.ts` (13/13 PASS).
-- **Phase 5D Suite:** ✅ `scholar-search-lib.test.ts` (8/8 PASS).
-- **Phase 5A Suites:** ✅ `knowledge-graph-lib.test.ts` (6/6 PASS) · `knowledge-graph-ui-integration.test.tsx` (4/4 PASS).
-- **Phase 5B Suites:** ✅ `study-analytics-lib.test.ts` (6/6 PASS) · `study-analytics-ui-integration.test.tsx` (4/4 PASS).
-- **Phase 5C Suite:** ✅ `snapshot-maintenance.test.ts` (10/10 PASS).
-- **Scholar Citation Generator, Batch Export & Preference Suites (Post-Phase 5 Micro-Increments):** ✅ `citation-generator-lib.test.ts` (8/8 PASS) · `citation-modal-ui.test.tsx` (4/4 PASS) · `citation-batch-generator.test.ts` (5/5 PASS) · `batch-citation-modal-ui.test.tsx` (6/6 PASS) · `citation-format-preference.test.ts` (5/5 PASS) · `citation-modal-preference-ui.test.tsx` (6/6 PASS) *(Tổng 34/34 PASS)*.
-- **Automated Antigravity NotebookLM Handoff Pipeline Suites (Post-Phase 5 Micro-Increment):** ✅ `antigravity-pipeline-lib.test.ts` (5/5 PASS) · `notebooklm-antigravity-pipeline-ui.test.tsx` (4/4 PASS) *(Tổng 9/9 PASS)*.
-- **Antigravity Result Ingestion & Completion Suites (Post-Phase 5 Micro-Increment):** ✅ `antigravity-result-ingestion.test.ts` (5/5 PASS) · `notebooklm-result-ingestion-ui.test.tsx` (3/3 PASS) *(Tổng 8/8 PASS)*.
+- **Regression Test Suite:** ✅ **193 / 193 test files PASS — 1204 / 1204 tests PASS (100% GREEN)**.
+- **Phase 14C Suites (Weekly Cadence Bar & Habit Tracking):** ✅ `weekly-cadence-selector.test.ts` (8/8 PASS) · `weekly-cadence-bar.test.tsx` (7/7 PASS) · `phase14b-focus-domain-ui.test.tsx` (4/4 PASS).
+- **Phase 15 Suites (Root Domain Expansion & Starter Topics):** ✅ `phase15a-root-domain-expansion.test.tsx` (4/4 PASS) · `phase15b-starter-topics-enrichment.test.tsx` (4/4 PASS).
+- **Phase 16 Suites (Taxonomy Cleanup, Safe Merge & Rehydration Persistence):** ✅ `taxonomy-migration.test.ts` (6/6 PASS) · `taxonomy-merge-safety.test.tsx` (21/21 PASS) · `dynamic-taxonomy-lib.test.ts` (7/7 PASS).
+- **Phase 7 Suites (Rebrand & Note Reader UX):** ✅ `note-readability-ux.test.tsx` (8/8 PASS) · `phase7a-rebrand-and-note-reader.test.tsx` (8/8 PASS) · `phase7c-content-readability-presentation.test.tsx` (7/7 PASS).
+- **P12 Suites (Multilingual Terminology, TCM Registry & Docs Explorer):** ✅ `terminology-unified-dictionary.test.ts` (7/7 PASS) · `terminology-lexicon-dictionary.test.ts` (12/12 PASS) · `docs-routing.test.ts` (3/3 PASS).
+- **P8 Scholar Citation Suites:** ✅ `scholar-citation-matrix-export.test.ts` (5/5 PASS) · `scholar-citation-matrix-normalizer.test.ts` (5/5 PASS) · `scholar-citation-csl.test.ts` (3/3 PASS).
 - **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
 - **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
 - **Git Diff & Whitespace Check:** ✅ `git diff --check` đạt **0 issues**.
@@ -216,61 +209,22 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
+1. **Taxonomy Cleanup, Safe Merge & Rehydration Persistence (Phase 16):**
+   - **Pure Migration Helper:** Module [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts) cung cấp `mergeCategoryData` gộp an toàn các danh mục kinh tế cũ (`cat-root-kinh-te`, `cat-root-kinh-te-hoc`) sang danh mục chuẩn `cat-root-kinh-te-tai-chinh`, tái gán `categoryId` cho topic và `parentId` cho subcategory mà không làm mất ghi chú, tài liệu hay tiến độ SM-2.
+   - **DataContext Action & Persistence Sequencing:** `mergeCategories` trong `DataContext.tsx` ghi nhận cập nhật in-memory, gọi `syncHydrate` trước để bảo đảm toàn vẹn dữ liệu, sau đó mới gọi `deleteCategory` trên kho lưu trữ.
+   - **UI Safe Guard & Delete Confirm:** `TopicTree.tsx` nhận diện các danh mục kinh tế cũ qua `isEconomyMergeSource` và chuyển hướng thao tác xóa thành xác nhận gộp danh mục an toàn.
+   - **Persistence Rehydration Hardening:** Khóa chặt hợp đồng `resetToDefaultData()` làm sạch toàn bộ legacy economy IDs và kiểm chứng 100% không bị hồi sinh category sau khi reload hay remount.
+2. **Weekly Learning Cadence Bar & Habit Formation (Phase 14C):**
+   - **Pure Selector:** [`src/lib/learningStateSelectors.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/learningStateSelectors.ts) cung cấp `getWeeklyLearningCadence` tính toán 7 ngày trong tuần ISO (T2 $\rightarrow$ CN) theo múi giờ địa phương, phân loại 4 cấp bậc nhịp học (`starting`, `building`, `consistent`, `strong`) và loại trừ các chủ đề ẩn.
+   - **Component Trực Quan:** [`src/components/dashboard/WeeklyCadenceBar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/dashboard/WeeklyCadenceBar.tsx) hiển thị 7 ô ngày mini, chỉ báo hôm nay (`isToday`), ngày đã học (`isActive`) và huy hiệu tổng kết số ngày/chủ đề ngay dưới Hero của Overview.
+3. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
    - **Hàm Hoàn Tất Khớp Nối Phân Cấp:** Hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job gần nhất (`queued` hoặc `processing`).
    - **Tích Hợp Nạp Artifact An Toàn:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) tự động gọi `completeMatchingHandoffJob` khi lưu thành công Artifact mới (qua upload tệp Markdown hoặc form thủ công) và cập nhật giao diện tracker.
    - **Minh Bạch Ngữ Nghĩa Trạng Thái:** Huy hiệu `success` (emerald) được giải thích rõ là *"Đã nạp kết quả vào app"*, hoàn toàn không tuyên bố tự động hóa nền hai chiều qua cloud hay auto-dispatch `agy -p`.
-2. **Automated Antigravity NotebookLM Handoff Pipeline (Post-Phase 5 Micro-Increment):**
-   - **Đóng Gói & Sinh Tệp Handoff Chuẩn Hóa:** Module lõi thuần túy [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) tích hợp `createAntigravityHandoffJob` tự động sinh mã Job (`job-nlm-...`), cấu trúc source document Markdown, task prompt Markdown và tệp manifest JSON (`*-manifest.json`) làm inter-process artifact trong thư mục `.agents/handoffs/`.
-   - **Sinh Lệnh CLI Headless Động:** Hàm thuần túy `buildAntigravityCLICommand` tổng hợp câu lệnh `agy -p "..."` động khi hiển thị hoặc sao chép, không lưu cứng chuỗi command vào đối tượng Job nhằm giữ cấu trúc dữ liệu tinh gọn và nhất quán.
-   - **Tách Biệt Hai Tầng Lưu Trữ (ADR-015):** Phân định rạch ròi giữa tệp Manifest JSON (trao đổi giữa các tiến trình) và LocalStorage `phat_hoc_antigravity_handoff_jobs_v1` (lưu trữ UI Tracker State cho người dùng theo dõi và quản lý danh sách Job).
-   - **Tích Hợp Giao Diện Trực Quan:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) bổ sung nút **"Chuẩn bị Handoff Antigravity"**, ô xem trước lệnh CLI với nút sao chép 1-click (inline feedback) và bảng theo dõi danh sách Job với huy hiệu trạng thái `queued` và nút xóa bản ghi.
-3. **Citation Format Preference Hardening (Post-Phase 5 Micro-Increment):**
-   - **Tách Biệt Trách Nhiệm Kiến Trúc:** Module riêng [`src/lib/citationPreferences.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationPreferences.ts) quản lý tùy chọn định dạng học thuật người dùng ưu tiên độc lập hoàn toàn khỏi logic sinh văn bản trích dẫn.
-   - **Cơ Chế Lưu Trữ Phía Client:** Sử dụng LocalStorage key `knowledge_os_citation_format_pref` với 3 định dạng hợp lệ: `'apa'`, `'bibtex'`, `'markdown'`.
-   - **Phòng Vệ Trạng Thái Ngoại Tuyến & Lỗi:** Mọi trường hợp dữ liệu rỗng, không hợp lệ, hoặc môi trường không hỗ trợ storage đều được xử lý với silent fail và fallback an toàn tuyệt đối về `DEFAULT_CITATION_FORMAT = 'apa'`.
-   - **Đồng Bộ Trải Nghiệm Học Giả:** [`CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) và [`BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) tự động đồng bộ trạng thái tab qua lại mà không yêu cầu thay đổi `DataContext` hay API backend.
-4. **Batch Citation Export for Filtered Resources (Post-Phase 5 Micro-Increment):**
-   - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) bổ sung `generateBatchCitations` gộp danh mục theo 3 định dạng chuẩn: APA 7th (tự động sắp xếp ABC theo tác giả/tiêu đề), BibTeX (nối khối `@book`, `@misc`, `@article` bằng `\n\n`), và Markdown (đánh số thứ tự footnote liên tục `[^1]..[^N]`).
-   - **Tải Xuống Tệp Độc Lập:** Hàm `getBatchCitationDownloadFilename` ánh xạ tên tệp cố định `references.bib`, `references.txt`, `references.md` tương ứng từng tab định dạng qua cơ chế HTML5 Blob client-side.
-   - **Giao Diện Hộp Thoại Hàng Loạt:** [`src/components/modals/BatchCitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/BatchCitationModal.tsx) hiển thị số lượng tài liệu đang xuất, 3 tab định dạng, ô xem trước mono, nút "Sao chép toàn bộ" (inline feedback) và "Tải tệp".
-   - **Điểm Chạm Toolbar:** Nút "Xuất danh mục ({count})" tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx) tích hợp sẵn rào chắn `disabled` khi `filteredResources.length === 0`.
-5. **Scholar Citation & Reference Export Generator (Post-Phase 5 Micro-Increment):**
-   - **Module Lõi Thuần Túy:** [`src/lib/citationGenerator.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationGenerator.ts) định dạng trích dẫn theo 3 chuẩn: APA 7th Edition, BibTeX (`@book`, `@article`, `@misc`), và Markdown Footnote (`[^1]`).
-   - **Xử Lý Fallback Chuẩn Mực:** Trích xuất năm thông minh từ `notes`/`title`/`createdAt`, đẩy `title` lên trước khi khuyết tác giả trong APA, và gán placeholder `[Khuyết danh]` trong BibTeX.
-   - **Citation Key Tất Định:** Hàm `generateBibTeXKey` sinh slug chuẩn ASCII không dấu `${authorSlug}_${year}_${titleSlug}`.
-   - **Giao Diện Hộp Thoại Trích Dẫn:** [`src/components/modals/CitationModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/CitationModal.tsx) cung cấp 3 tab chuyển đổi mượt mà, khung xem trước kiểu mono và nút Sao Chép phản hồi tại chỗ tức thì (inline feedback).
-   - **Điểm Chạm Kích Hoạt:** Tích hợp trực tiếp trên thẻ tài liệu tại [`src/components/resources/ResourcesManager.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/resources/ResourcesManager.tsx).
-2. **Scholar Search Engine (5D):** Module thuần túy tại [`src/lib/scholarSearch.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/scholarSearch.ts) thực thi chuẩn hóa chuỗi tiếng Việt/IAST, tính điểm trọng số và tìm kiếm hợp nhất 3 collections. Tích hợp trong `useCommandPalette.ts` và `AdvancedSearch.tsx`.
-3. **Knowledge Graph & Traversal Explorer (5A):** Module thuần túy tại [`src/lib/knowledgeGraph.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/knowledgeGraph.ts) thực thi dựng đồ thị in-memory, duyệt đa tầng BFS có giới hạn an toàn (`maxDepth`, `maxNodesLimit`), chống vòng lặp vô tận, tự động loại bỏ dangling edges và lọc theo quan hệ ngữ nghĩa/cấu trúc. Tích hợp trực tiếp trong `KnowledgeGraph.tsx` với bộ lọc Semantic Edge, tính bậc kết nối (Degree) và chế độ khảo cứu Focus Mode.
-4. **Study Session Analytics & Retention Dashboard (5B):** Module thuần túy tại [`src/lib/studyAnalytics.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/studyAnalytics.ts) thực thi phân tích trí nhớ dự phóng Ebbinghaus ($R = e^{-\Delta t / S} \times 100\%$), phân loại 4 giai đoạn thuần thục kiến thức, dự báo hàng đợi ôn tập 7 ngày và đường cong quên dự phóng 30 ngày. Tích hợp trực tiếp trong `StudyProgressView.tsx` với 4 thẻ KPI dự phóng, hàng huy hiệu tóm tắt và biểu đồ Recharts BarChart.
-5. **Snapshot Maintenance & Headless CLI Engine (5C):** Module thuần túy tại [`src/lib/snapshotManager.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/snapshotManager.ts) và kịch bản dòng lệnh [`scripts/backup-snapshot.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/scripts/backup-snapshot.ts):
-   - **Tạo Snapshot An Toàn:** Tự động trích xuất 5 collections, tính SHA-256 Checksum tất định và đóng gói header `BackupSnapshotSchema` Semver 2.x.
-   - **Ghi Nguyên Tử (Atomic Write):** Ghi ra `.snapshot-*.tmp` $\rightarrow$ `fs.renameSync`, tự xóa tệp tạm nếu có sự cố (Zero Partial File).
-   - **Xác Minh 2 Lớp:** Kiểm tra cấu trúc Schema và khớp SHA-256 Checksum, phân biệt rõ `VALID`, `INVALID_SCHEMA`, `INVALID_CHECKSUM`.
-   - **Dọn Dẹp Tự Động (Retention Pruning):** Lọc theo regex tên file `snapshot-*.json`, giữ $N$ bản ghi mới nhất, bảo toàn tuyệt đối các file ngoài lề (`.txt`, `.gitkeep`).
-   - **NPM Scripts:** Cung cấp `npm run snapshot:create`, `npm run snapshot:dry-run`, `npm run snapshot:verify`, `npm run snapshot:prune`.
-6. **Obsidian URI Protocol & Path Resolution Hardening (Commit `521291d`, doc `36b1ea9`):**
-   - **Chuẩn Hóa Vault Identifier:** Hàm thuần túy `normalizeObsidianVaultIdentifier` trong [`src/lib/obsidian.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/obsidian.ts) tự động trích xuất tên Vault từ cả plain string, đường dẫn tuyệt đối macOS/Linux (`/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian` $\rightarrow$ `Phat-Hoc-Obsidian`), hoặc Windows (`C:\...`).
-   - **Rào Chắn Thư Mục Con (Child Folder Guardrail):** Sử dụng regex `OBSIDIAN_CHILD_DIR_PATTERNS` để ngăn chặn các đường dẫn trỏ vào thư mục con (như `01_Inbox`, `_inbox`, `.obsidian`) bị gán nhầm làm tên Vault; tự động truy xuất thư mục cha là Vault Root.
-   - **Làm Sạch Đường Dẫn Tương Đối:** Hàm `normalizeObsidianFilePath` loại bỏ leading slashes và chuẩn hóa dấu phân cách, đảm bảo URI query parameter `file` là đường dẫn tương đối chính xác từ Vault Root.
-   - **Tự Động Làm Sạch Legacy LocalStorage:** Hàm `getStoredVaultName()` và `setStoredVaultName()` tự động khử bỏ các chuỗi đường dẫn tuyệt đối cũ lưu trong LocalStorage khi đọc/ghi.
-   - **Tính Nhất Quán Giao Thức:** Cả hai giao thức `obsidian://open` và `obsidian://new` đều chia sẻ 100% normalization contract.
-   - **Giới Hạn Phạm Vi & Bảo Toàn:** Không làm thay đổi database schema, backend API, hay logic xuất ZIP của Vault.
-7. **Mediated NotebookLM Workflow via Antigravity 2.0 (Commit `5a2cc35`, doc `f48a684`):**
-   - **Task Prompt Generator:** Hàm `generateNotebookLMTaskPrompt` trong [`src/lib/notebooklm.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/notebooklm.ts) sinh prompt chỉ thị rõ ràng cho Antigravity 2.0 kích hoạt NotebookLM skill theo 5 loại artifact (`study_guide`, `audio_overview_summary`, `briefing_doc`, `faq`, `source_pack`).
-   - **Metadata Nguồn/Đích Rõ Ràng:** Mở rộng `NotebookLMArtifact` với `source: "antigravity-2.0"`, `target: "notebooklm"`, `status: "imported"`. Tự động gán và phục hồi an toàn cho các artifact cũ trong LocalStorage.
-   - **Bộ Lọc Hợp Lệ & Invariants:** Hàm `validateArtifactImportInput` từ chối nội dung rỗng và yêu cầu `notebookUrl` phải bắt đầu bằng `http://` hoặc `https://`.
-   - **Nạp & Phân Tích Cú Pháp Markdown:** Hàm `parseArtifactMarkdownFile` tự động trích xuất tiêu đề H1 và suy luận phân loại artifact khi người dùng nạp tệp `.md`/`.txt`.
-   - **Giao Diện & Minh Bạch Kiến Trúc:** `NotebookLMStudioModal.tsx` hiển thị thông điệp cam kết bảo mật `Mediated Workflow via Antigravity 2.0 • 100% Client-side Privacy • No direct cloud sync required`, không gây ngộ nhận về kết nối trực tiếp hai chiều.
-8. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
+4. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
    - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
    - **Tách Biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (khi gặp lỗi `UNSUPPORTED_OFFLINE_OPERATION` từ kho lưu trữ LocalStorage) vs `connectionError` (khi gặp lỗi mạng/server 500 ném trạng thái `unhealthy` đỏ *"PostgreSQL Mất Kết Nối"*), xóa bỏ hoàn toàn sự nhập nhằng trong trải nghiệm người dùng.
-   - **Server-Authoritative Snapshot Export:** Tải về snapshot máy chủ hoàn chỉnh với định dạng JSON Semver 2.x có mã băm SHA-256 tất định.
-   - **Client-Side Schema & Checksum Verification:** Khi người dùng chọn tệp snapshot, modal kiểm tra cấu trúc schema bằng `BackupSnapshotSchema` và tính toán SHA-256 Checksum bằng `calculateBackupChecksum`, chặn đứng tệp hỏng/bị sửa đổi trước khi gửi lên máy chủ.
-   - **Confirmation Gate An Toàn:** Chế độ `replace` bắt buộc người dùng gõ chính xác 100% chuỗi ký tự hoa `XÁC NHẬN THAY THẾ` để mở khóa nút thực thi.
-   - **Rehydration Lifecycle & Error Isolation:** Sau khi khôi phục thành công trên server, modal gọi `reloadAllData()` làm tươi dữ liệu in-memory; nếu bước rehydration thất bại, trạng thái chuyển sang `rehydrate_failed` và bảo toàn nguyên vẹn dữ liệu cũ, không xóa state.
-9. **Tính Toàn Vẹn Hệ Thống:**
+5. **Tính Toàn Vẹn Hệ Thống:**
    - [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
@@ -280,4 +234,5 @@
 ## 🛑 6. Blockers & Trạng Thái Sẵn Sàng (Production Readiness)
 
 1. **Blockers kỹ thuật:** **0 blocker**.
-2. **Trạng thái hệ thống:** **Phase 1–5 GREEN, 100% VERIFIED & PRODUCTION-READY (No known regression detected in verified test scope)**.
+2. **Trạng thái hệ thống:** **Phase 1–16 GREEN, 100% VERIFIED & PRODUCTION-READY (193 test files, 1204 tests passing)**.
+

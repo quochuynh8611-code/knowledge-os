@@ -757,8 +757,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
     const phatHocDone = phatHocList.filter(
       (t) =>
-        t.studyProgress?.progress >= 100 ||
-        t.studyProgress.status === "completed",
+        (t.studyProgress?.progress !== undefined && t.studyProgress.progress >= 100) ||
+        t.studyProgress?.status === "completed",
     ).length;
     const phatHocDonePercent =
       phatHocList.length > 0
@@ -767,8 +767,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
     const huyenHocDone = huyenHocList.filter(
       (t) =>
-        t.studyProgress?.progress >= 100 ||
-        t.studyProgress.status === "completed",
+        (t.studyProgress?.progress !== undefined && t.studyProgress.progress >= 100) ||
+        t.studyProgress?.status === "completed",
     ).length;
     const huyenHocDonePercent =
       huyenHocList.length > 0
@@ -777,8 +777,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
     const studyingThisWeek = topics.filter(
       (t) =>
-        t.studyProgress.status === "in_progress" ||
-        t.studyProgress.status === "reviewing",
+        t.studyProgress?.status === "in_progress" ||
+        t.studyProgress?.status === "reviewing",
     ).length;
     const totalTimeSpentMinutes = topics.reduce(
       (acc, t) => acc + (t.studyProgress?.timeSpent || 0),
@@ -786,8 +786,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     );
     const completedTopicsCount = topics.filter(
       (t) =>
-        t.studyProgress?.progress >= 100 ||
-        t.studyProgress.status === "completed",
+        (t.studyProgress?.progress !== undefined && t.studyProgress.progress >= 100) ||
+        t.studyProgress?.status === "completed",
     ).length;
 
     return {

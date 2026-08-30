@@ -286,6 +286,34 @@
 
 ---
 
+### 🔹 PHASE 14C: Weekly Learning Cadence Bar & Habit Formation Tracking (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/phase-14c-weekly-learning-cadence.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-14c-weekly-learning-cadence.md) · [`docs/gherkin/phase-14c-weekly-learning-cadence.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-14c-weekly-learning-cadence.feature)
+- **Trọng tâm:**
+  - Module thuần túy `src/lib/learningStateSelectors.ts`: `getWeeklyLearningCadence` tính toán 7 ngày trong tuần ISO (T2 $\rightarrow$ CN) dựa trên `studyProgress.lastStudied`, phân loại 4 cấp bậc nhịp học (`starting`, `building`, `consistent`, `strong`) và loại trừ các chủ đề ẩn.
+  - Component UI [`WeeklyCadenceBar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/dashboard/WeeklyCadenceBar.tsx): 7 ô ngày mini với chỉ báo hôm nay (`isToday`), ngày đã học (`isActive`) và huy hiệu tổng kết số ngày/chủ đề ngay dưới Hero.
+- **Kiểm chứng:** 15/15 tests PASS (`weekly-cadence-selector.test.ts` 8/8 + `weekly-cadence-bar.test.tsx` 7/7).
+
+---
+
+### 🔹 PHASE 15: Root Domain Expansion & Starter Topics Enrichment (ĐÃ HOÀN THÀNH)
+- **Trọng tâm:**
+  - Khởi tạo 2 lĩnh vực gốc mới: Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`) với các chủ đề mẫu chất lượng cao.
+  - Tối ưu hóa thứ tự ưu tiên hiển thị lĩnh vực trọng tâm trên Dashboard Overview.
+- **Kiểm chứng:** 8/8 tests PASS (`phase15a-root-domain-expansion.test.tsx` 4/4 + `phase15b-starter-topics-enrichment.test.tsx` 4/4).
+
+---
+
+### 🔹 PHASE 16: Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/phase-16-taxonomy-cleanup-and-safe-merge.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-16-taxonomy-cleanup-and-safe-merge.md) · [`docs/gherkin/phase-16-taxonomy-cleanup-and-safe-merge.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-16-taxonomy-cleanup-and-safe-merge.feature)
+- **Trọng tâm:**
+  - Tiện ích thuần túy `mergeCategoryData` trong [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts) gộp an toàn các danh mục kinh tế cũ sang `cat-root-kinh-te-tai-chinh`, tái gán topic & subcategory mà không làm mất ghi chú, tài liệu hay tiến độ SM-2.
+  - Action `mergeCategories` trong `DataContext.tsx` kết nối tầng lưu trữ kép (`syncHydrate` + `deleteCategory`).
+  - Khóa rào chắn an toàn UI trên `TopicTree.tsx` chuyển hướng thao tác xóa thành xác nhận gộp an toàn.
+  - Gia cố persistence rehydration chống hồi sinh category và đảm bảo `resetToDefaultData()` dọn sạch toàn bộ legacy economy IDs.
+- **Kiểm chứng:** 27/27 tests PASS (`taxonomy-migration.test.ts` 6/6 + `taxonomy-merge-safety.test.tsx` 21/21).
+
+---
+
 ## 🚀 BƯỚC TIẾP THEO HỢP LOGIC (LOGICAL NEXT STEPS)
 
 1. **Duy Trì & Giám Sát Vận Hành (Operational Maintenance):**
@@ -300,6 +328,7 @@
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
 - **Baseline lịch sử (trước Phase 6j):** 65 / 65 test files PASS — 399 / 399 tests PASS (100% GREEN).
-- **Toàn bộ Test Suite hiện hành:** ✅ **66 / 66 test files PASS — 409 / 409 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite hiện hành:** ✅ **193 / 193 test files PASS — 1204 / 1204 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
+

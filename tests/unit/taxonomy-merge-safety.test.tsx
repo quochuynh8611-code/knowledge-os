@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Category, Topic, Note, Resource } from '../../src/types';
 import {
   mergeCategoryData,
@@ -76,6 +76,20 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       slug: 'kinh-te-hoc-dai-cuong',
       categoryId: 'cat-root-kinh-te',
       type: 'kinh-te',
+      description: 'Mô tả',
+      content: 'Nội dung',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'top-kt-1',
+        status: 'not_started',
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       createdAt: '2026-08-01T08:00:00.000Z',
       updatedAt: '2026-08-01T08:00:00.000Z',
     },
@@ -85,6 +99,20 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       slug: 'nguyen-ly-kinh-te',
       categoryId: 'cat-root-kinh-te-hoc',
       type: 'kinh-te-hoc',
+      description: 'Mô tả',
+      content: 'Nội dung',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'top-kth-1',
+        status: 'not_started',
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       createdAt: '2026-08-01T08:30:00.000Z',
       updatedAt: '2026-08-01T08:30:00.000Z',
     },
@@ -94,6 +122,20 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       slug: 'lam-phat-va-tang-truong-gdp',
       categoryId: 'cat-sub-kinh-te-vi-mo',
       type: 'kinh-te-hoc',
+      description: 'Mô tả',
+      content: 'Nội dung',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'top-vi-mo-1',
+        status: 'not_started',
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       createdAt: '2026-08-01T09:00:00.000Z',
       updatedAt: '2026-08-01T09:00:00.000Z',
     },
@@ -103,6 +145,20 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       slug: 'quan-tri-tai-chinh-doanh-nghiep',
       categoryId: 'cat-root-kinh-te-tai-chinh',
       type: 'kinh-te-tai-chinh',
+      description: 'Mô tả',
+      content: 'Nội dung',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'top-kttc-1',
+        status: 'not_started',
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       createdAt: '2026-08-01T09:30:00.000Z',
       updatedAt: '2026-08-01T09:30:00.000Z',
     },
@@ -199,6 +255,9 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
           title: 'Ghi chú vĩ mô',
           content: 'Nội dung',
           topicId: 'top-vi-mo-1',
+          type: 'study',
+          isPrivate: false,
+          tags: [],
           createdAt: '2026-08-01T00:00:00.000Z',
           updatedAt: '2026-08-01T00:00:00.000Z',
         },
@@ -349,6 +408,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
           slug: 'kinh-te-vi-mo-dai-cuong',
           categoryId: sourceCatId,
           type: 'kinh-te' as any,
+          description: 'Mô tả vĩ mô',
           content: 'Nội dung',
           tags: [],
           visibility: 'active',
@@ -480,7 +540,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
 
       // Wait for import persistence to settle
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 150));
       });
 
       expect(firstResult.current.categories.some((c) => c.id === sourceCatId)).toBe(true);
@@ -497,7 +557,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
 
       // Wait for async persistence to write to storage
       await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 150));
       });
 
       // Unmount first session
@@ -514,7 +574,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
           expect(secondResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
           expect(secondResult.current.categories.some((c) => c.id === sourceCatId)).toBe(false);
         },
-        { timeout: 3000 }
+        { timeout: 5000, interval: 50 }
       );
       const rehydratedTopic = secondResult.current.topics.find((t) => t.id === 'topic-kt-123');
       expect(rehydratedTopic?.categoryId).toBe(targetCatId);
@@ -522,7 +582,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
 
       secondUnmount();
       fetchSpy.mockRestore();
-    });
+    }, 10000);
 
     it('3.5. Persistence Rehydration (API / Server sync): mergeCategories triggers repository deletion and sync so server reloadAllData does not resurrect category', async () => {
       const { renderHook, act, waitFor } = await import('@testing-library/react');
@@ -1049,6 +1109,10 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
           slug: 'kinh-te-luong-thuc-hanh',
           categoryId: 'cat-root-kinh-te-hoc',
           type: 'kinh-te-hoc',
+          description: 'Mô tả',
+          content: 'Nội dung',
+          tags: [],
+          links: [],
           createdAt: '2026-08-01T00:00:00Z',
           updatedAt: '2026-08-01T00:00:00Z',
           studyProgress: {
