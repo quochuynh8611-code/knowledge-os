@@ -96,7 +96,7 @@ describe('Phase P11.0: Unified Terminology Dictionary Composition (RED Phase)', 
   describe('3. Singleton Instance Verification', () => {
     it('exports scholarUnifiedDictionary containing the complete academic catalog', () => {
       expect(scholarUnifiedDictionary).toBeDefined();
-      expect(scholarUnifiedDictionary.listAll?.().length).toBe(227);
+      expect(scholarUnifiedDictionary.listAll?.().length).toBe(241);
     });
   });
 });

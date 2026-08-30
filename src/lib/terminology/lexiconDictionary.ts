@@ -339,7 +339,15 @@ export function searchTerminologyEntries(
     }
   }
 
-  scoredEntries.sort((a, b) => b.score - a.score);
+  scoredEntries.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score;
+    }
+    // Lexicon entries have primary canonical precedence when scores tie
+    if (a.entry.sourceType === 'lexicon' && b.entry.sourceType !== 'lexicon') return -1;
+    if (b.entry.sourceType === 'lexicon' && a.entry.sourceType !== 'lexicon') return 1;
+    return 0;
+  });
   return scoredEntries.map((s) => s.entry);
 }
 
