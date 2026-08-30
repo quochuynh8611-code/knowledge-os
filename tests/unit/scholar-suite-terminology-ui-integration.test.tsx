@@ -299,4 +299,100 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
       expect(screen.getByText(/Bát Thuần Càn/i)).toBeInTheDocument();
     });
   });
+
+  describe('5. Phase P12.2 Wave 1: Multilingual Lexicon UI Deep Facets & Presentation (RED Phase)', () => {
+    it('1. maps P12.0 languageProfiles and source metadata to LexiconItemView', () => {
+      const p12Entry: TerminologyEntry = {
+        id: 'lex-pali-citta',
+        title: 'Citta (Tâm)',
+        domain: 'phat-hoc',
+        code: 'citta',
+        conceptId: 'concept:buddhism:citta',
+        sourceType: 'lexicon',
+        sourceEntryId: 'lex-pali-citta',
+        languageProfiles: {
+          vi: {
+            language: 'vi',
+            script: 'Latn',
+            surfaceForm: 'Tâm',
+            glosses: { preferred: 'Tâm' },
+          },
+          'zh-Hant': {
+            language: 'zh-Hant',
+            script: 'Hani',
+            surfaceForm: '心',
+            transliterations: { pinyin: 'xīn', hanViet: 'Tâm' },
+          },
+          sa: {
+            language: 'sa',
+            script: 'Deva',
+            surfaceForm: 'citta',
+            transliterations: { devanagari: 'चित्त', iast: 'citta' },
+          },
+          en: {
+            language: 'en',
+            script: 'Latn',
+            surfaceForm: 'Mind / Consciousness',
+            glosses: { preferred: 'Mind / Consciousness' },
+          },
+        },
+      };
+
+      const itemView = mapTerminologyEntryToLexiconItemView(p12Entry);
+
+      // Expected to FAIL until P12.2 Wave 1 updates mapTerminologyEntryToLexiconItemView
+      const extView = itemView as unknown as {
+        sourceType?: string;
+        conceptId?: string;
+        hanViet?: string;
+        devanagari?: string;
+        englishGloss?: string;
+      };
+
+      expect(extView.sourceType).toBe('lexicon');
+      expect(extView.conceptId).toBe('concept:buddhism:citta');
+      expect(extView.hanViet).toBe('Tâm');
+      expect(extView.devanagari).toBe('चित्त');
+      expect(extView.englishGloss).toBe('Mind / Consciousness');
+    });
+
+    it('2. renders Source Type badge for Lexicon ("[Từ Điển]") and System Nodes ("[Ma Trận]") in UI', () => {
+      render(<MultilingualLexicon />);
+
+      // Search for dual-concept term to get both a lexicon entry and a system node
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+      fireEvent.change(searchInput, { target: { value: 'Thuần Càn' } });
+
+      // Expected to FAIL until MultilingualLexicon.tsx renders source type badges
+      expect(screen.getAllByText(/Từ Điển/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Ma Trận|Nút Ma Trận|Hệ Thống/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('3. renders Hanzi paired with its Han-Viet reading on the card header (e.g. "[Tâm]" or "[Càn]")', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+      fireEvent.change(searchInput, { target: { value: 'citta' } });
+
+      // Expected to FAIL until MultilingualLexicon.tsx renders hanViet alongside hanTu
+      expect(screen.getByText(/\[Tâm\]/i)).toBeInTheDocument();
+    });
+
+    it('4. renders academic English gloss in the multilingual parallel grid', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+      fireEvent.change(searchInput, { target: { value: 'citta' } });
+
+      // Expected to FAIL until MultilingualLexicon.tsx includes English gloss column
+      expect(screen.getByText(/Mind \/ Consciousness/i)).toBeInTheDocument();
+    });
+
+    it('5. renders Devanagari script alongside Sanskrit IAST on detailed cards', () => {
+      render(<MultilingualLexicon />);
+      const searchInput = screen.getByPlaceholderText(/Tra cứu:/i);
+      fireEvent.change(searchInput, { target: { value: 'citta' } });
+
+      // Devanagari script must be visible
+      expect(screen.getAllByText(/चित्त/i).length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });

@@ -25,6 +25,12 @@ export interface LexiconItemView {
   canonicalRef: string;
   tags: string[];
   code?: string;
+  // P12.2 Wave 1 Extensions
+  sourceType?: 'lexicon' | 'system_node' | 'tcm_registry' | 'custom_glossary';
+  conceptId?: string;
+  hanViet?: string;
+  devanagari?: string;
+  englishGloss?: string;
 }
 
 /**
@@ -35,6 +41,15 @@ export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): L
     entry.sources && entry.sources.length > 0
       ? entry.sources.map((s) => `${s.sourceTitle} ${s.sectionRef}`).join('; ')
       : entry.provenanceNote ?? 'Tham chiếu học thuật';
+
+  // Extract structured values from languageProfiles if present, with safe fallback to aliases
+  const zhProfile = entry.languageProfiles?.['zh-Hant'] ?? entry.languageProfiles?.['zh-Hans'];
+  const saProfile = entry.languageProfiles?.sa;
+  const enProfile = entry.languageProfiles?.en;
+
+  const hanViet = zhProfile?.transliterations?.hanViet;
+  const devanagari = saProfile?.transliterations?.devanagari;
+  const englishGloss = enProfile?.glosses?.preferred ?? entry.aliases?.english;
 
   return {
     id: entry.id,
@@ -48,6 +63,11 @@ export function mapTerminologyEntryToLexiconItemView(entry: TerminologyEntry): L
     canonicalRef: sourceRef,
     tags: [entry.domain],
     code: entry.code,
+    sourceType: entry.sourceType,
+    conceptId: entry.conceptId,
+    hanViet,
+    devanagari,
+    englishGloss,
   };
 }
 

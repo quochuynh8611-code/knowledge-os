@@ -51,6 +51,23 @@ function getCategoryBadge(category: string, compact = false) {
   }
 }
 
+function getSourceTypeBadge(sourceType?: string) {
+  switch (sourceType) {
+    case 'lexicon':
+      return {
+        label: 'Từ Điển',
+        className: 'bg-stone-100 text-stone-700 border border-stone-300/70',
+      };
+    case 'system_node':
+      return {
+        label: 'Ma Trận',
+        className: 'bg-sky-50 text-sky-800 border border-sky-200',
+      };
+    default:
+      return null;
+  }
+}
+
 export function MultilingualLexicon() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'phat-hoc' | 'huyen-hoc' | string>('all');
@@ -259,7 +276,7 @@ export function MultilingualLexicon() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {(() => {
                           const badge = getCategoryBadge(entry.category, true);
                           return (
@@ -270,7 +287,23 @@ export function MultilingualLexicon() {
                             </span>
                           );
                         })()}
+                        {(() => {
+                          const srcBadge = getSourceTypeBadge(entry.sourceType);
+                          if (!srcBadge) return null;
+                          return (
+                            <span
+                              className={`text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded ${srcBadge.className}`}
+                            >
+                              {srcBadge.label}
+                            </span>
+                          );
+                        })()}
                         <span className="text-xs font-serif font-bold text-stone-900">{entry.hanTu}</span>
+                        {entry.hanViet && (
+                          <span className="text-[10px] font-semibold text-amber-900 bg-amber-50 px-1 rounded border border-amber-200/50 font-mono">
+                            [{entry.hanViet}]
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1">
@@ -341,7 +374,7 @@ export function MultilingualLexicon() {
                     {/* Tier 1: Fast scan header & multilingual parallel terms */}
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {(() => {
                             const badge = getCategoryBadge(entry.category, false);
                             return (
@@ -352,7 +385,25 @@ export function MultilingualLexicon() {
                               </span>
                             );
                           })()}
-                          <span className="text-sm font-serif font-bold text-stone-900">{entry.hanTu}</span>
+                          {(() => {
+                            const srcBadge = getSourceTypeBadge(entry.sourceType);
+                            if (!srcBadge) return null;
+                            return (
+                              <span
+                                className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full ${srcBadge.className}`}
+                              >
+                                {srcBadge.label}
+                              </span>
+                            );
+                          })()}
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-serif font-bold text-stone-900">{entry.hanTu}</span>
+                            {entry.hanViet && (
+                              <span className="text-xs font-semibold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/60 font-mono">
+                                [{entry.hanViet}]
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <h3 className="text-base font-bold text-stone-900 leading-snug">{entry.vietnamese}</h3>
                       </div>
@@ -389,18 +440,28 @@ export function MultilingualLexicon() {
                     </div>
 
                     {/* Multilingual Parallel Terms */}
-                    <div className="grid grid-cols-3 gap-2 bg-stone-50 p-2.5 rounded-xl text-[11px] font-mono border border-stone-150">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-stone-50 p-2.5 rounded-xl text-[11px] font-mono border border-stone-150">
                       <div>
                         <span className="text-[9px] uppercase font-bold text-stone-500 block">Pāli (IAST)</span>
                         <span className="text-amber-950 font-semibold truncate block">{entry.pali}</span>
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-bold text-stone-500 block">Sanskrit</span>
-                        <span className="text-purple-950 font-semibold truncate block">{entry.sanskrit}</span>
+                        <span className="text-purple-950 font-semibold truncate block">
+                          {entry.devanagari && !entry.sanskrit.includes(entry.devanagari)
+                            ? `${entry.sanskrit} (${entry.devanagari})`
+                            : entry.sanskrit}
+                        </span>
                       </div>
                       <div>
                         <span className="text-[9px] uppercase font-bold text-stone-500 block">Pinyin</span>
                         <span className="text-stone-700 font-semibold truncate block">{entry.pinyin}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase font-bold text-stone-500 block">English Gloss</span>
+                        <span className="text-teal-950 font-semibold truncate block" title={entry.englishGloss}>
+                          {entry.englishGloss || '—'}
+                        </span>
                       </div>
                     </div>
 
