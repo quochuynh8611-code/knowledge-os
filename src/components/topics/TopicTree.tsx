@@ -35,6 +35,8 @@ import {
   countTopicsForRootCategory,
 } from '../../lib/taxonomyMigration';
 
+// Explicit Safe-Merge Target for legacy economy categories (cat-root-kinh-te, cat-root-kinh-te-hoc).
+// Prevents topic/subcategory orphan risk when users delete legacy economy categories from existing datasets.
 const FIXED_ECONOMY_MERGE_TARGET_ID = 'cat-root-kinh-te-tai-chinh';
 
 const isEconomyMergeSource = (catId: string): boolean => {

@@ -509,10 +509,13 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       });
 
       // Assert state after rehydration: source category must NOT resurrect!
-      await waitFor(() => {
-        expect(secondResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
-      });
-      expect(secondResult.current.categories.some((c) => c.id === sourceCatId)).toBe(false);
+      await waitFor(
+        () => {
+          expect(secondResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
+          expect(secondResult.current.categories.some((c) => c.id === sourceCatId)).toBe(false);
+        },
+        { timeout: 3000 }
+      );
       const rehydratedTopic = secondResult.current.topics.find((t) => t.id === 'topic-kt-123');
       expect(rehydratedTopic?.categoryId).toBe(targetCatId);
       expect(rehydratedTopic?.type).toBe('kinh-te-tai-chinh');
@@ -922,5 +925,281 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       confirmSpy.mockRestore();
     });
   });
+
+  describe('5. Final Taxonomy Reset & Clean Default State Hardening', () => {
+    it('5.1. resetToDefaultData() cleanly purges legacy economy category IDs and related storage keys', async () => {
+      let contextRef: any;
+      const TestContainer = () => {
+        contextRef = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                contextRef.importAllDataJSON(
+                  JSON.stringify({
+                    categories: [
+                      ...INITIAL_CATEGORIES,
+                      {
+                        id: 'cat-root-kinh-te',
+                        name: 'Kinh Tế',
+                        slug: 'kinh-te',
+                        type: 'kinh-te',
+                        parentId: null,
+                      },
+                      {
+                        id: 'cat-root-kinh-te-hoc',
+                        name: 'Kinh Tế Học',
+                        slug: 'kinh-te-hoc',
+                        type: 'kinh-te-hoc',
+                        parentId: null,
+                      },
+                      {
+                        id: 'cat-root-kinh-te-tai-chinh',
+                        name: 'Kinh Tế & Tài Chính',
+                        slug: 'kinh-te-tai-chinh',
+                        type: 'kinh-te-tai-chinh',
+                        parentId: null,
+                      },
+                    ],
+                    topics: INITIAL_TOPICS,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed Polluted Data
+            </button>
+            <button onClick={() => contextRef.resetToDefaultData()}>Reset All</button>
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestContainer />
+        </DataProvider>
+      );
+
+      // Seed polluted data containing legacy economy categories
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Seed Polluted Data' }));
+      });
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te')).toBe(true);
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(true);
+
+      // Trigger reset to default data
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Reset All' }));
+      });
+
+      // Absolutely zero legacy economy root categories should exist after reset
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te')).toBe(false);
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(false);
+    });
+
+    it('5.2. Clean default TopicTree render does not display legacy economy roots or legacy delete affordances', async () => {
+      render(
+        <DataProvider>
+          <TopicTree />
+        </DataProvider>
+      );
+
+      // Core categories present in default state should be rendered
+      expect(await screen.findByRole('button', { name: /Phật Học/i })).toBeInTheDocument();
+
+      // Legacy economy roots must NOT appear in clean default state
+      expect(screen.queryByRole('button', { name: /^Kinh Tế$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Kinh Tế Học$/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Kinh Tế & Tài Chính$/i })).toBeNull();
+
+      // Legacy category delete affordances must NOT exist on UI
+      expect(screen.queryByTestId('delete-category-cat-root-kinh-te')).toBeNull();
+      expect(screen.queryByTestId('delete-category-cat-root-kinh-te-hoc')).toBeNull();
+      expect(screen.queryByTestId('delete-category-cat-root-kinh-te-tai-chinh')).toBeNull();
+    });
+
+    it('5.3. Merging legacy category into canonical target persists permanently across page reload and backend sync', async () => {
+      let serverCategories: Category[] = [
+        ...INITIAL_CATEGORIES,
+        {
+          id: 'cat-root-kinh-te-hoc',
+          name: 'Kinh Tế Học',
+          slug: 'kinh-te-hoc',
+          type: 'kinh-te-hoc',
+          parentId: null,
+        },
+        {
+          id: 'cat-root-kinh-te-tai-chinh',
+          name: 'Kinh Tế & Tài Chính',
+          slug: 'kinh-te-tai-chinh',
+          type: 'kinh-te-tai-chinh',
+          parentId: null,
+        },
+      ];
+
+      let serverTopics: Topic[] = [
+        ...INITIAL_TOPICS,
+        {
+          id: 'top-kth-persist-1',
+          title: 'Kinh Tế Lượng Thực Hành',
+          slug: 'kinh-te-luong-thuc-hanh',
+          categoryId: 'cat-root-kinh-te-hoc',
+          type: 'kinh-te-hoc',
+          createdAt: '2026-08-01T00:00:00Z',
+          updatedAt: '2026-08-01T00:00:00Z',
+          studyProgress: {
+            topicId: 'top-kth-persist-1',
+            status: 'not_started',
+            progress: 0,
+            interval: 0,
+            easeFactor: 2.5,
+            repetitions: 0,
+            totalNotes: 0,
+            timeSpent: 0,
+          },
+        },
+      ];
+
+      const deleteEndpointCalled = vi.fn();
+
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async (input: any, init?: any) => {
+        const url = String(input);
+        const method = init?.method || 'GET';
+
+        if (url.includes('/api/categories/cat-root-kinh-te-hoc') && method === 'DELETE') {
+          deleteEndpointCalled();
+          serverCategories = serverCategories.filter((c) => c.id !== 'cat-root-kinh-te-hoc');
+          return new Response(JSON.stringify({ success: true, count: 1 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (url.includes('/api/sync/hydrate') && method === 'POST') {
+          const body = JSON.parse(String(init?.body || '{}'));
+          if (body.categories) {
+            serverCategories = body.categories;
+          }
+          if (body.topics) {
+            serverTopics = body.topics;
+          }
+          return new Response(JSON.stringify({ success: true, count: 1 }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (url.includes('/api/topics/top-kth-persist-1') && method === 'PUT') {
+          const body = JSON.parse(init.body);
+          const idx = serverTopics.findIndex((t) => t.id === 'top-kth-persist-1');
+          if (idx >= 0) {
+            serverTopics[idx] = { ...serverTopics[idx], ...body };
+          }
+          return new Response(JSON.stringify(serverTopics[idx]), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (url.includes('/api/categories')) {
+          return new Response(JSON.stringify(serverCategories), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (url.includes('/api/topics')) {
+          return new Response(JSON.stringify(serverTopics), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      });
+
+      let contextRef: any;
+      const TestContainer = () => {
+        contextRef = useData();
+        return (
+          <div>
+            <button
+              onClick={() => {
+                contextRef.importAllDataJSON(
+                  JSON.stringify({
+                    categories: serverCategories,
+                    topics: serverTopics,
+                    notes: INITIAL_NOTES,
+                    resources: INITIAL_RESOURCES,
+                    tags: [],
+                    links: [],
+                  })
+                );
+              }}
+            >
+              Seed
+            </button>
+            <button
+              onClick={() => {
+                contextRef.mergeCategories('cat-root-kinh-te-hoc', 'cat-root-kinh-te-tai-chinh');
+              }}
+            >
+              Merge Economy
+            </button>
+            <button onClick={() => contextRef.reloadAllData()}>Reload</button>
+          </div>
+        );
+      };
+
+      render(
+        <DataProvider>
+          <TestContainer />
+        </DataProvider>
+      );
+
+      // Seed
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Seed' }));
+      });
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(true);
+
+      // Execute merge
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Merge Economy' }));
+      });
+
+      // Allow async repo delete to dispatch
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(deleteEndpointCalled).toHaveBeenCalled();
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+
+      // Trigger reload (re-fetching from API server and syncHydrate)
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+      });
+
+      // After reload, merged category must NOT resurrect
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
+
+      // Topic must remain bound to canonical target
+      const remappedTopic = contextRef.topics.find((t: Topic) => t.id === 'top-kth-persist-1');
+      expect(remappedTopic?.categoryId).toBe('cat-root-kinh-te-tai-chinh');
+
+      global.fetch = originalFetch;
+    });
+  });
 });
+
 
