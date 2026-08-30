@@ -22,6 +22,7 @@ export interface DomainLearningState {
   rootCategory: Category;
   status: DomainStatus;
   statusLabel: string;
+  isFocus?: boolean;
   totalTopics: number;
   completedTopics: number;
   inProgressTopics: number;
@@ -94,24 +95,36 @@ export function getPriorityDomain(
 }
 
 /**
- * Generates the deterministic, evidence-based Today Recommendation for Phase 13.
- * Evaluation Cascade:
- *   Tier 1: Spaced Review Due (oldest due, shortest interval, lowest easeFactor, id asc)
- *   Tier 2: In-Progress Active Topic (newest lastStudied, newest updatedAt, highest progress, id asc)
- *   Tier 3: Next Step in Priority Domain (first not_started topic by createdAt asc, id asc)
- *   Tier 4: System Fallback (first not_started topic across all categories)
+ * Generates the deterministic, evidence-based Today Recommendation.
+ * Evaluation Cascade (Phase 14B):
+ *   Tier 1: Spaced Review Due (SM-2 override all)
+ *   Tier 2: Focus Domain Priority (if valid focusDomainId exists)
+ *     2A: in_progress topic in focus domain
+ *     2B: next_step topic in focus domain
+ *   Tier 3: Auto Recommendation Flow (if no focusDomainId or focus domain completed)
+ *     3A: in_progress active topic across workspace
+ *     3B: next_step in Auto Priority Domain
+ *     3C: fallback unstarted topic across workspace
+ *   Tier 4: System Fallback (first active topic when all topics completed)
  * Returns null if no valid topic exists in the workspace.
  */
 export function getTodayRecommendation(
   topics: Topic[],
   categories: Category[],
   reviewQueueInput?: Topic[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  focusDomainId?: string | null
 ): TodayRecommendation | null {
   const activeTopics = (topics || []).filter((t) => t.visibility !== 'hidden');
   if (activeTopics.length === 0) return null;
 
-  // --- Tier 1: Spaced Review Due ---
+  const rootCategories = getRootCategories(categories);
+  const validFocusDomain =
+    focusDomainId && rootCategories.some((r) => r.id === focusDomainId)
+      ? rootCategories.find((r) => r.id === focusDomainId) || null
+      : null;
+
+  // --- Tier 1: Spaced Review Due (SM-2 override all) ---
   const queue = reviewQueueInput || getReviewQueue(activeTopics);
   if (queue.length > 0) {
     const sortedReviews = [...queue].sort((a, b) => {
@@ -141,15 +154,9 @@ export function getTodayRecommendation(
     };
   }
 
-  // --- Tier 2: In-Progress Active Topic ---
-  const inProgressList = activeTopics.filter(
-    (t) =>
-      (t.studyProgress?.status === 'in_progress' || t.studyProgress?.status === 'reviewing') &&
-      (t.studyProgress?.progress || 0) < 100
-  );
-
-  if (inProgressList.length > 0) {
-    const sortedInProgress = [...inProgressList].sort((a, b) => {
+  // Deterministic helper to sort in-progress topics
+  const sortInProgress = (list: Topic[]) =>
+    [...list].sort((a, b) => {
       const aStudied = new Date(a.studyProgress?.lastStudied || 0).getTime();
       const bStudied = new Date(b.studyProgress?.lastStudied || 0).getTime();
       if (aStudied !== bStudied) return bStudied - aStudied; // Newest lastStudied first
@@ -165,7 +172,71 @@ export function getTodayRecommendation(
       return a.id.localeCompare(b.id);
     });
 
-    const chosen = sortedInProgress[0];
+  // Deterministic helper to sort unstarted topics
+  const sortUnstarted = (list: Topic[]) =>
+    [...list].sort((a, b) => {
+      const aCreated = new Date(a.createdAt || 0).getTime();
+      const bCreated = new Date(b.createdAt || 0).getTime();
+      if (aCreated !== bCreated) return aCreated - bCreated; // Oldest createdAt first (curriculum proxy)
+      return a.id.localeCompare(b.id);
+    });
+
+  // --- Tier 2: Focus Domain Priority (if valid focusDomainId exists) ---
+  if (validFocusDomain) {
+    const focusTopics = activeTopics.filter((t) =>
+      topicBelongsToRootCategory(t, categories, validFocusDomain.id)
+    );
+
+    // 2A: Focus Domain in-progress topic
+    const focusInProgress = focusTopics.filter(
+      (t) =>
+        (t.studyProgress?.status === 'in_progress' || t.studyProgress?.status === 'reviewing') &&
+        (t.studyProgress?.progress || 0) < 100
+    );
+
+    if (focusInProgress.length > 0) {
+      const chosen = sortInProgress(focusInProgress)[0];
+      const progress = chosen.studyProgress?.progress || 0;
+      const timeLabel = chosen.studyProgress?.lastStudied
+        ? formatTimeAgo(chosen.studyProgress.lastStudied)
+        : 'Gần đây';
+      return {
+        topic: chosen,
+        rootCategory: validFocusDomain,
+        tier: 'in_progress',
+        badgeLabel: `Tiếp tục bài học dở dang (${validFocusDomain.name})`,
+        reason: `Môn trọng tâm • Tiến độ hiện tại: ${progress}% • Đã học: ${timeLabel}`,
+      };
+    }
+
+    // 2B: Focus Domain next-step (unstarted topic)
+    const focusUnstarted = focusTopics.filter(
+      (t) =>
+        t.studyProgress?.status === 'not_started' || (t.studyProgress?.progress || 0) === 0
+    );
+
+    if (focusUnstarted.length > 0) {
+      const chosen = sortUnstarted(focusUnstarted)[0];
+      return {
+        topic: chosen,
+        rootCategory: validFocusDomain,
+        tier: 'next_step',
+        badgeLabel: `Bài học tiếp theo (${validFocusDomain.name})`,
+        reason: `Môn trọng tâm • Bước kế tiếp trong lộ trình môn ${validFocusDomain.name}`,
+      };
+    }
+  }
+
+  // --- Tier 3: Auto Recommendation Flow ---
+  // 3A: In-Progress Active Topic across workspace
+  const inProgressList = activeTopics.filter(
+    (t) =>
+      (t.studyProgress?.status === 'in_progress' || t.studyProgress?.status === 'reviewing') &&
+      (t.studyProgress?.progress || 0) < 100
+  );
+
+  if (inProgressList.length > 0) {
+    const chosen = sortInProgress(inProgressList)[0];
     const root = resolveRootCategory(categories, chosen.categoryId);
     const progress = chosen.studyProgress?.progress || 0;
     const timeLabel = chosen.studyProgress?.lastStudied
@@ -181,7 +252,7 @@ export function getTodayRecommendation(
     };
   }
 
-  // --- Tier 3: Next Step in Priority Domain ---
+  // 3B: Next Step in Auto Priority Domain
   const priorityDomain = getPriorityDomain(activeTopics, categories);
   if (priorityDomain) {
     const domainUnstartedTopics = activeTopics.filter(
@@ -191,14 +262,7 @@ export function getTodayRecommendation(
     );
 
     if (domainUnstartedTopics.length > 0) {
-      const sortedUnstarted = [...domainUnstartedTopics].sort((a, b) => {
-        const aCreated = new Date(a.createdAt || 0).getTime();
-        const bCreated = new Date(b.createdAt || 0).getTime();
-        if (aCreated !== bCreated) return aCreated - bCreated; // Oldest createdAt first (curriculum proxy)
-        return a.id.localeCompare(b.id);
-      });
-
-      const chosen = sortedUnstarted[0];
+      const chosen = sortUnstarted(domainUnstartedTopics)[0];
       return {
         topic: chosen,
         rootCategory: priorityDomain,
@@ -209,14 +273,13 @@ export function getTodayRecommendation(
     }
   }
 
-  // --- Tier 4: Fallback across any unstarted topic in the workspace ---
+  // 3C: Fallback across any unstarted topic in the workspace
   const anyUnstarted = activeTopics.filter(
     (t) =>
       t.studyProgress?.status === 'not_started' || (t.studyProgress?.progress || 0) === 0
   );
 
   if (anyUnstarted.length > 0) {
-    const rootCategories = getRootCategories(categories);
     const sortedAnyUnstarted = [...anyUnstarted].sort((a, b) => {
       const aRoot = resolveRootCategory(categories, a.categoryId);
       const bRoot = resolveRootCategory(categories, b.categoryId);
@@ -260,7 +323,8 @@ export function getTodayRecommendation(
 export function getDomainLearningStates(
   topics: Topic[],
   categories: Category[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  focusDomainId?: string | null
 ): DomainLearningState[] {
   const rootCategories = getRootCategories(categories);
   if (!rootCategories || rootCategories.length === 0) return [];
@@ -270,6 +334,7 @@ export function getDomainLearningStates(
   const nowMs = now.getTime();
 
   return rootCategories.map((root) => {
+    const isFocus = Boolean(focusDomainId && root.id === focusDomainId);
     const domainTopics = activeTopics.filter((t) =>
       topicBelongsToRootCategory(t, categories, root.id)
     );
@@ -354,6 +419,7 @@ export function getDomainLearningStates(
       rootCategory: root,
       status,
       statusLabel,
+      isFocus,
       totalTopics,
       completedTopics,
       inProgressTopics,

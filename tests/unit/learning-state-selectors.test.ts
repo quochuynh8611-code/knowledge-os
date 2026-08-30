@@ -517,4 +517,255 @@ describe('Phase 13: Learning State Selectors (Wave 0)', () => {
       expect(queue).toEqual([]);
     });
   });
+
+  describe('Phase 14B: Explicit Focus Domain Semantics', () => {
+    it('TC-13: Review Due Override - SM-2 review due in any domain overrides focusDomainId', () => {
+      const focusTopic = createTopic({
+        id: 't-focus-prog',
+        title: 'Đông Y Đang Học',
+        categoryId: 'cat-dong-y',
+        studyProgress: {
+          topicId: 't-focus-prog',
+          status: 'in_progress',
+          progress: 60,
+          interval: 2,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 80,
+          lastStudied: '2026-08-30T10:00:00.000Z',
+        },
+      });
+
+      const dueTopic = createTopic({
+        id: 't-due-chinese',
+        title: 'Hán Tự Đến Hạn Ôn',
+        categoryId: 'cat-tieng-trung',
+        studyProgress: {
+          topicId: 't-due-chinese',
+          status: 'reviewing',
+          progress: 100,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 100,
+          nextReview: '2026-08-28T00:00:00.000Z',
+        },
+      });
+
+      const rec = getTodayRecommendation(
+        [focusTopic, dueTopic],
+        mockCategories,
+        [dueTopic],
+        new Date(),
+        'cat-dong-y' // Focus domain is Đông Y
+      );
+
+      expect(rec).not.toBeNull();
+      expect(rec?.tier).toBe('review_due');
+      expect(rec?.topic.id).toBe('t-due-chinese');
+      expect(rec?.rootCategory?.id).toBe('cat-tieng-trung');
+    });
+
+    it('TC-14: Focus Domain In-Progress Priority - picks focus domain in-progress topic over non-focus in-progress topic', () => {
+      const nonFocusInProgress = createTopic({
+        id: 't-nonfocus-prog',
+        title: 'Tiếng Trung Đang Học',
+        categoryId: 'cat-tieng-trung',
+        studyProgress: {
+          topicId: 't-nonfocus-prog',
+          status: 'in_progress',
+          progress: 75,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 120,
+          lastStudied: '2026-08-30T11:00:00.000Z', // Even if newer
+        },
+      });
+
+      const focusInProgress = createTopic({
+        id: 't-focus-prog',
+        title: 'Đông Y Đang Học',
+        categoryId: 'cat-dong-y',
+        studyProgress: {
+          topicId: 't-focus-prog',
+          status: 'in_progress',
+          progress: 30,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 40,
+          lastStudied: '2026-08-29T10:00:00.000Z',
+        },
+      });
+
+      const rec = getTodayRecommendation(
+        [nonFocusInProgress, focusInProgress],
+        mockCategories,
+        [],
+        new Date(),
+        'cat-dong-y' // Focus on Đông y
+      );
+
+      expect(rec?.tier).toBe('in_progress');
+      expect(rec?.topic.id).toBe('t-focus-prog');
+      expect(rec?.rootCategory?.id).toBe('cat-dong-y');
+      expect(rec?.reason).toContain('Môn trọng tâm');
+    });
+
+    it('TC-15: Focus Domain Next-Step Priority - deliberately prioritizes focus domain unstarted topic over non-focus in-progress topic', () => {
+      // PRODUCT INTENT: When user sets an explicit focus domain, they intend to concentrate on this subject.
+      // Therefore, starting the next step in the focus domain takes precedence over non-focus lingering in-progress topics.
+      const nonFocusInProgress = createTopic({
+        id: 't-nonfocus-prog',
+        title: 'Tiếng Trung Dở Dang',
+        categoryId: 'cat-tieng-trung',
+        studyProgress: {
+          topicId: 't-nonfocus-prog',
+          status: 'in_progress',
+          progress: 50,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 60,
+          lastStudied: '2026-08-30T09:00:00.000Z',
+        },
+      });
+
+      const focusUnstarted = createTopic({
+        id: 't-focus-next',
+        title: 'Đông Y Bài Kế Tiếp',
+        categoryId: 'cat-dong-y',
+        createdAt: '2026-08-01T00:00:00.000Z',
+        studyProgress: {
+          topicId: 't-focus-next',
+          status: 'not_started',
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+      });
+
+      const rec = getTodayRecommendation(
+        [nonFocusInProgress, focusUnstarted],
+        mockCategories,
+        [],
+        new Date(),
+        'cat-dong-y' // Focus on Đông Y
+      );
+
+      expect(rec?.tier).toBe('next_step');
+      expect(rec?.topic.id).toBe('t-focus-next');
+      expect(rec?.rootCategory?.id).toBe('cat-dong-y');
+      expect(rec?.badgeLabel).toContain('Bài học tiếp theo (Đông y)');
+      expect(rec?.reason).toContain('Môn trọng tâm');
+    });
+
+    it('TC-16: Focus Domain Completed Fallback - when all focus domain topics are completed, falls back gracefully to auto flow', () => {
+      const focusCompleted = createTopic({
+        id: 't-focus-done',
+        title: 'Đông Y Đã Hoàn Thành',
+        categoryId: 'cat-dong-y',
+        studyProgress: {
+          topicId: 't-focus-done',
+          status: 'completed',
+          progress: 100,
+          interval: 10,
+          easeFactor: 2.5,
+          repetitions: 3,
+          totalNotes: 5,
+          timeSpent: 300,
+        },
+      });
+
+      const otherInProgress = createTopic({
+        id: 't-other-prog',
+        title: 'Phật Học Dở Dang',
+        categoryId: 'cat-phat-hoc',
+        studyProgress: {
+          topicId: 't-other-prog',
+          status: 'in_progress',
+          progress: 40,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 1,
+          timeSpent: 45,
+          lastStudied: '2026-08-30T08:00:00.000Z',
+        },
+      });
+
+      const rec = getTodayRecommendation(
+        [focusCompleted, otherInProgress],
+        mockCategories,
+        [],
+        new Date(),
+        'cat-dong-y' // Focus domain has nothing left to start/resume
+      );
+
+      expect(rec?.tier).toBe('in_progress');
+      expect(rec?.topic.id).toBe('t-other-prog');
+      expect(rec?.rootCategory?.id).toBe('cat-phat-hoc');
+    });
+
+    it('TC-17: Invalid focusDomainId Fallback - non-existent ID gracefully executes auto recommendation flow', () => {
+      const inProgressTopic = createTopic({
+        id: 't-prog',
+        title: 'Chủ đề dở dang',
+        categoryId: 'cat-tieng-trung',
+        studyProgress: {
+          topicId: 't-prog',
+          status: 'in_progress',
+          progress: 25,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 20,
+        },
+      });
+
+      const rec = getTodayRecommendation(
+        [inProgressTopic],
+        mockCategories,
+        [],
+        new Date(),
+        'non_existent_category_id'
+      );
+
+      expect(rec?.topic.id).toBe('t-prog');
+      expect(rec?.tier).toBe('in_progress');
+    });
+
+    it('TC-18: Derived isFocus Flag in getDomainLearningStates - sets isFocus = true only for the matching root domain', () => {
+      const topics: Topic[] = [
+        createTopic({
+          id: 't-dy',
+          categoryId: 'cat-dong-y',
+        }),
+        createTopic({
+          id: 't-tt',
+          categoryId: 'cat-tieng-trung',
+        }),
+      ];
+
+      const states = getDomainLearningStates(topics, mockCategories, new Date(), 'cat-dong-y');
+
+      const dongYState = states.find((s) => s.rootCategory.id === 'cat-dong-y');
+      const tiengTrungState = states.find((s) => s.rootCategory.id === 'cat-tieng-trung');
+      const phatHocState = states.find((s) => s.rootCategory.id === 'cat-phat-hoc');
+
+      expect(dongYState?.isFocus).toBe(true);
+      expect(tiengTrungState?.isFocus).toBe(false);
+      expect(phatHocState?.isFocus).toBe(false);
+    });
+  });
 });

@@ -30,12 +30,13 @@ export function TodayLearningHero({
     topics,
     categories,
     reviewQueue,
+    focusDomainId,
     openTopicDetail,
   } = useData();
 
   const recommendation: TodayRecommendation | null = React.useMemo(() => {
-    return getTodayRecommendation(topics, categories, reviewQueue);
-  }, [topics, categories, reviewQueue]);
+    return getTodayRecommendation(topics, categories, reviewQueue, new Date(), focusDomainId);
+  }, [topics, categories, reviewQueue, focusDomainId]);
 
   // 1. Empty / Null State
   if (!recommendation) {

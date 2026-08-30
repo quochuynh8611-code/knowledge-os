@@ -101,4 +101,41 @@ describe('Phase 13 Wave 3: LearningStateCard Component', () => {
 
     expect(handleSelectDomain).toHaveBeenCalledWith('cat-dy');
   });
+
+  it('4. Renders pin button and triggers onToggleFocus without bubbling to onSelectDomain', () => {
+    const handleSelectDomain = vi.fn();
+    const handleToggleFocus = vi.fn();
+
+    render(
+      <LearningStateCard
+        state={mockState}
+        onSelectDomain={handleSelectDomain}
+        onToggleFocus={handleToggleFocus}
+      />
+    );
+
+    const pinBtn = screen.getByTestId('pin-btn-cat-dy');
+    expect(pinBtn).toBeInTheDocument();
+    fireEvent.click(pinBtn);
+
+    expect(handleToggleFocus).toHaveBeenCalledWith('cat-dy');
+    expect(handleSelectDomain).not.toHaveBeenCalled();
+  });
+
+  it('5. Renders "Trọng tâm" badge when state.isFocus is true', () => {
+    const focusState: DomainLearningState = {
+      ...mockState,
+      isFocus: true,
+    };
+
+    render(
+      <LearningStateCard
+        state={focusState}
+        onSelectDomain={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('focus-badge-cat-dy')).toBeInTheDocument();
+    expect(screen.getByText('Trọng tâm')).toBeInTheDocument();
+  });
 });

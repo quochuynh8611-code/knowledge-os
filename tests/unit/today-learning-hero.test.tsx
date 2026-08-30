@@ -74,4 +74,24 @@ describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
     fireEvent.click(primaryBtn);
     expect(handleStartStudy).toHaveBeenCalled();
   });
+
+  it('3. Renders focus domain recommendation when focusDomainId is set', () => {
+    function FocusTestWrapper() {
+      const { setFocusDomainId } = useData();
+      React.useEffect(() => {
+        setFocusDomainId('cat-root-phat-hoc');
+      }, [setFocusDomainId]);
+
+      return <TodayLearningHero />;
+    }
+
+    render(
+      <DataProvider>
+        <FocusTestWrapper />
+      </DataProvider>
+    );
+
+    expect(screen.getByTestId('today-learning-hero')).toBeInTheDocument();
+    expect(screen.getAllByText(/Phật Học/i).length).toBeGreaterThan(0);
+  });
 });

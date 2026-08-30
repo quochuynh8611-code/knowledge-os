@@ -30,6 +30,8 @@ export function DashboardHome() {
     categories,
     notes,
     resources,
+    focusDomainId,
+    setFocusDomainId,
     openTopicDetail,
     setActiveTab,
     setSelectedCategoryFilter,
@@ -42,10 +44,14 @@ export function DashboardHome() {
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [newDomainName, setNewDomainName] = useState('');
 
-  const domainLearningStates = useMemo(
-    () => getDomainLearningStates(topics, categories),
-    [topics, categories]
-  );
+  const domainLearningStates = useMemo(() => {
+    const states = getDomainLearningStates(topics, categories, new Date(), focusDomainId);
+    return [...states].sort((a, b) => {
+      if (a.isFocus && !b.isFocus) return -1;
+      if (!a.isFocus && b.isFocus) return 1;
+      return 0;
+    });
+  }, [topics, categories, focusDomainId]);
 
   const handleCreateDomain = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,6 +162,7 @@ export function DashboardHome() {
                 setSelectedCategoryFilter(catId);
                 setActiveTab('topics');
               }}
+              onToggleFocus={setFocusDomainId}
               onStartStudyTopic={handleStartStudy}
               onOpenTopicDetail={openTopicDetail}
             />

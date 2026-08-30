@@ -9,11 +9,13 @@ import {
   CheckCircle2,
   BookOpen,
   Sparkles,
+  Pin,
 } from 'lucide-react';
 
 export interface LearningStateCardProps {
   state: DomainLearningState;
   onSelectDomain: (domainId: string) => void;
+  onToggleFocus?: (domainId: string) => void;
   onStartStudyTopic?: (topicId: string) => void;
   onOpenTopicDetail?: (topicId: string) => void;
 }
@@ -21,6 +23,7 @@ export interface LearningStateCardProps {
 export function LearningStateCard({
   state,
   onSelectDomain,
+  onToggleFocus,
   onStartStudyTopic,
   onOpenTopicDetail,
 }: LearningStateCardProps) {
@@ -28,6 +31,7 @@ export function LearningStateCard({
     rootCategory,
     status,
     statusLabel,
+    isFocus,
     totalTopics,
     completedTopics,
     donePercent,
@@ -51,11 +55,13 @@ export function LearningStateCard({
     dormant: 'bg-stone-400',
   }[status];
 
-  const cardContainerStyle = {
-    active: 'bg-white dark:bg-stone-900 border-stone-200/90 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-2xs',
-    maintenance: 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs',
-    dormant: 'bg-stone-50/60 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 opacity-85 hover:opacity-100 hover:border-stone-300 dark:hover:border-stone-700',
-  }[status];
+  const cardContainerStyle = isFocus
+    ? 'bg-white dark:bg-stone-900 border-amber-400/90 dark:border-amber-600/90 ring-1 ring-amber-400/30 shadow-xs'
+    : {
+        active: 'bg-white dark:bg-stone-900 border-stone-200/90 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-2xs',
+        maintenance: 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs',
+        dormant: 'bg-stone-50/60 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 opacity-85 hover:opacity-100 hover:border-stone-300 dark:hover:border-stone-700',
+      }[status];
 
   return (
     <div
@@ -63,7 +69,7 @@ export function LearningStateCard({
       onClick={() => onSelectDomain(rootCategory.id)}
       className={`border rounded-2xl p-4 sm:p-5 hover:shadow-md transition flex flex-col justify-between group cursor-pointer ${cardContainerStyle}`}
     >
-      {/* 1. Header: Icon + Title + Status Badge */}
+      {/* 1. Header: Icon + Title + Status Badges + Pin Button */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
           <div
@@ -78,12 +84,44 @@ export function LearningStateCard({
             </span>
           </div>
 
-          <span
-            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${statusBadgeStyle}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor}`} />
-            <span>{statusLabel}</span>
-          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isFocus && (
+              <span
+                data-testid={`focus-badge-${rootCategory.id}`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
+                <span>Trọng tâm</span>
+              </span>
+            )}
+
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadgeStyle}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor}`} />
+              <span>{statusLabel}</span>
+            </span>
+
+            {onToggleFocus && (
+              <button
+                type="button"
+                data-testid={`pin-btn-${rootCategory.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFocus(rootCategory.id);
+                }}
+                title={isFocus ? "Bỏ ghim môn trọng tâm" : "Ghim làm môn trọng tâm"}
+                aria-label={isFocus ? "Bỏ ghim môn trọng tâm" : "Ghim làm môn trọng tâm"}
+                className={`p-1 rounded-lg transition cursor-pointer ${
+                  isFocus
+                    ? 'text-amber-700 dark:text-amber-400 hover:bg-amber-100/60 dark:hover:bg-amber-950/60'
+                    : 'text-stone-400 dark:text-stone-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 opacity-60 group-hover:opacity-100'
+                }`}
+              >
+                <Pin className={`w-3.5 h-3.5 ${isFocus ? 'fill-current' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 2. True Learning Metrics (Time & Progress) */}

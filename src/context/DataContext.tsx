@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import {
   safeGetLocalStorageItem,
+  safeSetLocalStorageItem,
+  safeRemoveLocalStorageItem,
+  FOCUS_DOMAIN_STORAGE_KEY,
 } from "../lib/storage";
 import {
   Category,
@@ -35,6 +38,7 @@ import {
   normalizeCategories,
   normalizeTopics,
   generateCategorySlug,
+  getRootCategories,
 } from "../lib/taxonomyMigration";
 import {
   LocalStorageDataRepository,
@@ -77,6 +81,10 @@ interface DataContextType {
   searchQuery: string;
   selectedCategoryFilter: string | null;
   selectedTagFilter: string | null;
+
+  // Focus Domain State (Phase 14B)
+  focusDomainId: string | null;
+  setFocusDomainId: (domainId: string | null) => void;
 
   // Timer State
   activeTimerTopicId: string | null;
@@ -240,6 +248,37 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       return INITIAL_TAGS;
     }
   });
+
+  // Focus Domain State (Phase 14B)
+  const [focusDomainId, setFocusDomainIdState] = useState<string | null>(() => {
+    const saved = safeGetLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
+    return saved && saved.trim().length > 0 ? saved.trim() : null;
+  });
+
+  const setFocusDomainId = useCallback((domainId: string | null) => {
+    setFocusDomainIdState((prev) => {
+      const normalized = domainId && domainId.trim().length > 0 ? domainId.trim() : null;
+      const next = prev === normalized ? null : normalized;
+      if (next) {
+        safeSetLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY, next);
+      } else {
+        safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
+      }
+      return next;
+    });
+  }, []);
+
+  // Validate persisted focusDomainId against valid root categories
+  useEffect(() => {
+    if (focusDomainId) {
+      const rootCategories = getRootCategories(categories);
+      const isValid = rootCategories.some((r) => r.id === focusDomainId);
+      if (!isValid) {
+        setFocusDomainIdState(null);
+        safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
+      }
+    }
+  }, [categories, focusDomainId]);
 
   // Bootstrap Load & Hydration via DataRepository
   useEffect(() => {
@@ -754,6 +793,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     dataRepository.resetAllData().catch((err) => {
       console.warn("resetAllData storage cleanup failed:", err);
     });
+    safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
+    setFocusDomainIdState(null);
     setCategories(normalizeCategories(INITIAL_CATEGORIES));
     setTopics(normalizeTopics(INITIAL_TOPICS));
     setNotes(INITIAL_NOTES);
@@ -845,6 +886,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       notes,
       resources,
       tags,
+      focusDomainId,
+      setFocusDomainId,
       addCategory,
       updateCategory,
       deleteCategory,
@@ -871,7 +914,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       resetToDefaultData,
       reloadAllData,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId],
   );
 
   return (

@@ -4,6 +4,8 @@
  * when storage is disabled, sandboxed, or quota-exceeded.
  */
 
+export const FOCUS_DOMAIN_STORAGE_KEY = 'knowledge_os_focus_domain_id_v1';
+
 /**
  * Safely retrieves an item from localStorage without throwing if storage is blocked or inaccessible.
  */
