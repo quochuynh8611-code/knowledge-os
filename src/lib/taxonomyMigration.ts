@@ -211,3 +211,121 @@ export function generateCategorySlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '') || `cat-${Date.now()}`;
 }
+
+export interface MergeCategoriesResult {
+  success: boolean;
+  sourceCategoryId: string;
+  targetCategoryId: string;
+  remappedTopicCount: number;
+  remappedChildCategoryCount: number;
+  updatedCategories: Category[];
+  updatedTopics: Topic[];
+  error?: string;
+}
+
+/**
+ * Safely merges a source category into a target category without data loss.
+ * - Remaps all child categories (parentId = targetCategoryId)
+ * - Remaps direct topics (categoryId = targetCategoryId)
+ * - Updates topic type to match target category type/slug
+ * - Removes sourceCategory from categories array
+ * - Preserves notes and resources (via invariant topicId)
+ */
+export function mergeCategoryData(
+  categories: Category[],
+  topics: Topic[],
+  sourceCategoryId: string,
+  targetCategoryId: string
+): MergeCategoriesResult {
+  const defaultFailure = (error: string): MergeCategoriesResult => ({
+    success: false,
+    sourceCategoryId,
+    targetCategoryId,
+    remappedTopicCount: 0,
+    remappedChildCategoryCount: 0,
+    updatedCategories: categories,
+    updatedTopics: topics,
+    error,
+  });
+
+  if (!sourceCategoryId || !targetCategoryId) {
+    return defaultFailure('INVALID_CATEGORY_IDS');
+  }
+
+  if (sourceCategoryId === targetCategoryId) {
+    return defaultFailure('SOURCE_AND_TARGET_IDENTICAL: Cannot merge a category into itself');
+  }
+
+  const sourceCat = categories.find((c) => c.id === sourceCategoryId);
+  if (!sourceCat) {
+    return defaultFailure(`SOURCE_NOT_FOUND: Source category "${sourceCategoryId}" does not exist`);
+  }
+
+  const targetCat = categories.find((c) => c.id === targetCategoryId);
+  if (!targetCat) {
+    return defaultFailure(`TARGET_NOT_FOUND: Target category "${targetCategoryId}" does not exist`);
+  }
+
+  // Guard against circular descendant merge
+  const sourceDescendants = getDescendantCategoryIds(categories, sourceCategoryId);
+  if (sourceDescendants.includes(targetCategoryId)) {
+    return defaultFailure('CIRCULAR_MERGE: Cannot merge a parent category into its descendant');
+  }
+
+  const targetType = targetCat.type || targetCat.slug || 'general';
+
+  // 1. Remap child categories of sourceCategory
+  let remappedChildCategoryCount = 0;
+  const updatedCategories: Category[] = categories
+    .filter((c) => c.id !== sourceCategoryId)
+    .map((c) => {
+      if (c.parentId === sourceCategoryId) {
+        remappedChildCategoryCount++;
+        return {
+          ...c,
+          parentId: targetCategoryId,
+          type: targetType,
+        };
+      }
+      return c;
+    });
+
+  // 2. Remap topics belonging to sourceCategory or its branches
+  let remappedTopicCount = 0;
+  const updatedTopics: Topic[] = topics.map((t) => {
+    // If topic is directly under sourceCategory
+    if (t.categoryId === sourceCategoryId) {
+      remappedTopicCount++;
+      return {
+        ...t,
+        categoryId: targetCategoryId,
+        type: targetType as any,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    // If topic is under a descendant of sourceCategory, align domain type if it was using source type
+    if (sourceDescendants.includes(t.categoryId)) {
+      const isSourceType = t.type === sourceCat.type || t.type === sourceCat.slug;
+      if (isSourceType && t.type !== targetType) {
+        return {
+          ...t,
+          type: targetType as any,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+    }
+
+    return t;
+  });
+
+  return {
+    success: true,
+    sourceCategoryId,
+    targetCategoryId,
+    remappedTopicCount,
+    remappedChildCategoryCount,
+    updatedCategories,
+    updatedTopics,
+  };
+}

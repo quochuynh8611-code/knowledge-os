@@ -39,6 +39,8 @@ import {
   normalizeTopics,
   generateCategorySlug,
   getRootCategories,
+  mergeCategoryData,
+  MergeCategoriesResult,
 } from "../lib/taxonomyMigration";
 import {
   LocalStorageDataRepository,
@@ -105,6 +107,10 @@ interface DataContextType {
   addCategory: (categoryData: Omit<Category, "id">) => string;
   updateCategory: (id: string, categoryData: Partial<Category>) => void;
   deleteCategory: (id: string) => void;
+  mergeCategories: (
+    sourceCategoryId: string,
+    targetCategoryId: string,
+  ) => MergeCategoriesResult;
 
   // Actions - Topics
   addTopic: (
@@ -344,6 +350,29 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
   const deleteCategory = (id: string) => {
     setCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const mergeCategories = (
+    sourceCategoryId: string,
+    targetCategoryId: string,
+  ): MergeCategoriesResult => {
+    const result = mergeCategoryData(
+      categories,
+      topics,
+      sourceCategoryId,
+      targetCategoryId,
+    );
+
+    if (result.success) {
+      setCategories(result.updatedCategories);
+      setTopics(result.updatedTopics);
+
+      if (focusDomainId === sourceCategoryId) {
+        setFocusDomainId(targetCategoryId);
+      }
+    }
+
+    return result;
   };
 
   // Topics Handlers
@@ -891,6 +920,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       addCategory,
       updateCategory,
       deleteCategory,
+      mergeCategories,
       addTopic,
       updateTopic,
       deleteTopic,
