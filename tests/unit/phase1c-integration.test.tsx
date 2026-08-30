@@ -78,9 +78,10 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
   it("4. Điều hướng sang tab Tra Cứu (Search) và hiển thị SearchFilters", async () => {
     render(<App />);
 
-    // Click vào search input trên Navbar
+    // Click vào search input trên Navbar và submit form tìm kiếm
     const searchInput = screen.getByPlaceholderText(/Tìm kiếm chủ đề, ghi chú/i);
     fireEvent.change(searchInput, { target: { value: "Abhidharma" } });
+    fireEvent.submit(searchInput.closest("form")!);
 
     await waitFor(() => {
       expect(

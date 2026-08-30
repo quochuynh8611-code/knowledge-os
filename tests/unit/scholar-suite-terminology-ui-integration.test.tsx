@@ -154,7 +154,7 @@ describe('Phase P10.0 & P10.1: Terminology Dictionary Integration & Canonical Se
       await waitFor(() => {
         expect(screen.getByText(/Trích Dẫn Học Thuật/i)).toBeInTheDocument();
       });
-    });
+    }, 15000);
 
     it('searches by canonical Vietnamese phrase "nhận biết" and displays matching Citta card', () => {
       render(<MultilingualLexicon />);

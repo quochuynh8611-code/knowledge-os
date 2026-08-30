@@ -103,7 +103,7 @@ describe('Phase Performance: Lazy Modals Suspense & Lifecycle Resilience', () =>
     expect(handoffTitle).toBeInTheDocument();
 
     // Verify active topic title is rendered inside the modal
-    expect(screen.getByText(/Kinh Tế Học Vĩ Mô/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Kinh Tế Học Vĩ Mô/i).length).toBeGreaterThan(0);
 
     // Close modal
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));

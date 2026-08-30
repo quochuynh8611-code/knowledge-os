@@ -262,8 +262,8 @@ export class SyncQueueService {
         }
 
         try {
-          const success = await this.replayMutation(mutation, apiBaseUrl);
-          if (success) {
+          const result = await this.replayMutation(mutation, apiBaseUrl);
+          if (result.success) {
             this.remove(mutation.id);
             syncedCount++;
             this.recordTelemetryEvent("REPLAY_SUCCESS", {
@@ -273,7 +273,8 @@ export class SyncQueueService {
               action: mutation.action,
             });
           } else {
-            this.markFailed(mutation.id, "HTTP error during replay");
+            const errorMsg = result.error || "HTTP error during replay";
+            this.markFailed(mutation.id, errorMsg);
             failedCount++;
             this.recordTelemetryEvent("REPLAY_FAILED", {
               mutationId: mutation.id,
@@ -281,7 +282,7 @@ export class SyncQueueService {
               entityId: mutation.entityId,
               action: mutation.action,
               retryCount: mutation.retryCount + 1,
-              error: "HTTP error during replay",
+              error: errorMsg,
             });
             break; // Stop FIFO replay on first network failure to preserve order
           }
@@ -311,10 +312,40 @@ export class SyncQueueService {
     return { syncedCount, failedCount };
   }
 
+  private async executeReplayRequest(
+    url: string,
+    options: RequestInit
+  ): Promise<{ success: boolean; error?: string; isPermanent?: boolean }> {
+    const res = await fetch(url, options);
+    if (res.ok) {
+      return { success: true };
+    }
+
+    let errorDetail = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data && typeof data === "object") {
+        if (typeof data.error === "string") {
+          errorDetail = data.error;
+        } else if (Array.isArray(data.error)) {
+          errorDetail = data.error
+            .map((i: any) => i.message || (i.path ? i.path.join(".") : ""))
+            .filter(Boolean)
+            .join("; ");
+        }
+      }
+    } catch {
+      // Body not JSON, keep status code
+    }
+
+    const isPermanent = res.status >= 400 && res.status < 500;
+    return { success: false, error: errorDetail, isPermanent };
+  }
+
   private async replayMutation(
     mutation: SyncMutation,
     apiBaseUrl: string
-  ): Promise<boolean> {
+  ): Promise<{ success: boolean; error?: string; isPermanent?: boolean }> {
     const origin =
       typeof window !== "undefined" &&
       window.location &&
@@ -326,76 +357,68 @@ export class SyncQueueService {
     if (mutation.entityType === "category") {
       if (mutation.action === "save" && mutation.payload) {
         const url = `${origin}${apiBaseUrl}/categories`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(mutation.payload),
         });
-        return res.ok;
       }
       if (mutation.action === "delete") {
         const url = `${origin}${apiBaseUrl}/categories/${encodeURIComponent(mutation.entityId)}`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "DELETE",
         });
-        return res.ok;
       }
     }
 
     if (mutation.entityType === "topic") {
       if (mutation.action === "save" && mutation.payload) {
         const url = `${origin}${apiBaseUrl}/topics`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(mutation.payload),
         });
-        return res.ok;
       }
       if (mutation.action === "delete") {
         const url = `${origin}${apiBaseUrl}/topics/${encodeURIComponent(mutation.entityId)}`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "DELETE",
         });
-        return res.ok;
       }
     }
 
     if (mutation.entityType === "note") {
       if (mutation.action === "save" && mutation.payload) {
         const url = `${origin}${apiBaseUrl}/notes`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(mutation.payload),
         });
-        return res.ok;
       }
       if (mutation.action === "delete") {
         const url = `${origin}${apiBaseUrl}/notes/${encodeURIComponent(mutation.entityId)}`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "DELETE",
         });
-        return res.ok;
       }
     }
 
     if (mutation.entityType === "resource") {
       if (mutation.action === "save" && mutation.payload) {
         const url = `${origin}${apiBaseUrl}/resources`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(mutation.payload),
         });
-        return res.ok;
       }
       if (mutation.action === "delete") {
         const url = `${origin}${apiBaseUrl}/resources/${encodeURIComponent(mutation.entityId)}`;
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "DELETE",
         });
-        return res.ok;
       }
     }
 
@@ -407,16 +430,15 @@ export class SyncQueueService {
           quality: typeof mutation.payload.quality === "number" ? mutation.payload.quality : 4,
           triggerReason: mutation.payload.triggerReason || "offline_replayed",
         };
-        const res = await fetch(url, {
+        return this.executeReplayRequest(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        return res.ok;
       }
     }
 
-    return false;
+    return { success: false, error: "Unsupported mutation type", isPermanent: true };
   }
 
   listenForOnlineEvents(apiBaseUrl = "/api"): () => void {
