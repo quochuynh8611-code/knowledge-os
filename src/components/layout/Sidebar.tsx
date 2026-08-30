@@ -13,6 +13,7 @@ import {
   Clock,
   Brain,
   BookA,
+  BookOpen,
   Plus,
   X,
   Folder,
@@ -132,6 +133,7 @@ export function Sidebar() {
       badge: `${scholarCounts.totalHexagrams} Quẻ`,
     },
     { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
+    { id: 'docs', label: 'Tài liệu kiến trúc', icon: BookOpen },
   ];
 
   const renderNavButton = (item: NavItemConfig) => {

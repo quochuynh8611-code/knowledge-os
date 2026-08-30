@@ -15,7 +15,8 @@ export type ActiveTab =
   | "ai_studio"
   | "abhidharma_matrix"
   | "divination_matrix"
-  | "lexicon";
+  | "lexicon"
+  | "docs";
 
 export const VALID_TABS: readonly ActiveTab[] = [
   "dashboard",
@@ -29,6 +30,7 @@ export const VALID_TABS: readonly ActiveTab[] = [
   "abhidharma_matrix",
   "divination_matrix",
   "lexicon",
+  "docs",
 ] as const;
 
 export interface NavigationRouteState {

@@ -64,6 +64,11 @@ const MultilingualLexicon = React.lazy(() =>
     default: m.MultilingualLexicon,
   }))
 );
+const DocsExplorerView = React.lazy(() =>
+  import("./components/docs/DocsExplorerView").then((m) => ({
+    default: m.DocsExplorerView,
+  }))
+);
 const NotebookLMStudioModal = React.lazy(() =>
   import("./components/integrations/NotebookLMStudioModal").then((m) => ({
     default: m.NotebookLMStudioModal,
@@ -206,6 +211,12 @@ function AppContent() {
         return (
           <React.Suspense fallback={<TabLoadingFallback />}>
             <MultilingualLexicon />
+          </React.Suspense>
+        );
+      case "docs":
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <DocsExplorerView />
           </React.Suspense>
         );
       default:

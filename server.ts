@@ -13,6 +13,7 @@ import { createResourceRouter } from "./src/server/routes/resourceRoutes";
 import { createStudyProgressRouter } from "./src/server/routes/studyProgressRoutes";
 import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
+import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import {
   createRateLimiter,
   createRateLimitMiddleware,
@@ -79,6 +80,11 @@ async function startServer() {
   // BACKUP ROUTES (EXPORT & RESTORE)
   // ==========================================
   app.use("/api", createBackupRouter(prisma, restoreRateLimiter));
+
+  // ==========================================
+  // ARCHITECTURE DOCUMENTATION & SPECS ROUTES
+  // ==========================================
+  app.use("/api", createDocsRouter());
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {
