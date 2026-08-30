@@ -45,6 +45,74 @@ export interface TerminologyEtymology {
 }
 
 /**
+ * Standard Language Codes (BCP-47 compatible)
+ */
+export type StandardLanguageCode =
+  | 'vi'
+  | 'zh-Hant'
+  | 'zh-Hans'
+  | 'sa'
+  | 'pi'
+  | 'en'
+  | (string & {});
+
+/**
+ * Standard Script Codes (ISO-15924 compatible)
+ */
+export type StandardScriptCode =
+  | 'Latn'
+  | 'Hani'
+  | 'Deva'
+  | 'Brah'
+  | (string & {});
+
+/**
+ * Granular transliteration and phonetic systems
+ */
+export interface TransliterationSet {
+  readonly iast?: string;
+  readonly pinyin?: string;
+  readonly pinyinWithTones?: string;
+  readonly pinyinPlain?: string;
+  readonly hanViet?: string;
+  readonly devanagari?: string;
+  readonly plainAscii?: string;
+}
+
+/**
+ * Structured glosses and academic translation equivalents
+ */
+export interface LanguageGlossSet {
+  readonly preferred: string;
+  readonly alternates?: readonly string[];
+  readonly nuanceNote?: string;
+}
+
+/**
+ * Granular Language & Script Profile for an entry
+ */
+export interface LanguageProfile {
+  readonly language: StandardLanguageCode;
+  readonly script: StandardScriptCode;
+  readonly surfaceForm: string;
+  readonly transliterations?: TransliterationSet;
+  readonly glosses?: LanguageGlossSet;
+  readonly isPrimaryForLanguage?: boolean;
+}
+
+/**
+ * Traditional Chinese Medicine (TCM) Domain Extension Attributes
+ */
+export interface TcmDomainExtension {
+  readonly category: 'kinh-huyet' | 'tang-tuong' | 'duoc-tinh' | 'bat-cuong' | 'phuong-te' | (string & {});
+  readonly meridianCode?: string;
+  readonly nature?: string;
+  readonly flavor?: readonly string[];
+  readonly channelTropism?: readonly string[];
+  readonly primaryAction?: string;
+}
+
+/**
  * Canonical immutable data contract for a standalone Terminology Entry across any knowledge domain.
  */
 export interface TerminologyEntry {
@@ -58,6 +126,12 @@ export interface TerminologyEntry {
   readonly etymology?: TerminologyEtymology;
   readonly provenanceNote?: string;
   readonly sources?: TerminologySource[];
+  // P12.0 Multilingual & Language Profile Extensions
+  readonly conceptId?: string;
+  readonly sourceType?: 'lexicon' | 'system_node' | 'tcm_registry' | 'custom_glossary';
+  readonly sourceEntryId?: string;
+  readonly languageProfiles?: Record<string, LanguageProfile>;
+  readonly tcmExtension?: TcmDomainExtension;
 }
 
 

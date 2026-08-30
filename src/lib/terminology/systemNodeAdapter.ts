@@ -104,6 +104,16 @@ export function mapSystemNodeToTerminology(node: SystemNode): TerminologyEntry {
       }))
     : [];
 
+  const domainPrefix =
+    node.domain === 'phat-hoc'
+      ? 'buddhism'
+      : node.domain === 'huyen-hoc'
+      ? 'iching'
+      : 'general';
+  const conceptId = node.lexiconRefId
+    ? `concept:${domainPrefix}:${node.lexiconRefId.replace('lex-', '').replace('pali-', '').replace('iching-', '')}`
+    : `concept:${domainPrefix}:${node.code.toLowerCase()}`;
+
   return {
     id: node.id,
     title: node.title,
@@ -114,5 +124,8 @@ export function mapSystemNodeToTerminology(node: SystemNode): TerminologyEntry {
     summary: node.canonicalMeaning,
     provenanceNote: node.provenanceNote || node.crossDomainAnalogy,
     sources,
+    conceptId,
+    sourceType: 'system_node',
+    sourceEntryId: node.id,
   };
 }
