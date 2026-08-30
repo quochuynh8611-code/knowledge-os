@@ -3,24 +3,23 @@ import { useData } from "../../context/DataContext";
 import {
   ArrowLeft,
   BookOpen,
-  Sparkles,
   Compass,
   FileText,
   Library,
   Share2,
   Plus,
-  Play,
   Clock,
   CheckCircle2,
   Brain,
   Edit2,
-  ExternalLink,
   Tag as TagIcon,
   HelpCircle,
   Lightbulb,
   Bookmark,
   ChevronRight,
   Trash2,
+  ExternalLink,
+  Play,
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
@@ -28,6 +27,10 @@ import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
+// Phase 17B: new toolbar sub-components
+import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
+import { StudyCTA } from "./StudyCTA";
+import { NextActionStrip } from "./NextActionStrip";
 
 const ObsidianBridgeModal = React.lazy(() =>
   import("../integrations/ObsidianBridgeModal").then((m) => ({
@@ -62,6 +65,7 @@ import {
   formatTimeAgo,
 } from "../../lib/spaced-repetition";
 
+
 export function TopicDetail() {
   const {
     categories,
@@ -76,6 +80,12 @@ export function TopicDetail() {
     openTopicDetail,
     addKnowledgeLink,
     removeKnowledgeLink,
+    // Phase 17B: timer state for Smart CTA
+    activeTimerTopicId,
+    isTimerRunning,
+    timerSeconds,
+    startStudyTimer,
+    resumeStudyTimer,
   } = useData();
 
   const [activeTab, setActiveTab] = useState<
@@ -173,57 +183,41 @@ export function TopicDetail() {
           onHomeClick={() => setSelectedTopicId(null)}
         />
 
+        {/* Phase 17B: Simplified toolbar — 4 surface actions */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* AI Scholar trigger */}
-          <button
-            onClick={() => setShowAIStudioModal(true)}
-            className="px-3 py-1.5 bg-gradient-to-r from-amber-800 to-stone-900 hover:from-amber-900 hover:to-black text-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Antigravity AI
-          </button>
+          {/* Smart Study CTA (Phase 17B) */}
+          <StudyCTA
+            topicId={topic.id}
+            topicTitle={topic.title}
+            activeTimerTopicId={activeTimerTopicId}
+            isTimerRunning={isTimerRunning}
+            timerSeconds={timerSeconds}
+            onStartStudy={(id) => startStudyTimer(id, 'stopwatch')}
+            onResumeStudy={() => resumeStudyTimer()}
+          />
 
-          {/* Antigravity Handoff Bundle trigger */}
+          {/* SM-2 Spaced Review */}
           <button
-            onClick={() => setShowAntigravityModal(true)}
-            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
-            title="Đóng gói Handoff Bundle cho Antigravity AI"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-700" /> Handoff Bundle
-          </button>
-
-          {/* Obsidian Bridge trigger */}
-          <button
-            onClick={() => setShowObsidianModal(true)}
-            className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-            title="Đồng bộ với Obsidian Vault"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-purple-700" /> Obsidian
-          </button>
-
-          {/* NotebookLM Hub trigger */}
-          <button
-            onClick={() => setShowNotebookLMModal(true)}
-            className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-            title="Đóng gói nguồn và Audio Overview NotebookLM"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-blue-700" /> NotebookLM
-          </button>
-
-          <button
-            onClick={() => setShowTimerModal(true)}
-            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" /> Học (Timer)
-          </button>
-          <button
+            data-testid="review-btn"
             onClick={() => setShowReviewModal(true)}
-            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
           >
-            <Brain className="w-3.5 h-3.5 text-amber-700" /> Ôn tập SM-2
+            <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Ôn tập SM-2
           </button>
+
+          {/* Research Tools dropdown (AI Scholar / Handoff / Obsidian / NotebookLM) */}
+          <ResearchToolsDropdown
+            onOpenAIStudio={() => setShowAIStudioModal(true)}
+            onOpenHandoff={() => setShowAntigravityModal(true)}
+            onOpenObsidian={() => setShowObsidianModal(true)}
+            onOpenNotebookLM={() => setShowNotebookLMModal(true)}
+          />
+
+          {/* Edit topic */}
           <button
+            data-testid="edit-topic-btn"
             onClick={() => setShowEditTopicModal(true)}
-            className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-200 rounded-xl transition"
+            className="p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition"
             title="Chỉnh sửa chủ đề"
           >
             <Edit2 className="w-4 h-4" />
@@ -323,6 +317,8 @@ export function TopicDetail() {
               title="Kéo thanh trượt để cập nhật tiến độ"
             />
           </div>
+          {/* Phase 17B: Next-Action guidance strip */}
+          <NextActionStrip topic={topic} />
         </div>
       </div>
 

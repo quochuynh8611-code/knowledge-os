@@ -556,9 +556,17 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
       expect(firstResult.current.categories.some((c) => c.id === targetCatId)).toBe(true);
 
       // Wait for async persistence to write to storage
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      });
+      await waitFor(
+        () => {
+          const raw = localStorage.getItem('categories');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            expect(parsed.some((c: Category) => c.id === sourceCatId)).toBe(false);
+            expect(parsed.some((c: Category) => c.id === targetCatId)).toBe(true);
+          }
+        },
+        { timeout: 3000, interval: 20 }
+      );
 
       // Unmount first session
       firstUnmount();
