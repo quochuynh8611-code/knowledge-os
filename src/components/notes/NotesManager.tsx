@@ -8,14 +8,11 @@ import {
   Bookmark,
   Plus,
   Search,
-  Sparkles,
   Edit2,
   Trash2,
-  Tag as TagIcon,
   BookOpen,
   Eye,
-  Copy,
-  Check,
+  FolderOpen,
 } from 'lucide-react';
 import { NoteFormModal } from '../modals/NoteFormModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
@@ -142,7 +139,7 @@ export function NotesManager() {
       </div>
 
       {/* Notes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
         {filteredNotes.map((note) => {
           const getTypeBadge = () => {
             switch (note.type) {
@@ -177,9 +174,9 @@ export function NotesManager() {
             <div
               key={note.id}
               onClick={() => setReadingNote(note)}
-              className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition flex flex-col justify-between space-y-3 cursor-pointer group"
+              className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition flex flex-col justify-between space-y-3.5 cursor-pointer group"
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800 pb-2">
                   <div className="flex items-center gap-2">
                     {getTypeBadge()}
@@ -196,19 +193,21 @@ export function NotesManager() {
                   <span>{formatTimeAgo(note.createdAt)}</span>
                 </div>
 
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition">
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm sm:text-base group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition font-serif-title">
                   {note.title}
                 </h3>
 
-                <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed line-clamp-3">
+                {/* Plain-text readable preview with comfortable line-clamp */}
+                <p className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 leading-relaxed line-clamp-3 font-normal">
                   {toReadablePlainTextPreview(note.content)}
                 </p>
 
                 {/* Source Path Display */}
                 {note.sourcePath && (
-                  <div className="p-2 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl flex items-center justify-between text-[11px] font-mono text-stone-700 dark:text-stone-300 mt-2">
-                    <span className="truncate flex-1 mr-2" title={note.sourcePath}>
-                      📄 {note.sourcePath}
+                  <div className="p-2.5 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl flex items-center justify-between text-[11px] font-mono text-stone-700 dark:text-stone-300 mt-2">
+                    <span className="truncate flex-1 mr-2 flex items-center gap-1.5" title={note.sourcePath}>
+                      <FolderOpen className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                      <span className="truncate">{note.sourcePath}</span>
                     </span>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
@@ -231,27 +230,33 @@ export function NotesManager() {
                 )}
               </div>
 
-              <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-xs">
-                <div className="flex flex-wrap gap-1">
+              {/* Card Footer: Tags & Prominent Reading CTA */}
+              <div className="pt-2.5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2 text-xs">
+                <div className="flex flex-wrap gap-1 max-w-[60%]">
                   {note.tags.map((t) => (
-                    <span key={t} className="px-1.5 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded text-[10px]">
+                    <span key={t} className="px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded-md text-[10px] font-medium">
                       #{t}
                     </span>
                   ))}
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Prominent Read CTA */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setReadingNote(note);
                     }}
-                    className="p-1.5 text-stone-400 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-lg transition cursor-pointer"
-                    title="Đọc ghi chú chi tiết"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800/80 rounded-xl text-xs font-semibold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                    title="Đọc nội dung trong khung lớn"
+                    aria-label={`Đọc tiếp ghi chú ${note.title}`}
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                    <span>Đọc tiếp</span>
                   </button>
+
+                  {/* Secondary Edit Action */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -261,9 +266,12 @@ export function NotesManager() {
                     }}
                     className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
                     title="Sửa ghi chú"
+                    aria-label="Sửa ghi chú"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
+
+                  {/* Secondary Delete Action */}
                   <button
                     type="button"
                     onClick={(e) => {
@@ -272,6 +280,7 @@ export function NotesManager() {
                     }}
                     className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition cursor-pointer"
                     title="Xóa ghi chú"
+                    aria-label="Xóa ghi chú"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
