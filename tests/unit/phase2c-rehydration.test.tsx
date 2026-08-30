@@ -86,6 +86,6 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     expect(typeof result.current.reloadAllData).toBe('function');
     expect(outcome).toBe(false);
     expect(result.current.topics).toEqual(originalTopics);
-    expect(result.current.topics.length).toBe(35);
+    expect(result.current.topics.length).toBe(INITIAL_TOPICS.length);
   });
 });

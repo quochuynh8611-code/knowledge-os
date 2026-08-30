@@ -417,7 +417,7 @@ export function TopicTree() {
                   <span className="text-xs font-mono text-stone-600 hidden sm:inline">
                     {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
                   </span>
-                  {cat.id !== 'cat-root-phat-hoc' && cat.id !== 'cat-root-huyen-hoc' && (
+                  {!['cat-root-phat-hoc', 'cat-root-huyen-hoc', 'cat-root-dong-y', 'cat-root-ngon-ngu'].includes(cat.id) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

@@ -60,7 +60,16 @@ describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integrati
 
       const hhStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-huyen-hoc');
       expect(hhStats.totalTopics).toBeGreaterThan(0);
-      expect(hhStats.totalTopics + phStats.totalTopics).toBe(normalizedTopics.length);
+
+      const dyStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-dong-y');
+      expect(dyStats.totalTopics).toBeGreaterThan(0);
+
+      const nnStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-ngon-ngu');
+      expect(nnStats.totalTopics).toBeGreaterThan(0);
+
+      expect(
+        phStats.totalTopics + hhStats.totalTopics + dyStats.totalTopics + nnStats.totalTopics
+      ).toBe(normalizedTopics.length);
 
       // Custom root with no topics
       const customCats = [

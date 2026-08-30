@@ -155,9 +155,13 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility Helper Library', () 
     // Counts for standard root categories must not be 0
     const phCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-phat-hoc');
     const hhCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-huyen-hoc');
+    const dyCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-dong-y');
+    const nnCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-ngon-ngu');
     expect(phCount).toBeGreaterThan(0);
     expect(hhCount).toBeGreaterThan(0);
-    expect(phCount + hhCount).toBe(normalizedTopics.length);
+    expect(dyCount).toBeGreaterThan(0);
+    expect(nnCount).toBeGreaterThan(0);
+    expect(phCount + hhCount + dyCount + nnCount).toBe(normalizedTopics.length);
 
     // Newly added root category has 0 topics
     const customCats = [

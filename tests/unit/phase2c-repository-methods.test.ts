@@ -94,7 +94,7 @@ describe('Phase 2C.1: Repository Layer Backup, Restore & Health Contracts (Optio
         expect.stringContaining('/api/backup/export')
       );
       expect(BackupSnapshotSchema.safeParse(result).success).toBe(true);
-      expect(result.counts.topics).toBe(35);
+      expect(result.counts.topics).toBe(INITIAL_TOPICS.length);
       expect(result.checksum).toBe(validChecksum);
     });
 
@@ -123,7 +123,7 @@ describe('Phase 2C.1: Repository Layer Backup, Restore & Health Contracts (Optio
       expect(sentBody.mode).toBe('replace');
       expect(sentBody.confirmReplace).toBe(true);
       expect(sentBody.snapshot.version).toBe('2.0.0');
-      expect(sentBody.snapshot.counts.topics).toBe(35);
+      expect(sentBody.snapshot.counts.topics).toBe(INITIAL_TOPICS.length);
 
       expect(RestoreResponseSchema.safeParse(result).success).toBe(true);
       expect(result.success).toBe(true);

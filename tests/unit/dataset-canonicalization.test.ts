@@ -22,13 +22,13 @@ import {
 } from "../../src/data/initialData";
 import { TopicSchema } from "../../src/lib/validation";
 
-describe("Dataset Canonicalization Test Suite - 35 Topics SSOT Integrity", () => {
+describe("Dataset Canonicalization Test Suite - SSOT Integrity", () => {
   // ---------------------------------------------------------------------------
   // Scenario 1: Exact seed cardinalities
   // ---------------------------------------------------------------------------
-  it("1. Exact seed cardinalities (10 categories, 35 topics, 5 notes, 4 resources, 12 tags)", () => {
-    expect(INITIAL_CATEGORIES.length).toBe(10);
-    expect(INITIAL_TOPICS.length).toBe(35);
+  it("1. Exact seed cardinalities (16 categories, 39 topics, 5 notes, 4 resources, 12 tags)", () => {
+    expect(INITIAL_CATEGORIES.length).toBe(16);
+    expect(INITIAL_TOPICS.length).toBe(39);
     expect(INITIAL_NOTES.length).toBe(5);
     expect(INITIAL_RESOURCES.length).toBe(4);
     expect(INITIAL_TAGS.length).toBe(12);
@@ -37,7 +37,7 @@ describe("Dataset Canonicalization Test Suite - 35 Topics SSOT Integrity", () =>
   // ---------------------------------------------------------------------------
   // Scenario 2: Unique topic IDs and slugs
   // ---------------------------------------------------------------------------
-  it("2. Unique topic IDs and slugs across all 35 topics", () => {
+  it("2. Unique topic IDs and slugs across all topics", () => {
     const topicIds = INITIAL_TOPICS.map((t) => t.id);
     const topicSlugs = INITIAL_TOPICS.map((t) => t.slug);
 
@@ -46,8 +46,8 @@ describe("Dataset Canonicalization Test Suite - 35 Topics SSOT Integrity", () =>
 
     expect(uniqueIds.size).toBe(INITIAL_TOPICS.length);
     expect(uniqueSlugs.size).toBe(INITIAL_TOPICS.length);
-    expect(uniqueIds.size).toBe(35);
-    expect(uniqueSlugs.size).toBe(35);
+    expect(uniqueIds.size).toBe(39);
+    expect(uniqueSlugs.size).toBe(39);
   });
 
   // ---------------------------------------------------------------------------
