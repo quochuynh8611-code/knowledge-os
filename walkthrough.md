@@ -1,18 +1,19 @@
-# Walkthrough: Phase P7.3 Completed — Saved Views & Lightweight Retrieval Ranking
+# Walkthrough: Phase 17 Completed — Focus Learning Session & Guided Next-Action UX
 
-## Tổng Quan Phase P7.3
+## Tổng Quan Phase 17
 
-Phase P7.3 hoàn thiện tính năng **Saved Views** (Góc nhìn đã lưu) và **Lightweight Retrieval Ranking** (Xếp hạng tìm kiếm trọng số nhẹ) theo đúng quy trình **spec-first, ADR-first, test-first**:
+Phase 17 hoàn thiện trải nghiệm học tập tập trung (**Focus Learning Session**), tinh giản giao diện chủ đề (**TopicDetail Toolbar Simplification**) và điều hướng hành động thông minh (**Next-Action Hub**) theo đúng triết lý *learning-first, calm, low cognitive load*:
 
-1. **P7.3a — Storage Helper & Ranking Core**:
-   - Tầng lưu trữ thuần túy `savedViewStorage.ts` quản lý tối đa 20 views (`phat_hoc_saved_views_v1`), sắp xếp tất định (pinned lên đầu, sau đó theo `updatedAt desc`).
-   - Tinh chỉnh hợp đồng: `pinned` là boolean bắt buộc, `updateSavedSearchView` không thay đổi pin (quản lý độc quyền qua `togglePinSavedSearchView`), cho phép `query === ""` nếu có ít nhất 1 bộ lọc khác mặc định.
-   - Điểm thưởng xếp hạng trọng số nhẹ trong `scholarSearch.ts`: Multi-token Title Coverage (+15) và Word-boundary Description Match (+10), bảo toàn tuyệt đối thứ bậc ưu tiên.
+1. **Phase 17A — Floating Session Bar & Wrap-up Flow (Commit `330fcaf`)**:
+   - **Thanh phiên học nổi `ActiveLearningSessionBar.tsx`**: Đặt cố định ở đáy màn hình khi có session hoạt động, hiển thị thời gian học theo thời gian thực (MM:SS), trạng thái đang học / tạm dừng, nút bấm trực tiếp không che khuất nội dung học tập.
+   - **Modal đúc kết `SessionWrapupModal.tsx`**: Kích hoạt khi bấm "Hoàn tất" trên session bar; hỗ trợ ghi nhanh đúc kết (tạo Note với tag `#takeaway` chỉ khi có nội dung), điều chỉnh slider tiến độ trực tiếp.
+   - **Hợp đồng Timer `resumeStudyTimer`**: Bổ sung trong `StudyTimerContext` và `DataContext` để tiếp tục phiên học đang tạm dừng mà không reset `timerSeconds` về 0.
 
-2. **P7.3b — UI Integration & Command Palette Convergence**:
-   - Giao diện `AdvancedSearch.tsx`: Thanh chip "Góc nhìn đã lưu:" hỗ trợ 1-click replay (nạp lại query & filters), nút Pin (📌) và Delete (✕) dùng `e.stopPropagation()` để không trigger replay ngoài ý muốn, inline save panel mở khi điều kiện tìm kiếm hợp lệ.
-   - Hội tụ `useCommandPalette.ts`: Nhận `savedViews` qua options (Dependency Injection) và hiển thị dạng command item `[Góc nhìn] <Tên>` trong danh mục "Điều hướng".
-   - Tài liệu kiến trúc và đặc tả: `ADR-050` và Gherkin `phase-p7-3-saved-views-and-ranking.feature`.
+2. **Phase 17B — TopicDetail Toolbar Simplification & Smart Study CTA (Commit `fd0f376`)**:
+   - **Tinh giản Toolbar**: Gom 7 nút dàn trải trước đây xuống 4 hành động mặt nổi (`StudyCTA`, `Ôn tập SM-2`, `ResearchToolsDropdown ▾`, `Chỉnh sửa`).
+   - **Dropdown công cụ nghiên cứu `ResearchToolsDropdown.tsx`**: Gom 4 công cụ nâng cao (`Antigravity AI Scholar`, `Handoff Bundle`, `Obsidian Bridge`, `NotebookLM Studio`), tự động đóng khi chọn hoặc click ngoài.
+   - **Smart Study CTA `StudyCTA.tsx`**: Phản ánh 5 trạng thái ngữ cảnh (`no-session`, `this-running`, `this-paused`, `other-running`, `other-paused`) kèm **Hard Guard** chặn chuyển chủ đề ngầm khi đang có session ở chủ đề khác, và kết nối `onResumeStudy` với `resumeStudyTimer()`.
+   - **Gợi ý hành động tiếp theo `NextActionStrip.tsx`**: Hiển thị dòng nhắc nhở ngữ cảnh dưới thanh tiến độ theo 4 trạng thái học tập.
 
 ---
 
@@ -20,20 +21,24 @@ Phase P7.3 hoàn thiện tính năng **Saved Views** (Góc nhìn đã lưu) và 
 
 | Commit Hash | Commit Message | Files Thay Đổi |
 | :--- | :--- | :--- |
-| **`96ff9d6`** | `feat(retrieval): implement P7.3a saved views storage helper and additive ranking` | `src/lib/scholarSearch.ts`<br>`src/lib/savedViewStorage.ts`<br>`src/lib/recentSearchStorage.ts`<br>`tests/unit/saved-view-storage.test.ts`<br>`tests/unit/scholar-ranking-affinity.test.ts`<br>`tests/unit/recent-search-storage.test.ts` |
-| **`f2db438`** | `feat(search-ui): implement P7.3b saved views chip stream, inline save panel, and palette convergence` | `src/components/search/AdvancedSearch.tsx`<br>`src/hooks/useCommandPalette.ts`<br>`tests/unit/advanced-search-saved-views.test.tsx`<br>`tests/unit/command-palette-saved-views.test.tsx`<br>`docs/adr/ADR-050-saved-views-and-retrieval-ranking.md`<br>`docs/gherkin/phase-p7-3-saved-views-and-ranking.feature` |
+| **`330fcaf`** | `feat(learning): add focused study session bar and guided wrap-up flow` | `src/components/dashboard/ActiveLearningSessionBar.tsx`<br>`src/components/modals/SessionWrapupModal.tsx`<br>`src/context/StudyTimerContext.tsx`<br>`src/context/DataContext.tsx`<br>`src/App.tsx`<br>`tests/unit/phase17-learning-session-flow.test.tsx`<br>`docs/specs/phase-17-focus-learning-session-and-next-action.md`<br>`docs/gherkin/phase-17-focus-learning-session-and-next-action.feature` |
+| **`fd0f376`** | `feat(learning): simplify topic toolbar and add guided next-action flow` | `src/components/topics/StudyCTA.tsx`<br>`src/components/topics/ResearchToolsDropdown.tsx`<br>`src/components/topics/NextActionStrip.tsx`<br>`src/components/topics/TopicDetail.tsx`<br>`tests/unit/phase17b-topic-detail-toolbar.test.tsx`<br>`tests/unit/phase17-learning-session-flow.test.tsx`<br>`tests/unit/taxonomy-merge-safety.test.tsx` |
 
 ---
 
 ## Kết Quả Kiểm Thử (Test Verification)
 
-- **Targeted & Regression Suite (6 test files / 35 tests)**:
-  - `tests/unit/saved-view-storage.test.ts`: **10/10 passed**
-  - `tests/unit/scholar-ranking-affinity.test.ts`: **4/4 passed**
-  - `tests/unit/scholar-search-lib.test.ts`: **8/8 passed**
-  - `tests/unit/recent-search-storage.test.ts`: **7/7 passed**
-  - `tests/unit/advanced-search-saved-views.test.tsx`: **4/4 passed**
-  - `tests/unit/command-palette-saved-views.test.tsx`: **2/2 passed**
-  - **Tổng cộng**: **35/35 tests passed (100% pass)**.
-- **Typecheck & Lint (`npm run lint` - `tsc --noEmit`)**: **0 errors**.
-- **Working Tree**: Clean.
+- **Phase 17 Suites (37 tests across 2 files)**:
+  - `tests/unit/phase17-learning-session-flow.test.tsx`: **19/19 passed**
+  - `tests/unit/phase17b-topic-detail-toolbar.test.tsx`: **18/18 passed**
+  - **Tổng cộng Phase 17**: **37/37 tests passed (100% pass)**.
+- **Targeted Regression Pack (5 files / 68 tests)**:
+  - `tests/unit/topic-detail-resilience.test.tsx`: **3/3 passed**
+  - `tests/unit/phase17b-topic-detail-toolbar.test.tsx`: **18/18 passed**
+  - `tests/unit/phase17-learning-session-flow.test.tsx`: **19/19 passed**
+  - `tests/unit/dynamic-taxonomy-ui.test.tsx`: **7/7 passed**
+  - `tests/unit/taxonomy-merge-safety.test.tsx`: **21/21 passed**
+- **Toàn bộ Test Suite hiện hành**: **195 / 195 test files passed — 1241 / 1241 tests passed (100% GREEN)**.
+- **TypeScript Typecheck (`npm run lint`)**: **0 errors, 0 warnings**.
+- **Working Tree**: Sạch sẽ, tuân thủ nghiêm ngặt quy trình quản lý mã nguồn.
+

@@ -32,7 +32,8 @@
        ├── PHASE 13:  Learning-First Overview Reframe [VERIFIED]
        ├── PHASE 14:  Focus Domain Priority & Weekly Cadence Bar (Phase 14a-14c) [VERIFIED]
        ├── PHASE 15:  Root Domain Expansion & Starter Topics Enrichment [VERIFIED]
-       └── PHASE 16:  Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence [VERIFIED]
+       ├── PHASE 16:  Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence [VERIFIED]
+       └── PHASE 17:  Focus Learning Session, Smart Study CTA & Guided Next-Action UX [VERIFIED]
 ```
 
 ---
@@ -325,6 +326,22 @@
 
 ---
 
+### 🔹 PHASE 17: Focus Learning Session, Smart Study CTA & Guided Next-Action UX (ĐÃ HOÀN THÀNH)
+- **Tài liệu đặc tả:** [`docs/specs/phase-17-focus-learning-session-and-next-action.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-17-focus-learning-session-and-next-action.md) · [`docs/gherkin/phase-17-focus-learning-session-and-next-action.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-17-focus-learning-session-and-next-action.feature)
+- **Trọng tâm:**
+  - **Phase 17A (Commit `330fcaf`):**
+    - Thanh phiên học nổi [`ActiveLearningSessionBar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/dashboard/ActiveLearningSessionBar.tsx) theo dõi trạng thái chạy/tạm dừng không che khuất màn hình học.
+    - Modal đúc kết [`SessionWrapupModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/SessionWrapupModal.tsx) hỗ trợ nhập nhanh ghi chú đúc kết và cập nhật slider tiến độ.
+    - `resumeStudyTimer` trong `StudyTimerContext` cho phép tiếp tục phiên mà không reset `timerSeconds`.
+  - **Phase 17B (Commit `fd0f376`):**
+    - Tinh giản thanh công cụ `TopicDetail.tsx` xuống 4 hành động chính: `StudyCTA`, `Ôn tập SM-2`, `ResearchToolsDropdown` (gom 4 công cụ nâng cao), `Chỉnh sửa`.
+    - Component [`StudyCTA.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/StudyCTA.tsx) 5 trạng thái ngữ cảnh kèm **Hard Guard** chống chuyển chủ đề ngầm làm mất session đang chạy.
+    - Kết nối `onResumeStudy` với `resumeStudyTimer()`.
+    - Dòng gợi ý ngữ cảnh [`NextActionStrip.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/NextActionStrip.tsx) dưới thanh trượt tiến độ.
+- **Kiểm chứng:** 37/37 tests PASS (`phase17-learning-session-flow.test.tsx` 19/19 + `phase17b-topic-detail-toolbar.test.tsx` 18/18).
+
+---
+
 ## 📋 QUYẾT ĐỊNH TRÌ HOÃN & BACKLOG TINH GỌN (INTENTIONALLY DEFERRED BACKLOG)
 
 Dưới đây là các hạng mục đã được nghiên cứu, cân nhắc và **chủ động trì hoãn hoặc quyết định không triển khai (Intentionally Deferred / Rejected by Design)** nhằm bảo toàn tính ổn định và kiến trúc tối giản:
@@ -351,7 +368,7 @@ Dưới đây là các hạng mục đã được nghiên cứu, cân nhắc và
 ## BẢNG TỔNG KẾT HỆ THỐNG (SYSTEM BASELINE)
 
 - **Baseline lịch sử (trước Phase 6j):** 65 / 65 test files PASS — 399 / 399 tests PASS (100% GREEN).
-- **Toàn bộ Test Suite hiện hành:** ✅ **193 / 193 test files PASS — 1204 / 1204 tests PASS (100% GREEN)**.
+- **Toàn bộ Test Suite hiện hành:** ✅ **195 / 195 test files PASS — 1241 / 1241 tests PASS (100% GREEN)**.
 - **TypeScript:** `npm run lint` (`tsc --noEmit`) đạt 0 error, 0 warning.
 - **Build Production:** `npm run build` tạo bundle sạch trong `dist/`.
 

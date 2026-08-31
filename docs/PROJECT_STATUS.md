@@ -188,6 +188,7 @@
 | **Phase 14** | **Focus Domain Priority & Weekly Cadence Bar (Phase 14a-14c):**<br>- Ghim lĩnh vực trọng tâm (`focusDomainId`) trên Dashboard<br>- Thanh nhịp học tuần `WeeklyCadenceBar` (7 ngày ISO, 4 cấp bậc nhịp học) | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 27/27 tests)* | **Hoàn tất 100% (Commit `4f9f234`)* |
 | **Phase 15** | **Root Domain Expansion & Starter Topics Enrichment:**<br>- Khởi tạo lĩnh vực Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`)<br>- Làm giàu chủ đề mẫu chất lượng cao kèm metadata SM-2 | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 8/8 tests)* | **Hoàn tất 100% (Commit `6671e42`)* |
 | **Phase 16** | **Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence:**<br>- Gộp an toàn các danh mục kinh tế cũ vào `cat-root-kinh-te-tai-chinh`<br>- UI Confirmation Gate ngăn xóa nhầm và tự động gộp an toàn<br>- Gia cố Rehydration chống hồi sinh danh mục và làm sạch khi reset | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 27/27 tests)* | **Hoàn tất 100% (Commit `6d7e34c`)* |
+| **Phase 17** | **Focus Learning Session, Smart Study CTA & Guided Next-Action UX:**<br>- Phase 17A: Thanh phiên học `ActiveLearningSessionBar` + Modal đúc kết `SessionWrapupModal` + `resumeStudyTimer`<br>- Phase 17B: Tinh giản Topic toolbar (4 actions) + Smart Study CTA (5 states, cross-topic guard) + `NextActionStrip` | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 37/37 tests)* | **Hoàn tất 100% (Commits `330fcaf`, `fd0f376`)* |
 
 ---
 
@@ -204,15 +205,16 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **193 / 193 test files PASS — 1204 / 1204 tests PASS (100% GREEN)**.
+- **Regression Test Suite:** ✅ **195 / 195 test files PASS — 1241 / 1241 tests PASS (100% GREEN)**.
+- **Phase 17 Suites (Focus Learning Session & Next-Action UX):** ✅ `phase17-learning-session-flow.test.tsx` (19/19 PASS) · `phase17b-topic-detail-toolbar.test.tsx` (18/18 PASS).
+- **Phase 16 Suites (Taxonomy Cleanup, Safe Merge & Rehydration Persistence):** ✅ `taxonomy-migration.test.ts` (6/6 PASS) · `taxonomy-merge-safety.test.tsx` (21/21 PASS) · `dynamic-taxonomy-lib.test.ts` (7/7 PASS).
 - **Phase 14C Suites (Weekly Cadence Bar & Habit Tracking):** ✅ `weekly-cadence-selector.test.ts` (8/8 PASS) · `weekly-cadence-bar.test.tsx` (7/7 PASS) · `phase14b-focus-domain-ui.test.tsx` (4/4 PASS).
 - **Phase 15 Suites (Root Domain Expansion & Starter Topics):** ✅ `phase15a-root-domain-expansion.test.tsx` (4/4 PASS) · `phase15b-starter-topics-enrichment.test.tsx` (4/4 PASS).
-- **Phase 16 Suites (Taxonomy Cleanup, Safe Merge & Rehydration Persistence):** ✅ `taxonomy-migration.test.ts` (6/6 PASS) · `taxonomy-merge-safety.test.tsx` (21/21 PASS) · `dynamic-taxonomy-lib.test.ts` (7/7 PASS).
 - **Phase 7 Suites (Rebrand & Note Reader UX):** ✅ `note-readability-ux.test.tsx` (8/8 PASS) · `phase7a-rebrand-and-note-reader.test.tsx` (8/8 PASS) · `phase7c-content-readability-presentation.test.tsx` (7/7 PASS).
 - **P12 Suites (Multilingual Terminology, TCM Registry & Docs Explorer):** ✅ `terminology-unified-dictionary.test.ts` (7/7 PASS) · `terminology-lexicon-dictionary.test.ts` (12/12 PASS) · `docs-routing.test.ts` (3/3 PASS).
 - **P8 Scholar Citation Suites:** ✅ `scholar-citation-matrix-export.test.ts` (5/5 PASS) · `scholar-citation-matrix-normalizer.test.ts` (5/5 PASS) · `scholar-citation-csl.test.ts` (3/3 PASS).
 - **TypeScript Type-Check:** ✅ `npm run lint` (`tsc --noEmit`) đạt **0 errors, 0 warnings**.
-- **Production Bundle:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
+- **Production Build:** ✅ `npm run build` tạo bundle Vite + esbuild sạch sẽ trong `dist/`.
 - **Git Diff & Whitespace Check:** ✅ `git diff --check` đạt **0 issues**.
 - **Database & Dual-Tier Persistence:** ✅ Hoạt động ổn định trên cả PostgreSQL/Prisma và LocalStorage offline fallback.
 
@@ -220,7 +222,11 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Taxonomy Cleanup, Safe Merge & Rehydration Persistence (Phase 16):**
+1. **Focus Learning Session & Next-Action UX (Phase 17):**
+   - **Phase 17A (Commit `330fcaf`):** Triển khai thanh phiên học nổi `ActiveLearningSessionBar.tsx` (hiển thị timer chạy/tạm dừng, nút tạm dừng/tiếp tục/hoàn tất không che khuất màn hình), modal đúc kết phiên `SessionWrapupModal.tsx` (tùy chọn lưu ghi chú đúc kết + cập nhật slider tiến độ trực tiếp), và bổ sung `resumeStudyTimer` trong `StudyTimerContext` để tiếp tục phiên học mà không reset bộ đếm giây.
+   - **Phase 17B (Commit `fd0f376`):** Tinh giản thanh công cụ `TopicDetail.tsx` từ 7 nút dàn trải xuống 4 hành động chính (`StudyCTA`, `Ôn tập SM-2`, `ResearchToolsDropdown`, `Chỉnh sửa`); triển khai Smart Study CTA với 5 trạng thái ngữ cảnh kèm **Hard Guard** chống chuyển chủ đề ngầm làm mất session đang chạy; kết nối `onResumeStudy` với `resumeStudyTimer()`; và nhúng dòng gợi ý ngữ cảnh `NextActionStrip.tsx` ngay dưới thanh trượt tiến độ.
+   - **Kiểm thử:** 37/37 tests PASS trong `phase17-learning-session-flow.test.tsx` (19/19) và `phase17b-topic-detail-toolbar.test.tsx` (18/18).
+2. **Taxonomy Cleanup, Safe Merge & Rehydration Persistence (Phase 16):**
    - **Pure Migration Helper:** Module [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts) cung cấp `mergeCategoryData` gộp an toàn các danh mục kinh tế cũ (`cat-root-kinh-te`, `cat-root-kinh-te-hoc`) sang danh mục chuẩn `cat-root-kinh-te-tai-chinh`, tái gán `categoryId` cho topic và `parentId` cho subcategory mà không làm mất ghi chú, tài liệu hay tiến độ SM-2.
    - **DataContext Action & Persistence Sequencing:** `mergeCategories` trong `DataContext.tsx` ghi nhận cập nhật in-memory, gọi `syncHydrate` trước để bảo đảm toàn vẹn dữ liệu, sau đó mới gọi `deleteCategory` trên kho lưu trữ.
    - **UI Safe Guard & Delete Confirm:** `TopicTree.tsx` nhận diện các danh mục kinh tế cũ qua `isEconomyMergeSource` và chuyển hướng thao tác xóa thành xác nhận gộp danh mục an toàn.
