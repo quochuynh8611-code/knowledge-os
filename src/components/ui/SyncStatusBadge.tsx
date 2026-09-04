@@ -138,8 +138,11 @@ export function SyncStatusBadge({
   // ─── 2. Entity Icon / Label & Backoff Helper ──────────────────────────────
 
   const getBackoffStatusText = (mutation: SyncMutation, currentNowMs: number): string | null => {
-    if (mutation.status !== "failed") {
+    if (mutation.status !== "failed" && mutation.status !== "exhausted") {
       return null;
+    }
+    if (mutation.status === "exhausted" || mutation.isPermanent) {
+      return "Đã dừng thử lại (Cần can thiệp)";
     }
     if (!mutation.nextRetryAt) {
       return "Sẵn sàng thử lại";
@@ -371,7 +374,7 @@ export function SyncStatusBadge({
                     const { label: entityLabel, icon: EntityIcon } = getEntityInfo(
                       mutation.entityType
                     );
-                    const isFailed = mutation.status === "failed";
+                    const isFailed = mutation.status === "failed" || mutation.status === "exhausted";
 
                     return (
                       <div
@@ -405,9 +408,11 @@ export function SyncStatusBadge({
                               }`}
                             >
                               {isFailed
-                                ? mutation.retryCount > 0
-                                  ? `Lỗi (${mutation.retryCount} lần)`
-                                  : "Lỗi"
+                                ? mutation.status === "exhausted"
+                                  ? `Dừng thử (${mutation.retryCount} lần)`
+                                  : mutation.retryCount > 0
+                                    ? `Lỗi (${mutation.retryCount} lần)`
+                                    : "Lỗi"
                                 : "Chờ đồng bộ"}
                             </span>
                           </div>

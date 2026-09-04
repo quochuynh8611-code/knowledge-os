@@ -62,7 +62,7 @@ describe("Phase P2.7c — Sync Backoff Indicator UI", () => {
         action: "save",
         entityId: "note-202",
         clientTimestamp: "2026-08-28T11:59:00.000Z",
-        retryCount: 7,
+        retryCount: 3,
         status: "failed",
         lastError: "HTTP 500 Server Error",
         lastAttemptAt: "2026-08-28T12:00:00.000Z",

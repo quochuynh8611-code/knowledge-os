@@ -1,5 +1,7 @@
 import {
   type SyncMutation,
+  DEFAULT_MAX_RETRY_COUNT,
+  isPermanentHttpStatus,
   enqueueMutation,
   dequeueMutation,
   markMutationFailed,
@@ -205,7 +207,7 @@ export class SyncQueueService {
   discard(mutationId: string): boolean {
     const queue = this.getQueue();
     const target = queue.find((m) => m.id === mutationId);
-    if (!target || target.status !== "failed") {
+    if (!target || (target.status !== "failed" && target.status !== "exhausted")) {
       return false;
     }
     this.remove(mutationId);
@@ -219,15 +221,24 @@ export class SyncQueueService {
     return true;
   }
 
-  markFailed(mutationId: string, error?: string): void {
+  markFailed(
+    mutationId: string,
+    error?: string,
+    options?: {
+      isPermanent?: boolean;
+      httpStatus?: number;
+      maxRetries?: number;
+    }
+  ): void {
     const queue = this.getQueue();
-    const updated = markMutationFailed(queue, mutationId, error);
+    const updated = markMutationFailed(queue, mutationId, error, options);
     this.saveQueue(updated);
   }
 
   /**
    * Replays pending mutations in FIFO order against REST API endpoints.
    * Respects exponential backoff delay unless bypassBackoff is set to true.
+   * Does not block FIFO on permanent errors or exhausted mutations.
    */
   async flushQueue(
     apiBaseUrl = "/api",
@@ -258,7 +269,15 @@ export class SyncQueueService {
             options?.bypassBackoff
           )
         ) {
-          break; // Stop FIFO replay when head mutation is in backoff cooldown
+          // If mutation is permanently broken or exhausted, skip it so valid mutations behind it can replay
+          if (
+            mutation.status === "exhausted" ||
+            mutation.isPermanent ||
+            mutation.retryCount >= DEFAULT_MAX_RETRY_COUNT
+          ) {
+            continue;
+          }
+          break; // Stop FIFO replay when head mutation is in transient backoff cooldown
         }
 
         try {
@@ -274,7 +293,10 @@ export class SyncQueueService {
             });
           } else {
             const errorMsg = result.error || "HTTP error during replay";
-            this.markFailed(mutation.id, errorMsg);
+            this.markFailed(mutation.id, errorMsg, {
+              isPermanent: result.isPermanent,
+              httpStatus: result.httpStatus,
+            });
             failedCount++;
             this.recordTelemetryEvent("REPLAY_FAILED", {
               mutationId: mutation.id,
@@ -284,7 +306,12 @@ export class SyncQueueService {
               retryCount: mutation.retryCount + 1,
               error: errorMsg,
             });
-            break; // Stop FIFO replay on first network failure to preserve order
+
+            // If error is permanent (client validation, conflict, 4xx), continue to next mutation without blocking
+            if (result.isPermanent) {
+              continue;
+            }
+            break; // Stop FIFO replay on transient failure to preserve order
           }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Replay failure";
@@ -315,10 +342,15 @@ export class SyncQueueService {
   private async executeReplayRequest(
     url: string,
     options: RequestInit
-  ): Promise<{ success: boolean; error?: string; isPermanent?: boolean }> {
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    isPermanent?: boolean;
+    httpStatus?: number;
+  }> {
     const res = await fetch(url, options);
     if (res.ok) {
-      return { success: true };
+      return { success: true, httpStatus: res.status };
     }
 
     let errorDetail = `HTTP ${res.status}`;
@@ -338,14 +370,24 @@ export class SyncQueueService {
       // Body not JSON, keep status code
     }
 
-    const isPermanent = res.status >= 400 && res.status < 500;
-    return { success: false, error: errorDetail, isPermanent };
+    const isPermanent = isPermanentHttpStatus(res.status);
+    return {
+      success: false,
+      error: errorDetail,
+      isPermanent,
+      httpStatus: res.status,
+    };
   }
 
   private async replayMutation(
     mutation: SyncMutation,
     apiBaseUrl: string
-  ): Promise<{ success: boolean; error?: string; isPermanent?: boolean }> {
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    isPermanent?: boolean;
+    httpStatus?: number;
+  }> {
     const origin =
       typeof window !== "undefined" &&
       window.location &&

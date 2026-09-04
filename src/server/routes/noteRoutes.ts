@@ -96,29 +96,107 @@ export function createNoteRouter(prisma: PrismaClient | any): Router {
       const primaryTopicId = resolvedTopicIds[0];
 
       const note = await executeInTx(prisma, async (tx) => {
-        const createdNote = await tx.note.create({
-          data: {
-            id: req.body.id || undefined,
-            topicId: primaryTopicId,
-            title: parsed.data.title,
-            content: parsed.data.content,
-            sourcePath: parsed.data.sourcePath,
-            type: parsed.data.type,
-            isPrivate: parsed.data.isPrivate,
-            tags: parsed.data.tags,
-          },
-        });
+        const clientProvidedId = req.body.id ? String(req.body.id).trim() : undefined;
 
-        await syncNoteTopicLinks(tx, createdNote.id, resolvedTopicIds);
+        let targetNote: any = null;
 
-        return {
-          ...createdNote,
-          topicIds: resolvedTopicIds,
-        };
+        // Check if note with provided ID already exists (idempotency guard)
+        if (clientProvidedId && typeof tx.note?.findUnique === "function") {
+          targetNote = await tx.note.findUnique({
+            where: { id: clientProvidedId },
+          });
+        }
+
+        if (targetNote) {
+          // Idempotent update of existing note record
+          const updatedNote = await tx.note.update({
+            where: { id: clientProvidedId },
+            data: {
+              topicId: primaryTopicId,
+              title: parsed.data.title,
+              content: parsed.data.content,
+              sourcePath: parsed.data.sourcePath,
+              type: parsed.data.type,
+              isPrivate: parsed.data.isPrivate,
+              tags: parsed.data.tags,
+            },
+          });
+
+          await syncNoteTopicLinks(tx, updatedNote.id, resolvedTopicIds);
+
+          return {
+            note: {
+              ...updatedNote,
+              topicIds: resolvedTopicIds,
+            },
+            isNew: false,
+          };
+        }
+
+        try {
+          const createdNote = await tx.note.create({
+            data: {
+              id: clientProvidedId || undefined,
+              topicId: primaryTopicId,
+              title: parsed.data.title,
+              content: parsed.data.content,
+              sourcePath: parsed.data.sourcePath,
+              type: parsed.data.type,
+              isPrivate: parsed.data.isPrivate,
+              tags: parsed.data.tags,
+            },
+          });
+
+          await syncNoteTopicLinks(tx, createdNote.id, resolvedTopicIds);
+
+          return {
+            note: {
+              ...createdNote,
+              topicIds: resolvedTopicIds,
+            },
+            isNew: true,
+          };
+        } catch (createErr: any) {
+          // If race condition triggers P2002 on primary key id, fallback to idempotent update
+          if (createErr?.code === "P2002" && clientProvidedId) {
+            const fallbackUpdated = await tx.note.update({
+              where: { id: clientProvidedId },
+              data: {
+                topicId: primaryTopicId,
+                title: parsed.data.title,
+                content: parsed.data.content,
+                sourcePath: parsed.data.sourcePath,
+                type: parsed.data.type,
+                isPrivate: parsed.data.isPrivate,
+                tags: parsed.data.tags,
+              },
+            });
+
+            await syncNoteTopicLinks(tx, fallbackUpdated.id, resolvedTopicIds);
+
+            return {
+              note: {
+                ...fallbackUpdated,
+                topicIds: resolvedTopicIds,
+              },
+              isNew: false,
+            };
+          }
+          throw createErr;
+        }
       });
 
-      res.status(201).json(note);
-    } catch (err: unknown) {
+      res.status(note.isNew ? 201 : 200).json(note.note);
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        return res.status(409).json({ error: "Unique constraint conflict", code: "P2002" });
+      }
+      if (err?.code === "P2003") {
+        return res.status(400).json({ error: "Foreign key constraint failed", code: "P2003" });
+      }
+      if (err?.code === "P2025") {
+        return res.status(404).json({ error: "Note not found", code: "P2025" });
+      }
       const msg = err instanceof Error ? err.message : "Failed to create note";
       res.status(500).json({ error: msg });
     }
