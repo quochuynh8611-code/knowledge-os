@@ -122,6 +122,7 @@ export function ObsidianDocumentViewerModal({
   const [historyStack, setHistoryStack] = useState<string[]>([]);
   const [vaultResolver, setVaultResolver] = useState<ObsidianWikiLinkResolver | null>(null);
   const [pendingHeading, setPendingHeading] = useState<string | null>(null);
+  const [isAutoRefreshed, setIsAutoRefreshed] = useState(false);
 
   const fetchVaultDocument = useCallback(async (filePathToFetch: string, isRefresh = false) => {
     if (!filePathToFetch) return;
@@ -201,6 +202,43 @@ export function ObsidianDocumentViewerModal({
     }
   }, [fileData, vaultResolver, loadVaultDocs]);
 
+  const activePath = currentPath || resource?.filePath;
+
+  // Step 3: SSE File Watcher connection for automatic refresh on disk change
+  useEffect(() => {
+    if (!isOpen || !activePath) return;
+
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource(
+        `/api/obsidian/vault/watch?path=${encodeURIComponent(activePath)}`
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data?.type === "file-changed") {
+            fetchVaultDocument(activePath, false);
+            setIsAutoRefreshed(true);
+            setTimeout(() => {
+              setIsAutoRefreshed(false);
+            }, 3500);
+          }
+        } catch {
+          // Skip non-json ping or heartbeat
+        }
+      };
+    } catch {
+      // Safe fallback if EventSource is unsupported or fails
+    }
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [isOpen, activePath, fetchVaultDocument]);
+
   // Navigate to another note when a wiki-link is clicked
   const handleOpenVaultLink = (targetFilePath: string, heading?: string) => {
     const activePath = currentPath || resource?.filePath;
@@ -265,6 +303,12 @@ export function ObsidianDocumentViewerModal({
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-purple-50 text-purple-800 rounded">
                   Obsidian Read-Only
                 </span>
+                {isAutoRefreshed && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded flex items-center gap-1.5 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-ping" />
+                    <span>Đã tự động cập nhật từ đĩa</span>
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-stone-500 truncate">
                 {activeDisplayPath}
