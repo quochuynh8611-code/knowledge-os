@@ -369,6 +369,7 @@ export function ObsidianVaultBrowserModal({
             </button>
             <button
               onClick={onClose}
+              aria-label="Đóng modal"
               className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/50 rounded-lg transition"
             >
               <X className="w-4 h-4" />

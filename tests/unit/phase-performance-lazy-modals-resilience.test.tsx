@@ -19,22 +19,22 @@ describe('Phase Performance: Lazy Modals Suspense & Lifecycle Resilience', () =>
       </DataProvider>
     );
 
-    // 1.1. Open and close ObsidianBridgeModal
-    const obsidianBtn = screen.getByTitle(/Đồng bộ Obsidian Vault/i);
+    // 1.1. Open and close ObsidianVaultBrowserModal (P4.2G)
+    const obsidianBtn = screen.getByTitle(/Duyệt Obsidian Vault/i);
     expect(obsidianBtn).toBeInTheDocument();
     fireEvent.click(obsidianBtn);
 
-    const obsidianTitle = await screen.findByText(/Obsidian Real-Time Vault Bridge/i);
+    const obsidianTitle = await screen.findByText(/Duyệt Obsidian Vault/i);
     expect(obsidianTitle).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
     await waitFor(() => {
-      expect(screen.queryByText(/Obsidian Real-Time Vault Bridge/i)).toBeNull();
+      expect(screen.queryByText(/Khám phá cấu trúc tệp/i)).toBeNull();
     });
 
-    // Re-open ObsidianBridgeModal
+    // Re-open ObsidianVaultBrowserModal
     fireEvent.click(obsidianBtn);
-    expect(await screen.findByText(/Obsidian Real-Time Vault Bridge/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Duyệt Obsidian Vault/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
 
     // 1.2. Open and close NotebookLMStudioModal

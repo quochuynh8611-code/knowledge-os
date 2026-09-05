@@ -37,11 +37,7 @@ import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
 import { StudyCTA } from "./StudyCTA";
 import { NextActionStrip } from "./NextActionStrip";
 
-const ObsidianBridgeModal = React.lazy(() =>
-  import("../integrations/ObsidianBridgeModal").then((m) => ({
-    default: m.ObsidianBridgeModal,
-  }))
-);
+
 const NotebookLMStudioModal = React.lazy(() =>
   import("../integrations/NotebookLMStudioModal").then((m) => ({
     default: m.NotebookLMStudioModal,
@@ -104,7 +100,6 @@ export function TopicDetail() {
   const [showEditTopicModal, setShowEditTopicModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
-  const [showObsidianModal, setShowObsidianModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
@@ -218,7 +213,7 @@ export function TopicDetail() {
           <ResearchToolsDropdown
             onOpenAIStudio={() => setShowAIStudioModal(true)}
             onOpenHandoff={() => setShowAntigravityModal(true)}
-            onOpenObsidian={() => setShowObsidianModal(true)}
+            onOpenObsidian={() => setShowObsidianBrowserModal(true)}
             onOpenNotebookLM={() => setShowNotebookLMModal(true)}
           />
 
@@ -896,15 +891,6 @@ export function TopicDetail() {
         }}
       />
 
-      {showObsidianModal && (
-        <React.Suspense fallback={null}>
-          <ObsidianBridgeModal
-            isOpen={showObsidianModal}
-            onClose={() => setShowObsidianModal(false)}
-            topic={topic}
-          />
-        </React.Suspense>
-      )}
 
       {showNotebookLMModal && (
         <React.Suspense fallback={null}>

@@ -22,9 +22,15 @@ import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ExportImportModal } from "../modals/ExportImportModal";
-const ObsidianBridgeModal = React.lazy(() =>
-  import("../integrations/ObsidianBridgeModal").then((m) => ({
-    default: m.ObsidianBridgeModal,
+import { Resource } from "../../types";
+const ObsidianVaultBrowserModal = React.lazy(() =>
+  import("../modals/ObsidianVaultBrowserModal").then((m) => ({
+    default: m.ObsidianVaultBrowserModal,
+  }))
+);
+const ObsidianDocumentViewerModal = React.lazy(() =>
+  import("../modals/ObsidianDocumentViewerModal").then((m) => ({
+    default: m.ObsidianDocumentViewerModal,
   }))
 );
 const NotebookLMStudioModal = React.lazy(() =>
@@ -66,7 +72,8 @@ export function Navbar({
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showObsidianModal, setShowObsidianModal] = useState(false);
+  const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
+  const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
@@ -185,9 +192,9 @@ export function Navbar({
 
             {/* Subordinated Integration Triggers - Low Visual Prominence */}
             <button
-              onClick={() => setShowObsidianModal(true)}
+              onClick={() => setShowObsidianBrowserModal(true)}
               className="hidden lg:flex items-center gap-1.5 px-2 py-1 text-stone-500 dark:text-stone-400 hover:text-purple-700 dark:hover:text-purple-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg text-xs transition"
-              title="Đồng bộ Obsidian Vault (obsidian://)"
+              title="Duyệt Obsidian Vault"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
               <span className="text-[11px]">Obsidian</span>
@@ -323,11 +330,33 @@ export function Navbar({
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
       />
-      {showObsidianModal && (
+      {showObsidianBrowserModal && (
         <React.Suspense fallback={null}>
-          <ObsidianBridgeModal
-            isOpen={showObsidianModal}
-            onClose={() => setShowObsidianModal(false)}
+          <ObsidianVaultBrowserModal
+            isOpen={showObsidianBrowserModal}
+            onClose={() => setShowObsidianBrowserModal(false)}
+            onSelectFile={(filePath) => {
+              setShowObsidianBrowserModal(false);
+              const fileName = filePath.split("/").pop() || filePath;
+              const previewResource: Resource = {
+                id: "preview-" + filePath,
+                topicId: "",
+                title: fileName,
+                type: "md",
+                filePath,
+                createdAt: new Date().toISOString(),
+              };
+              setViewingObsidianResource(previewResource);
+            }}
+          />
+        </React.Suspense>
+      )}
+      {viewingObsidianResource && (
+        <React.Suspense fallback={null}>
+          <ObsidianDocumentViewerModal
+            isOpen={Boolean(viewingObsidianResource)}
+            onClose={() => setViewingObsidianResource(null)}
+            resource={viewingObsidianResource}
           />
         </React.Suspense>
       )}
