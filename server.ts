@@ -16,6 +16,8 @@ import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createObsidianVaultRouter } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
+import { createObsidianSearchRouter } from "./src/server/routes/obsidianSearchRoutes";
+import { ObsidianVaultIndex } from "./src/lib/obsidianIndexBuilder";
 import {
   createRateLimiter,
   createRateLimitMiddleware,
@@ -91,8 +93,15 @@ async function startServer() {
   // ==========================================
   // READ-ONLY OBSIDIAN VAULT BRIDGE (PHASE P4.1 & P4.2)
   // ==========================================
+  const obsidianVaultIndex = new ObsidianVaultIndex();
+  if (process.env.OBSIDIAN_VAULT_ROOT) {
+    obsidianVaultIndex.build(process.env.OBSIDIAN_VAULT_ROOT).catch(() => {
+      // Non-fatal background indexing
+    });
+  }
   app.use("/api", createObsidianVaultRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
   app.use("/api", createObsidianVaultTreeRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
+  app.use("/api", createObsidianSearchRouter(() => process.env.OBSIDIAN_VAULT_ROOT, obsidianVaultIndex));
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {
