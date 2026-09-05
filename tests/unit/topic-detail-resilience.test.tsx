@@ -29,6 +29,7 @@ vi.mock("../../src/context/DataContext", () => ({
     tags: [] as Tag[],
     updateTopicProgress: vi.fn(),
     deleteNote: vi.fn(),
+    addResource: vi.fn(),
     deleteResource: vi.fn(),
     openTopicDetail: vi.fn(),
     addKnowledgeLink: vi.fn(),
@@ -183,5 +184,51 @@ describe("TopicDetail Resilience & Safe Collection Rendering", () => {
 
     // Linked target is displayed
     expect(screen.getByText("Tâm Sở")).toBeInTheDocument();
+  });
+
+  it("4. renders 'Liên kết ghi chú Obsidian' button in resources tab and opens modal", () => {
+    mockTopics = [
+      {
+        id: "topic-1",
+        title: "Khảo Sát 24 Duyên Hệ",
+        slug: "khao-sat-24-duyen-he",
+        categoryId: "cat-1",
+        type: "phat-hoc",
+        description: "Khảo sát Patthana",
+        content: "Nội dung 24 Duyên",
+        tags: [],
+        links: [],
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+        studyProgress: {
+          topicId: "topic-1",
+          progress: 80,
+          totalNotes: 2,
+          timeSpent: 180,
+          interval: 6,
+          easeFactor: 2.6,
+          repetitions: 3,
+          status: "completed",
+        },
+      },
+    ];
+
+    render(<TopicDetail />);
+
+    // Switch to resources tab
+    const resourcesTab = screen.getByRole("button", { name: /Tài liệu/i });
+    fireEvent.click(resourcesTab);
+
+    // Obsidian CTA exists with accessible name
+    const ctaBtn = screen.getByRole("button", {
+      name: /Liên kết ghi chú Obsidian/i,
+    });
+    expect(ctaBtn).toBeInTheDocument();
+
+    // Clicking CTA opens ObsidianTopicResourceLinkModal
+    fireEvent.click(ctaBtn);
+    expect(
+      screen.getByLabelText(/Đường dẫn tương đối trong Vault/i)
+    ).toBeInTheDocument();
   });
 });

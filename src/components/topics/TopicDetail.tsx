@@ -27,6 +27,9 @@ import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
+import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceLinkModal";
+import { ObsidianDocumentViewerModal } from "../modals/ObsidianDocumentViewerModal";
+import { getStoredVaultName } from "../../lib/obsidian";
 // Phase 17B: new toolbar sub-components
 import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
 import { StudyCTA } from "./StudyCTA";
@@ -76,6 +79,7 @@ export function TopicDetail() {
     resources,
     updateTopicProgress,
     deleteNote,
+    addResource,
     deleteResource,
     openTopicDetail,
     addKnowledgeLink,
@@ -93,6 +97,7 @@ export function TopicDetail() {
   >("content");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
+  const [showObsidianLinkModal, setShowObsidianLinkModal] = useState(false);
   const [showEditTopicModal, setShowEditTopicModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
@@ -101,6 +106,7 @@ export function TopicDetail() {
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
+  const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
   // Link addition helper
@@ -697,12 +703,20 @@ export function TopicDetail() {
             <h3 className="text-sm font-bold text-stone-900">
               Tài liệu &amp; Nguồn tham khảo ({topicResources.length})
             </h3>
-            <button
-              onClick={() => setShowResourceModal(true)}
-              className="px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
-            >
-              <Plus className="w-4 h-4" /> Thêm tài liệu
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowObsidianLinkModal(true)}
+                className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+              >
+                <FileText className="w-4 h-4" /> Liên kết ghi chú Obsidian
+              </button>
+              <button
+                onClick={() => setShowResourceModal(true)}
+                className="px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+              >
+                <Plus className="w-4 h-4" /> Thêm tài liệu
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -735,7 +749,13 @@ export function TopicDetail() {
 
                 <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
                   <button
-                    onClick={() => setViewingResource(res)}
+                    onClick={() => {
+                      if (res.type === "md") {
+                        setViewingObsidianResource(res);
+                      } else {
+                        setViewingResource(res);
+                      }
+                    }}
                     className="px-3 py-1 bg-stone-100 hover:bg-indigo-50 text-indigo-900 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
                   >
                     Xem tài liệu
@@ -821,6 +841,33 @@ export function TopicDetail() {
       <ResourceViewerModal
         resource={viewingResource}
         onClose={() => setViewingResource(null)}
+      />
+      <ObsidianTopicResourceLinkModal
+        isOpen={showObsidianLinkModal}
+        onClose={() => setShowObsidianLinkModal(false)}
+        topicId={topic.id}
+        vaultName={getStoredVaultName()}
+        onLinked={(resPayload) => {
+          if (resPayload.title && resPayload.type && resPayload.topicId) {
+            addResource({
+              topicId: resPayload.topicId,
+              title: resPayload.title,
+              type: resPayload.type,
+              filePath: resPayload.filePath,
+              url: resPayload.url,
+              notes: resPayload.notes,
+            });
+          }
+        }}
+      />
+      <ObsidianDocumentViewerModal
+        isOpen={Boolean(viewingObsidianResource)}
+        onClose={() => setViewingObsidianResource(null)}
+        resource={viewingObsidianResource}
+        onUnlink={(id) => {
+          deleteResource(id);
+          setViewingObsidianResource(null);
+        }}
       />
 
       {showObsidianModal && (
