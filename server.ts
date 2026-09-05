@@ -17,6 +17,7 @@ import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createObsidianVaultRouter } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
 import { createObsidianSearchRouter } from "./src/server/routes/obsidianSearchRoutes";
+import { createObsidianAttachmentRouter } from "./src/server/routes/obsidianAttachmentRoutes";
 import { ObsidianVaultIndex } from "./src/lib/obsidianIndexBuilder";
 import {
   createRateLimiter,
@@ -102,6 +103,7 @@ async function startServer() {
   app.use("/api", createObsidianVaultRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
   app.use("/api", createObsidianVaultTreeRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
   app.use("/api", createObsidianSearchRouter(() => process.env.OBSIDIAN_VAULT_ROOT, obsidianVaultIndex));
+  app.use("/api", createObsidianAttachmentRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {

@@ -403,3 +403,265 @@ export function sanitizeObsidianDirPath(
     realTarget,
   };
 }
+
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MiB
+export const MAX_MEDIA_BYTES = 50 * 1024 * 1024; // 50 MiB
+
+export const ALLOWED_IMAGE_EXTENSIONS = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".bmp",
+  ".ico",
+]);
+
+export const ALLOWED_MEDIA_EXTENSIONS = new Set([
+  ".pdf",
+  ".mp4",
+  ".webm",
+  ".mov",
+  ".mkv",
+  ".ogv",
+  ".mp3",
+  ".wav",
+  ".ogg",
+  ".m4a",
+  ".aac",
+  ".flac",
+]);
+
+export const ATTACHMENT_MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".bmp": "image/bmp",
+  ".ico": "image/x-icon",
+  ".pdf": "application/pdf",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".mkv": "video/x-matroska",
+  ".ogv": "video/ogg",
+  ".mp3": "audio/mpeg",
+  ".wav": "audio/wav",
+  ".ogg": "audio/ogg",
+  ".m4a": "audio/mp4",
+  ".aac": "audio/aac",
+  ".flac": "audio/flac",
+};
+
+export type AttachmentSanitizationResult =
+  | {
+      ok: true;
+      relativePath: string;
+      fileName: string;
+      realTarget: string;
+      sizeBytes: number;
+      mimeType: string;
+      isMedia: boolean;
+    }
+  | {
+      ok: false;
+      error: PathSanitizationErrorCode;
+      message: string;
+      sizeBytes?: number;
+    };
+
+/**
+ * 12-Step Security Path Guard for Obsidian Vault Attachments (Images, PDF, Videos, Audio)
+ */
+export function sanitizeObsidianAttachmentPath(
+  vaultRoot: string,
+  userPath: string
+): AttachmentSanitizationResult {
+  // Step 1: Reject empty, non-string inputs, null bytes, or absolute paths
+  if (!vaultRoot || typeof vaultRoot !== "string") {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Vault root is not configured or invalid.",
+    };
+  }
+
+  if (!userPath || typeof userPath !== "string" || userPath.trim().length === 0) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Relative path cannot be empty.",
+    };
+  }
+
+  if (userPath.includes("\0")) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Null byte injection detected.",
+    };
+  }
+
+  const trimmed = userPath.trim();
+  if (path.isAbsolute(trimmed) || trimmed.startsWith("/") || /^[a-zA-Z]:[/\\]/.test(trimmed)) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Absolute paths are strictly forbidden.",
+    };
+  }
+
+  // Step 2: Normalize platform separators and strip leading/redundant slashes
+  const normalizedSeparators = trimmed.replace(/\\/g, "/");
+  const cleanedPath = normalizedSeparators.replace(/^\/+/, "").replace(/\/+/g, "/");
+
+  // Step 3: Segment analysis
+  const segments = cleanedPath.split("/").map((s) => s.trim()).filter((s) => s.length > 0);
+  for (const seg of segments) {
+    if (seg === "." || seg === "..") {
+      return {
+        ok: false,
+        error: "PATH_TRAVERSAL_DETECTED",
+        message: "Path traversal segment detected.",
+      };
+    }
+    if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || seg.startsWith(".")) {
+      return {
+        ok: false,
+        error: "ACCESS_DENIED_SENSITIVE_DIR",
+        message: "Access to hidden or system directories is denied.",
+      };
+    }
+  }
+
+  // Step 4: Lexical candidate resolution
+  const lexicalCandidate = path.resolve(vaultRoot, cleanedPath);
+
+  // Step 5: Lexical relative derivation
+  const lexicalRelative = path.relative(vaultRoot, lexicalCandidate);
+
+  // Step 6: Lexical containment check
+  if (
+    lexicalRelative === ".." ||
+    lexicalRelative.startsWith(".." + path.sep) ||
+    lexicalRelative.startsWith("../") ||
+    path.isAbsolute(lexicalRelative)
+  ) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Path traversal out of vault root detected.",
+    };
+  }
+
+  // Step 7: Lstat candidate & check symlink / file type
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(lexicalCandidate);
+  } catch (err: any) {
+    if (err?.code === "ENOENT") {
+      return {
+        ok: false,
+        error: "FILE_NOT_FOUND",
+        message: "File does not exist in the Obsidian Vault.",
+      };
+    }
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Unable to inspect file attributes.",
+    };
+  }
+
+  // Reject all symlinks
+  if (stat.isSymbolicLink()) {
+    return {
+      ok: false,
+      error: "SYMLINK_NOT_ALLOWED",
+      message: "Symbolic links are strictly prohibited in this version.",
+    };
+  }
+
+  if (!stat.isFile()) {
+    return {
+      ok: false,
+      error: "INVALID_FILE_TYPE",
+      message: "Requested target is not a regular file.",
+    };
+  }
+
+  // Step 8: Realpath resolution
+  let realVaultRoot: string;
+  let realTarget: string;
+  try {
+    realVaultRoot = fs.realpathSync(vaultRoot);
+    realTarget = fs.realpathSync(lexicalCandidate);
+  } catch {
+    return {
+      ok: false,
+      error: "FILE_NOT_FOUND",
+      message: "Target or vault path could not be resolved physically.",
+    };
+  }
+
+  // Step 9: Real relative containment check
+  const realRelative = path.relative(realVaultRoot, realTarget);
+  if (
+    realRelative === ".." ||
+    realRelative.startsWith(".." + path.sep) ||
+    realRelative.startsWith("../") ||
+    path.isAbsolute(realRelative)
+  ) {
+    return {
+      ok: false,
+      error: "PATH_OUTSIDE_VAULT",
+      message: "Target file lies outside the physical vault boundary.",
+    };
+  }
+
+  // Step 10: Boundary check
+  if (!realTarget.startsWith(realVaultRoot + path.sep) && realTarget !== realVaultRoot) {
+    return {
+      ok: false,
+      error: "PATH_OUTSIDE_VAULT",
+      message: "Target violates physical vault root boundary.",
+    };
+  }
+
+  // Step 11: Whitelist extension & size limits
+  const ext = path.extname(realTarget).toLowerCase();
+  const isImage = ALLOWED_IMAGE_EXTENSIONS.has(ext);
+  const isMedia = ALLOWED_MEDIA_EXTENSIONS.has(ext);
+
+  if (!isImage && !isMedia) {
+    return {
+      ok: false,
+      error: "FORBIDDEN_EXTENSION",
+      message: "Requested attachment extension is not permitted.",
+    };
+  }
+
+  const maxBytes = isImage ? MAX_IMAGE_BYTES : MAX_MEDIA_BYTES;
+  if (stat.size > maxBytes) {
+    return {
+      ok: false,
+      error: "FILE_TOO_LARGE",
+      message: `Attachment exceeds maximum permitted size of ${isImage ? "10 MiB" : "50 MiB"}.`,
+      sizeBytes: stat.size,
+    };
+  }
+
+  // Step 12: Success
+  return {
+    ok: true,
+    relativePath: cleanedPath,
+    fileName: path.basename(realTarget),
+    realTarget,
+    sizeBytes: stat.size,
+    mimeType: ATTACHMENT_MIME_TYPES[ext] || "application/octet-stream",
+    isMedia,
+  };
+}
