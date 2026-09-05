@@ -14,6 +14,8 @@ import { createStudyProgressRouter } from "./src/server/routes/studyProgressRout
 import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
+import { createObsidianVaultRouter } from "./src/server/routes/obsidianVaultRoutes";
+import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
 import {
   createRateLimiter,
   createRateLimitMiddleware,
@@ -85,6 +87,12 @@ async function startServer() {
   // ARCHITECTURE DOCUMENTATION & SPECS ROUTES
   // ==========================================
   app.use("/api", createDocsRouter());
+
+  // ==========================================
+  // READ-ONLY OBSIDIAN VAULT BRIDGE (PHASE P4.1 & P4.2)
+  // ==========================================
+  app.use("/api", createObsidianVaultRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
+  app.use("/api", createObsidianVaultTreeRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {

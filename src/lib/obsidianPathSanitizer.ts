@@ -227,3 +227,179 @@ export function sanitizeObsidianPath(
     sizeBytes: stat.size,
   };
 }
+
+export type DirSanitizationResult =
+  | {
+      ok: true;
+      relativePath: string;
+      dirName: string;
+      realTarget: string;
+    }
+  | {
+      ok: false;
+      error: PathSanitizationErrorCode;
+      message: string;
+    };
+
+/**
+ * Security Path Guard for Obsidian Vault Directory Browsing
+ * Validates directory paths, rejects symlinks, sensitive folders, and path traversal.
+ */
+export function sanitizeObsidianDirPath(
+  vaultRoot: string,
+  userPath?: string
+): DirSanitizationResult {
+  // Step 1: Reject unconfigured vault root
+  if (!vaultRoot || typeof vaultRoot !== "string") {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Vault root is not configured or invalid.",
+    };
+  }
+
+  // Treat empty, undefined, "/", or "." as root
+  const trimmed = (userPath ?? "").trim();
+  if (trimmed.includes("\0")) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Null byte injection detected.",
+    };
+  }
+
+  let cleanedPath = "";
+  if (trimmed !== "" && trimmed !== "/" && trimmed !== ".") {
+    // Reject absolute paths across platforms (e.g. /etc or C:\)
+    if (path.isAbsolute(trimmed) || trimmed.startsWith("/") || /^[a-zA-Z]:[/\\]/.test(trimmed)) {
+      return {
+        ok: false,
+        error: "PATH_TRAVERSAL_DETECTED",
+        message: "Absolute paths are strictly forbidden.",
+      };
+    }
+
+    // Normalize separators and strip redundant slashes
+    const normalizedSeparators = trimmed.replace(/\\/g, "/");
+    const stripped = normalizedSeparators.replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/+$/, "");
+
+    // Segment analysis
+    const segments = stripped.split("/").map((s) => s.trim()).filter((s) => s.length > 0);
+    for (const seg of segments) {
+      if (seg === "." || seg === "..") {
+        return {
+          ok: false,
+          error: "PATH_TRAVERSAL_DETECTED",
+          message: "Path traversal segment detected.",
+        };
+      }
+      if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || seg.startsWith(".")) {
+        return {
+          ok: false,
+          error: "ACCESS_DENIED_SENSITIVE_DIR",
+          message: "Access to hidden or system directories is denied.",
+        };
+      }
+    }
+    cleanedPath = segments.join("/");
+  }
+
+  // Lexical candidate resolution
+  const lexicalCandidate = cleanedPath ? path.resolve(vaultRoot, cleanedPath) : path.resolve(vaultRoot);
+
+  // Lexical containment check
+  const lexicalRelative = path.relative(vaultRoot, lexicalCandidate);
+  if (
+    lexicalRelative === ".." ||
+    lexicalRelative.startsWith(".." + path.sep) ||
+    lexicalRelative.startsWith("../") ||
+    path.isAbsolute(lexicalRelative)
+  ) {
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Path traversal out of vault root detected.",
+    };
+  }
+
+  // Lstat candidate & check symlink / file type
+  let stat: fs.Stats;
+  try {
+    stat = fs.lstatSync(lexicalCandidate);
+  } catch (err: any) {
+    if (err?.code === "ENOENT") {
+      return {
+        ok: false,
+        error: "FILE_NOT_FOUND",
+        message: "Directory does not exist in the Obsidian Vault.",
+      };
+    }
+    return {
+      ok: false,
+      error: "PATH_TRAVERSAL_DETECTED",
+      message: "Unable to inspect directory attributes.",
+    };
+  }
+
+  // Reject symlinks
+  if (stat.isSymbolicLink()) {
+    return {
+      ok: false,
+      error: "SYMLINK_NOT_ALLOWED",
+      message: "Symbolic links are strictly prohibited in this version.",
+    };
+  }
+
+  // Must be a directory
+  if (!stat.isDirectory()) {
+    return {
+      ok: false,
+      error: "INVALID_FILE_TYPE",
+      message: "Requested target is not a directory.",
+    };
+  }
+
+  // Realpath resolution
+  let realVaultRoot: string;
+  let realTarget: string;
+  try {
+    realVaultRoot = fs.realpathSync(vaultRoot);
+    realTarget = fs.realpathSync(lexicalCandidate);
+  } catch {
+    return {
+      ok: false,
+      error: "FILE_NOT_FOUND",
+      message: "Target or vault directory could not be resolved physically.",
+    };
+  }
+
+  // Real containment check
+  const realRelative = path.relative(realVaultRoot, realTarget);
+  if (
+    realRelative === ".." ||
+    realRelative.startsWith(".." + path.sep) ||
+    realRelative.startsWith("../") ||
+    path.isAbsolute(realRelative)
+  ) {
+    return {
+      ok: false,
+      error: "PATH_OUTSIDE_VAULT",
+      message: "Target directory lies outside the physical vault boundary.",
+    };
+  }
+
+  if (!realTarget.startsWith(realVaultRoot + path.sep) && realTarget !== realVaultRoot) {
+    return {
+      ok: false,
+      error: "PATH_OUTSIDE_VAULT",
+      message: "Target violates physical vault root boundary.",
+    };
+  }
+
+  return {
+    ok: true,
+    relativePath: cleanedPath,
+    dirName: path.basename(realTarget),
+    realTarget,
+  };
+}
