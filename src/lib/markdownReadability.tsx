@@ -123,7 +123,20 @@ export function renderInlineMarkdownWithWikiLinks(
     // 2. Markdown Links: [text](url)
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
-      const [, linkText, linkUrl] = linkMatch;
+      const [, linkText, rawLinkUrl] = linkMatch;
+      const linkUrl = rawLinkUrl.trim();
+
+      // Scheme safety check: allow http, https, mailto, obsidian; deny javascript, data, vbscript, file, etc.
+      const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(linkUrl);
+      const isAllowedScheme = /^(https?:|mailto:|obsidian:)/i.test(linkUrl);
+
+      // Relative path or anchor (#heading, /path) is acceptable, but unallowed explicit schemes are unsafe
+      const isSafe = !hasScheme || isAllowedScheme;
+
+      if (!isSafe) {
+        return <span key={index}>{linkText}</span>;
+      }
+
       const isExternal = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
       return (
         <a

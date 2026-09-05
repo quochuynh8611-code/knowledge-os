@@ -46,7 +46,7 @@ export interface Note {
   updatedAt: string;
 }
 
-export type ResourceType = 'book' | 'article' | 'video' | 'audio' | 'pdf';
+export type ResourceType = 'book' | 'article' | 'video' | 'audio' | 'pdf' | 'md';
 
 export interface Resource {
   id: string;

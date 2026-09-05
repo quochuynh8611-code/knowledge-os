@@ -23,7 +23,7 @@ export const NoteTypeEnum = z.enum(
 );
 
 export const ResourceTypeEnum = z.enum(
-  ["book", "article", "video", "audio", "pdf"],
+  ["book", "article", "video", "audio", "pdf", "md"],
   {
     message: "Loại tài liệu không hợp lệ",
   },
