@@ -9,9 +9,11 @@ import {
   FileText,
   Loader2,
   Trash2,
+  ArrowLeft,
 } from 'lucide-react';
 import { Resource } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
+import { ObsidianWikiLinkResolver } from '../../lib/obsidianWikiLinkResolver';
 
 interface OutlineItem {
   level: number;
@@ -80,6 +82,29 @@ function sanitizeVaultMarkdown(rawMarkdown: string): string {
   return sanitized;
 }
 
+function scrollToHeading(headingText?: string) {
+  if (!headingText) return;
+  const clean = headingText.trim().toLowerCase();
+
+  const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  for (const el of Array.from(headings)) {
+    if (el.textContent?.trim().toLowerCase() === clean) {
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+  }
+
+  const slug = clean
+    .replace(/[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\s-]/gi, '')
+    .replace(/\s+/g, '-');
+  const elById = document.getElementById(clean) || document.getElementById(slug);
+  if (elById && typeof elById.scrollIntoView === 'function') {
+    elById.scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
 export function ObsidianDocumentViewerModal({
   isOpen,
   onClose,
@@ -92,8 +117,14 @@ export function ObsidianDocumentViewerModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showOutline, setShowOutline] = useState(true);
 
-  const fetchVaultDocument = useCallback(async (isRefresh = false) => {
-    if (!resource || !resource.filePath) return;
+  // In-place navigation states for wiki-links
+  const [currentPath, setCurrentPath] = useState<string | null>(null);
+  const [historyStack, setHistoryStack] = useState<string[]>([]);
+  const [vaultResolver, setVaultResolver] = useState<ObsidianWikiLinkResolver | null>(null);
+  const [pendingHeading, setPendingHeading] = useState<string | null>(null);
+
+  const fetchVaultDocument = useCallback(async (filePathToFetch: string, isRefresh = false) => {
+    if (!filePathToFetch) return;
 
     if (isRefresh) {
       setIsRefreshing(true);
@@ -104,8 +135,9 @@ export function ObsidianDocumentViewerModal({
 
     try {
       const response = await fetch(
-        `/api/obsidian/vault/file?path=${encodeURIComponent(resource.filePath)}`
+        `/api/obsidian/vault/file?path=${encodeURIComponent(filePathToFetch)}`
       );
+      if (!response) return;
       const data = await response.json();
 
       if (!response.ok) {
@@ -126,21 +158,92 @@ export function ObsidianDocumentViewerModal({
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [resource]);
+  }, []);
+
+  const loadVaultDocs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/obsidian/vault/search?q=*');
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data?.results && Array.isArray(data.results)) {
+          const docs = data.results.map((r: any) => ({
+            title: r.title,
+            filePath: r.path,
+          }));
+          setVaultResolver(new ObsidianWikiLinkResolver(docs));
+        }
+      }
+    } catch {
+      // Graceful fallback if search API not yet ready
+    }
+  }, []);
 
   useEffect(() => {
-    if (isOpen && resource) {
-      fetchVaultDocument(false);
+    if (isOpen && resource && resource.filePath) {
+      setCurrentPath(resource.filePath);
+      setHistoryStack([]);
+      // Step 1: Fetch requested note
+      fetchVaultDocument(resource.filePath, false);
     } else {
+      setCurrentPath(null);
+      setHistoryStack([]);
       setFileData(null);
       setErrorMessage(null);
     }
   }, [isOpen, resource, fetchVaultDocument]);
 
+  // Step 2: Fetch vault index for wiki-link resolution only when document contains wiki links
+  useEffect(() => {
+    if (!fileData || !fileData.content) return;
+    const hasWikiLinks = /\[\[.+?\]\]/.test(fileData.content);
+    if (hasWikiLinks && !vaultResolver) {
+      loadVaultDocs();
+    }
+  }, [fileData, vaultResolver, loadVaultDocs]);
+
+  // Navigate to another note when a wiki-link is clicked
+  const handleOpenVaultLink = (targetFilePath: string, heading?: string) => {
+    const activePath = currentPath || resource?.filePath;
+    if (!targetFilePath || targetFilePath === activePath) {
+      if (heading) {
+        scrollToHeading(heading);
+      }
+      return;
+    }
+
+    if (activePath) {
+      setHistoryStack((prev) => [...prev, activePath]);
+    }
+    setCurrentPath(targetFilePath);
+    setPendingHeading(heading || null);
+    fetchVaultDocument(targetFilePath, false);
+  };
+
+  // Back navigation to previously viewed note
+  const handleGoBack = () => {
+    if (historyStack.length === 0) return;
+    const prev = historyStack[historyStack.length - 1];
+    setHistoryStack((prevStack) => prevStack.slice(0, -1));
+    setCurrentPath(prev);
+    fetchVaultDocument(prev, false);
+  };
+
+  // Scroll to heading after destination file content loaded
+  useEffect(() => {
+    if (fileData && pendingHeading) {
+      const timer = setTimeout(() => {
+        scrollToHeading(pendingHeading);
+        setPendingHeading(null);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [fileData, pendingHeading]);
+
   if (!isOpen || !resource) return null;
 
   const sanitizedContent = fileData ? sanitizeVaultMarkdown(fileData.content) : '';
   const tags = fileData?.frontmatter?.tags || [];
+  const activeDisplayPath = currentPath || resource.filePath;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/70 backdrop-blur-xs">
@@ -154,22 +257,37 @@ export function ObsidianDocumentViewerModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-stone-900 truncate">
-                  {fileData?.frontmatter?.title || resource.title || fileData?.fileName || 'Obsidian Note'}
+                  {fileData?.frontmatter?.title ||
+                    (currentPath ? currentPath.split('/').pop()?.replace(/\.md$/i, '') : resource.title) ||
+                    fileData?.fileName ||
+                    'Obsidian Note'}
                 </h2>
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-purple-50 text-purple-800 rounded">
                   Obsidian Read-Only
                 </span>
               </div>
               <p className="text-[11px] text-stone-500 truncate">
-                {resource.filePath}
+                {activeDisplayPath}
               </p>
             </div>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5">
+            {historyStack.length > 0 && (
+              <button
+                onClick={handleGoBack}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Quay lại ghi chú trước"
+                aria-label="Quay lại"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Quay lại</span>
+              </button>
+            )}
+
             <button
-              onClick={() => fetchVaultDocument(true)}
+              onClick={() => fetchVaultDocument(activeDisplayPath, true)}
               disabled={isRefreshing || isLoading}
               className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
               title="Đọc lại nội dung mới nhất từ đĩa"
@@ -256,9 +374,13 @@ export function ObsidianDocumentViewerModal({
                   </div>
                 )}
 
-                {/* Markdown Renderer */}
+                {/* Markdown Renderer with Wiki-Link Resolver */}
                 <div className="prose prose-stone max-w-none">
-                  <MarkdownReadabilityRenderer content={sanitizedContent} />
+                  <MarkdownReadabilityRenderer
+                    content={sanitizedContent}
+                    vaultResolver={vaultResolver || undefined}
+                    onOpenVaultLink={handleOpenVaultLink}
+                  />
                 </div>
               </div>
             )}
