@@ -1,14 +1,28 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-08-30
+> **Cập nhật lần cuối:** 2026-09-05
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–16 (LEARNING-FIRST OVERVIEW, SCHOLAR SUITE, TCM REGISTRY, TAXONOMY CLEANUP & SAFE MERGE) FULLY IMPLEMENTED & PRODUCTION-READY (193 / 193 TEST FILES PASS — 1204 / 1204 TESTS PASS 100% GREEN)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17 & PHASE P4.1–P4.2F (OBSIDIAN VAULT BRIDGE SUBSYSTEM) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (218 / 218 TEST FILES PASS — 1,394 / 1,394 TESTS PASS 100% GREEN)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **TOÀN BỘ CÁC GIAI ĐOẠN ĐÃ HOÀN TẤT & HỆ THỐNG ĐỒ THỊ TRI THỨC / TỪ ĐIỂN ĐA NGỮ / TRUNG TÂM TÀI LIỆU KIẾN TRÚC ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (193 / 193 TEST FILES PASS — 1204 / 1204 TESTS PASS 100% GREEN)**.
+- **Trạng thái thực thi:** **PHASE P4.1–P4.2F (OBSIDIAN VAULT BRIDGE SUBSYSTEM) HOÀN TẤT TRỌN VẸN 7 GIAI ĐOẠN LIÊN HOÀN (15 COMMITS, 25 TARGETED TEST FILES / 176 TESTS PASS, 218/218 REPO SUITES PASS — 1,394/1,394 TESTS PASS TRÊN BRANCH `neh1`)**.
+- **Tiến độ Subsystem Obsidian Vault Bridge (P4.1 $\rightarrow$ P4.2F):**
+  - **Kiến trúc nền tảng (ADR-064):** Kết nối an toàn giữa Obsidian Vault cục bộ và Knowledge OS theo nguyên lý Read-Only Vault Bridge. SSOT thuộc về Obsidian Vault; Knowledge OS chỉ lưu metadata Resource (`type: 'md'`), không sao chép raw Markdown vào PostgreSQL DB; bảo vệ 12-step path traversal guard, từ chối symlink, ẩn đường dẫn máy chủ qua placeholder `[VAULT_ROOT]`, và non-destructive unlink.
+  - **Chi tiết 7 giai đoạn triển khai:**
+    1. **Phase P4.1 — Read-Only Bridge & Topic Viewer (Commits `e36cdf7`, `549a1ce`):** Backend path sanitizer, parser YAML frontmatter/outline, API `GET /status` & `GET /file`, modal đọc `ObsidianDocumentViewerModal.tsx` và modal liên kết `ObsidianTopicResourceLinkModal.tsx`.
+    2. **Phase P4.2A — Vault Tree Browser & Directory Listing (Commits `4b0083f`, `49003a0`):** API `GET /tree`, modal duyệt cây thư mục `ObsidianVaultBrowserModal.tsx` và nút "Browse Vault" trên `TopicDetail.tsx`.
+    3. **Phase P4.2B — In-Memory Full-Text Search (Commits `79d6493`, `b19bc55`):** Chỉ mục quét đệ quy in-memory `buildObsidianVaultIndex`, API `GET /search`, hộp tìm kiếm debounced 300ms với snippet trích xuất.
+    4. **Phase P4.2C — Wiki-Link Resolver & Navigation (Commits `2a6bd02`, `2f7e3b0`):** Phân giải cú pháp `[[Note Name]]`, `[[Note#Heading]]`, điều hướng in-place và lịch sử Back button trong viewer modal.
+    5. **Phase P4.2D — Attachment & Media Embed Streaming (Commits `f6c0fa2`, `816adbc`):** API `GET /attachment` truyền phát chunked read stream đa phương tiện (ảnh, PDF, video, audio) kèm cache header immutable.
+    6. **Phase P4.2E — Live File Watcher SSE Auto-Refresh (Commits `4e2febf`, `5b61539`):** Bộ lắng nghe sự kiện `chokidar` theo dõi file hiện mở với debounce 500ms, API `GET /watch` (SSE) và auto-refresh client badge trong 3 giây.
+    7. **Phase P4.2F — Note Transclusion (Commits `c5aab04`, `b884f26`, `67ab1c5`):** Phân giải `![[Note]]` & `![[Note#Heading]]`, trích xuất section heading-to-heading, cơ chế chống vòng lặp đệ quy (`MAX_TRANSCLUSION_DEPTH = 3`), render khối nhúng `TransclusionBlock` tím phân biệt và pre-fetch tự động khi mở file.
+  - **Tài liệu hóa & Gia cố hệ thống:**
+    - Release notes chuẩn tắc: [`docs/releases/P4.1-P4.2F-release-notes.md`](docs/releases/P4.1-P4.2F-release-notes.md) (Commit `ff29684`).
+    - Test contract & smoke test unconfigured vault: `tests/unit/server-endpoint-representative.test.ts` & `tests/unit/server-router-wiring.test.ts` (Commit `617383d`).
+    - Sổ tay vận hành macOS Local Production: [`README.md`](README.md) & [`docs/runbooks/daily-operations-runbook.md`](docs/runbooks/daily-operations-runbook.md) (Commit `693bb8a`).
 - **Tiến độ Các Phase Chuyên Sâu Học Giả & Khảo Cứu Mới Nhất (Recent Scholar Suite & Architecture Phases):**
   - **Phase P12.3: In-App Docs Explorer & Markdown Architecture Viewer (Commit `97da2b4`):**
     - **Mục tiêu:** Tích hợp trực tiếp trình duyệt tài liệu kiến trúc kỹ thuật (ADRs, Specs, Gherkin Features, Runbooks) vào Dashboard, đọc trực tiếp từ đĩa với độ trễ 0s và bảo vệ an toàn bằng `sanitizeDocsPath()`.
@@ -113,17 +127,17 @@
       - Thêm nút CTA "+ Thêm lĩnh vực" tại Header và Toolbar của `TopicTree.tsx` kết nối trực tiếp với flow `addCategory`.
     - **Kiểm thử:** 14/14 tests PASS (7/7 pure lib + 7/7 UI integration).
   - **Post-Phase 5 Micro-Increment: Dynamic Root Taxonomy & Soft Topic Visibility (ADR-016):**
-    - **Mục tiêu:** Mở rộng linh hoạt hệ thống phân loại tri thức, xóa bỏ hoàn toàn hardcode 2 lĩnh vực "Phật học" & "Huyền học" ở tầng 1, cho phép thêm lĩnh vực tùy biến động, đồng thời trang bị tính năng Ẩn/Khôi phục chủ đề (Soft Hide/Restore) an toàn tuyệt đối mà không mất dữ liệu liên quan.
+    - **Mục tiêu:** Mở rộng linh hoạt hệ thống phân loại tri thức, xóa bỏ hoàn toàn hardcode 2 lĩnh vực "Phật học" & "Huyền học" ở tầng 1, cho phép thêm lĩnh vực tùy biến động, đồng thời trang bị tính năng Ẩn/Khôi phục chủ đề (Soft Hide/Restore) bảo đảm an toàn dữ liệu mà không làm mất thông tin liên quan.
     - **Kiến trúc & Giải pháp triển khai:**
       - **Mô hình Phân Cấp Category:** Trục phân cấp đơn nhất dựa vào `Category.parentId` (`!parentId` = Root Category, `parentId === rootId` = Child Category). Trường `type` đóng vai trò legacy compatibility slug.
       - **Mô hình Topic Visibility:** Thêm trường `visibility: 'active' | 'hidden'` trên Topic. Tự động chuẩn hóa (`normalizeTopics`) về `'active'` đối với các topic cũ hoặc snapshots không có trường này.
       - **Bảo toàn dữ liệu triệt để:** Thao tác ẩn chủ đề (`hideTopic`) chỉ đổi cờ hiển thị; toàn bộ `notes`, `resources`, `links`, `studyProgress`, SM-2 repetitions và timestamps đều được bảo toàn nguyên vẹn 100%.
       - **Thành phần phát triển:**
-        - Module di trú & truy vấn cây danh mục [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts).
-        - Giao diện Sidebar [`src/components/layout/Sidebar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/layout/Sidebar.tsx) render danh mục gốc động + nút "Thêm lĩnh vực" inline.
-        - Topic Form [`src/components/modals/TopicFormModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/TopicFormModal.tsx) cho phép chọn danh mục phân cấp động theo nhóm lĩnh vực.
-        - Cây chủ đề [`src/components/topics/TopicTree.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/topics/TopicTree.tsx) tích hợp bộ lọc trạng thái hiển thị (Chủ đề hoạt động / Đã ẩn / Tất cả) và nút Ẩn/Khôi phục 1-click.
-        - Bộ lọc tìm kiếm [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) hỗ trợ chọn lĩnh vực gốc động và danh mục tương ứng.
+        - Module di trú & truy vấn cây danh mục [`src/lib/taxonomyMigration.ts`](src/lib/taxonomyMigration.ts).
+        - Giao diện Sidebar [`src/components/layout/Sidebar.tsx`](src/components/layout/Sidebar.tsx) render danh mục gốc động + nút "Thêm lĩnh vực" inline.
+        - Topic Form [`src/components/modals/TopicFormModal.tsx`](src/components/modals/TopicFormModal.tsx) cho phép chọn danh mục phân cấp động theo nhóm lĩnh vực.
+        - Cây chủ đề [`src/components/topics/TopicTree.tsx`](src/components/topics/TopicTree.tsx) tích hợp bộ lọc trạng thái hiển thị (Chủ đề hoạt động / Đã ẩn / Tất cả) và nút Ẩn/Khôi phục 1-click.
+        - Bộ lọc tìm kiếm [`src/components/search/SearchFilters.tsx`](src/components/search/SearchFilters.tsx) hỗ trợ chọn lĩnh vực gốc động và danh mục tương ứng.
     - **Kiểm thử:** 14/14 tests PASS.
   - **Post-Phase 5 Micro-Increment: Antigravity Result Ingestion & Tracker Completion Polish:**
     - **Mục tiêu:** Khép kín vòng quay kết quả nghiên cứu từ Antigravity/NotebookLM quay về app khi người dùng nạp (ingest) Artifact vào Artifacts Locker.
@@ -142,8 +156,8 @@
     - **Mục tiêu:** Giảm thiểu tối đa thao tác tay khi bàn giao bối cảnh khảo cứu từ NotebookLM Studio sang Antigravity 2.0.
     - **Kiến trúc đã chọn (ADR-015):** File Manifest + CLI Headless Protocol (`agy -p` + JSON manifest + Markdown files) theo phân loại Two-Way Door (Reversible Decision).
     - **Thành phần triển khai:**
-      - Module lõi thuần túy [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts): sinh mã Job (`job-nlm-...`), đóng gói source/prompt, sinh đường dẫn `.agents/handoffs/`, hàm `createAntigravityHandoffJob`, `buildAntigravityCLICommand`, `serializeAntigravityJobManifest` và các helper CRUD tracker.
-      - Tích hợp giao diện tại [`src/components/integrations/NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx): Nút "Chuẩn bị Handoff Antigravity" (`data-testid="btn-prepare-antigravity-handoff"`), khung xem trước câu lệnh CLI `agy -p` kèm nút sao chép 1-click, bảng theo dõi Job Tracker với huy hiệu `queued` và nút xóa job.
+      - Module lõi thuần túy [`src/lib/antigravityPipeline.ts`](src/lib/antigravityPipeline.ts): sinh mã Job (`job-nlm-...`), đóng gói source/prompt, sinh đường dẫn `.agents/handoffs/`, hàm `createAntigravityHandoffJob`, `buildAntigravityCLICommand`, `serializeAntigravityJobManifest` và các helper CRUD tracker.
+      - Tích hợp giao diện tại [`src/components/integrations/NotebookLMStudioModal.tsx`](src/components/integrations/NotebookLMStudioModal.tsx): Nút "Chuẩn bị Handoff Antigravity" (`data-testid="btn-prepare-antigravity-handoff"`), khung xem trước câu lệnh CLI `agy -p` kèm nút sao chép 1-click, bảng theo dõi Job Tracker với huy hiệu `queued` và nút xóa job.
       - Tệp Manifest JSON (`*-manifest.json`) đóng vai trò inter-process artifact trong `.agents/handoffs/`.
     - **Rào chắn & Nguyên tắc đã khóa (Guardrails):**
       - Không persist chuỗi `command` trong `AntigravityHandoffJob`; câu lệnh CLI được sinh động qua `buildAntigravityCLICommand`.
@@ -152,7 +166,7 @@
     - **Phạm vi CHƯA làm (Non-goals in this increment):** Chưa auto-run `agy -p` trực tiếp từ app runtime, chưa có local API socket/bridge, chưa có browser automation, chưa có direct Google NotebookLM API integration.
     - **Kiểm thử:** 9/9 tests PASS (5/5 pure lib + 4/4 UI integration).
   - **Post-Phase 5 Micro-Increment: Citation Format Preference Hardening (Commit `e15aca2`):**
-    - Module độc lập [`src/lib/citationPreferences.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/citationPreferences.ts) tách biệt rõ ràng giữa logic sinh chuỗi trích dẫn và quản lý lưu trữ tùy chọn client-side (`knowledge_os_citation_format_pref`).
+    - Module độc lập [`src/lib/citationPreferences.ts`](src/lib/citationPreferences.ts) tách biệt rõ ràng giữa logic sinh chuỗi trích dẫn và quản lý lưu trữ tùy chọn client-side (`knowledge_os_citation_format_pref`).
     - Hỗ trợ 3 định dạng: **`apa`** (mặc định), **`bibtex`**, **`markdown`** kèm fallback an toàn khi rỗng/lỗi và đồng bộ hai chiều giữa `CitationModal` & `BatchCitationModal` (11/11 tests PASS).
   - **Post-Phase 5 Micro-Increment: Batch Citation Export for Filtered Resources (Commit `865de3d`):**
     - Hàm thuần túy `generateBatchCitations(resources, format)` trong `src/lib/citationGenerator.ts` xuất hàng loạt cho danh sách đang lọc theo 3 định dạng: **APA 7th**, **BibTeX**, và **Markdown Footnotes** (11/11 tests PASS).
@@ -189,6 +203,7 @@
 | **Phase 15** | **Root Domain Expansion & Starter Topics Enrichment:**<br>- Khởi tạo lĩnh vực Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`)<br>- Làm giàu chủ đề mẫu chất lượng cao kèm metadata SM-2 | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 8/8 tests)* | **Hoàn tất 100% (Commit `6671e42`)* |
 | **Phase 16** | **Taxonomy Cleanup, Safe Category Merge & Rehydration Persistence:**<br>- Gộp an toàn các danh mục kinh tế cũ vào `cat-root-kinh-te-tai-chinh`<br>- UI Confirmation Gate ngăn xóa nhầm và tự động gộp an toàn<br>- Gia cố Rehydration chống hồi sinh danh mục và làm sạch khi reset | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 27/27 tests)* | **Hoàn tất 100% (Commit `6d7e34c`)* |
 | **Phase 17** | **Focus Learning Session, Smart Study CTA & Guided Next-Action UX:**<br>- Phase 17A: Thanh phiên học `ActiveLearningSessionBar` + Modal đúc kết `SessionWrapupModal` + `resumeStudyTimer`<br>- Phase 17B: Tinh giản Topic toolbar (4 actions) + Smart Study CTA (5 states, cross-topic guard) + `NextActionStrip` | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 37/37 tests)* | **Hoàn tất 100% (Commits `330fcaf`, `fd0f376`)* |
+| **Phase P4.1–P4.2F** | **Obsidian Vault Bridge Subsystem:**<br>- P4.1: Read-Only Bridge & Topic Viewer<br>- P4.2A: Vault Tree Browser & Directory Listing<br>- P4.2B: In-Memory Full-Text Search<br>- P4.2C: Wiki-Link Resolver & Navigation<br>- P4.2D: Attachment & Media Embed Streaming<br>- P4.2E: Live File Watcher (SSE Auto-Refresh)<br>- P4.2F: Note Transclusion (`![[Note]]` & `![[Note#Heading]]`)<br>- Release Notes Canonicalization & Test Hardening | 🟢 **COMPLETED & VERIFIED**<br>*(Pass 176/176 tests trên 25 targeted test suites, 218/218 repo suites)* | **Hoàn tất 100% (Commits `e36cdf7` $\rightarrow$ `67ab1c5`, `ff29684`, `617383d`, `693bb8a`)* |
 
 ---
 
@@ -205,7 +220,8 @@
 
 ## 🛡️ 4. Hiện Trạng Kiểm Thử & Hệ Thống (System Health Baseline)
 
-- **Regression Test Suite:** ✅ **195 / 195 test files PASS — 1241 / 1241 tests PASS (100% GREEN)**.
+- **Regression Test Suite:** ✅ **218 / 218 test files PASS — 1,394 / 1,394 tests PASS (0 failures, 100% test pass rate)**.
+- **Obsidian Vault Bridge Suites (Phase P4.1–P4.2F):** ✅ **25 / 25 test files PASS — 176 / 176 targeted tests PASS (100% test pass rate)**.
 - **Phase 17 Suites (Focus Learning Session & Next-Action UX):** ✅ `phase17-learning-session-flow.test.tsx` (19/19 PASS) · `phase17b-topic-detail-toolbar.test.tsx` (18/18 PASS).
 - **Phase 16 Suites (Taxonomy Cleanup, Safe Merge & Rehydration Persistence):** ✅ `taxonomy-migration.test.ts` (6/6 PASS) · `taxonomy-merge-safety.test.tsx` (21/21 PASS) · `dynamic-taxonomy-lib.test.ts` (7/7 PASS).
 - **Phase 14C Suites (Weekly Cadence Bar & Habit Tracking):** ✅ `weekly-cadence-selector.test.ts` (8/8 PASS) · `weekly-cadence-bar.test.tsx` (7/7 PASS) · `phase14b-focus-domain-ui.test.tsx` (4/4 PASS).
@@ -222,30 +238,45 @@
 
 ## 📝 5. Ghi Chú Kỹ Thuật Triển Khai (Implementation Notes)
 
-1. **Focus Learning Session & Next-Action UX (Phase 17):**
+1. **Obsidian Vault Bridge Subsystem (Phase P4.1–P4.2F — ADR-064):**
+   - **Triết lý kiến trúc (Read-Only Vault Bridge):** Single Source of Truth (SSOT) thuộc về thư mục Vault Obsidian cục bộ của người dùng trên đĩa cứng; Knowledge OS chỉ lưu trữ metadata Resource (`type: 'md'`), không sao chép hay nhân bản nội dung Markdown thô vào PostgreSQL DB.
+   - **Phòng thủ Path Traversal 12 bước:** Module `src/lib/obsidianVaultPath.ts` kiểm soát chặt chẽ mọi truy cập đường dẫn, từ chối symlink ngoài vault (`fs.realpath`), chặn null bytes, dot-dot sequences, và che giấu đường dẫn máy chủ vật lý bằng placeholder `[VAULT_ROOT]`.
+   - **Hệ thống API Backend (Express Router):**
+     - `GET /api/obsidian/status`: Trả về trạng thái cấu hình Vault (`configured`, `accessible`, `noteCount`, `totalSizeBytes`).
+     - `GET /api/obsidian/file`: Đọc nội dung Markdown, bóc tách YAML frontmatter, sinh tiêu đề và dàn ý (outline).
+     - `GET /api/obsidian/tree`: Quét đệ quy cây thư mục vault với bộ lọc loại trừ (`.git`, `.obsidian`, `node_modules`).
+     - `GET /api/obsidian/search`: Tìm kiếm toàn văn in-memory tốc độ cao, trích xuất đoạn ngữ cảnh (snippet).
+     - `GET /api/obsidian/attachment`: Truyền phát chunked read stream đa phương tiện (hình ảnh, PDF, audio, video) với header MIME và cache immutable.
+     - `GET /api/obsidian/watch`: Server-Sent Events (SSE) theo dõi tệp đang mở bằng `chokidar` (debounce 500ms), tự động thông báo làm mới client badge.
+   - **Bộ phân giải Wiki-Link & Note Transclusion (Client & Core Lib):**
+     - `src/lib/obsidianLinkResolver.ts`: Phân giải cú pháp `[[Note Name]]` và `[[Note#Heading]]`, điều hướng in-place và quản lý ngăn xếp lịch sử xem.
+     - `src/lib/obsidianTransclusion.ts`: Phân giải cú pháp `![[Note]]` và `![[Note#Heading]]`, trích xuất đoạn heading-to-heading, ngăn ngừa đệ quy vô hạn (`MAX_TRANSCLUSION_DEPTH = 3`), render khối nhúng tím `TransclusionBlock`, và tự động pre-fetch nội dung nhúng.
+   - **Giao diện người dùng & Modal chuyên dụng:** `ObsidianDocumentViewerModal.tsx`, `ObsidianVaultBrowserModal.tsx`, `ObsidianTopicResourceLinkModal.tsx`.
+   - **Kiểm thử & Gia cố hợp đồng:** 25 test suites / 176 tests targeted pass, hợp đồng unconfigured vault 503 (`server-endpoint-representative.test.ts`), và smoke tests bảo mật router (`server-router-wiring.test.ts`).
+2. **Focus Learning Session & Next-Action UX (Phase 17):**
    - **Phase 17A (Commit `330fcaf`):** Triển khai thanh phiên học nổi `ActiveLearningSessionBar.tsx` (hiển thị timer chạy/tạm dừng, nút tạm dừng/tiếp tục/hoàn tất không che khuất màn hình), modal đúc kết phiên `SessionWrapupModal.tsx` (tùy chọn lưu ghi chú đúc kết + cập nhật slider tiến độ trực tiếp), và bổ sung `resumeStudyTimer` trong `StudyTimerContext` để tiếp tục phiên học mà không reset bộ đếm giây.
    - **Phase 17B (Commit `fd0f376`):** Tinh giản thanh công cụ `TopicDetail.tsx` từ 7 nút dàn trải xuống 4 hành động chính (`StudyCTA`, `Ôn tập SM-2`, `ResearchToolsDropdown`, `Chỉnh sửa`); triển khai Smart Study CTA với 5 trạng thái ngữ cảnh kèm **Hard Guard** chống chuyển chủ đề ngầm làm mất session đang chạy; kết nối `onResumeStudy` với `resumeStudyTimer()`; và nhúng dòng gợi ý ngữ cảnh `NextActionStrip.tsx` ngay dưới thanh trượt tiến độ.
    - **Kiểm thử:** 37/37 tests PASS trong `phase17-learning-session-flow.test.tsx` (19/19) và `phase17b-topic-detail-toolbar.test.tsx` (18/18).
-2. **Taxonomy Cleanup, Safe Merge & Rehydration Persistence (Phase 16):**
-   - **Pure Migration Helper:** Module [`src/lib/taxonomyMigration.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/taxonomyMigration.ts) cung cấp `mergeCategoryData` gộp an toàn các danh mục kinh tế cũ (`cat-root-kinh-te`, `cat-root-kinh-te-hoc`) sang danh mục chuẩn `cat-root-kinh-te-tai-chinh`, tái gán `categoryId` cho topic và `parentId` cho subcategory mà không làm mất ghi chú, tài liệu hay tiến độ SM-2.
+3. **Taxonomy Cleanup, Safe Merge & Rehydration Persistence (Phase 16):**
+   - **Pure Migration Helper:** Module [`src/lib/taxonomyMigration.ts`](src/lib/taxonomyMigration.ts) cung cấp `mergeCategoryData` gộp an toàn các danh mục kinh tế cũ (`cat-root-kinh-te`, `cat-root-kinh-te-hoc`) sang danh mục chuẩn `cat-root-kinh-te-tai-chinh`, tái gán `categoryId` cho topic và `parentId` cho subcategory mà không làm mất ghi chú, tài liệu hay tiến độ SM-2.
    - **DataContext Action & Persistence Sequencing:** `mergeCategories` trong `DataContext.tsx` ghi nhận cập nhật in-memory, gọi `syncHydrate` trước để bảo đảm toàn vẹn dữ liệu, sau đó mới gọi `deleteCategory` trên kho lưu trữ.
    - **UI Safe Guard & Delete Confirm:** `TopicTree.tsx` nhận diện các danh mục kinh tế cũ qua `isEconomyMergeSource` và chuyển hướng thao tác xóa thành xác nhận gộp danh mục an toàn.
    - **Persistence Rehydration Hardening:** Khóa chặt hợp đồng `resetToDefaultData()` làm sạch toàn bộ legacy economy IDs và kiểm chứng 100% không bị hồi sinh category sau khi reload hay remount.
-2. **Weekly Learning Cadence Bar & Habit Formation (Phase 14C):**
-   - **Pure Selector:** [`src/lib/learningStateSelectors.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/learningStateSelectors.ts) cung cấp `getWeeklyLearningCadence` tính toán 7 ngày trong tuần ISO (T2 $\rightarrow$ CN) theo múi giờ địa phương, phân loại 4 cấp bậc nhịp học (`starting`, `building`, `consistent`, `strong`) và loại trừ các chủ đề ẩn.
-   - **Component Trực Quan:** [`src/components/dashboard/WeeklyCadenceBar.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/dashboard/WeeklyCadenceBar.tsx) hiển thị 7 ô ngày mini, chỉ báo hôm nay (`isToday`), ngày đã học (`isActive`) và huy hiệu tổng kết số ngày/chủ đề ngay dưới Hero của Overview.
-3. **Root Domain Expansion & Starter Topics (Phase 15):**
+4. **Weekly Learning Cadence Bar & Habit Formation (Phase 14C):**
+   - **Pure Selector:** [`src/lib/learningStateSelectors.ts`](src/lib/learningStateSelectors.ts) cung cấp `getWeeklyLearningCadence` tính toán 7 ngày trong tuần ISO (T2 $\rightarrow$ CN) theo múi giờ địa phương, phân loại 4 cấp bậc nhịp học (`starting`, `building`, `consistent`, `strong`) và loại trừ các chủ đề ẩn.
+   - **Component Trực Quan:** [`src/components/dashboard/WeeklyCadenceBar.tsx`](src/components/dashboard/WeeklyCadenceBar.tsx) hiển thị 7 ô ngày mini, chỉ báo hôm nay (`isToday`), ngày đã học (`isActive`) và huy hiệu tổng kết số ngày/chủ đề ngay dưới Hero của Overview.
+5. **Root Domain Expansion & Starter Topics (Phase 15):**
    - Khởi tạo 2 danh mục gốc Đông Y (`cat-root-dong-y`) và Ngôn Ngữ (`cat-root-ngon-ngu`) cùng các chủ đề mẫu.
-   - Cung cấp đặc tả kỹ thuật [`docs/specs/phase-15-root-domain-expansion.md`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-15-root-domain-expansion.md) và kịch bản Gherkin [`docs/gherkin/phase-15-root-domain-expansion.feature`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/gherkin/phase-15-root-domain-expansion.feature).
-4. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
-   - **Hàm Hoàn Tất Khớp Nối Phân Cấp:** Hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/lib/antigravityPipeline.ts) ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job gần nhất (`queued` hoặc `processing`).
-   - **Tích Hợp Nạp Artifact An Toàn:** [`NotebookLMStudioModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/integrations/NotebookLMStudioModal.tsx) tự động gọi `completeMatchingHandoffJob` khi lưu thành công Artifact mới (qua upload tệp Markdown hoặc form thủ công) và cập nhật giao diện tracker.
+   - Cung cấp đặc tả kỹ thuật [`docs/specs/phase-15-root-domain-expansion.md`](docs/specs/phase-15-root-domain-expansion.md) và kịch bản Gherkin [`docs/gherkin/phase-15-root-domain-expansion.feature`](docs/gherkin/phase-15-root-domain-expansion.feature).
+6. **Antigravity Result Ingestion & Tracker Completion Polish (Post-Phase 5 Micro-Increment):**
+   - **Hàm Hoàn Tất Khớp Nối Phân Cấp:** Hàm thuần túy `completeMatchingHandoffJob` tại [`src/lib/antigravityPipeline.ts`](src/lib/antigravityPipeline.ts) ưu tiên khớp chính xác theo `jobId` và `topicId` trước; nếu không có `jobId`, fallback khớp theo `(topicId + artifactType)` với pending job gần nhất (`queued` hoặc `processing`).
+   - **Tích Hợp Nạp Artifact An Toàn:** [`NotebookLMStudioModal.tsx`](src/components/integrations/NotebookLMStudioModal.tsx) tự động gọi `completeMatchingHandoffJob` khi lưu thành công Artifact mới (qua upload tệp Markdown hoặc form thủ công) và cập nhật giao diện tracker.
    - **Minh Bạch Ngữ Nghĩa Trạng Thái:** Huy hiệu `success` (emerald) được giải thích rõ là *"Đã nạp kết quả vào app"*, hoàn toàn không tuyên bố tự động hóa nền hai chiều qua cloud hay auto-dispatch `agy -p`.
-5. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
-   - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
+7. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
+   - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
    - **Tách Biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (khi gặp lỗi `UNSUPPORTED_OFFLINE_OPERATION` từ kho lưu trữ LocalStorage) vs `connectionError` (khi gặp lỗi mạng/server 500 ném trạng thái `unhealthy` đỏ *"PostgreSQL Mất Kết Nối"*), xóa bỏ hoàn toàn sự nhập nhằng trong trải nghiệm người dùng.
-6. **Tính Toàn Vẹn Hệ Thống:**
-   - [`src/components/search/SearchFilters.tsx`](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
+8. **Tính Toàn Vẹn Hệ Thống:**
+   - [`src/components/search/SearchFilters.tsx`](src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
 
@@ -254,7 +285,7 @@
 ## 🛑 6. Blockers & Trạng Thái Sẵn Sàng (Production Readiness)
 
 1. **Blockers kỹ thuật:** **0 blocker**.
-2. **Trạng thái hệ thống:** **Phase 1–16 GREEN, 100% VERIFIED & PRODUCTION-READY (193 test files, 1204 tests passing)**.
+2. **Trạng thái hệ thống:** **Phase 1–17 & Phase P4.1–P4.2F GREEN, 100% VERIFIED & PRODUCTION-READY (218 test files, 1394 tests passing)**.
 
 ---
 
