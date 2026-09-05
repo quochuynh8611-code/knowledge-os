@@ -10,13 +10,14 @@ import { ObsidianFileWatcher } from "../../lib/obsidianFileWatcher";
  */
 export function createObsidianWatcherRouter(
   getVaultRoot: () => string | null | undefined,
-  fileWatcher?: ObsidianFileWatcher
+  fileWatcher?: ObsidianFileWatcher | (() => ObsidianFileWatcher)
 ): Router {
   const router = Router();
-  const watcher = fileWatcher || new ObsidianFileWatcher(500);
+  const getWatcher = typeof fileWatcher === "function" ? fileWatcher : () => (fileWatcher || new ObsidianFileWatcher(500));
 
   // GET /obsidian/vault/watch?path=<relative-path>
   router.get("/obsidian/vault/watch", (req: Request, res: Response) => {
+    const watcher = getWatcher();
     try {
       const root = getVaultRoot();
       if (!root || typeof root !== "string" || root.trim().length === 0) {

@@ -14,13 +14,14 @@ export interface ObsidianSearchResponse {
  */
 export function createObsidianSearchRouter(
   getVaultRoot: () => string | null | undefined,
-  searchIndex?: ObsidianVaultIndex
+  searchIndex?: ObsidianVaultIndex | (() => ObsidianVaultIndex)
 ): Router {
   const router = Router();
-  const index = searchIndex || new ObsidianVaultIndex();
+  const getIndex = typeof searchIndex === "function" ? searchIndex : () => (searchIndex || new ObsidianVaultIndex());
 
   // GET /obsidian/vault/search?q=<query>
   router.get("/obsidian/vault/search", async (req: Request, res: Response) => {
+    const index = getIndex();
     try {
       const root = getVaultRoot();
       if (!root || typeof root !== "string" || root.trim().length === 0) {

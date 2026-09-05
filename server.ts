@@ -14,13 +14,13 @@ import { createStudyProgressRouter } from "./src/server/routes/studyProgressRout
 import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
-import { createObsidianVaultRouter } from "./src/server/routes/obsidianVaultRoutes";
+import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
 import { createObsidianSearchRouter } from "./src/server/routes/obsidianSearchRoutes";
 import { createObsidianAttachmentRouter } from "./src/server/routes/obsidianAttachmentRoutes";
 import { createObsidianWatcherRouter } from "./src/server/routes/obsidianWatcherRoutes";
-import { ObsidianVaultIndex } from "./src/lib/obsidianIndexBuilder";
-import { ObsidianFileWatcher } from "./src/lib/obsidianFileWatcher";
+import { ObsidianVaultManager } from "./src/lib/vault-manager";
+import { ManagedVaultProfile } from "./src/lib/vault-manager.types";
 import {
   createRateLimiter,
   createRateLimitMiddleware,
@@ -94,20 +94,38 @@ async function startServer() {
   app.use("/api", createDocsRouter());
 
   // ==========================================
-  // READ-ONLY OBSIDIAN VAULT BRIDGE (PHASE P4.1 & P4.2)
+  // READ-ONLY OBSIDIAN VAULT BRIDGE & VAULT PROFILE MANAGER (PHASE P4.1 - P4.3B)
   // ==========================================
-  const obsidianVaultIndex = new ObsidianVaultIndex();
-  const obsidianFileWatcher = new ObsidianFileWatcher(500);
-  if (process.env.OBSIDIAN_VAULT_ROOT) {
-    obsidianVaultIndex.build(process.env.OBSIDIAN_VAULT_ROOT).catch(() => {
-      // Non-fatal background indexing
+  const defaultProfiles: ManagedVaultProfile[] = [];
+  if (process.env.OBSIDIAN_VAULTS_CONFIG) {
+    try {
+      const parsed = JSON.parse(process.env.OBSIDIAN_VAULTS_CONFIG);
+      if (Array.isArray(parsed)) {
+        defaultProfiles.push(...parsed);
+      }
+    } catch {
+      // Ignore invalid JSON config
+    }
+  }
+
+  if (defaultProfiles.length === 0 && process.env.OBSIDIAN_VAULT_ROOT) {
+    defaultProfiles.push({
+      vaultId: "default",
+      label: path.basename(process.env.OBSIDIAN_VAULT_ROOT) || "Default Vault",
+      rootPath: process.env.OBSIDIAN_VAULT_ROOT,
     });
   }
-  app.use("/api", createObsidianVaultRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
-  app.use("/api", createObsidianVaultTreeRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
-  app.use("/api", createObsidianSearchRouter(() => process.env.OBSIDIAN_VAULT_ROOT, obsidianVaultIndex));
-  app.use("/api", createObsidianAttachmentRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
-  app.use("/api", createObsidianWatcherRouter(() => process.env.OBSIDIAN_VAULT_ROOT, obsidianFileWatcher));
+
+  const obsidianVaultManager = new ObsidianVaultManager({
+    profiles: defaultProfiles,
+    defaultVaultId: defaultProfiles[0]?.vaultId,
+  });
+
+  app.use("/api", createObsidianVaultRoutes(obsidianVaultManager));
+  app.use("/api", createObsidianVaultTreeRouter(() => obsidianVaultManager.getActiveVaultRoot()));
+  app.use("/api", createObsidianSearchRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveIndex()));
+  app.use("/api", createObsidianAttachmentRouter(() => obsidianVaultManager.getActiveVaultRoot()));
+  app.use("/api", createObsidianWatcherRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveWatcher()));
 
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {
