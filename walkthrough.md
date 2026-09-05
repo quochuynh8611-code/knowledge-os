@@ -1,44 +1,62 @@
-# Walkthrough: Phase 17 Completed — Focus Learning Session & Guided Next-Action UX
+# Walkthrough: Knowledge OS — Obsidian Vault Bridge (P4.1-P4.2F) Subsystem
 
-## Tổng Quan Phase 17
+## Tổng Quan Subsystem
 
-Phase 17 hoàn thiện trải nghiệm học tập tập trung (**Focus Learning Session**), tinh giản giao diện chủ đề (**TopicDetail Toolbar Simplification**) và điều hướng hành động thông minh (**Next-Action Hub**) theo đúng triết lý *learning-first, calm, low cognitive load*:
+Subsystem **Obsidian Vault Bridge** đã hoàn thành toàn bộ lộ trình 7 giai đoạn liên hoàn (từ **P4.1** đến **P4.2F**) nhằm kết nối an toàn và hiệu quả giữa **Obsidian Vault** cục bộ và **Knowledge OS** theo nguyên lý **Read-Only Vault Bridge** ([ADR-064](docs/adr/ADR-064-read-only-obsidian-vault-bridge.md), [Spec](docs/specs/phase-p4-1-read-only-obsidian-vault-bridge.md), [Gherkin](docs/gherkin/phase-p4-1-read-only-obsidian-vault-bridge.feature)):
 
-1. **Phase 17A — Floating Session Bar & Wrap-up Flow (Commit `330fcaf`)**:
-   - **Thanh phiên học nổi `ActiveLearningSessionBar.tsx`**: Đặt cố định ở đáy màn hình khi có session hoạt động, hiển thị thời gian học theo thời gian thực (MM:SS), trạng thái đang học / tạm dừng, nút bấm trực tiếp không che khuất nội dung học tập.
-   - **Modal đúc kết `SessionWrapupModal.tsx`**: Kích hoạt khi bấm "Hoàn tất" trên session bar; hỗ trợ ghi nhanh đúc kết (tạo Note với tag `#takeaway` chỉ khi có nội dung), điều chỉnh slider tiến độ trực tiếp.
-   - **Hợp đồng Timer `resumeStudyTimer`**: Bổ sung trong `StudyTimerContext` và `DataContext` để tiếp tục phiên học đang tạm dừng mà không reset `timerSeconds` về 0.
-
-2. **Phase 17B — TopicDetail Toolbar Simplification & Smart Study CTA (Commit `fd0f376`)**:
-   - **Tinh giản Toolbar**: Gom 7 nút dàn trải trước đây xuống 4 hành động mặt nổi (`StudyCTA`, `Ôn tập SM-2`, `ResearchToolsDropdown ▾`, `Chỉnh sửa`).
-   - **Dropdown công cụ nghiên cứu `ResearchToolsDropdown.tsx`**: Gom 4 công cụ nâng cao (`Antigravity AI Scholar`, `Handoff Bundle`, `Obsidian Bridge`, `NotebookLM Studio`), tự động đóng khi chọn hoặc click ngoài.
-   - **Smart Study CTA `StudyCTA.tsx`**: Phản ánh 5 trạng thái ngữ cảnh (`no-session`, `this-running`, `this-paused`, `other-running`, `other-paused`) kèm **Hard Guard** chặn chuyển chủ đề ngầm khi đang có session ở chủ đề khác, và kết nối `onResumeStudy` với `resumeStudyTimer()`.
-   - **Gợi ý hành động tiếp theo `NextActionStrip.tsx`**: Hiển thị dòng nhắc nhở ngữ cảnh dưới thanh tiến độ theo 4 trạng thái học tập.
+1. **Single Source of Truth (SSOT)**: Toàn bộ ghi chú Markdown, thư mục, tệp đính kèm và media được lưu trữ và quản lý độc quyền tại Obsidian Vault cục bộ của người dùng.
+2. **Read-Only & Zero Database Bloat**: Knowledge OS chỉ lưu trữ metadata liên kết (`Resource` type `md`: `filePath`, `title`, `notes`) trong cơ sở dữ liệu PostgreSQL; không sao chép raw Markdown body vào DB.
+3. **Hardened Security & Boundary Protection**:
+   - 12-step path guard chặn Path Traversal (`..`, URL encoded `%2e%2e`), từ chối Symbolic Links (`403 SYMLINK_NOT_ALLOWED`), ẩn đường dẫn máy chủ qua placeholder (`[VAULT_ROOT]`).
+   - Lọc bỏ mã HTML nguy hại (`<script>`, `<iframe>`, `on*=` handlers) và các scheme URL không an toàn (`javascript:`, `data:`, `vbscript:`, `file:`).
+4. **Non-Destructive Operations**: Thao tác hủy liên kết chỉ xóa bản ghi Resource metadata trong Knowledge OS; hoàn toàn không tác động đến tệp vật lý trong Obsidian Vault.
 
 ---
 
-## Chi Tiết Commit Boundaries
+## Chi Tiết Các Giai Đoạn & 15 Commits trên Branch `neh1`
 
-| Commit Hash | Commit Message | Files Thay Đổi |
-| :--- | :--- | :--- |
-| **`330fcaf`** | `feat(learning): add focused study session bar and guided wrap-up flow` | `src/components/dashboard/ActiveLearningSessionBar.tsx`<br>`src/components/modals/SessionWrapupModal.tsx`<br>`src/context/StudyTimerContext.tsx`<br>`src/context/DataContext.tsx`<br>`src/App.tsx`<br>`tests/unit/phase17-learning-session-flow.test.tsx`<br>`docs/specs/phase-17-focus-learning-session-and-next-action.md`<br>`docs/gherkin/phase-17-focus-learning-session-and-next-action.feature` |
-| **`fd0f376`** | `feat(learning): simplify topic toolbar and add guided next-action flow` | `src/components/topics/StudyCTA.tsx`<br>`src/components/topics/ResearchToolsDropdown.tsx`<br>`src/components/topics/NextActionStrip.tsx`<br>`src/components/topics/TopicDetail.tsx`<br>`tests/unit/phase17b-topic-detail-toolbar.test.tsx`<br>`tests/unit/phase17-learning-session-flow.test.tsx`<br>`tests/unit/taxonomy-merge-safety.test.tsx` |
+| Phase | Tính Năng Nòng Cốt | Commits Đã Tạo | Files Chính |
+| :--- | :--- | :--- | :--- |
+| **P4.1** | Read-Only Vault Bridge Backend & Topic-Linked Viewer | `e36cdf7`, `549a1ce` | `src/lib/obsidianPathSanitizer.ts`, `src/server/routes/obsidianVaultRoutes.ts`, `src/components/modals/ObsidianDocumentViewerModal.tsx`, `src/components/modals/ObsidianTopicResourceLinkModal.tsx` |
+| **P4.2A** | Vault Tree Browser & Secure Directory Listing | `4b0083f`, `49003a0` | `src/server/routes/obsidianVaultTree.ts`, `src/components/modals/ObsidianVaultBrowserModal.tsx`, `src/components/topics/TopicDetail.tsx` |
+| **P4.2B** | In-Memory Full-Text Search | `79d6493`, `b19bc55` | `src/lib/obsidianIndexBuilder.ts`, `src/server/routes/obsidianSearchRoutes.ts`, `src/components/modals/ObsidianVaultBrowserModal.tsx` |
+| **P4.2C** | Wiki-Link Resolver & In-Place Navigation | `2a6bd02`, `2f7e3b0` | `src/lib/obsidianWikiLinkResolver.ts`, `src/lib/markdownReadability.tsx`, `src/components/modals/ObsidianDocumentViewerModal.tsx` |
+| **P4.2D** | Attachment Streaming & Media Embed Rendering | `f6c0fa2`, `816adbc` | `src/server/routes/obsidianAttachmentRoutes.ts`, `src/lib/obsidianPathSanitizer.ts`, `src/lib/markdownReadability.tsx` |
+| **P4.2E** | Live File Watcher (SSE Auto-Refresh) | `4e2febf`, `5b61539` | `src/lib/obsidianFileWatcher.ts`, `src/server/routes/obsidianWatcherRoutes.ts`, `src/components/modals/ObsidianDocumentViewerModal.tsx` |
+| **P4.2F** | Note Transclusion (`![[Note]]` & `![[Note#Heading]]`) | `c5aab04`, `b884f26`, `67ab1c5` | `src/lib/obsidianTransclusionResolver.ts`, `src/lib/markdownReadability.tsx`, `src/components/modals/ObsidianDocumentViewerModal.tsx` |
 
 ---
 
-## Kết Quả Kiểm Thử (Test Verification)
+## Thống Kê Thay Đổi Mã Nguồn (Diff Statistics)
 
-- **Phase 17 Suites (37 tests across 2 files)**:
-  - `tests/unit/phase17-learning-session-flow.test.tsx`: **19/19 passed**
-  - `tests/unit/phase17b-topic-detail-toolbar.test.tsx`: **18/18 passed**
-  - **Tổng cộng Phase 17**: **37/37 tests passed (100% pass)**.
-- **Targeted Regression Pack (5 files / 68 tests)**:
-  - `tests/unit/topic-detail-resilience.test.tsx`: **3/3 passed**
-  - `tests/unit/phase17b-topic-detail-toolbar.test.tsx`: **18/18 passed**
-  - `tests/unit/phase17-learning-session-flow.test.tsx`: **19/19 passed**
-  - `tests/unit/dynamic-taxonomy-ui.test.tsx`: **7/7 passed**
-  - `tests/unit/taxonomy-merge-safety.test.tsx`: **21/21 passed**
-- **Toàn bộ Test Suite hiện hành**: **195 / 195 test files passed — 1241 / 1241 tests passed (100% GREEN)**.
-- **TypeScript Typecheck (`npm run lint`)**: **0 errors, 0 warnings**.
-- **Working Tree**: Sạch sẽ, tuân thủ nghiêm ngặt quy trình quản lý mã nguồn.
+* **Tổng file tác động**: 47 files
+* **Tổng dòng thay đổi**: **+7,699 dòng thêm mới, -113 dòng tinh chỉnh**
+
+---
+
+## Kết Quả Kiểm Thử & Xác Minh (Test Verification)
+
+1. **Targeted Test Suites chuyên biệt cho Obsidian Bridge**:
+   - **25 test files passed / 176 targeted tests passed (100% test pass rate)**.
+   - Kiểm chứng các kịch bản biên an toàn: path traversal, symlink rejection, frontmatter parsing, circular transclusion, max depth limits, wiki-links, SSE auto-refresh, attachment streaming.
+
+2. **Toàn Bộ Test Suite Toàn Hệ Thống**:
+   - **218 test files passed / 1,394 unit & integration tests passed (0 failures; 100% test pass rate)**.
+   - *Lưu ý*: Chỉ số trên phản ánh tỷ lệ test vượt qua (test pass rate); code coverage percentage của mã nguồn chưa được đo lường qua công cụ coverage riêng biệt.
+
+3. **TypeScript & Static Analysis**:
+   - `npm run lint` (`tsc --noEmit`): **0 errors, 0 warnings**.
+
+4. **Production Build**:
+   - `npm run build`: Hoàn thành thành công (Vite production bundle + `dist/server.cjs`).
+
+---
+
+## Tài Liệu Tham Khảo & Release Notes
+
+* 📖 **Release Notes Chi Tiết (P4.1 – P4.2F)**: [`docs/releases/P4.1-P4.2F-release-notes.md`](docs/releases/P4.1-P4.2F-release-notes.md)
+* 📖 **Quyết Định Kiến Trúc (ADR-064)**: [`docs/adr/ADR-064-read-only-obsidian-vault-bridge.md`](docs/adr/ADR-064-read-only-obsidian-vault-bridge.md)
+* 📖 **Bản Đặc Tả Kỹ Thuật (Spec P4.1)**: [`docs/specs/phase-p4-1-read-only-obsidian-vault-bridge.md`](docs/specs/phase-p4-1-read-only-obsidian-vault-bridge.md)
+* 📖 **Gherkin Scenarios**: [`docs/gherkin/phase-p4-1-read-only-obsidian-vault-bridge.feature`](docs/gherkin/phase-p4-1-read-only-obsidian-vault-bridge.feature)
+
 
