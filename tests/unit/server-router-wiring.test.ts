@@ -31,6 +31,9 @@ describe("Server Router Wiring & Endpoint Registration Smoke Tests", () => {
     const { createGeminiRouter } = await import(
       "../../src/server/routes/geminiRoutes"
     );
+    const { createObsidianVaultRouter } = await import(
+      "../../src/server/routes/obsidianVaultRoutes"
+    );
 
     const mockPrisma: any = {
       category: { findMany: vi.fn().mockResolvedValue([]) },
@@ -58,6 +61,7 @@ describe("Server Router Wiring & Endpoint Registration Smoke Tests", () => {
     app.use("/api", createSyncRouter(mockPrisma));
     app.use("/api", createBackupRouter(mockPrisma, mockLimiter));
     app.use("/api", createGeminiRouter(() => null));
+    app.use("/api", createObsidianVaultRouter(() => process.env.OBSIDIAN_VAULT_ROOT));
 
     // Smoke test endpoints for non-404 status
     const healthRes = await request(app).get("/api/health");
@@ -77,5 +81,15 @@ describe("Server Router Wiring & Endpoint Registration Smoke Tests", () => {
 
     const backupExportRes = await request(app).get("/api/backup/export");
     expect(backupExportRes.status).toBe(200);
+
+    // Obsidian Vault Bridge Router Smoke Verification
+    const obsidianStatusRes = await request(app).get("/api/obsidian/vault/status");
+    expect(obsidianStatusRes.status).toBe(200);
+    expect(obsidianStatusRes.body.configured).toBe(false);
+    expect(JSON.stringify(obsidianStatusRes.body)).not.toContain("/Users/");
+
+    const obsidianFileUnconfiguredRes = await request(app).get("/api/obsidian/vault/file?path=test.md");
+    expect(obsidianFileUnconfiguredRes.status).toBe(503);
+    expect(obsidianFileUnconfiguredRes.body.error).toBe("VAULT_NOT_CONFIGURED");
   });
 });

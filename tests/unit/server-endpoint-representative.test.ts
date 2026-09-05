@@ -143,4 +143,23 @@ describe("Server Representative Endpoint Contracts", () => {
     expect(response.body.error).toBe("CHECKSUM_MISMATCH");
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
+
+  it("D4: GET /api/obsidian/vault/status và /file contract khi chưa cấu hình vault", async () => {
+    const { createObsidianVaultRouter } = await import(
+      "../../src/server/routes/obsidianVaultRoutes"
+    );
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createObsidianVaultRouter(() => undefined));
+
+    const statusRes = await request(app).get("/api/obsidian/vault/status");
+    expect(statusRes.status).toBe(200);
+    expect(statusRes.body.configured).toBe(false);
+    expect(statusRes.body.accessible).toBe(false);
+
+    const fileRes = await request(app).get("/api/obsidian/vault/file?path=Phat-Hoc/Test.md");
+    expect(fileRes.status).toBe(503);
+    expect(fileRes.body.error).toBe("VAULT_NOT_CONFIGURED");
+  });
 });
