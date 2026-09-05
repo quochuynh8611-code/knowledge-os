@@ -14,6 +14,7 @@ import {
 import { Resource } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
 import { ObsidianWikiLinkResolver } from '../../lib/obsidianWikiLinkResolver';
+import { ObsidianTransclusionResolver } from '../../lib/obsidianTransclusionResolver';
 
 interface OutlineItem {
   level: number;
@@ -121,6 +122,7 @@ export function ObsidianDocumentViewerModal({
   const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [historyStack, setHistoryStack] = useState<string[]>([]);
   const [vaultResolver, setVaultResolver] = useState<ObsidianWikiLinkResolver | null>(null);
+  const [transclusionResolver, setTransclusionResolver] = useState<ObsidianTransclusionResolver | null>(null);
   const [pendingHeading, setPendingHeading] = useState<string | null>(null);
   const [isAutoRefreshed, setIsAutoRefreshed] = useState(false);
 
@@ -172,6 +174,19 @@ export function ObsidianDocumentViewerModal({
             filePath: r.path,
           }));
           setVaultResolver(new ObsidianWikiLinkResolver(docs));
+
+          const defaultFetcher = async (filePath: string): Promise<string | null> => {
+            try {
+              const resp = await fetch(`/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`);
+              if (!resp.ok) return null;
+              const fileJson = await resp.json();
+              return fileJson.content ?? null;
+            } catch {
+              return null;
+            }
+          };
+
+          setTransclusionResolver(new ObsidianTransclusionResolver(docs, defaultFetcher));
         }
       }
     } catch {
@@ -193,14 +208,14 @@ export function ObsidianDocumentViewerModal({
     }
   }, [isOpen, resource, fetchVaultDocument]);
 
-  // Step 2: Fetch vault index for wiki-link resolution only when document contains wiki links
+  // Step 2: Fetch vault index for wiki-link resolution and note transclusions
   useEffect(() => {
     if (!fileData || !fileData.content) return;
-    const hasWikiLinks = /\[\[.+?\]\]/.test(fileData.content);
-    if (hasWikiLinks && !vaultResolver) {
+    const hasLinksOrTransclusions = /(!?\[\[.+?\]\])/.test(fileData.content);
+    if (hasLinksOrTransclusions && (!vaultResolver || !transclusionResolver)) {
       loadVaultDocs();
     }
-  }, [fileData, vaultResolver, loadVaultDocs]);
+  }, [fileData, vaultResolver, transclusionResolver, loadVaultDocs]);
 
   const activePath = currentPath || resource?.filePath;
 
@@ -418,12 +433,15 @@ export function ObsidianDocumentViewerModal({
                   </div>
                 )}
 
-                {/* Markdown Renderer with Wiki-Link Resolver */}
+                {/* Markdown Renderer with Wiki-Link Resolver & Transclusion Resolver */}
                 <div className="prose prose-stone max-w-none">
                   <MarkdownReadabilityRenderer
                     content={sanitizedContent}
                     vaultResolver={vaultResolver || undefined}
                     onOpenVaultLink={handleOpenVaultLink}
+                    transclusionResolver={transclusionResolver || undefined}
+                    transclusionDepth={1}
+                    transclusionAncestors={activePath ? [activePath] : []}
                   />
                 </div>
               </div>
