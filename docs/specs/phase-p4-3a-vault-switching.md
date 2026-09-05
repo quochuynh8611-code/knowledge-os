@@ -1,10 +1,10 @@
 # Phase P4.3A Technical Specification: Safe Obsidian Vault Switching Architecture
 
-- **Status: Proposed**
-- **Implementation: Not started**
-- **Feature Code:** P4.3A
+- **Status: In progress**
+- **Implementation: In progress (P4.3B)**
+- **Feature Code:** P4.3A / P4.3B
 - **Target Release:** Knowledge OS Local Enterprise
-- **Associated ADR:** [`ADR-065`](../adr/ADR-065-vault-switching-configuration-model.md)
+- **Associated ADRs:** [`ADR-065`](../adr/ADR-065-vault-switching-configuration-model.md), [`ADR-066`](../adr/ADR-066-vault-profile-manager-implementation.md)
 - **Associated Feature File:** [`phase-p4-3a-vault-switching.feature`](../gherkin/phase-p4-3a-vault-switching.feature)
 
 ---

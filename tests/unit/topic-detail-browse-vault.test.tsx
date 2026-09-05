@@ -78,16 +78,26 @@ describe("Phase P4.2A: TopicDetail Browse Vault Wiring", () => {
     expect(browseVaultBtn).toBeInTheDocument();
 
     // Mock API fetch for browsing vault
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        path: "",
-        items: [
-          { name: "Bat-Chanh-Dao.md", type: "file", path: "Bat-Chanh-Dao.md", size: 500, mtime: "2026-09-04T12:00:00Z", extension: ".md" },
-        ],
-      }),
-    } as Response);
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          path: "",
+          items: [
+            { name: "Bat-Chanh-Dao.md", type: "file", path: "Bat-Chanh-Dao.md", size: 500, mtime: "2026-09-04T12:00:00Z", extension: ".md" },
+          ],
+        }),
+      } as Response;
+    });
 
     // Click Browse Vault button
     fireEvent.click(browseVaultBtn);
@@ -108,9 +118,32 @@ describe("Phase P4.2A: TopicDetail Browse Vault Wiring", () => {
     const resourcesTab = screen.getByRole("button", { name: /Tài liệu/i });
     fireEvent.click(resourcesTab);
 
-    // Mock fetch for vault tree
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce({
+    // Mock fetch for vault tree and file
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      if (url.includes("/api/obsidian/vault/file")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            relativePath: "Tu-Niem-Xu.md",
+            fileName: "Tu-Niem-Xu.md",
+            frontmatter: { title: "Tứ Niệm Xứ Toàn Thư" },
+            outline: [],
+            content: "# Tứ Niệm Xứ\nNội dung quán thân trên thân...",
+            sizeBytes: 800,
+            lastModified: "2026-09-04T12:00:00Z",
+          }),
+        } as Response;
+      }
+      return {
         ok: true,
         status: 200,
         json: async () => ({
@@ -119,21 +152,8 @@ describe("Phase P4.2A: TopicDetail Browse Vault Wiring", () => {
             { name: "Tu-Niem-Xu.md", type: "file", path: "Tu-Niem-Xu.md", size: 800, mtime: "2026-09-04T12:00:00Z", extension: ".md" },
           ],
         }),
-      } as Response)
-      // Mock fetch for viewer file content
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          relativePath: "Tu-Niem-Xu.md",
-          fileName: "Tu-Niem-Xu.md",
-          frontmatter: { title: "Tứ Niệm Xứ Toàn Thư" },
-          outline: [],
-          content: "# Tứ Niệm Xứ\nNội dung quán thân trên thân...",
-          sizeBytes: 800,
-          lastModified: "2026-09-04T12:00:00Z",
-        }),
-      } as Response);
+      } as Response;
+    });
 
     const browseVaultBtn = screen.getByRole("button", { name: /Browse Vault/i });
     fireEvent.click(browseVaultBtn);

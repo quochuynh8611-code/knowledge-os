@@ -16,16 +16,26 @@ describe("Phase P4.2B: Obsidian Vault Search Box in Browser Modal", () => {
   });
 
   it("does not trigger vault search API when query is empty, displays tree", async () => {
-    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        path: "",
-        items: [
-          { name: "01-Study", type: "directory", path: "01-Study", size: 0, mtime: "2026-09-04T12:00:00Z" },
-        ],
-      }),
-    } as Response);
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          path: "",
+          items: [
+            { name: "01-Study", type: "directory", path: "01-Study", size: 0, mtime: "2026-09-04T12:00:00Z" },
+          ],
+        }),
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -44,33 +54,42 @@ describe("Phase P4.2B: Obsidian Vault Search Box in Browser Modal", () => {
   });
 
   it("triggers search API with debounced query and renders search results with snippets", async () => {
-    // Initial root tree fetch
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce({
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      if (url.includes("/api/obsidian/vault/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            query: "Chánh Đạo",
+            count: 1,
+            results: [
+              {
+                title: "Bát Chánh Đạo",
+                path: "Study/Bat-Chanh-Dao.md",
+                snippet: "...con đường tám nhánh đưa đến giải thoát...",
+                score: 95,
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return {
         ok: true,
         status: 200,
         json: async () => ({
           path: "",
           items: [],
         }),
-      } as Response)
-      // Search API response
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          query: "Chánh Đạo",
-          count: 1,
-          results: [
-            {
-              title: "Bát Chánh Đạo",
-              path: "Study/Bat-Chanh-Dao.md",
-              snippet: "...con đường tám nhánh đưa đến giải thoát...",
-              score: 95,
-            },
-          ],
-        }),
-      } as Response);
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -91,28 +110,39 @@ describe("Phase P4.2B: Obsidian Vault Search Box in Browser Modal", () => {
   });
 
   it("calls onSelectFile when clicking on a search result", async () => {
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce({
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      if (url.includes("/api/obsidian/vault/search")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            query: "Tu-Niem-Xu",
+            count: 1,
+            results: [
+              {
+                title: "Tứ Niệm Xứ",
+                path: "Study/Tu-Niem-Xu.md",
+                snippet: "...quán thân trên thân...",
+                score: 80,
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return {
         ok: true,
         status: 200,
         json: async () => ({ path: "", items: [] }),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          query: "Tu-Niem-Xu",
-          count: 1,
-          results: [
-            {
-              title: "Tứ Niệm Xứ",
-              path: "Study/Tu-Niem-Xu.md",
-              snippet: "...quán thân trên thân...",
-              score: 80,
-            },
-          ],
-        }),
-      } as Response);
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal

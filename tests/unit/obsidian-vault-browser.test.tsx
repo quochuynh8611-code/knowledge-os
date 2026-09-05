@@ -35,11 +35,21 @@ describe("Phase P4.2A: ObsidianVaultBrowserModal", () => {
       ],
     };
 
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => mockRootResponse,
-    } as Response);
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => mockRootResponse,
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -65,11 +75,21 @@ describe("Phase P4.2A: ObsidianVaultBrowserModal", () => {
       ],
     };
 
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => mockRootResponse,
-    } as Response);
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => mockRootResponse,
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -101,17 +121,28 @@ describe("Phase P4.2A: ObsidianVaultBrowserModal", () => {
       ],
     };
 
-    vi.spyOn(global, "fetch")
-      .mockResolvedValueOnce({
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      if (url.includes("FolderA")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => mockChildResponse,
+        } as Response;
+      }
+      return {
         ok: true,
         status: 200,
         json: async () => mockRootResponse,
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: async () => mockChildResponse,
-      } as Response);
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -133,11 +164,21 @@ describe("Phase P4.2A: ObsidianVaultBrowserModal", () => {
   });
 
   it("displays error message when API responds with error", async () => {
-    vi.spyOn(global, "fetch").mockResolvedValueOnce({
-      ok: false,
-      status: 403,
-      json: async () => ({ error: "ACCESS_DENIED_SENSITIVE_DIR", message: "Truy cập bị từ chối." }),
-    } as Response);
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ activeVaultId: "default", vaults: [] }),
+        } as Response;
+      }
+      return {
+        ok: false,
+        status: 403,
+        json: async () => ({ error: "ACCESS_DENIED_SENSITIVE_DIR", message: "Truy cập bị từ chối." }),
+      } as Response;
+    });
 
     render(
       <ObsidianVaultBrowserModal
@@ -149,6 +190,77 @@ describe("Phase P4.2A: ObsidianVaultBrowserModal", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Truy cập bị từ chối/i)).toBeDefined();
+    });
+  });
+
+  it("resets tree and reloads root when vault is switched via VaultSelector", async () => {
+    let currentVault = "vault-1";
+    vi.spyOn(global, "fetch").mockImplementation(async (input: any, init?: any) => {
+      const url = String(input);
+      if (url.includes("/api/obsidian/vaults")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            activeVaultId: currentVault,
+            vaults: [
+              { vaultId: "vault-1", label: "Vault 1", isCurrent: currentVault === "vault-1" },
+              { vaultId: "vault-2", label: "Vault 2", isCurrent: currentVault === "vault-2" },
+            ],
+          }),
+        } as Response;
+      }
+      if (url.includes("/api/obsidian/vault/switch")) {
+        const body = JSON.parse(init?.body || "{}");
+        currentVault = body.vaultId;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, activeVaultId: currentVault, label: "Vault 2" }),
+        } as Response;
+      }
+      // Tree endpoint
+      if (currentVault === "vault-1") {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            path: "",
+            items: [{ name: "DocFromVault1.md", type: "file", path: "DocFromVault1.md", size: 100, mtime: "" }],
+          }),
+        } as Response;
+      } else {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            path: "",
+            items: [{ name: "DocFromVault2.md", type: "file", path: "DocFromVault2.md", size: 200, mtime: "" }],
+          }),
+        } as Response;
+      }
+    });
+
+    render(
+      <ObsidianVaultBrowserModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSelectFile={mockOnSelectFile}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("DocFromVault1.md")).toBeDefined();
+    });
+
+    // Select vault-2
+    const select = await screen.findByRole("combobox", { name: /Chọn Obsidian Vault/i });
+    fireEvent.change(select, { target: { value: "vault-2" } });
+
+    // Should re-fetch and render DocFromVault2.md
+    await waitFor(() => {
+      expect(screen.getByText("DocFromVault2.md")).toBeDefined();
+      expect(screen.queryByText("DocFromVault1.md")).toBeNull();
     });
   });
 });

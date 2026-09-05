@@ -12,6 +12,7 @@ import {
   Search,
 } from "lucide-react";
 import { ObsidianSearchResult } from "../../lib/obsidianIndexBuilder";
+import { VaultSelector } from "./VaultSelector";
 
 export interface VaultTreeItem {
   name: string;
@@ -154,6 +155,16 @@ export function ObsidianVaultBrowserModal({
     }
   }, [isOpen, fetchFolder]);
 
+  const handleVaultSwitched = useCallback(() => {
+    setExpandedFolders(new Set());
+    setFolderCache({});
+    setSearchQuery("");
+    setDebouncedQuery("");
+    setSearchResults([]);
+    setErrorMessage(null);
+    fetchFolder("", true);
+  }, [fetchFolder]);
+
   if (!isOpen) return null;
 
   const toggleFolder = async (folderPath: string) => {
@@ -179,8 +190,10 @@ export function ObsidianVaultBrowserModal({
       fetch(`/api/obsidian/vault/search?q=${encodeURIComponent(debouncedQuery)}`)
         .then((res) => res.json())
         .then((data) => {
-          setSearchResults(data.results || []);
           setIsSearching(false);
+          if (data.results) {
+            setSearchResults(data.results);
+          }
         })
         .catch(() => setIsSearching(false));
     } else {
@@ -356,7 +369,8 @@ export function ObsidianVaultBrowserModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <VaultSelector onVaultSwitched={handleVaultSwitched} />
             <button
               onClick={handleRefresh}
               disabled={isLoadingRoot || isSearching}
