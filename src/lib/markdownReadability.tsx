@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, CheckSquare, Square, ExternalLink } from 'lucide-react';
+import { Sparkles, CheckSquare, Square, ExternalLink, FileText } from 'lucide-react';
 import { Topic } from '../types';
 
 /**
@@ -61,6 +61,15 @@ export function toReadablePlainTextPreview(content?: string, maxLength?: number)
   return text;
 }
 
+export interface MarkdownVaultLinkResolver {
+  resolve: (rawLink: string) => {
+    targetTitle: string;
+    heading?: string;
+    alias: string;
+    filePath: string | null;
+  };
+}
+
 /**
  * Phân tích và render các phần tử inline:
  * - Wiki Links ([[...]])
@@ -73,7 +82,9 @@ export function toReadablePlainTextPreview(content?: string, maxLength?: number)
 export function renderInlineMarkdownWithWikiLinks(
   text: string,
   topics: Topic[] = [],
-  onOpenTopic?: (id: string) => void
+  onOpenTopic?: (id: string) => void,
+  vaultResolver?: MarkdownVaultLinkResolver,
+  onOpenVaultLink?: (filePath: string, heading?: string) => void
 ): React.ReactNode[] {
   // Regex bắt các token: Wiki links [[...]], Markdown links [text](url), Bold **...**, Italic *...*, Inline code `...`, Strikethrough ~~...~~
   const regex = /(\[\[.*?\]\]|\[.*?\]\(.*?\)|(?:\*\*|__).*?(?:\*\*|__)|(?:\*|_).*?(?:\*|_)|`.*?`|~~.*?~~)/g;
@@ -82,8 +93,35 @@ export function renderInlineMarkdownWithWikiLinks(
   return parts.map((part, index) => {
     if (!part) return null;
 
-    // 1. Wiki Links: [[Tên Chủ Đề]] hoặc [[Tên Chủ Đề|Bí danh]]
+    // 1. Wiki Links: [[Tên Chủ Đề]] hoặc [[Tên Chủ Đề|Bí danh]] hoặc [[Tệp Obsidian]]
     if (part.startsWith('[[') && part.endsWith(']]')) {
+      // 1a. If vaultResolver is provided, resolve against Obsidian Vault
+      if (vaultResolver) {
+        const resolution = vaultResolver.resolve(part);
+        if (resolution.filePath !== null) {
+          return (
+            <a
+              key={index}
+              href={`#${resolution.filePath}${resolution.heading ? `#${resolution.heading}` : ''}`}
+              data-filepath={resolution.filePath}
+              data-heading={resolution.heading}
+              onClick={(e) => {
+                e.preventDefault();
+                if (onOpenVaultLink) {
+                  onOpenVaultLink(resolution.filePath!, resolution.heading);
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-950/90 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-900 dark:text-purple-200 font-semibold rounded-md text-xs sm:text-sm border border-purple-300 dark:border-purple-700 transition mx-0.5 cursor-pointer align-baseline"
+              title={`Mở ghi chú Obsidian: ${resolution.targetTitle || resolution.alias}`}
+            >
+              <FileText className="w-3.5 h-3.5 text-purple-700 dark:text-purple-400" />
+              <span>{resolution.alias}</span>
+            </a>
+          );
+        }
+      }
+
+      // 1b. Knowledge OS Topic resolution
       const rawInner = part.slice(2, -2).trim();
       const [targetTitle, alias] = rawInner.includes('|')
         ? rawInner.split('|').map((s) => s.trim())
@@ -159,31 +197,30 @@ export function renderInlineMarkdownWithWikiLinks(
     ) {
       const boldText = part.slice(2, -2);
       return (
-        <strong key={index} className="font-bold text-stone-950 dark:text-stone-50">
-          {renderInlineMarkdownWithWikiLinks(boldText, topics, onOpenTopic)}
+        <strong key={index} className="font-bold text-stone-900 dark:text-stone-100">
+          {renderInlineMarkdownWithWikiLinks(boldText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
         </strong>
       );
     }
 
     // 4. Italic: *text* hoặc _text_
-    if (
-      (part.startsWith('*') && part.endsWith('*') && part.length >= 2) ||
-      (part.startsWith('_') && part.endsWith('_') && part.length >= 2)
-    ) {
-      const italicText = part.slice(1, -1);
+    const italicMatch = part.match(/^(\*|_)(.*?)\1$/);
+    if (italicMatch) {
+      const italicText = italicMatch[2];
       return (
         <em key={index} className="italic text-stone-800 dark:text-stone-200">
-          {renderInlineMarkdownWithWikiLinks(italicText, topics, onOpenTopic)}
+          {renderInlineMarkdownWithWikiLinks(italicText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
         </em>
       );
     }
 
     // 5. Strikethrough: ~~text~~
-    if (part.startsWith('~~') && part.endsWith('~~') && part.length >= 4) {
-      const strikeText = part.slice(2, -2);
+    const strikeMatch = part.match(/^~~(.*?)~~$/);
+    if (strikeMatch) {
+      const strikeText = strikeMatch[1];
       return (
-        <del key={index} className="line-through text-stone-500 dark:text-stone-400">
-          {renderInlineMarkdownWithWikiLinks(strikeText, topics, onOpenTopic)}
+        <del key={index} className="line-through text-stone-400 dark:text-stone-500">
+          {renderInlineMarkdownWithWikiLinks(strikeText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
         </del>
       );
     }
@@ -206,10 +243,12 @@ export function renderInlineMarkdownWithWikiLinks(
   });
 }
 
-interface MarkdownReadabilityRendererProps {
+export interface MarkdownReadabilityRendererProps {
   content?: string;
   topics?: Topic[];
   onOpenTopic?: (id: string) => void;
+  vaultResolver?: MarkdownVaultLinkResolver;
+  onOpenVaultLink?: (filePath: string, heading?: string) => void;
   className?: string;
 }
 
@@ -221,12 +260,14 @@ interface ListItem {
 
 /**
  * Component React render Markdown có cấu trúc đầy đủ, sạch sẽ và giàu tính thẩm mỹ
- * cho chế độ Focus Reading (NoteReaderModal, TopicDetail).
+ * cho chế độ Focus Reading (NoteReaderModal, TopicDetail, ObsidianDocumentViewerModal).
  */
 export function MarkdownReadabilityRenderer({
   content = '',
   topics = [],
   onOpenTopic,
+  vaultResolver,
+  onOpenVaultLink,
   className = '',
 }: MarkdownReadabilityRendererProps) {
   if (!content || !content.trim()) {
@@ -237,6 +278,9 @@ export function MarkdownReadabilityRenderer({
   const lines = content.split(/\r?\n/);
   const blocks: React.ReactNode[] = [];
 
+  const renderInline = (val: string) =>
+    renderInlineMarkdownWithWikiLinks(val, topics, onOpenTopic, vaultResolver, onOpenVaultLink);
+
   let inCodeBlock = false;
   let codeBlockBuffer: string[] = [];
   let blockquoteBuffer: string[] = [];
@@ -245,14 +289,16 @@ export function MarkdownReadabilityRenderer({
 
   const flushBlockquote = (keyIndex: number) => {
     if (blockquoteBuffer.length > 0) {
-      const quoteText = blockquoteBuffer.join('\n');
       blocks.push(
         <blockquote
           key={`quote-${keyIndex}`}
-          data-blockquote="true"
-          className="border-l-4 border-amber-600 dark:border-amber-500 pl-4 sm:pl-5 py-2 my-3.5 bg-amber-50/60 dark:bg-amber-950/30 text-stone-800 dark:text-stone-200 italic rounded-r-2xl leading-relaxed"
+          className="border-l-4 border-amber-600 dark:border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 my-3.5 rounded-r-xl space-y-1.5 italic text-stone-700 dark:text-stone-300 text-xs sm:text-sm"
         >
-          {renderInlineMarkdownWithWikiLinks(quoteText, topics, onOpenTopic)}
+          {blockquoteBuffer.map((quoteText, qIdx) => (
+            <p key={`quote-line-${keyIndex}-${qIdx}`} className="leading-relaxed">
+              {renderInline(quoteText)}
+            </p>
+          ))}
         </blockquote>
       );
       blockquoteBuffer = [];
@@ -261,46 +307,44 @@ export function MarkdownReadabilityRenderer({
 
   const flushList = (keyIndex: number) => {
     if (listBuffer.length > 0) {
-      const firstType = listBuffer[0].type;
-      if (firstType === 'task') {
+      const isTask = listBuffer.some((item) => item.type === 'task');
+      const isOrdered = listBuffer.every((item) => item.type === 'ordered');
+
+      if (isTask) {
         blocks.push(
-          <ul key={`tasklist-${keyIndex}`} className="space-y-1.5 my-2.5 pl-1 text-stone-800 dark:text-stone-200">
-            {listBuffer.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 leading-relaxed text-xs sm:text-sm">
-                {item.checked ? (
-                  <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                ) : (
-                  <Square className="w-4 h-4 text-stone-400 dark:text-stone-500 shrink-0 mt-0.5" />
-                )}
+          <ul key={`task-list-${keyIndex}`} className="space-y-1.5 my-3 pl-1">
+            {listBuffer.map((item, lIdx) => (
+              <li key={`task-${keyIndex}-${lIdx}`} className="flex items-start gap-2 text-xs sm:text-sm leading-relaxed text-stone-800 dark:text-stone-200">
+                <span className="mt-0.5 text-stone-500 dark:text-stone-400 shrink-0">
+                  {item.checked ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  ) : (
+                    <Square className="w-4 h-4 text-stone-400 dark:text-stone-500" />
+                  )}
+                </span>
                 <span className={item.checked ? 'line-through text-stone-400 dark:text-stone-500' : ''}>
-                  {renderInlineMarkdownWithWikiLinks(item.text, topics, onOpenTopic)}
+                  {renderInline(item.text)}
                 </span>
               </li>
             ))}
           </ul>
         );
-      } else if (firstType === 'ordered') {
+      } else if (isOrdered) {
         blocks.push(
-          <ol
-            key={`ol-${keyIndex}`}
-            className="list-decimal list-outside ml-5 space-y-1 my-2.5 text-stone-800 dark:text-stone-200 text-xs sm:text-sm"
-          >
-            {listBuffer.map((item, i) => (
-              <li key={i} className="leading-relaxed pl-1">
-                {renderInlineMarkdownWithWikiLinks(item.text, topics, onOpenTopic)}
+          <ol key={`ordered-list-${keyIndex}`} className="list-decimal list-outside ml-5 space-y-1 my-3 text-stone-800 dark:text-stone-200 text-xs sm:text-sm leading-relaxed">
+            {listBuffer.map((item, lIdx) => (
+              <li key={`ol-${keyIndex}-${lIdx}`}>
+                {renderInline(item.text)}
               </li>
             ))}
           </ol>
         );
       } else {
         blocks.push(
-          <ul
-            key={`ul-${keyIndex}`}
-            className="list-disc list-outside ml-5 space-y-1 my-2.5 text-stone-800 dark:text-stone-200 text-xs sm:text-sm"
-          >
-            {listBuffer.map((item, i) => (
-              <li key={i} className="leading-relaxed pl-1">
-                {renderInlineMarkdownWithWikiLinks(item.text, topics, onOpenTopic)}
+          <ul key={`unordered-list-${keyIndex}`} className="list-disc list-outside ml-5 space-y-1 my-3 text-stone-800 dark:text-stone-200 text-xs sm:text-sm leading-relaxed">
+            {listBuffer.map((item, lIdx) => (
+              <li key={`ul-${keyIndex}-${lIdx}`}>
+                {renderInline(item.text)}
               </li>
             ))}
           </ul>
@@ -312,37 +356,29 @@ export function MarkdownReadabilityRenderer({
 
   const flushTable = (keyIndex: number) => {
     if (tableBuffer.length >= 2) {
-      const headerLine = tableBuffer[0];
-      const dataLines = tableBuffer.slice(2); // Bỏ qua dòng separator |---|---|
-
-      const parseCells = (line: string) =>
-        line
-          .replace(/^\|/, '')
-          .replace(/\|$/, '')
-          .split('|')
-          .map((c) => c.trim());
-
-      const headers = parseCells(headerLine);
-      const rows = dataLines.map(parseCells);
+      const headerRow = tableBuffer[0].split('|').map((s) => s.trim()).filter(Boolean);
+      const dataRows = tableBuffer.slice(2).map((row) =>
+        row.split('|').map((s) => s.trim()).filter(Boolean)
+      );
 
       blocks.push(
-        <div key={`table-${keyIndex}`} className="overflow-x-auto my-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-          <table className="w-full text-xs sm:text-sm text-left text-stone-800 dark:text-stone-200 border-collapse">
-            <thead className="bg-stone-100 dark:bg-stone-800/90 text-stone-900 dark:text-stone-100 font-semibold border-b border-stone-200 dark:border-stone-700">
+        <div key={`table-wrapper-${keyIndex}`} className="overflow-x-auto my-4 border border-stone-200 dark:border-stone-800 rounded-xl shadow-2xs">
+          <table className="w-full text-left text-xs sm:text-sm border-collapse">
+            <thead className="bg-stone-100 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
               <tr>
-                {headers.map((h, hIdx) => (
-                  <th key={hIdx} className="px-3.5 py-2.5">
-                    {renderInlineMarkdownWithWikiLinks(h, topics, onOpenTopic)}
+                {headerRow.map((h, hIdx) => (
+                  <th key={`th-${keyIndex}-${hIdx}`} className="p-2.5 font-bold text-stone-900 dark:text-stone-100">
+                    {renderInline(h)}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-200/70 dark:divide-stone-800/70">
-              {rows.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-stone-50/60 dark:hover:bg-stone-800/40 transition">
+            <tbody className="divide-y divide-stone-200 dark:divide-stone-800 bg-white dark:bg-stone-950">
+              {dataRows.map((row, rIdx) => (
+                <tr key={`tr-${keyIndex}-${rIdx}`} className="hover:bg-stone-50 dark:hover:bg-stone-900/50 transition">
                   {row.map((cell, cIdx) => (
-                    <td key={cIdx} className="px-3.5 py-2">
-                      {renderInlineMarkdownWithWikiLinks(cell, topics, onOpenTopic)}
+                    <td key={`td-${keyIndex}-${rIdx}-${cIdx}`} className="p-2.5 text-stone-700 dark:text-stone-300">
+                      {renderInline(cell)}
                     </td>
                   ))}
                 </tr>
@@ -357,7 +393,7 @@ export function MarkdownReadabilityRenderer({
       tableBuffer.forEach((line, tIdx) => {
         blocks.push(
           <p key={`table-fallback-${keyIndex}-${tIdx}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
-            {renderInlineMarkdownWithWikiLinks(line, topics, onOpenTopic)}
+            {renderInline(line)}
           </p>
         );
       });
@@ -438,7 +474,7 @@ export function MarkdownReadabilityRenderer({
             data-heading="1"
             className="text-xl sm:text-2xl font-bold text-stone-950 dark:text-stone-50 font-serif-title mt-5 mb-2.5 pb-1.5 border-b border-stone-200 dark:border-stone-800"
           >
-            {renderInlineMarkdownWithWikiLinks(headingText, topics, onOpenTopic)}
+            {renderInline(headingText)}
           </h1>
         );
       } else if (level === 2) {
@@ -448,7 +484,7 @@ export function MarkdownReadabilityRenderer({
             data-heading="2"
             className="text-lg sm:text-xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-4 mb-2"
           >
-            {renderInlineMarkdownWithWikiLinks(headingText, topics, onOpenTopic)}
+            {renderInline(headingText)}
           </h2>
         );
       } else {
@@ -456,47 +492,48 @@ export function MarkdownReadabilityRenderer({
           <h3
             key={`h3-${i}`}
             data-heading="3"
-            className="text-sm sm:text-base font-semibold text-stone-900 dark:text-stone-100 mt-3.5 mb-1.5"
+            className="text-base sm:text-lg font-bold text-stone-850 dark:text-stone-150 font-serif-title mt-3 mb-1.5"
           >
-            {renderInlineMarkdownWithWikiLinks(headingText, topics, onOpenTopic)}
+            {renderInline(headingText)}
           </h3>
         );
       }
       continue;
     }
 
-    // 5. Blockquote (> ...)
-    if (line.startsWith('>')) {
+    // 5. Blockquote (> quote)
+    if (trimmed.startsWith('>')) {
       flushList(i);
       flushTable(i);
-      blockquoteBuffer.push(line.replace(/^>+\s?/, ''));
+      const quoteContent = line.replace(/^>\s?/, '');
+      blockquoteBuffer.push(quoteContent);
       continue;
-    } else {
-      flushBlockquote(i);
     }
 
-    // 6. Task list (- [ ] or - [x])
+    flushBlockquote(i);
+
+    // 6. Ordered list (1. item)
+    const olMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
+    if (olMatch) {
+      flushTable(i);
+      listBuffer.push({ type: 'ordered', text: olMatch[2] });
+      continue;
+    }
+
+    // 7. Task list (- [ ] or - [x])
     const taskMatch = line.match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)$/);
     if (taskMatch) {
       flushTable(i);
-      const checked = taskMatch[1].toLowerCase() === 'x';
-      listBuffer.push({ type: 'task', text: taskMatch[2], checked });
+      const isChecked = taskMatch[1].toLowerCase() === 'x';
+      listBuffer.push({ type: 'task', text: taskMatch[2], checked: isChecked });
       continue;
     }
 
-    // 7. Ordered list (1. item, 2. item)
-    const orderedMatch = line.match(/^\s*\d+[.)]\s+(.*)$/);
-    if (orderedMatch) {
+    // 8. Unordered list (- item or * item)
+    const ulMatch = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ulMatch) {
       flushTable(i);
-      listBuffer.push({ type: 'ordered', text: orderedMatch[1] });
-      continue;
-    }
-
-    // 8. Unordered list (- item, * item, + item)
-    const unorderedMatch = line.match(/^\s*[-*+•]\s+(.*)$/);
-    if (unorderedMatch) {
-      flushTable(i);
-      listBuffer.push({ type: 'unordered', text: unorderedMatch[1] });
+      listBuffer.push({ type: 'unordered', text: ulMatch[1] });
       continue;
     }
 
@@ -508,7 +545,7 @@ export function MarkdownReadabilityRenderer({
     } else {
       blocks.push(
         <p key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
-          {renderInlineMarkdownWithWikiLinks(line, topics, onOpenTopic)}
+          {renderInline(line)}
         </p>
       );
     }

@@ -194,6 +194,10 @@ export class ObsidianVaultIndex {
     return this.documents.length;
   }
 
+  getAllDocs(): Array<{ title: string; filePath: string }> {
+    return this.documents.map((d) => ({ title: d.title, filePath: d.filePath }));
+  }
+
   search(query: string, limit = 50): ObsidianSearchResult[] {
     const trimmed = (query || "").trim();
     if (!trimmed) return [];

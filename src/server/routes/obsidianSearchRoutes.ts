@@ -32,7 +32,9 @@ export function createObsidianSearchRouter(
       }
 
       const rawQuery = req.query.q as string | undefined;
-      if (!rawQuery || typeof rawQuery !== "string" || rawQuery.trim().length === 0) {
+      const isAll = req.query.all === "true" || rawQuery === "*";
+
+      if (!isAll && (!rawQuery || typeof rawQuery !== "string" || rawQuery.trim().length === 0)) {
         res.status(400).json({
           error: "MISSING_QUERY",
           message: "Query parameter 'q' is required and must not be empty.",
@@ -40,13 +42,28 @@ export function createObsidianSearchRouter(
         return;
       }
 
-      const query = rawQuery.trim().slice(0, 100);
-
       // Ensure index is built for current vault root
       if (!index.isReady()) {
         await index.build(root);
       }
 
+      if (isAll) {
+        const allDocs = index.getAllDocs();
+        const results: ObsidianSearchResult[] = allDocs.map((doc) => ({
+          title: doc.title,
+          path: doc.filePath,
+          snippet: "",
+          score: 100,
+        }));
+        res.status(200).json({
+          query: "*",
+          count: results.length,
+          results,
+        });
+        return;
+      }
+
+      const query = rawQuery!.trim().slice(0, 100);
       const results = index.search(query, 50);
 
       res.status(200).json({
