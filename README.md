@@ -1,421 +1,149 @@
-# ☸️ Knowledge OS — Hệ Điều Hành Quản Lý & Khảo Cứu Tri Thức Phật Học & Huyền Học Phương Đông
+# ☸️ Knowledge OS — Hệ Điều Hành Quản Lý & Khảo Cứu Tri Thức Đa Ngành
 
-> **Trung tâm Cấu trúc hóa Tri thức, Spaced Repetition (SM-2) và Cầu nối Đa Nền tảng (Obsidian, NotebookLM, Antigravity AI)**
-
----
-
-## Bắt đầu nhanh
-
-### 1. App này dùng để làm gì?
-
-Knowledge OS được thiết kế để:
-
-- Quản lý hệ thống chủ đề học tập theo cấu trúc canonical.
-- Ghi chú, lưu tài liệu tham khảo và theo dõi tiến độ học.
-- Liên kết tri thức giữa các topic thay vì học rời rạc.
-- Chuẩn bị dữ liệu để bàn giao sang Obsidian, NotebookLM và các workflow nghiên cứu AI.
-
-Nếu bạn là người mới, hãy bắt đầu bằng 4 bước đơn giản:
-
-1. Mở **Tổng quan** để xem toàn bộ hệ thống.
-2. Vào **Chủ đề** để chọn một topic muốn học.
-3. Ghi lại nội dung quan trọng trong **Ghi chú**.
-4. Kiểm tra và cập nhật **Tiến độ** sau mỗi phiên học.
-
-### 2. Nên dùng app theo thứ tự nào?
-
-Thứ tự khuyến nghị cho người mới:
-
-1. **Tổng quan**
-2. **Chủ đề**
-3. **Chi tiết chủ đề**
-4. **Ghi chú**
-5. **Tài nguyên**
-6. **Tiến độ**
-7. **Tìm kiếm**
-8. Sau khi quen rồi mới dùng:
-   - **AI Studio**
-   - **Obsidian Bridge**
-   - **NotebookLM Studio**
-   - **Abhidharma Matrix**
-   - **Divination Matrix**
-   - **Từ điển đa ngữ**
-
-### 3. Cách hiểu nhanh logic vận hành
-
-Knowledge OS không chỉ là nơi “chứa dữ liệu”, mà là nơi giúp bạn đi theo vòng lặp học tập:
-
-- Chọn topic.
-- Đọc và ghi chú.
-- Gắn tài liệu liên quan.
-- Cập nhật tiến độ.
-- Quay lại review theo nhịp học hằng ngày.
-- Khi cần, đẩy tri thức ra các môi trường nghiên cứu khác như Obsidian hay NotebookLM.
+> **Nền tảng Local-First chuyên sâu phục vụ Cấu trúc hóa Tri thức, Học tập Lặp lại Ngắt quãng (Spaced Repetition SM-2), Khảo cứu AI và Cầu nối Đa Nền tảng (Obsidian, NotebookLM, Antigravity AI).**
 
 ---
 
-## Giải thích từng màn hình
+## 🟢 Trạng Thái Vận Hành Hiện Tại (macOS Local-First)
 
-### 1. Tổng quan
-
-Đây là màn hình nên mở đầu tiên mỗi ngày. Nó giúp bạn nhìn trạng thái tổng thể của hệ tri thức, xem mình đang học gì, còn gì dở dang, và nên bắt đầu ở đâu.
-
-Phù hợp cho:
-- Người mới cần định hướng nhanh.
-- Người học muốn kiểm tra trạng thái chung trước khi đi sâu.
-
-### 2. Chủ đề
-
-Đây là nơi hiển thị danh sách hoặc cây chủ đề canonical của hệ thống. Bạn dùng màn hình này để duyệt theo cấu trúc tri thức thay vì tìm kiếm rời rạc.
-
-Phù hợp cho:
-- Học theo lộ trình.
-- Xây nền tảng kiến thức có cấu trúc.
-
-### 3. Chi tiết chủ đề
-
-Khi chọn một topic, bạn sẽ vào vùng làm việc chính của chủ đề đó. Tại đây thường là nơi bạn đọc nội dung, xem liên kết với các topic khác, gắn ghi chú, tài nguyên và thao tác học tập liên quan.
-
-Phù hợp cho:
-- Học sâu một chủ đề.
-- Kết nối nội dung một topic với toàn bộ hệ tri thức.
-
-### 4. Ghi chú
-
-Màn hình này dùng để lưu suy nghĩ, tóm tắt, insight, câu hỏi mở và ghi chép học tập cá nhân. Đây là nơi biến “đọc” thành “tri thức có thể dùng lại”.
-
-Phù hợp cho:
-- Ghi chép khi đang học.
-- Viết tóm tắt sau mỗi phiên.
-- Lưu câu hỏi để nghiên cứu tiếp.
-
-### 5. Tài nguyên
-
-Đây là nơi lưu tài liệu tham khảo như URL, file cục bộ, PDF, audio, video hoặc các nguồn học tập khác. Mục tiêu là để mỗi topic không chỉ có nội dung, mà còn có nguồn đi kèm.
-
-Phù hợp cho:
-- Gắn tài liệu gốc vào từng topic.
-- Quản lý nguồn đọc và nguồn nghe.
-- Chuẩn bị dữ liệu cho workflow nghiên cứu nâng cao.
-
-### 6. Tiến độ
-
-Màn hình này giúp bạn biết mình đã học đến đâu, nội dung nào đang dở, nội dung nào cần review lại. Đây là phần biến app thành công cụ học có nhịp, thay vì chỉ là kho tài liệu.
-
-Phù hợp cho:
-- Học đều mỗi ngày.
-- Theo dõi mức độ hoàn thành.
-- Quản lý review queue.
-
-### 7. Tìm kiếm
-
-Khi hệ thống đã có nhiều topic, ghi chú và tài nguyên, màn hình Tìm kiếm là cách nhanh nhất để quay lại đúng nội dung bạn cần.
-
-Phù hợp cho:
-- Tìm một chủ đề cụ thể.
-- Tìm lại note cũ.
-- Truy cập nhanh tri thức đã lưu.
-
-### 8. AI Studio
-
-Đây là khu vực nghiên cứu có hỗ trợ AI trong app. Nó phù hợp hơn với người dùng đã quen cấu trúc dữ liệu và muốn dùng AI như một công cụ tăng tốc phân tích, chứ không phải thay thế tư duy.
-
-Phù hợp cho:
-- Tổng hợp câu hỏi nghiên cứu.
-- Thử nghiệm workflow AI hỗ trợ học tập.
-
-### 9. Obsidian Bridge
-
-Đây là cầu nối giữa Knowledge OS và vault Obsidian cục bộ. Mục tiêu là giúp tri thức trong app có thể liên kết với môi trường ghi chú Markdown cá nhân.
-
-Phù hợp cho:
-- Người đang dùng Obsidian làm PKM.
-- Người muốn đẩy topic và note sang hệ thống wiki-link cá nhân.
-
-### 10. NotebookLM Studio
-
-Màn hình này phục vụ việc đóng gói nguồn học liệu để đưa vào NotebookLM. Nó hữu ích khi bạn muốn tạo study guide, audio overview hoặc các dạng tổng hợp có grounded context.
-
-Phù hợp cho:
-- Chuẩn bị gói tài liệu nguồn sạch.
-- Chuyển từ ghi chú phân mảnh sang bộ nguồn học tập có cấu trúc.
-
-### 11. Abhidharma Matrix
-
-Đây là màn hình chuyên sâu cho việc học và tra cứu Vi Diệu Pháp theo cấu trúc ma trận. Nó không phải điểm vào dành cho người mới, nhưng rất hữu ích khi bạn đã quen với cách app tổ chức tri thức.
-
-Phù hợp cho:
-- Nghiên cứu chuyên sâu.
-- Học các mối quan hệ phân loại phức tạp.
-
-### 12. Divination Matrix
-
-Đây là màn hình chuyên sâu cho các cấu trúc Huyền học. Tương tự Abhidharma Matrix, nó phù hợp hơn với người đã quen app và đang nghiên cứu theo chiều sâu.
-
-Phù hợp cho:
-- Học hệ thống huyền học có cấu trúc.
-- Phân tích và đối chiếu nhiều lớp khái niệm.
-
-### 13. Từ điển đa ngữ
-
-Đây là nơi hỗ trợ tra thuật ngữ, đối chiếu khái niệm nhiều ngôn ngữ hoặc nhiều lớp diễn giải. Phần này rất hữu ích khi làm việc với thuật ngữ chuyên môn.
-
-Phù hợp cho:
-- Chuẩn hóa từ vựng.
-- Đối chiếu thuật ngữ khi nghiên cứu sâu.
+Ứng dụng đã được triển khai hoàn chỉnh ở chế độ **Local Production** trên MacBook:
+* **Địa chỉ truy cập**: **[http://localhost:3000](http://localhost:3000)** (Phục vụ độc lập qua `dist/server.cjs`).
+* **Khởi động tự động (Auto-start)**: Đã tích hợp macOS LaunchAgent (`com.knowledgeos.server`), tự động chạy ngầm khi đăng nhập MacBook và tự phục hồi khi crash.
+* **Cơ sở dữ liệu**: PostgreSQL 15 local (`localhost:5432/knowledge_os`) với Prisma ORM & 11 bảng quan hệ.
+* **Hệ thống Sao lưu**: Cơ chế Snapshot tự động kèm mã băm SHA-256 (`backups/`).
+* **Sổ tay Vận hành**: Hướng dẫn chi tiết tại [`docs/runbooks/daily-operations-runbook.md`](docs/runbooks/daily-operations-runbook.md).
 
 ---
 
-## Quy trình học hằng ngày
+## 🧭 4 Lĩnh Vực Tri Thức Cốt Lõi (Canonical Knowledge Domains)
 
-### Mẫu quy trình 15–30 phút mỗi ngày
+Knowledge OS tổ chức dữ liệu theo 4 trụ cột tri thức phương Đông có cấu trúc chuẩn mực:
 
-#### Bước 1: Mở Tổng quan
-Kiểm tra hôm nay nên học gì, còn nội dung nào đang dang dở và có review nào đang chờ.
-
-#### Bước 2: Chọn 1 topic chính
-Không nên học quá nhiều topic cùng lúc. Mỗi phiên nên chọn 1 topic chính, cùng lắm thêm 1 topic liên quan.
-
-#### Bước 3: Đọc và hiểu trong Chi tiết chủ đề
-Tập trung đọc một chủ đề, hiểu phạm vi, mối liên kết và trọng tâm của topic đó.
-
-#### Bước 4: Ghi chú ngay
-Sau khi đọc xong, ghi lại:
-- 3 ý chính,
-- 1 câu hỏi còn mở,
-- 1 liên kết tới chủ đề liên quan.
-
-#### Bước 5: Gắn tài nguyên nếu có
-Nếu có bài viết, PDF, audio hoặc nguồn bên ngoài, đưa vào phần Tài nguyên để không bị thất lạc.
-
-#### Bước 6: Cập nhật tiến độ
-Đánh dấu trạng thái hiện tại của topic:
-- Chưa bắt đầu
-- Đang học
-- Đã hoàn thành lần đầu
-- Cần review
-
-#### Bước 7: Kết thúc bằng tìm kiếm hoặc liên kết
-Trước khi kết thúc, tìm lại một số note hoặc topic liên quan để đảm bảo tri thức mới vừa học đã gắn được vào hệ thống cũ.
-
-### Nguyên tắc dùng app hiệu quả
-
-- Mỗi ngày học ít nhưng đều.
-- Không chỉ đọc, phải ghi note.
-- Không chỉ lưu note, phải gắn vào topic.
-- Không chỉ gắn topic, phải cập nhật tiến độ.
-- Khi tri thức đủ dày, mới đẩy qua Obsidian hoặc NotebookLM để nghiên cứu nâng cao.
+1. **☸️ Phật Học (Buddhism & Philosophy):**
+   * **Tam Tạng Thánh Điển (Tipiṭaka)**: Tạng Kinh (*Sutta*), Tạng Luật (*Vinaya*), Tạng Luận (*Abhidhamma*).
+   * **Vi Diệu Pháp (Abhidharma)**: Hệ thống Tâm (*Citta*), Tâm Sở (*Cetasika*), Sắc Pháp (*Rūpa*), Niết Bàn (*Nibbāna*).
+   * **Thiền Định (Bhāvanā)**: Thiền Chỉ (*Samatha*) và Thiền Quán Minh Sát (*Vipassanā*).
+   * **Triết học Phật giáo**: Bát Nhã Ba La Mật (*Prajñāpāramitā*), Trung Quán Luận (*Mūlamadhyamakakārikā*), Duyên Khởi Luận.
+2. **☯️ Huyền Học Phương Đông (Eastern Metaphysics):**
+   * **Tam Thức Tối Cao**: Kỳ Môn Độn Giáp, Thái Ất Thần Số, Đại Lục Nhâm (Thiên - Địa - Nhân).
+   * **Dịch Học & Bát Quái**: 64 Quẻ Kinh Dịch, Thoán Từ, Hào Từ, Âm Dương Biến Hóa.
+   * **Phong Thủy & Môi Trường**: Loan Đầu, Lý Khí, Bát Trạch, Huyền Không Phi Tinh.
+   * **Mệnh Lý Học**: Tử Vi Đẩu Số, Bát Tự Hà Lạc (Tứ Trụ).
+3. **🌿 Đông Y Học (Traditional Eastern Medicine):**
+   * Lý luận cơ bản: Âm Dương, Ngũ Hành, Khí Huyết, Tân Dịch.
+   * Học thuyết Tạng Tượng, Bát Cương Biện Chứng, Dược học Cổ truyền và Hệ thống Kinh Lạc Châm Cứu.
+4. **📖 Học Ngôn Ngữ & Thuật Ngữ Cổ (Ancient Linguistics):**
+   * Ngữ pháp & Văn bản Pāli, Sanskrit (*Phạn ngữ*), Chữ Hán cổ (*Cổ văn / Hán Nôm*), Từ điển đối chiếu thuật ngữ liên ngôn ngữ.
 
 ---
 
-## FAQ
+## 🚀 Các Không Gian & Tính Năng Trọng Yếu Trong Ứng Dụng
 
-### 1. Tôi mới hoàn toàn thì nên bắt đầu từ đâu?
-
-Hãy bắt đầu ở **Tổng quan**, sau đó vào **Chủ đề**, chọn một topic gần gũi nhất và ghi chú lại sau khi đọc. Không cần dùng các phần nâng cao ngay.
-
-### 2. Tôi có cần dùng hết mọi màn hình không?
-
-Không. Người mới chỉ cần dùng tốt 5 phần cốt lõi:
-
-- Tổng quan
-- Chủ đề
-- Chi tiết chủ đề
-- Ghi chú
-- Tiến độ
-
-Các phần còn lại là nâng cao hoặc phục vụ workflow chuyên biệt.
-
-### 3. Khi nào nên dùng Tài nguyên thay vì Ghi chú?
-
-- Dùng **Ghi chú** khi bạn muốn viết ra hiểu biết, suy nghĩ, tóm tắt.
-- Dùng **Tài nguyên** khi bạn muốn lưu nguồn gốc như file, link, PDF, audio, video.
-
-Nói ngắn gọn:
-- Note = tri thức đã được bạn xử lý.
-- Resource = nguyên liệu đầu vào hoặc tài liệu tham khảo.
-
-### 4. Khi nào nên dùng Obsidian Bridge?
-
-Khi bạn đã có thói quen ghi chú tốt trong app và muốn đẩy tri thức sang vault Markdown để dùng dài hạn, liên kết rộng hơn hoặc tích hợp vào PKM cá nhân.
-
-### 5. Khi nào nên dùng NotebookLM Studio?
-
-Khi bạn đã có đủ chủ đề, ghi chú và tài nguyên cho một chủ đề nghiên cứu, và muốn đóng gói chúng thành một bộ tài liệu nguồn sạch để tổng hợp hoặc học bằng AI grounded.
-
-### 6. App này phù hợp hơn cho học hằng ngày hay nghiên cứu dài hạn?
-
-Cả hai. Nhưng giá trị lớn nhất xuất hiện khi bạn dùng nó liên tục theo chu kỳ dài hạn, vì khi đó topic, note, resource và tiến độ bắt đầu liên kết thành một hệ tri thức thực sự.
-
-### 7. Tôi có nên nhập thật nhiều chủ đề ngay từ đầu không?
-
-Không nên. Bắt đầu ít, nhưng nhập có cấu trúc. Mỗi topic nên có lý do tồn tại, có ghi chú hoặc có tài nguyên đi kèm.
-
-### 8. Điều quan trọng nhất để dùng app hiệu quả là gì?
-
-Đừng dùng app như nơi cất dữ liệu. Hãy dùng nó như nơi:
-- chọn thứ cần học,
-- ghi lại thứ đã hiểu,
-- liên kết nó với tri thức cũ,
-- và quay lại review theo nhịp đều.
+| Không gian / Tính năng | Mô tả chi tiết |
+| :--- | :--- |
+| **🏠 Tổng Quan (Dashboard)** | Trung tâm điều khiển: Thống kê số lượng chủ đề, biểu đồ tiến độ học tập, hàng đợi ôn tập hôm nay, thanh bấm giờ phiên học (*Active Study Timer*). |
+| **🌳 Cây Chủ Đề & Chi Tiết (Topics)** | Cấu trúc phân cấp đa tầng, phân loại theo hệ thống Canonical. Hỗ trợ xem chi tiết nội dung, liên kết hai chiều, ghi chú và tài nguyên đính kèm. |
+| **🕸️ Đồ Thị Tri Thức (Knowledge Graph)** | Đồ thị mạng tương tác trực quan (Force-Directed Graph), mô phỏng các mối quan hệ liên ngành giữa Phật học, Huyền học và Đông Y. |
+| **📈 Tiến Độ Học & Spaced Repetition** | Thuật toán ôn tập ngắt quãng **SM-2** chuẩn hóa: Đo lường hệ số ghi nhớ (*Ease Factor*), số lần lặp lại (*Repetitions*), tính khoảng cách ôn tập tiếp theo (*Next Review*). |
+| **📝 Quản Lý Ghi Chú (Notes Manager)** | Soạn thảo Markdown cá nhân, gắn thẻ (*Tags*), liên kết nhiều chủ đề, phân quyền bảo mật riêng tư. |
+| **📚 Quản Lý Tài Nguyên (Resources)** | Lưu trữ tài liệu tham khảo: URL bài viết, tệp cục bộ (PDF, Audio, Video), thông tin tác giả và ghi chú nguồn. |
+| **🔍 Tìm Kiếm Nâng Cao (Advanced Search)** | Bộ máy tìm kiếm toàn văn (*Full-text Search*), lọc theo danh mục, thẻ tag, trạng thái học tập và ngày tạo. |
+| **🤖 AI Research Studio** | Tích hợp **Google Gemini 2.0 / Flash**: Hỗ trợ nghiên cứu chuyên sâu, tổng hợp luận điểm, phát hiện liên kết liên ngành và quản lý trích dẫn học thuật (*Scholar Citation Engine*). |
+| **🧩 Abhidharma Matrix** | Ma trận Vi Diệu Pháp tương tác: Khảo sát 89/121 Tâm, 52 Tâm Sở, 28 Sắc Pháp và mối tương quan duyên sinh. |
+| **☯️ Divination Matrix** | Ma trận Huyền học: Khảo cứu 64 Quẻ Kinh Dịch, Bát Quái, Ngũ Hành sinh khắc, Thiên Can, Địa Chi. |
+| **📖 Từ Điển Đa Ngữ (Multilingual Lexicon)** | Tra cứu và đối chiếu thuật ngữ chuyên sâu giữa 5 ngôn ngữ: Pāli - Sanskrit - Hán-Việt - Anh ngữ - Tạng ngữ. |
+| **📑 Trình Đọc Tài Liệu (Docs Explorer)** | Đọc trực tiếp tài liệu kiến trúc (ADR), đặc tả kỹ thuật (Gherkin specs) và Runbook hệ thống ngay trên giao diện web. |
 
 ---
 
-## Gợi ý cho giai đoạn tiếp theo
+## 🔗 Hệ Thống Cầu Nối Đa Nền Tảng (Cross-Platform Hub)
 
-Sau khi đã quen với 5 phần cốt lõi, bạn có thể mở rộng workflow theo hướng:
+Knowledge OS không hoạt động như một ốc đảo cô lập mà là trung tâm điều phối dữ liệu cho các công cụ nghiên cứu hàng đầu:
 
-1. **Knowledge OS → Obsidian**
-   - Xuất tri thức sang vault Markdown cá nhân.
-
-2. **Knowledge OS → NotebookLM**
-   - Tạo bộ nguồn chuẩn để sinh study guide hoặc audio overview.
-
-3. **Knowledge OS → Antigravity**
-   - Chuẩn bị handoff bundle cho nghiên cứu chuyên sâu liên ngành.
-
----
-
-## Mẹo cuối cho người mới
-
-Nếu chỉ nhớ một điều, hãy nhớ điều này:
-
-> Mỗi ngày chỉ cần chọn 1 topic, viết 1 ghi chú tử tế, gắn 1 tài nguyên hữu ích, rồi cập nhật tiến độ.  
-> Làm đều như vậy, app sẽ dần trở thành bộ não thứ hai của bạn.
-
-
-# 🛠️ Knowledge OS — Developer Guide & Local Onboarding
-
-Knowledge OS là ứng dụng dashboard phục vụ học tập, nghiên cứu và hệ thống hóa tri thức Phật học, Huyền học và workflow khảo cứu có hỗ trợ AI. Repository đóng vai trò là trung tâm cấu trúc hóa dữ liệu (Canonical Data Center), quản lý tiến độ học (Spaced Repetition SM-2), ghi chú, tài nguyên và cầu nối đa nền tảng sang Obsidian, NotebookLM và Antigravity.
+1. **Obsidian Bridge Modal:**
+   * Xuất toàn bộ hoặc từng phần tri thức sang Vault **Obsidian** cá nhân.
+   * Tự động sinh tệp Markdown chuẩn YAML frontmatter và cú pháp liên kết `[[Wiki-links]]`.
+2. **NotebookLM Studio Modal:**
+   * Đóng gói tài liệu nguồn sạch có cấu trúc chuẩn để nạp vào **Google NotebookLM**.
+   * Hỗ trợ sinh Study Guide, Audio Podcast Briefing, FAQ và Q&A Flashcards có kiểm chứng (*Grounded AI*).
+3. **Antigravity AI Handoff Modal:**
+   * Đóng gói bối cảnh khảo cứu gửi sang Agentic AI trong thư mục `.agents/handoffs/` để thực thi các tác vụ tự động hóa chuyên sâu.
+4. **Active Study Timer & Wrap-up:**
+   * Bộ bấm giờ phiên học tập trung, ghi nhận thời gian học thực tế và tự động mở modal tổng kết (*Session Wrapup*) để lưu thành quả học tập.
 
 ---
 
-## 1. Yêu Cầu Môi Trường (Prerequisites)
+## ⌨️ Phím Tắt Toàn Cục (Global Shortcuts)
 
-- **Node.js**: `>= 18.0.0`
-- **npm**: `>= 9.0.0`
-- **PostgreSQL**: Đang chạy local trên cổng `5432` (mặc định user `postgres`, password `postgres` hoặc tùy chỉnh qua `.env`).
-
----
-
-## 2. Cấu Hình Môi Trường (.env)
-
-Tạo hoặc kiểm tra file `.env` tại thư mục gốc repository:
-
-```env
-# Google Gemini API Key cho AI Research Studio & Scholar Analysis
-GEMINI_API_KEY="your-gemini-api-key"
-
-# URL của ứng dụng
-APP_URL="http://localhost:3000"
-
-# Kết nối PostgreSQL Database (Prisma)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/knowledge_os?schema=public"
-```
+| Phím tắt | Chức năng |
+| :--- | :--- |
+| `Cmd + K` hoặc `Ctrl + K` | Mở **Command Palette** (Tìm kiếm, chuyển tab, đổi theme Dark/Light) |
+| `Cmd + /` hoặc `Ctrl + /` | Mở bảng danh mục toàn bộ phím tắt (**Shortcuts Modal**) |
+| `Cmd + 1` .. `Cmd + 9` | Chuyển nhanh giữa các không gian làm việc |
+| `Esc` | Đóng mọi cửa sổ Modal đang mở |
 
 ---
 
-## 3. Khởi Tạo Cơ Sở Dữ Liệu & Prisma (Database Bootstrap)
+## 🛠️ Vận Hành Hằng Ngày & Quản Trị Hệ Thống
 
-Thực hiện tuần tự 4 bước sau để khởi tạo môi trường local hoàn chỉnh:
+### 1. Mở ứng dụng hằng ngày
+Dịch vụ chạy ngầm của Knowledge OS đã tự động bật cùng macOS:
+👉 Truy cập ngay tại: **[http://localhost:3000](http://localhost:3000)**
 
-### Bước 1: Tạo Database PostgreSQL `knowledge_os`
-Nếu database chưa tồn tại, tạo database bằng lệnh `psql` hoặc `createdb`:
+### 2. Các lệnh terminal thường dùng
 ```bash
-# Sử dụng psql:
-psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE knowledge_os;"
+# Kiểm tra tình trạng kết nối & API Health
+curl -s http://localhost:3000/api/health
 
-# Hoặc sử dụng CLI createdb (macOS / Linux):
-createdb -U postgres knowledge_os
-```
+# Tạo bản sao lưu Snapshot dữ liệu tức thời (kèm SHA-256 verification)
+npm run snapshot:create
 
-### Bước 2: Cài đặt Dependencies & Generate Prisma Client
-```bash
-npm install
-```
-> **Ghi chú**: Lệnh `npm install` sẽ tự động kích hoạt `postinstall` script để chạy `prisma generate`.
-
-### Bước 3: Đồng bộ Schema vào Database (`db:push`)
-Đẩy cấu trúc bảng và quan hệ từ `prisma/schema.prisma` vào PostgreSQL:
-```bash
-npm run db:push
-```
-
-### Bước 4: Nạp Dữ Liệu Canonical Mẫu (`db:seed`)
-Nạp toàn bộ 10 Categories, 12 Tags, 35 Topics, 35 StudyProgress, 77 KnowledgeLinks, 5 Notes, 4 Resources:
-```bash
-npm run db:seed
-```
-
----
-
-## 4. Vòng Đời Prisma Client (Prisma Client Lifecycle)
-
-- **Tự động (`postinstall`)**: Mỗi khi chạy `npm install` hoặc cập nhật dependencies, `prisma generate` sẽ tự động chạy để tạo mới `@prisma/client`.
-- **Thủ công (`npm run db:generate`)**: Chạy lệnh này bất cứ khi nào bạn chỉnh sửa file `prisma/schema.prisma` (thêm model, relation, hoặc field mới) để tránh lỗi runtime mismatch.
-- **Đồng bộ trực tiếp (`npm run db:push`)**: Vừa cập nhật schema vào DB vừa tự động generate lại Prisma Client.
-
----
-
-## 5. Chạy Ứng Dụng & Kiểm Tra
-
-### Khởi động Development Server:
-```bash
-npm run dev
-```
-Ứng dụng sẽ chạy tại: **`http://localhost:3000`** (Tích hợp Express Backend + Vite React SPA).
-
-### Các lệnh kiểm tra & chất lượng mã nguồn:
-```bash
-# Kiểm tra TypeScript & Typecheck
-npm run lint
-
-# Chạy toàn bộ Test Suite (129 files, 828+ tests)
-npm run test
-
-# Chạy test ở chế độ watch
-npm run test:watch
-
-# Build production bundle
+# Build lại ứng dụng sau khi cập nhật mã nguồn
 npm run build
+
+# Dừng server khẩn cấp / giải phóng cổng 3000
+kill $(lsof -ti :3000)
+```
+
+### 3. Quản lý macOS LaunchAgent
+```bash
+# Kiểm tra trạng thái tiến trình LaunchAgent (hiển thị PID nếu đang chạy)
+launchctl list | grep com.knowledgeos.server
+
+# Tạm tắt auto-start
+launchctl unload ~/Library/LaunchAgents/com.knowledgeos.server.plist
+
+# Bật lại auto-start
+launchctl load ~/Library/LaunchAgents/com.knowledgeos.server.plist
+
+# Theo dõi log server trực tiếp
+tail -f logs/output.log
 ```
 
 ---
 
-## 6. Xử Lý Sự Cố Thường Gặp (Troubleshooting)
+## 📋 Bảng Lệnh Scripts (`package.json`)
 
-### 🔴 Lỗi 1: `Database knowledge_os does not exist on the database server`
-- **Nguyên nhân**: PostgreSQL local đang chạy nhưng database `knowledge_os` chưa được tạo.
-- **Khắc phục**:
-  ```bash
-  psql "postgresql://postgres:postgres@localhost:5432/postgres" -c "CREATE DATABASE knowledge_os;"
-  npm run db:push
-  npm run db:seed
-  ```
-
-### 🔴 Lỗi 2: `Unknown field <fieldName> for include statement on model <ModelName>` (Prisma Client Stale)
-- **Nguyên nhân**: File `prisma/schema.prisma` đã có field/relation mới (ví dụ: `additionalTopics` trên model `Note`), nhưng thư viện `@prisma/client` trong `node_modules` chưa được build lại.
-- **Khắc phục**:
-  ```bash
-  npm run db:generate
-  ```
-
-### 🔴 Lỗi 3: `Foreign key constraint violated: Topic_categoryId_fkey` hoặc `Foreign key guard`
-- **Nguyên nhân**: Payload sync hoặc topic create/update chứa `categoryId` không tồn tại trong bảng `Category`.
-- **Cơ chế phòng vệ đã tích hợp**:
-  - Hệ thống tự động phân giải `categoryId` theo cả **ID** (`cat-abhidharma`) và **Slug** (`abhidharma`).
-  - Khi phát hiện `categoryId` không tồn tại ở bất kỳ danh mục nào, backend sẽ chặn lại an toàn (*fail-fast*) và trả về thông báo lỗi chi tiết thay vì để Postgres crash giao dịch không kiểm soát.
+| Script | Lệnh thực thi | Mô tả chức năng |
+| :--- | :--- | :--- |
+| `npm run start` | `node dist/server.cjs` | Chạy production server độc lập hiệu năng cao |
+| `npm run dev` | `tsx server.ts` | Chạy môi trường development với Vite HMR |
+| `npm run build` | `vite build && esbuild ...` | Đóng gói bundle Frontend và Backend |
+| `npm run lint` | `tsc --noEmit` | Kiểm tra tính toàn vẹn kiểu dữ liệu TypeScript |
+| `npm run test` | `vitest run` | Chạy toàn bộ Test Suite (129 files, 828+ tests) |
+| `npm run db:push` | `prisma db push` | Đồng bộ schema Prisma vào cơ sở dữ liệu PostgreSQL |
+| `npm run db:generate` | `prisma generate` | Khởi tạo lại type-safe `@prisma/client` |
+| `npm run db:seed` | `tsx prisma/seed.ts` | Nạp dữ liệu mẫu ban đầu (Canonical Seeding) |
+| `npm run snapshot:create` | `tsx scripts/backup-snapshot.ts` | Tạo snapshot sao lưu DB kèm kiểm tra dung lượng |
+| `npm run snapshot:dry-run`| `tsx scripts/backup-snapshot.ts --dry-run` | Mô phỏng tạo snapshot trong bộ nhớ |
+| `npm run snapshot:verify` | `tsx scripts/backup-snapshot.ts --verify <path>` | Xác minh tính toàn vẹn và mã băm SHA-256 |
+| `npm run snapshot:prune`  | `tsx scripts/backup-snapshot.ts --prune` | Tự động dọn dẹp các bản snapshot cũ |
 
 ---
 
-## 7. Bảng Tổng Hợp Scripts Trong `package.json`
+## 📚 Tài Liệu Kỹ Thuật Tham Khảo Thêm
 
-| Script | Lệnh | Mô tả |
-| :--- | :--- | :--- |
-| `npm run dev` | `tsx server.ts` | Chạy dev server tích hợp Express + Vite SPA |
-| `npm run lint` | `tsc --noEmit` | Kiểm tra lỗi type TypeScript toàn dự án |
-| `npm run test` | `vitest run` | Chạy toàn bộ test suite |
-| `npm run db:push` | `prisma db push` | Đẩy schema Prisma trực tiếp vào PostgreSQL |
-| `npm run db:generate` | `prisma generate` | Tạo lại type-safe `@prisma/client` |
-| `npm run db:seed` | `tsx prisma/seed.ts` | Nạp dữ liệu mẫu chuẩn (Canonical Seeding) |
-| `npm run build` | `vite build && esbuild ...` | Build bundle cho frontend và production server |
+* 📖 **Sổ tay Vận hành Hằng ngày**: [`docs/runbooks/daily-operations-runbook.md`](docs/runbooks/daily-operations-runbook.md)
+* 📖 **Kiến trúc & Quyết định Kỹ thuật (ADR)**: [`docs/architecture-decisions.md`](docs/architecture-decisions.md)
+* 📖 **Lộ trình Phát triển & Triển khai**: [`docs/implementation-roadmap.md`](docs/implementation-roadmap.md)
+* 📖 **Hướng dẫn Đồng bộ Vault Obsidian**: [`docs/runbooks/offline-sync-subsystem-runbook.md`](docs/runbooks/offline-sync-subsystem-runbook.md)
