@@ -1,6 +1,60 @@
 import React from 'react';
-import { Sparkles, CheckSquare, Square, ExternalLink, FileText } from 'lucide-react';
+import {
+  Sparkles,
+  CheckSquare,
+  Square,
+  ExternalLink,
+  FileText,
+  Loader2,
+  AlertTriangle,
+  AlertCircle,
+  FileWarning,
+} from 'lucide-react';
 import { Topic } from '../types';
+import {
+  ObsidianTransclusionResolver,
+  isNoteTransclusion,
+  parseTransclusionTarget,
+  TransclusionResult,
+  MAX_TRANSCLUSION_DEPTH,
+} from './obsidianTransclusionResolver';
+
+/**
+ * Sanitize raw markdown from Vault to prevent script execution, dangerous HTML attributes,
+ * and unsafe URI schemes (javascript:, data:, vbscript:).
+ */
+export function sanitizeVaultMarkdown(rawMarkdown: string): string {
+  if (!rawMarkdown) return '';
+
+  let sanitized = rawMarkdown;
+
+  // 1. Strip raw HTML dangerous tags (<script>...</script>, <iframe>...</iframe>, etc.)
+  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  sanitized = sanitized.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  sanitized = sanitized.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+  sanitized = sanitized.replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '');
+
+  // Strip dangerous single tags like <img ... onerror=...>, <script .../>
+  sanitized = sanitized.replace(/<\/?[a-z][a-z0-9]*\b[^>]*>/gi, (match) => {
+    if (/^(<script|<iframe|<style|<object|<embed)/i.test(match)) {
+      return '';
+    }
+    // Disallow event handlers inside remaining HTML tags
+    if (/\bon\w+\s*=/i.test(match)) {
+      return '';
+    }
+    return match;
+  });
+
+  // 2. Neutralize dangerous javascript:, vbscript:, data: URIs in Markdown links [text](javascript:...)
+  sanitized = sanitized.replace(
+    /\[([^\]]+)\]\((javascript|vbscript|data):[^)]*\)/gi,
+    '$1'
+  );
+
+  return sanitized;
+}
 
 /**
  * Chuẩn hóa nội dung Markdown thành văn bản thuần (plain text) trơn tru,
@@ -75,6 +129,179 @@ const ATTACHMENT_VIDEO_EXTS = new Set(['.mp4', '.webm', '.mov', '.mkv', '.ogv'])
 const ATTACHMENT_AUDIO_EXTS = new Set(['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac']);
 const ATTACHMENT_PDF_EXTS = new Set(['.pdf']);
 
+export interface TransclusionBlockProps {
+  rawEmbed: string;
+  depth?: number;
+  ancestors?: string[];
+  transclusionResolver?: ObsidianTransclusionResolver;
+  vaultResolver?: MarkdownVaultLinkResolver;
+  onOpenVaultLink?: (filePath: string, heading?: string) => void;
+  topics?: Topic[];
+  onOpenTopic?: (id: string) => void;
+}
+
+export function TransclusionBlock({
+  rawEmbed,
+  depth = 1,
+  ancestors = [],
+  transclusionResolver,
+  vaultResolver,
+  onOpenVaultLink,
+  topics = [],
+  onOpenTopic,
+}: TransclusionBlockProps) {
+  const [result, setResult] = React.useState<TransclusionResult | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const parsed = parseTransclusionTarget(rawEmbed);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    if (depth > MAX_TRANSCLUSION_DEPTH) {
+      setResult({
+        status: 'max_depth',
+        targetTitle: parsed.target,
+        heading: parsed.heading,
+        alias: parsed.alias,
+        filePath: null,
+        message: 'Vượt quá giới hạn độ sâu transclusion (tối đa 3 cấp).',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!transclusionResolver) {
+      setResult({
+        status: 'not_found',
+        targetTitle: parsed.target,
+        heading: parsed.heading,
+        alias: parsed.alias,
+        filePath: null,
+        message: `Không tìm thấy ghi chú "${parsed.target}" trong Vault.`,
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    transclusionResolver
+      .resolve(rawEmbed, ancestors, depth)
+      .then((res) => {
+        if (isMounted) {
+          setResult(res);
+          setIsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          setResult({
+            status: 'error',
+            targetTitle: parsed.target,
+            heading: parsed.heading,
+            alias: parsed.alias,
+            filePath: null,
+            message: err?.message || 'Lỗi khi nạp nội dung nhúng.',
+          });
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [rawEmbed, depth, ancestors, transclusionResolver]);
+
+  if (isLoading) {
+    return (
+      <div className="my-2.5 p-3 border-l-4 border-purple-400 bg-purple-50/40 dark:bg-purple-950/20 rounded-r-xl flex items-center gap-2 text-xs text-stone-600 dark:text-stone-300 shadow-2xs">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600 shrink-0" />
+        <span>Đang tải nội dung nhúng "{parsed.target}"...</span>
+      </div>
+    );
+  }
+
+  if (result?.status === 'circular') {
+    return (
+      <div className="my-2.5 p-3 border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20 rounded-r-xl text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 shadow-2xs">
+        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+        <span>[Phát hiện vòng lặp transclusion]: {result.message}</span>
+      </div>
+    );
+  }
+
+  if (result?.status === 'max_depth') {
+    return (
+      <div className="my-2.5 p-3 border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950/20 rounded-r-xl text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 shadow-2xs">
+        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+        <span>[Vượt quá giới hạn độ sâu transclusion (tối đa 3 cấp)]: {result.message}</span>
+      </div>
+    );
+  }
+
+  if (result?.status === 'not_found') {
+    return (
+      <div className="my-2.5 p-3 border-l-4 border-rose-400 bg-rose-50/60 dark:bg-rose-950/20 rounded-r-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 shadow-2xs">
+        <FileWarning className="w-4 h-4 text-rose-600 shrink-0" />
+        <span>Không tìm thấy ghi chú "{result.targetTitle}" trong Vault.</span>
+      </div>
+    );
+  }
+
+  if (result?.status === 'error') {
+    return (
+      <div className="my-2.5 p-3 border-l-4 border-rose-400 bg-rose-50/60 dark:bg-rose-950/20 rounded-r-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2 shadow-2xs">
+        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+        <span>{result.message}</span>
+      </div>
+    );
+  }
+
+  if (result?.status === 'success') {
+    const sanitized = sanitizeVaultMarkdown(result.content || '');
+    const nextAncestors = result.filePath ? [...ancestors, result.filePath] : ancestors;
+
+    return (
+      <div className="my-3 border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 rounded-r-xl p-3.5 space-y-2.5 shadow-2xs">
+        <div className="flex items-center justify-between text-[11px] text-purple-900 dark:text-purple-300 pb-1.5 border-b border-purple-100/80 dark:border-purple-900/40">
+          <span className="flex items-center gap-1.5 font-semibold">
+            <FileText className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <span>{result.alias || result.targetTitle}</span>
+            {result.heading && (
+              <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded text-[10px] font-normal">
+                #{result.heading}
+              </span>
+            )}
+          </span>
+          {onOpenVaultLink && result.filePath && (
+            <button
+              type="button"
+              onClick={() => onOpenVaultLink(result.filePath!, result.heading || undefined)}
+              className="hover:underline flex items-center gap-1 text-[10px] text-purple-700 dark:text-purple-400 cursor-pointer font-medium"
+            >
+              <span>Mở ghi chú</span>
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+        <div className="prose prose-stone dark:prose-invert max-w-none text-xs sm:text-sm leading-relaxed">
+          <MarkdownReadabilityRenderer
+            content={sanitized}
+            topics={topics}
+            onOpenTopic={onOpenTopic}
+            vaultResolver={vaultResolver}
+            onOpenVaultLink={onOpenVaultLink}
+            transclusionResolver={transclusionResolver}
+            transclusionDepth={depth + 1}
+            transclusionAncestors={nextAncestors}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /**
  * Phân tích và render các phần tử inline & embeds:
  * - Obsidian Transclusion / Embeds (![[...]])
@@ -91,7 +318,10 @@ export function renderInlineMarkdownWithWikiLinks(
   topics: Topic[] = [],
   onOpenTopic?: (id: string) => void,
   vaultResolver?: MarkdownVaultLinkResolver,
-  onOpenVaultLink?: (filePath: string, heading?: string) => void
+  onOpenVaultLink?: (filePath: string, heading?: string) => void,
+  transclusionResolver?: ObsidianTransclusionResolver,
+  transclusionDepth: number = 1,
+  transclusionAncestors: string[] = []
 ): React.ReactNode[] {
   // Regex bắt các token: Embeds ![[...]], Images ![alt](url), Wiki links [[...]], Markdown links [text](url), Bold, Italic, Code, Strike
   const regex =
@@ -101,7 +331,7 @@ export function renderInlineMarkdownWithWikiLinks(
   return parts.map((part, index) => {
     if (!part) return null;
 
-    // 1. Obsidian Transclusion / Embeds: ![[attachment.ext]] hoặc ![[attachment.png|300x200]] hoặc ![[attachment.png|300]]
+    // 1. Obsidian Transclusion / Embeds: ![[attachment.ext]] hoặc ![[attachment.png|300x200]] hoặc ![[Note]]
     if (part.startsWith('![[') && part.endsWith(']]')) {
       const rawInner = part.slice(3, -2).trim();
       let target = rawInner;
@@ -110,6 +340,23 @@ export function renderInlineMarkdownWithWikiLinks(
       if (pipeIdx !== -1) {
         target = rawInner.slice(0, pipeIdx).trim();
         sizeOrAlt = rawInner.slice(pipeIdx + 1).trim();
+      }
+
+      // 1a. Note Transclusion (![[Note]], ![[Note#Heading]], ![[Note.md]])
+      if (isNoteTransclusion(target)) {
+        return (
+          <TransclusionBlock
+            key={index}
+            rawEmbed={part}
+            depth={transclusionDepth}
+            ancestors={transclusionAncestors}
+            transclusionResolver={transclusionResolver}
+            vaultResolver={vaultResolver}
+            onOpenVaultLink={onOpenVaultLink}
+            topics={topics}
+            onOpenTopic={onOpenTopic}
+          />
+        );
       }
 
       const dotIdx = target.lastIndexOf('.');
@@ -381,6 +628,9 @@ export interface MarkdownReadabilityRendererProps {
   onOpenTopic?: (id: string) => void;
   vaultResolver?: MarkdownVaultLinkResolver;
   onOpenVaultLink?: (filePath: string, heading?: string) => void;
+  transclusionResolver?: ObsidianTransclusionResolver;
+  transclusionDepth?: number;
+  transclusionAncestors?: string[];
   className?: string;
 }
 
@@ -400,6 +650,9 @@ export function MarkdownReadabilityRenderer({
   onOpenTopic,
   vaultResolver,
   onOpenVaultLink,
+  transclusionResolver,
+  transclusionDepth = 1,
+  transclusionAncestors = [],
   className = '',
 }: MarkdownReadabilityRendererProps) {
   if (!content || !content.trim()) {
@@ -411,7 +664,16 @@ export function MarkdownReadabilityRenderer({
   const blocks: React.ReactNode[] = [];
 
   const renderInline = (val: string) =>
-    renderInlineMarkdownWithWikiLinks(val, topics, onOpenTopic, vaultResolver, onOpenVaultLink);
+    renderInlineMarkdownWithWikiLinks(
+      val,
+      topics,
+      onOpenTopic,
+      vaultResolver,
+      onOpenVaultLink,
+      transclusionResolver,
+      transclusionDepth,
+      transclusionAncestors
+    );
 
   let inCodeBlock = false;
   let codeBlockBuffer: string[] = [];
@@ -675,11 +937,32 @@ export function MarkdownReadabilityRenderer({
     if (!trimmed) {
       blocks.push(<div key={`spacer-${i}`} className="h-2.5" />);
     } else {
-      blocks.push(
-        <p key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
-          {renderInline(line)}
-        </p>
-      );
+      const isBlockEmbed =
+        trimmed.startsWith('![[') &&
+        trimmed.endsWith(']]') &&
+        isNoteTransclusion(trimmed.slice(3, -2).split('|')[0]);
+
+      const hasEmbed = trimmed.includes('![[');
+
+      if (isBlockEmbed) {
+        blocks.push(
+          <div key={`embed-${i}`} className="my-1">
+            {renderInline(trimmed)}
+          </div>
+        );
+      } else if (hasEmbed) {
+        blocks.push(
+          <div key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
+            {renderInline(line)}
+          </div>
+        );
+      } else {
+        blocks.push(
+          <p key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
+            {renderInline(line)}
+          </p>
+        );
+      }
     }
   }
 
