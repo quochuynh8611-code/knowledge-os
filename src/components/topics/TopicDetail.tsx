@@ -20,6 +20,7 @@ import {
   Trash2,
   ExternalLink,
   Play,
+  FolderTree,
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
@@ -29,6 +30,7 @@ import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
 import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceLinkModal";
 import { ObsidianDocumentViewerModal } from "../modals/ObsidianDocumentViewerModal";
+import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { getStoredVaultName } from "../../lib/obsidian";
 // Phase 17B: new toolbar sub-components
 import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
@@ -98,6 +100,7 @@ export function TopicDetail() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showObsidianLinkModal, setShowObsidianLinkModal] = useState(false);
+  const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
   const [showEditTopicModal, setShowEditTopicModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
@@ -705,6 +708,12 @@ export function TopicDetail() {
             </h3>
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowObsidianBrowserModal(true)}
+                className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+              >
+                <FolderTree className="w-4 h-4 text-purple-700" /> Browse Vault
+              </button>
+              <button
                 onClick={() => setShowObsidianLinkModal(true)}
                 className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
               >
@@ -858,6 +867,23 @@ export function TopicDetail() {
               notes: resPayload.notes,
             });
           }
+        }}
+      />
+      <ObsidianVaultBrowserModal
+        isOpen={showObsidianBrowserModal}
+        onClose={() => setShowObsidianBrowserModal(false)}
+        onSelectFile={(filePath) => {
+          setShowObsidianBrowserModal(false);
+          const fileName = filePath.split("/").pop() || filePath;
+          const previewResource: Resource = {
+            id: "preview-" + filePath,
+            topicId: topic.id,
+            title: fileName,
+            type: "md",
+            filePath,
+            createdAt: new Date().toISOString(),
+          };
+          setViewingObsidianResource(previewResource);
         }}
       />
       <ObsidianDocumentViewerModal
