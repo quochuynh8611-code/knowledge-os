@@ -353,6 +353,12 @@ export class SyncQueueService {
       return { success: true, httpStatus: res.status };
     }
 
+    // Idempotent DELETE completion: if request was DELETE and server responds with 404 (Not Found) or 410 (Gone),
+    // the target entity does not exist on the server, which is the exact desired state of deletion.
+    if (options.method === "DELETE" && (res.status === 404 || res.status === 410)) {
+      return { success: true, httpStatus: res.status };
+    }
+
     let errorDetail = `HTTP ${res.status}`;
     try {
       const data = await res.json();

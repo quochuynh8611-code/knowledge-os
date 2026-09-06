@@ -130,7 +130,9 @@ export function useSyncQueue(
   );
 
   const failedCount = useMemo(
-    () => queue.filter((m) => m.status === "failed").length,
+    () =>
+      queue.filter((m) => m.status === "failed" || m.status === "exhausted")
+        .length,
     [queue]
   );
 
