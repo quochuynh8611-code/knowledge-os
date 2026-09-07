@@ -8,7 +8,7 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-## Phase F7.1 — AI-Powered Insights & Predictive Analytics (2026-09-07)
+## Phase F7.1 — AI-Powered Insights (2026-09-07)
 
 **Status**: ✅ Completed  
 **Tag**: `v0.14.0`  
@@ -17,18 +17,18 @@
 
 ### Features Delivered
 
-1. ✅ Retention Predictions & Forgetting Curve (exponential decay $R = e^{-t/S}$, 80% & 95% confidence bands, optimal review date, calibration engine)
-2. ✅ Study Recommendations (multi-criteria utility scoring, explainable rationales, time-budget filtering 15m/30m/60m, anti-fatigue diversity)
-3. ✅ Circadian Pattern Detection (24×7 matrix, SVG heatmap, peak study hours identification with statistical delta vs baseline)
-4. ✅ Smart Notifications (browser notifications, anti-spam rate limiting: max 3/24h, min 2h gap, snooze 1h/1d/3d, in-app fallback)
-5. ✅ Topic Dashboard Integration (AI Insights section, card selector dropdown, header notification button with alert badge)
+1. ✅ Retention Predictions (forgetting curve, confidence intervals, optimal review date)
+2. ✅ Study Recommendations (multi-criteria scoring, explainability, time-budget filtering)
+3. ✅ Pattern Detection (24×7 heatmap, peak hours, circadian rhythms)
+4. ✅ Smart Notifications (browser notifications, rate limiting, snooze)
 
 ### Technical Decisions
 
-- Zero database schema migrations (pure runtime client-side calculations)
-- Zero external heavy ML dependencies (pure TypeScript mathematical models)
-- Lightweight React SVG charts (zero chart bundle bloat)
-- LocalStorage persistence for snooze states and rate-limiting history
+- Zero schema migration (runtime predictions only)
+- Pure TypeScript (no ML libraries)
+- Exponential decay model: R(t) = exp(-t/S)
+- Multi-criteria utility scoring: U = 0.4*Urgency + 0.35*WeakRetention + 0.15*Exam + 0.1*TimeFit
+- SVG charts (no heavy chart dependencies)
 
 ### Files Changed
 
@@ -41,16 +41,12 @@
 - `src/components/research/StudyPatternsHeatmap.tsx` (new)
 - `src/components/research/NotificationSettingsModal.tsx` (new)
 - `src/components/research/TopicDashboard.tsx` (modified)
-- `src/components/research/index.ts` (modified)
-- `docs/specs/phase-f7-1-ai-powered-insights.md` (new)
-- `docs/adr/f7.1-ai-powered-insights.md` (new)
-- `docs/implementation-plans/f7.1-ai-powered-insights.md` (new)
-- `.github/RELEASE_NOTES_F7.1.md` (new)
-- `tests/` (9 test suites, 63 tests)
+- `tests/` (9 new test files)
 
 ### Next Phase
 
 - F8.0: Collaboration Features (shared topics, peer review, study groups)
+- F9.0: Mobile App (React Native, offline-first, push notifications)
 
 ---
 
