@@ -17,29 +17,17 @@
 
 ### Features Delivered
 
-1. ✅ **Retention Curve Visualization (Pure SVG Canvas)**:
-   - Mô hình lý thuyết Ebbinghaus $R(t) = \exp(-t/S)$ với vùng phủ bóng mờ (`linearGradient`) và đường cong màu xanh ngọc bích stroke 2.5px.
-   - Điểm thực nghiệm (scatter dots) tính toán theo khoảng cách ngày, hiển thị số lượt ôn tập và tỷ lệ nhớ thực tế khi hover.
-   - Bộ lọc độ khó thẻ (Tất cả / Dễ / Vừa / Khó) và thời gian chân trời (14d / 30d / 60d).
-   - Huy hiệu chỉ số Memory Stability ($S$ ngày).
-2. ✅ **Adaptive Scheduling Engine**:
-   - Hàm ước lượng trí nhớ `calculateStabilityFromReviews(reviews)` dựa trên hồi quy tuyến tính $\ln(R) = -t/S$.
-   - Suy diễn độ khó thẻ `inferCardDifficulty(card, reviews)` kết hợp số lần quên (lapses), hệ số dễ (easeFactor), tỷ lệ ghi nhớ và độ trễ phản xạ (latency).
-   - Tự động thưởng hệ số dễ khi nhớ nhanh (< 2.5s) và nới lỏng khoảng cách; tăng hình phạt khi gặp khó khăn.
-3. ✅ **Exam Countdown & Smart Review Queue**:
-   - Thanh công cụ `ExamCountdownToolbar` với lịch chọn ngày thi, đếm ngược tự động chuyển màu theo mức độ khẩn cấp (xanh >14d, cam 7-14d, đỏ nhấp nháy <7d).
-   - Cơ chế Smart Queue sắp xếp thẻ ưu tiên theo điểm số khẩn cấp (`calculateCardPriorityScore`), tự động nén khoảng cách ôn tập đối với các thẻ chưa thành thạo trước ngày thi.
-4. ✅ **Card-Level A/B Testing Framework**:
-   - Phân hoạch thẻ deterministically vào Variant A (SM-2 Tiêu chuẩn) và Variant B (Adaptive SRS) thông qua thuật toán hàm băm FNV-1a từ `card.id`.
-   - Bảng phân tích so sánh song song Variant A vs B (tổng lượt ôn, tỷ lệ nhớ, tỷ lệ quên, thời gian trung bình).
-   - Kiểm định giả thuyết Two-Proportion Z-Test với xấp xỉ phân phối chuẩn tích lũy chuẩn hóa Abramowitz & Stegun để tính toán $Z$-score và $p$-value tự động trong bộ nhớ.
-   - Banner kết luận độ tin cậy thống kê ($p < 0.05$).
+1. ✅ Retention Curve Visualization (Ebbinghaus + empirical data, SVG chart)
+2. ✅ Adaptive Scheduling (stability estimation, difficulty inference, fast-recall bonuses)
+3. ✅ Exam Countdown & Smart Queue (priority scoring, daily load suggestions)
+4. ✅ A/B Testing Framework (SM-2 vs Adaptive, statistical significance with p-value)
 
 ### Technical Decisions
 
-- **Zero Database Schema Migrations**: Toàn bộ thuật toán thích ứng, phân hoạch A/B, kiểm định thống kê và ước lượng $S$ được tính toán thuần túy tại runtime từ `FlashcardSchedule` và `FlashcardReview`.
-- **Zero Charting Libraries**: Toàn bộ biểu đồ đường cong quên lãng được dựng bằng React SVG Canvas thuần, không kéo theo bất kỳ thư viện chart nào làm tăng dung lượng bundle.
-- **Deterministic Card-Level Split**: Đảm bảo trong môi trường đơn người dùng local, các thẻ được chia nhóm đồng đều và nhất quán qua mọi lần render.
+- Zero schema migration (runtime calculations only)
+- Zero heavy chart dependencies (pure React SVG)
+- FNV-1a deterministic card-level partition (50/50 split)
+- Two-Proportion Z-Test for A/B significance
 
 ### Files Changed
 
@@ -49,18 +37,12 @@
 - `src/components/flashcards/SrsVariantComparisonModal.tsx` (new)
 - `src/components/flashcards/FlashcardReviewStudio.tsx` (modified)
 - `src/components/flashcards/index.ts` (modified)
-- `docs/specs/phase-f6-12-srs-algorithm-tuning.md` (new)
-- `docs/adr/f6.12-srs-algorithm-tuning.md` (new)
-- `docs/implementation-plans/f6.12-srs-algorithm-tuning.md` (new)
-- `tests/unit/srs-algorithm-tuning.test.ts` (new)
-- `tests/unit/retention-curve-chart.test.tsx` (new)
-- `tests/unit/exam-countdown-toolbar.test.tsx` (new)
-- `tests/unit/srs-variant-comparison-modal.test.tsx` (new)
-- `tests/integration/srs-tuning-integration.test.tsx` (new)
+- `tests/` (5 new test files)
 
 ### Next Phase
 
-- F7.0: Research Dashboard (multi-domain aggregation & knowledge syntheses)
+- F6.13: Advanced Analytics Dashboard (retention trends, study patterns, predictions)
+- F7.0: Research Dashboard (multi-domain aggregation, timeline, full-text search)
 
 ---
 
