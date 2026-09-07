@@ -379,4 +379,64 @@ describe('Phase 3: AntigravityHandoffModal UI Integration Tests (Scholar Inspect
       'scholar-custom-query-input'
     );
   });
+
+  // ---------------------------------------------------------------------------
+  // ADR-072: Phase 2.1 Focus Trap & Keyboard Boundary Integration Tests
+  // ---------------------------------------------------------------------------
+  it('14. Focus Trap: Phím Tab trên phần tử cuối cùng trong modal wrap-around về phần tử đầu tiên', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const headerCloseBtn = screen.getByRole('button', { name: /Đóng modal/i });
+    const footerCloseBtn = screen.getByRole('button', { name: /^Đóng$/i });
+
+    // Focus last interactive button in modal (the footer Đóng button)
+    footerCloseBtn.focus();
+    expect(footerCloseBtn).toHaveFocus();
+
+    // Fire forward Tab keydown
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+
+    // Focus wraps around to header close button (first interactive element)
+    expect(headerCloseBtn).toHaveFocus();
+  });
+
+  it('15. Focus Trap: Phím Shift+Tab trên phần tử đầu tiên trong modal wrap-around về phần tử cuối cùng', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const headerCloseBtn = screen.getByRole('button', { name: /Đóng modal/i });
+    const footerCloseBtn = screen.getByRole('button', { name: /^Đóng$/i });
+
+    // Focus first interactive element (header close button)
+    headerCloseBtn.focus();
+    expect(headerCloseBtn).toHaveFocus();
+
+    // Fire backward Shift+Tab keydown
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+
+    // Focus wraps around to last element in modal (the footer Đóng button)
+    expect(footerCloseBtn).toHaveFocus();
+  });
+
+  it('16. Focus Trap Dynamic Adaptation: Cập nhật boundary chính xác khi chuyển sang Tab 3 (System Prompt)', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    // Switch to Prompt Tab
+    const promptTab = screen.getByRole('tab', { name: /System Prompt/i });
+    fireEvent.click(promptTab);
+
+    const headerCloseBtn = screen.getByRole('button', { name: /Đóng modal/i });
+    const footerCloseBtn = screen.getByRole('button', { name: /^Đóng$/i });
+
+    // In Prompt tab, last element is still the footer Close button
+    footerCloseBtn.focus();
+    expect(footerCloseBtn).toHaveFocus();
+
+    // Forward Tab wraps to header close button
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(headerCloseBtn).toHaveFocus();
+
+    // Backward Shift+Tab from header close button wraps back to footerCloseBtn
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(footerCloseBtn).toHaveFocus();
+  });
 });

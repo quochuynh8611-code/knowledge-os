@@ -19,6 +19,7 @@ import {
   AntigravityResearchMode,
 } from '../../lib/antigravity';
 import { sanitizeFileName } from '../../lib/obsidian';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Topic } from '../../types';
 
 interface AntigravityHandoffModalProps {
@@ -47,7 +48,7 @@ export function AntigravityHandoffModal({
   const [announcement, setAnnouncement] = useState('');
 
   // Refs for focus management
-  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const modalContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFocusRef = useRef<HTMLButtonElement | null>(null);
 
   // Auto-sync topic context when modal opens with a provided topic prop
@@ -57,39 +58,12 @@ export function AntigravityHandoffModal({
     }
   }, [isOpen, topic?.id]);
 
-  // Focus-on-open and focus restoration on unmount/close
-  useEffect(() => {
-    if (isOpen) {
-      previousActiveElementRef.current = document.activeElement as HTMLElement | null;
-      // Focus on active tab or first interactive element
-      const timer = setTimeout(() => {
-        initialFocusRef.current?.focus();
-      }, 50);
-      return () => {
-        clearTimeout(timer);
-        if (
-          previousActiveElementRef.current &&
-          typeof previousActiveElementRef.current.focus === 'function' &&
-          previousActiveElementRef.current.isConnected
-        ) {
-          previousActiveElementRef.current.focus();
-        }
-      };
-    }
-  }, [isOpen]);
-
-  // Dialog Escape key listener
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  // WAI-ARIA Dialog Focus Trap & Escape key listener & Focus restoration
+  useFocusTrap(modalContainerRef, isOpen, {
+    initialFocusRef,
+    onEscape: onClose,
+    returnFocus: true,
+  });
 
   // WAI-ARIA Tabs keyboard navigation
   const handleTabKeyDown = useCallback(
@@ -192,6 +166,7 @@ export function AntigravityHandoffModal({
 
   return (
     <div
+      ref={modalContainerRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="antigravity-handoff-title"
