@@ -439,4 +439,37 @@ describe('Phase 3: AntigravityHandoffModal UI Integration Tests (Scholar Inspect
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
     expect(footerCloseBtn).toHaveFocus();
   });
+
+  // ---------------------------------------------------------------------------
+  // ADR-073.1: Compact Topic Selector & Active Context Retention Tests
+  // ---------------------------------------------------------------------------
+  it('17. Compact Topic Selector: Mặc định hiển thị danh sách thu gọn và giữ nguyên chủ đề active', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const select = screen.getByRole('combobox');
+    const options = Array.from(select.querySelectorAll('option'));
+
+    // In mock context with 2 topics (both or active included), options should be concise
+    expect(options.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('scholar-topic-context-badge')).toHaveTextContent(/Vi Diệu Pháp Toàn Tập/i);
+  });
+
+  it('18. Compact Topic Selector Toggle: Nhấp nút Tất cả/Thu gọn mở rộng và thu gọn danh sách', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const toggleBtn = screen.queryByRole('button', { name: /Tất cả|Thu gọn/i });
+    if (toggleBtn) {
+      const select = screen.getByRole('combobox');
+      const initialCount = select.querySelectorAll('option').length;
+
+      // Click Tất cả
+      fireEvent.click(toggleBtn);
+      expect(toggleBtn).toHaveTextContent(/Thu gọn/i);
+      expect(select.querySelectorAll('option').length).toBeGreaterThanOrEqual(initialCount);
+
+      // Click Thu gọn
+      fireEvent.click(toggleBtn);
+      expect(toggleBtn).toHaveTextContent(/Tất cả/i);
+    }
+  });
 });

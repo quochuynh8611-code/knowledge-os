@@ -20,6 +20,11 @@ import {
 } from '../../lib/antigravity';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import {
+  getCompactTopicOptions,
+  getTopicDomainLabel,
+  DEFAULT_PRIORITY_TOPIC_IDS,
+} from '../../lib/topicSelector';
 import { Topic } from '../../types';
 
 interface AntigravityHandoffModalProps {
@@ -40,12 +45,19 @@ export function AntigravityHandoffModal({
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     topic?.id || topics[0]?.id || ''
   );
+  const [showAllTopics, setShowAllTopics] = useState(false);
   const [researchMode, setResearchMode] = useState<AntigravityResearchMode>('concept_analysis');
   const [customQuery, setCustomQuery] = useState('');
   const [copiedBundle, setCopiedBundle] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bundle');
   const [announcement, setAnnouncement] = useState('');
+
+  // Compute compact or expanded topics for selector
+  const visibleTopics = React.useMemo(
+    () => getCompactTopicOptions(topics, selectedTopicId, showAllTopics),
+    [topics, selectedTopicId, showAllTopics]
+  );
 
   // Refs for focus management
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -226,7 +238,7 @@ export function AntigravityHandoffModal({
             </span>
           </div>
 
-          <div className="w-full sm:w-72 flex items-center gap-2">
+          <div className="w-full sm:w-auto flex items-center gap-2">
             <label
               htmlFor="scholar-topic-selector"
               className="text-xs font-semibold text-stone-600 dark:text-stone-400 whitespace-nowrap shrink-0"
@@ -237,17 +249,28 @@ export function AntigravityHandoffModal({
               id="scholar-topic-selector"
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
-              className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus-visible:ring-2 focus-visible:ring-amber-500"
+              className="w-full sm:w-64 text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus-visible:ring-2 focus-visible:ring-amber-500"
             >
-              {topics.map((t) => {
-                const tag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
+              {visibleTopics.map((t) => {
+                const tag = getTopicDomainLabel(t);
+                const isExtraActive = !showAllTopics && t.id === selectedTopicId && !DEFAULT_PRIORITY_TOPIC_IDS.includes(t.id);
                 return (
                   <option key={t.id} value={t.id}>
-                    [{tag}] {t.title}
+                    [{tag}] {t.title}{isExtraActive ? ' (Đang chọn)' : ''}
                   </option>
                 );
               })}
             </select>
+            {topics.length > 8 && (
+              <button
+                type="button"
+                onClick={() => setShowAllTopics(!showAllTopics)}
+                className="shrink-0 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                title={showAllTopics ? "Chuyển về 8 chủ đề trọng tâm" : `Hiển thị toàn bộ ${topics.length} chủ đề`}
+              >
+                {showAllTopics ? "Thu gọn (8)" : `Tất cả (${topics.length})`}
+              </button>
+            )}
           </div>
         </div>
 

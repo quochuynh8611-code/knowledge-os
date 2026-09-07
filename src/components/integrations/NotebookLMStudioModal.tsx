@@ -39,9 +39,14 @@ import {
   AntigravityHandoffJob,
   AntigravityJobStatus,
 } from '../../lib/antigravityPipeline';
+import {
+  getCompactTopicOptions,
+  getTopicDomainLabel,
+  DEFAULT_PRIORITY_TOPIC_IDS,
+} from '../../lib/topicSelector';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
-import { GroundedArtifactDTO, ResearchSessionDTO } from '../../types/researchHub';
+import { ResearchSessionDTO, GroundedArtifactDTO } from '../../types/researchHub';
 import { ArtifactReviewDrawer } from './ArtifactReviewDrawer';
 
 interface NotebookLMStudioModalProps {
@@ -53,8 +58,15 @@ interface NotebookLMStudioModalProps {
 export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStudioModalProps) {
   const { topics, notes, resources } = useData();
   const [selectedTopicId, setSelectedTopicId] = useState<string>(topic?.id || topics[0]?.id || '');
+  const [showAllTopics, setShowAllTopics] = useState(false);
   const [copiedSource, setCopiedSource] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  // Compute compact or expanded topics for selector
+  const visibleTopics = React.useMemo(
+    () => getCompactTopicOptions(topics, selectedTopicId, showAllTopics),
+    [topics, selectedTopicId, showAllTopics]
+  );
 
   // Backend session state
   const [currentSession, setCurrentSession] = useState<ResearchSessionDTO | null>(null);
@@ -452,21 +464,37 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs text-stone-700 dark:text-stone-300 bg-stone-50/40 dark:bg-stone-900/40">
           {/* Topic Selector & Official Link Bar */}
           <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-800 shadow-2xs">
-            <div className="w-full sm:w-1/2">
+            <div className="w-full sm:w-auto flex-1 flex flex-col gap-1">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
                 Chủ đề đang đóng gói nguồn:
               </label>
-              <select
-                value={selectedTopicId}
-                onChange={(e) => setSelectedTopicId(e.target.value)}
-                className="w-full text-xs font-medium bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              >
-                {topics.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedTopicId}
+                  onChange={(e) => setSelectedTopicId(e.target.value)}
+                  className="w-full sm:w-80 text-xs font-medium bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                >
+                  {visibleTopics.map((t) => {
+                    const tag = getTopicDomainLabel(t);
+                    const isExtraActive = !showAllTopics && t.id === selectedTopicId && !DEFAULT_PRIORITY_TOPIC_IDS.includes(t.id);
+                    return (
+                      <option key={t.id} value={t.id}>
+                        [{tag}] {t.title}{isExtraActive ? ' (Đang chọn)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                {topics.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTopics(!showAllTopics)}
+                    className="shrink-0 text-[11px] font-semibold px-2.5 py-2 rounded-xl border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                    title={showAllTopics ? "Chuyển về 8 chủ đề trọng tâm" : `Hiển thị toàn bộ ${topics.length} chủ đề`}
+                  >
+                    {showAllTopics ? "Thu gọn (8)" : `Tất cả (${topics.length})`}
+                  </button>
+                )}
+              </div>
             </div>
 
             <a
