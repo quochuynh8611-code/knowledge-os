@@ -10,6 +10,13 @@ import {
   type RetentionTrendPoint,
 } from "../../lib/researchAggregationService";
 import {
+  RetentionPredictionChart,
+  TopicRecommendations,
+  StudyPatternsHeatmap,
+  NotificationSettingsModal,
+} from "./index";
+import { checkDueForgettingAlerts } from "../../lib/smartNotificationService";
+import {
   FileText,
   Brain,
   Library,
@@ -26,6 +33,7 @@ import {
   HelpCircle,
   Activity,
   Sparkles,
+  Bell,
 } from "lucide-react";
 
 export interface TopicDashboardProps {
@@ -37,10 +45,13 @@ export interface TopicDashboardProps {
   flashcards?: Flashcard[];
   resources?: Resource[];
   reviews?: FlashcardReview[];
+  allTopics?: Topic[];
+  allFlashcards?: Flashcard[];
   onOpenSearch?: () => void;
   onOpenExport?: () => void;
   onNavigateTab?: (tab: string) => void;
   onSelectActivity?: (activity: TopicActivityItem) => void;
+  onStartReview?: (topicId: string, count: number) => void;
 }
 
 export function TopicDashboard({
@@ -52,12 +63,17 @@ export function TopicDashboard({
   flashcards = [],
   resources = [],
   reviews = [],
+  allTopics = [],
+  allFlashcards = [],
   onOpenSearch,
   onOpenExport,
   onNavigateTab,
   onSelectActivity,
+  onStartReview,
 }: TopicDashboardProps) {
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [hoveredPoint, setHoveredPoint] = useState<RetentionTrendPoint | null>(null);
 
   // 1. Asset aggregation
@@ -89,6 +105,50 @@ export function TopicDashboard({
       10
     );
   }, [topicId, notes, flashcards, reviews, resources]);
+
+  // Topic specific flashcards & card for retention prediction
+  const topicCards = useMemo(() => {
+    return flashcards.filter((f) => f.topicId === topicId);
+  }, [flashcards, topicId]);
+
+  const activePredictionCard = useMemo(() => {
+    if (selectedCardId) {
+      const found = topicCards.find((c) => c.id === selectedCardId);
+      if (found) return found;
+    }
+    return topicCards.length > 0 ? topicCards[0] : undefined;
+  }, [topicCards, selectedCardId]);
+
+  // Active forgetting alerts
+  const activeAlerts = useMemo(() => {
+    const topicList: Topic[] = allTopics.length > 0 ? allTopics : [
+      {
+        id: topicId,
+        title: topicTitle,
+        slug: topicId,
+        categoryId: topicCategory || "default",
+        type: "study",
+        description: "",
+        content: "",
+        tags: [],
+        links: [],
+        studyProgress: {
+          topicId,
+          status: "in_progress",
+          progress: 50,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: notes.length,
+          timeSpent: stats.timeSpentMinutes,
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+    const cardsToCheck = allFlashcards.length > 0 ? allFlashcards : flashcards;
+    return checkDueForgettingAlerts(cardsToCheck, reviews, topicList);
+  }, [allTopics, topicId, topicTitle, topicCategory, notes.length, stats.timeSpentMinutes, allFlashcards, flashcards, reviews]);
 
   // SVG Chart Dimensions
   const svgWidth = 650;
@@ -207,6 +267,23 @@ export function TopicDashboard({
               <span>Xuất Báo Cáo</span>
             </button>
           )}
+          <button
+            onClick={() => setIsNotificationModalOpen(true)}
+            className="relative inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            title="Cài đặt thông báo thông minh"
+            data-testid="research-notifications-btn"
+          >
+            <Bell className="w-4 h-4 text-amber-500" />
+            <span>Thông báo</span>
+            {activeAlerts.length > 0 && (
+              <span
+                data-testid="active-alerts-count"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center animate-pulse"
+              >
+                {activeAlerts.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -513,7 +590,67 @@ export function TopicDashboard({
         )}
       </div>
 
-      {/* 4. Recent Activities Section */}
+      {/* 4. AI-Powered Insights Section (Phase F7.1) */}
+      <div className="space-y-4" data-testid="ai-powered-insights-section">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              Phân Tích Thông Minh & Dự Báo (AI-Powered Insights)
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Mô hình dự báo suy giảm trí nhớ, gợi ý lộ trình học tập tối ưu và nhịp sinh học cá nhân hóa.
+            </p>
+          </div>
+        </div>
+
+        {/* Study Recommendations (if multiple topics available) */}
+        {allTopics.length > 0 && (
+          <TopicRecommendations
+            topics={allTopics}
+            cards={allFlashcards.length > 0 ? allFlashcards : flashcards}
+            reviews={reviews}
+            onStartReview={onStartReview}
+          />
+        )}
+
+        {/* 2-Column Grid: Forgetting Curve Chart & Circadian Heatmap */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            {topicCards.length > 1 && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Chọn thẻ flashcard để xem dự báo:
+                </span>
+                <select
+                  value={activePredictionCard?.id || ""}
+                  onChange={(e) => setSelectedCardId(e.target.value)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                  data-testid="prediction-card-select"
+                >
+                  {topicCards.map((c, idx) => (
+                    <option key={c.id} value={c.id}>
+                      Thẻ #{idx + 1}: {c.front.slice(0, 30)}...
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <RetentionPredictionChart
+              card={activePredictionCard}
+              reviews={reviews}
+            />
+          </div>
+
+          <div>
+            <StudyPatternsHeatmap reviews={reviews} />
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Recent Activities Section */}
       <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -588,6 +725,12 @@ export function TopicDashboard({
           </div>
         )}
       </div>
+
+      {/* 6. Smart Notifications Settings Modal */}
+      <NotificationSettingsModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+      />
     </div>
   );
 }
