@@ -209,7 +209,7 @@ export function NoteReaderModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-6 sm:px-8 py-4.5 border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-950/40">
+        <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-950/40">
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
             {getTypeBadge()}
             {note.topicTitle && (

@@ -139,7 +139,7 @@ export function NotesManager() {
       </div>
 
       {/* Notes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredNotes.map((note) => {
           const getTypeBadge = () => {
             switch (note.type) {
