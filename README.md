@@ -1,10 +1,10 @@
 # Knowledge OS
 
-Multi-domain knowledge management system with SRS flashcards, research dashboard, AI insights, and collaboration features.
+Multi-domain knowledge management system with SRS flashcards, research dashboard, AI insights, and Google NotebookLM Research Hub.
 
-> **Version**: `v0.14.0`  
-> **Status**: Production-Ready (macOS Local-First / Web)  
-> **Quality**: 100% Tests Passing • 0 TypeScript Errors
+> **Version**: `v0.15.0`  
+> **Status**: Production-Ready (macOS Local-First / Web & Persistent DB)  
+> **Quality**: 100% Tests Passing (297 Test Suites, 1,912 Tests) • 0 TypeScript Errors
 
 ---
 
@@ -13,6 +13,9 @@ Multi-domain knowledge management system with SRS flashcards, research dashboard
 ```bash
 # Install dependencies
 npm install
+
+# Run database migration / schema push
+npx prisma db push
 
 # Run development server
 npm run dev
@@ -49,6 +52,13 @@ The application will be accessible at **http://localhost:3000** (or your designa
 - **24×7 Circadian Heatmap**: Visualizes study volume and retention quality across weekdays and hours with "Peak Focus Hour" detection.
 - **Smart Notifications & Rate Limiting**: Browser Web Notification API integration with anti-spam limits (max 3/24h, min 2h gap) and 1h/1d/3d snooze options.
 
+### 4. 🔬 Google NotebookLM Research Hub v2.1 & Antigravity 2.0 (F8.0)
+- **Versioned Source Packaging**: Multi-version source packages (`v1`, `v2`) with complete historical provenance and visual badges. Older artifacts retain their version binding without auto-archiving.
+- **Dedicated Review Drawer (`ArtifactReviewDrawer`)**: Deep-inspection 3-tab review drawer for raw Markdown, structured citation markers (`[1]`, `[2]`), and transactional import audit logs.
+- **Independent Ingestion**: Decoupled Note import and Flashcard generation with SHA-256 deduplication idempotency guards (`contentHash`).
+- **Antigravity 2.0 CLI Pipeline**: Generates headless execution commands (`agy -p`) and task prompts across 5 artifact archetypes (Study Guide, Audio Overview, Briefing Doc, FAQ, Source Pack).
+- **Unified Design System & 100% Dark Mode**: Harmonized `stone` color palette, fluid micro-animations, and full dark theme support across all modal dialogs and review drawers.
+
 ---
 
 ## 🧭 Canonical Knowledge Domains
@@ -66,12 +76,12 @@ Knowledge OS is architected to organize and cross-reference structured research 
 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Frontend** | React 19, TypeScript, Tailwind CSS | High-performance, accessible UI |
+| **Frontend** | React 19, TypeScript, Tailwind CSS | High-performance, accessible UI with 100% Dark Mode |
 | **Icons & Charts** | Lucide Icons, Pure React SVG | Zero heavy charting bundle bloat |
-| **State & Storage** | Local-First, LocalStorage, SQLite/PostgreSQL | Ultra-fast client runtime, zero schema migration |
+| **State & Storage** | Local-First, LocalStorage, PostgreSQL / Prisma ORM | Relational durability, transactional imports & versioning |
 | **Search Engine** | Pure TS In-Memory Okapi BM25 | Relevance ranking with multilingual normalizers |
-| **Testing** | Vitest, React Testing Library, Playwright | Comprehensive unit, integration, and E2E coverage |
-| **API / Backend** | Express, Node.js, Prisma ORM | Secure bridges for local vaults and file attachments |
+| **Testing** | Vitest, React Testing Library, Playwright | 297 test suites, 1,912 tests passing |
+| **API / Backend** | Express, Node.js, Prisma Client | REST endpoints for Research Sessions, Artifacts, Obsidian Bridge |
 
 ---
 
@@ -79,30 +89,38 @@ Knowledge OS is architected to organize and cross-reference structured research 
 
 ```
 knowledge-os/
-├── .github/                     # Official Phase Release Notes (v0.10.0 - v0.14.0)
 ├── docs/
 │   ├── PROJECT_STATUS.md        # Comprehensive project status & phase roadmap
-│   ├── adr/                     # Architectural Decision Records (ADR)
+│   ├── adr/                     # Architectural Decision Records (ADR-001 to ADR-070)
 │   ├── specs/                   # BDD Gherkin functional specifications
 │   ├── implementation-plans/    # Detailed phase execution plans
 │   └── runbooks/                # Operations & backup runbooks
+├── prisma/
+│   └── schema.prisma            # PostgreSQL schema with Research Hub models
 ├── src/
 │   ├── components/
 │   │   ├── flashcards/          # Flashcard review studio, cards, hotkeys
+│   │   ├── integrations/        # NotebookLM Studio, Artifact Review Drawer, Antigravity Handoff
 │   │   ├── research/            # Topic dashboard, timeline, search, insights, heatmap
 │   │   ├── modals/              # Creation, edit, and configuration dialogs
 │   │   └── ui/                  # Accessible, theme-aware primitive components
 │   ├── lib/
+│   │   ├── researchHubValidation.ts      # Zod schemas for sessions, artifacts, citations
+│   │   ├── notebooklm.ts                 # Source packaging and task prompt generation
+│   │   ├── antigravityPipeline.ts        # CLI command builders and handoff tracking
 │   │   ├── retentionPredictionEngine.ts  # Exponential decay & CI models
 │   │   ├── studyRecommendationEngine.ts  # Multi-criteria utility scoring
 │   │   ├── studyPatternEngine.ts         # 24x7 matrix & peak hour analysis
 │   │   ├── smartNotificationService.ts   # Rate limiting & Web Notifications API
 │   │   ├── researchSearchEngine.ts       # BM25 full-text search
 │   │   └── srsAlgorithmTuning.ts         # SM-2 & Adaptive scheduling algorithms
-│   ├── types/                   # Strongly-typed TypeScript interfaces
-│   └── server/                  # Local Express endpoints & Obsidian bridge
+│   ├── types/
+│   │   └── researchHub.ts       # DTOs, Enums, and payload contracts
+│   └── server/
+│       ├── routes/              # /api/research-sessions, /api/artifacts, /api/obsidian
+│       └── services/            # researchSessionService, artifactIngestionService
 └── tests/
-    ├── unit/                    # Fast isolated mathematical & component tests
+    ├── unit/                    # Fast isolated mathematical, service, & component tests
     └── integration/             # Multi-component workflow verification tests
 ```
 
@@ -110,6 +128,7 @@ knowledge-os/
 
 ## 📜 Release History
 
+- [v0.15.0 — Phase F8.0: Google NotebookLM Research Hub v2.1 & Unified Design System](docs/adr/ADR-070-notebooklm-research-hub-v2.1.md)
 - [v0.14.0 — Phase F7.1: AI-Powered Insights & Predictive Analytics](.github/RELEASE_NOTES_F7.1.md)
 - [v0.13.0 — Phase F7.0: Research Dashboard (Multi-Domain Knowledge Hub)](.github/RELEASE_NOTES_F7.0.md)
 - [v0.12.0 — Phase F6.12: SRS Algorithm Tuning & A/B Testing](.github/RELEASE_NOTES_F6.12.md)
@@ -118,13 +137,7 @@ knowledge-os/
 
 ---
 
-## 🗺️ Roadmap Ahead
-
-- **Phase F8.0**: Collaboration Features (Shared topics, peer reviews, study group exchange).
-- **Phase F9.0**: Mobile Companion App (React Native, offline-first sync, push notifications).
-
----
-
 ## 📄 License
 
 MIT License. Designed and maintained for researchers, scholars, and lifelong learners.
+

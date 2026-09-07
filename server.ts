@@ -15,6 +15,8 @@ import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
+import { createResearchSessionRouter } from "./src/server/routes/researchSessionRoutes";
+import { createArtifactRouter } from "./src/server/routes/artifactRoutes";
 import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
 import { createObsidianSearchRouter } from "./src/server/routes/obsidianSearchRoutes";
@@ -86,6 +88,10 @@ async function startServer() {
 
   // 6. Flashcards & Spaced Repetition Subsystem (Phase F4)
   app.use("/api", createFlashcardRouter(prisma));
+
+  // 7. NotebookLM Research Hub v2.1 Pipeline Endpoints
+  app.use("/api", createResearchSessionRouter(prisma));
+  app.use("/api", createArtifactRouter(prisma));
 
   // ==========================================
   // BACKUP ROUTES (EXPORT & RESTORE)

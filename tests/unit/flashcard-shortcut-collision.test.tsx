@@ -1,6 +1,6 @@
 import React, { act } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { FlashcardReviewStudio } from "../../src/components/flashcards/FlashcardReviewStudio";
 import { useKeyboardShortcuts } from "../../src/hooks/useKeyboardShortcuts";
 import { shortcutScope } from "../../src/lib/shortcutScope";
@@ -78,6 +78,7 @@ describe("BUG F6.0.1 — Final Spec: Scoped Keyboard Shortcut Priority", () => {
   });
 
   afterEach(() => {
+    cleanup();
     shortcutScope.reset();
   });
 
@@ -101,8 +102,9 @@ describe("BUG F6.0.1 — Final Spec: Scoped Keyboard Shortcut Priority", () => {
 
     render(<TestHarness showStudio={true} onNavigateTab={onNavigateTab} />);
 
-    // Đợi thẻ xuất hiện ở mặt trước
+    // Đợi thẻ xuất hiện ở mặt trước và scope được active
     expect(await screen.findByText("Thủ đô Việt Nam là gì?")).toBeInTheDocument();
+    await waitFor(() => expect(shortcutScope.isScopeActive("flashcard_review")).toBe(true));
 
     // Nhấn phím 1, 2, 3, 4
     for (const key of ["1", "2", "3", "4"]) {

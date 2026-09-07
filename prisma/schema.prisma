@@ -56,6 +56,10 @@ model Topic {
   // Native Flashcard & SRS relations
   flashcards       Flashcard[]
   flashcardReviews FlashcardReview[]
+  // NotebookLM Research Hub v2.1 relations
+  researchSessions       ResearchSession[]
+  groundedArtifacts      GroundedArtifact[]
+  researchTimelineEvents ResearchTimelineEvent[]
 }
 
 model Note {
@@ -74,6 +78,8 @@ model Note {
   additionalTopics NoteTopicLink[]
   // Native Flashcard optional relation
   flashcards       Flashcard[]
+  // NotebookLM Research Hub v2.1 optional relation
+  artifactImports  ArtifactImport[]
 }
 
 model Resource {
@@ -180,6 +186,8 @@ model Flashcard {
   updatedAt       DateTime           @updatedAt
   schedule        FlashcardSchedule?
   reviews         FlashcardReview[]
+  // NotebookLM Research Hub v2.1 optional relation
+  artifactImports ArtifactImport[]
 
   @@index([topicId])
   @@index([lifecycleStatus])
@@ -224,3 +232,137 @@ model FlashcardReview {
   @@index([topicId])
   @@index([reviewedAt])
 }
+
+// ─── NotebookLM Research Hub (v2.1 ADR) Models ───────────────────────────────
+
+model ResearchSession {
+  id             String                  @id @default(uuid())
+  topicId        String
+  topic          Topic                   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  status         String                  @default("idle") // 'idle' | 'packaged' | 'prompt_ready' | 'handoff_active' | 'artifact_received' | 'completed' | 'archived'
+  notebookUrl    String?
+  notebookId     String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  sourcePackages SourcePackage[]
+  taskPrompts    TaskPrompt[]
+  artifacts      GroundedArtifact[]
+  timelineEvents ResearchTimelineEvent[]
+
+  @@index([topicId])
+  @@index([status])
+}
+
+model SourcePackage {
+  id          String             @id @default(uuid())
+  sessionId   String
+  session     ResearchSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  version     Int                @default(1)
+  isCurrent   Boolean            @default(true)
+  content     String
+  contentHash String
+  sourceCount Int                @default(0)
+  createdAt   DateTime           @default(now())
+  artifacts   GroundedArtifact[]
+
+  @@unique([sessionId, version])
+  @@index([sessionId])
+  @@index([contentHash])
+}
+
+model TaskPrompt {
+  id             String             @id @default(uuid())
+  sessionId      String
+  session        ResearchSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  promptMode     String             @default("study_guide") // 'study_guide' | 'srs_deep_dive' | 'comparative' | 'qa_flashcard' | 'custom'
+  promptText     String
+  promptHash     String
+  version        Int                @default(1)
+  isCurrent      Boolean            @default(true)
+  cliCommandHint String?
+  createdAt      DateTime           @default(now())
+  artifacts      GroundedArtifact[]
+
+  @@unique([sessionId, version])
+  @@index([sessionId])
+  @@index([promptHash])
+}
+
+model GroundedArtifact {
+  id              String             @id @default(uuid())
+  sessionId       String
+  session         ResearchSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourcePackageId String?
+  sourcePackage   SourcePackage?     @relation(fields: [sourcePackageId], references: [id], onDelete: SetNull)
+  taskPromptId    String?
+  taskPrompt      TaskPrompt?        @relation(fields: [taskPromptId], references: [id], onDelete: SetNull)
+  topicId         String
+  topic           Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  artifactType    String             @default("study_guide") // 'study_guide' | 'briefing_doc' | 'qa_pair' | 'raw_markdown'
+  title           String
+  rawContent      String
+  contentHash     String
+  idempotencyKey  String             @unique
+  status          String             @default("received") // 'received' | 'validated' | 'partially_imported' | 'imported' | 'archived'
+  citationCount   Int                @default(0)
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  citations       ArtifactCitation[]
+  imports         ArtifactImport[]
+
+  @@index([sessionId])
+  @@index([topicId])
+  @@index([status])
+  @@index([contentHash])
+}
+
+model ArtifactCitation {
+  id          String           @id @default(uuid())
+  artifactId  String
+  artifact    GroundedArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  markerIndex Int
+  sourceTitle String
+  quote       String?
+  createdAt   DateTime         @default(now())
+
+  @@index([artifactId])
+}
+
+model ArtifactImport {
+  id           String           @id @default(uuid())
+  artifactId   String
+  artifact     GroundedArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  targetType   String           // 'note' | 'flashcards' | 'obsidian'
+  targetNoteId String?
+  targetNote   Note?            @relation(fields: [targetNoteId], references: [id], onDelete: SetNull)
+  targetCardId String?
+  targetCard   Flashcard?       @relation(fields: [targetCardId], references: [id], onDelete: SetNull)
+  exportPath   String?
+  status       String           @default("pending") // 'pending' | 'success' | 'failed'
+  itemCount    Int              @default(1)
+  error        String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([artifactId])
+  @@index([targetType])
+  @@index([targetNoteId])
+  @@index([targetCardId])
+}
+
+model ResearchTimelineEvent {
+  id        String          @id @default(uuid())
+  sessionId String
+  session   ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  topicId   String
+  topic     Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  eventType String          // 'session_created' | 'source_packaged' | 'prompt_generated' | 'handoff_prepared' | 'artifact_received' | 'artifact_reviewed' | 'note_imported' | 'flashcards_generated' | 'obsidian_exported'
+  eventData Json?
+  createdAt DateTime        @default(now())
+
+  @@index([sessionId])
+  @@index([topicId])
+  @@index([eventType])
+}
+

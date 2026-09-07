@@ -11,6 +11,11 @@ export default defineConfig(() => {
       globals: true,
       environment: 'jsdom',
       setupFiles: './tests/setup.ts',
+      include: [
+        'tests/unit/**/*.{test,spec}.{ts,tsx}',
+        'tests/integration/**/*.{test,spec}.{ts,tsx}',
+      ],
+      exclude: ['**/node_modules/**', '**/tests/e2e/**', '**/*.spec.ts'],
       cache: {
         dir: path.resolve(__dirname, '.cache/vitest'),
       },

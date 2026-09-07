@@ -2,11 +2,34 @@
 
 > **Cập nhật lần cuối:** 2026-09-07  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12), RESEARCH DASHBOARD (F7.0) & AI-POWERED INSIGHTS (F7.1) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.14.0` — 63/63 PASS, 0 TSC ERRORS)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12), RESEARCH DASHBOARD (F7.0), AI INSIGHTS (F7.1) & NOTEBOOKLM RESEARCH HUB v2.1 (F8.0) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.15.0` — 297/297 SUITES PASS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+
+## Phase F8.0 — Google NotebookLM Research Hub v2.1 & Unified Design System (2026-09-07)
+
+**Status**: ✅ Completed  
+**Tag**: `v0.15.0`  
+**Tests**: 297/297 suites PASS (1,912 tests, 100%)  
+**Typecheck**: 0 errors
+
+### Features Delivered
+
+1. ✅ **Multi-Version Source Packages**: 1-to-N source package versions (`v1`, `v2`) with 100% provenance retention (Decision 1 Option A).
+2. ✅ **Dedicated Review Drawer (`ArtifactReviewDrawer`)**: 3-tab deep review layout for raw Markdown, citation markers (`[1]`, `[2]`), and transactional import audit logs (Decision 2 Option B).
+3. ✅ **Independent Transactional Ingestion**: Decoupled Note import and Flashcard SRS generation with SHA-256 idempotency guard (`contentHash`).
+4. ✅ **Antigravity 2.0 CLI Pipeline**: Headless CLI command builders (`agy -p`) and task prompts across 5 artifact types.
+5. ✅ **Unified Design System & 100% Dark Mode**: Harmonized `stone` color palette across `NotebookLMStudioModal`, `ArtifactReviewDrawer`, and `AntigravityHandoffModal`.
+
+### Technical Decisions & Architecture (ADR-070)
+
+- Additive Prisma Schema: 7 new models (`ResearchSession`, `SourcePackage`, `TaskPrompt`, `GroundedArtifact`, `ArtifactCitation`, `ArtifactImport`, `ResearchTimelineEvent`).
+- REST Endpoints: `/api/research-sessions` & `/api/artifacts` backed by Express and Prisma ORM.
+- Zero Breaking Changes: Full backward compatibility with `localStorage` and existing mock suites.
+
+---
 
 ## Phase F7.1 — AI-Powered Insights (2026-09-07)
 

@@ -94,17 +94,22 @@ export function AntigravityHandoffModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="antigravity-handoff-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
+    >
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden text-stone-900 dark:text-stone-100">
         {/* Header */}
-        <div className="p-4 md:px-6 md:py-4 bg-gradient-to-r from-amber-950 via-stone-900 to-amber-900 text-stone-100 flex items-center justify-between">
+        <div className="p-4 md:px-6 md:py-4 bg-gradient-to-r from-amber-950 via-stone-900 to-amber-900 text-stone-100 flex items-center justify-between border-b border-amber-900/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400/30 text-amber-300 flex items-center justify-center font-bold shadow-xs">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold tracking-tight text-white">
+                <h2 id="antigravity-handoff-title" className="text-base font-bold tracking-tight text-white">
                   Antigravity AI Scholar Handoff Bundle
                 </h2>
                 <span className="text-[10px] font-mono uppercase bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30 font-semibold">
@@ -118,7 +123,7 @@ export function AntigravityHandoffModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-stone-300 hover:text-white hover:bg-stone-800 rounded-lg transition"
+            className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
             aria-label="Đóng modal"
           >
             <X className="w-5 h-5" />
@@ -126,7 +131,7 @@ export function AntigravityHandoffModal({
         </div>
 
         {/* Control Toolbar */}
-        <div className="p-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-950/60 space-y-3">
+        <div className="p-4 md:px-6 border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/90 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Topic Selector */}
             <div>
@@ -136,7 +141,7 @@ export function AntigravityHandoffModal({
               <select
                 value={selectedTopicId}
                 onChange={(e) => setSelectedTopicId(e.target.value)}
-                className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-700"
+                className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
               >
                 {topics.map((t) => {
                   const domainTag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
@@ -161,7 +166,7 @@ export function AntigravityHandoffModal({
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
                     researchMode === 'concept_analysis' || researchMode === 'scholar_analysis'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
                   }`}
                 >
                   Phân Tích Khái Niệm
@@ -172,7 +177,7 @@ export function AntigravityHandoffModal({
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
                     researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
                   }`}
                 >
                   Ngữ Nguyên &amp; Thuật Ngữ
@@ -183,7 +188,7 @@ export function AntigravityHandoffModal({
                   className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
                     researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link'
                       ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300'
+                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
                   }`}
                 >
                   Tổng Hợp Liên Ngành
@@ -201,7 +206,7 @@ export function AntigravityHandoffModal({
                 className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'bundle'
                     ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
                 }`}
               >
                 Gói Bàn Giao (6 Sections)
@@ -212,7 +217,7 @@ export function AntigravityHandoffModal({
                 className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   activeTab === 'prompt'
                     ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400'
+                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
                 }`}
               >
                 System Prompt Chuyên Sâu
@@ -225,7 +230,7 @@ export function AntigravityHandoffModal({
                   <button
                     type="button"
                     onClick={handleCopyBundle}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
                   >
                     {copiedBundle ? (
                       <>
@@ -242,7 +247,7 @@ export function AntigravityHandoffModal({
                   <button
                     type="button"
                     onClick={handleDownloadBundle}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
                   >
                     <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
                     <span>Tải Tệp Handoff (.md)</span>
@@ -252,7 +257,7 @@ export function AntigravityHandoffModal({
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
                 >
                   {copiedPrompt ? (
                     <>
@@ -272,7 +277,7 @@ export function AntigravityHandoffModal({
         </div>
 
         {/* Content Viewer */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/50 dark:bg-stone-900/50">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/40 dark:bg-stone-900/40">
           {activeTab === 'bundle' ? (
             <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 font-mono text-xs text-stone-800 dark:text-stone-200 whitespace-pre-wrap leading-relaxed shadow-inner">
               {handoffBundle}
@@ -288,7 +293,7 @@ export function AntigravityHandoffModal({
                   value={customQuery}
                   onChange={(e) => setCustomQuery(e.target.value)}
                   placeholder="Ví dụ: Phân tích 7 tâm sở biến hành trong lộ trình thiền tuệ..."
-                  className="w-full text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-700"
+                  className="w-full text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                 />
               </div>
               <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 font-mono text-xs text-stone-800 dark:text-stone-200 whitespace-pre-wrap leading-relaxed shadow-inner">
@@ -299,14 +304,14 @@ export function AntigravityHandoffModal({
         </div>
 
         {/* Footer Guidance */}
-        <div className="px-4 py-3 bg-stone-100 dark:bg-stone-950 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-stone-500 dark:text-stone-400 text-[11px]">
+        <div className="px-4 md:px-6 py-3 bg-stone-50 dark:bg-stone-950 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-stone-500 dark:text-stone-400 text-[11px]">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
             <span>Zero Binary Ingestion &bull; 1-Hop Graph Scope &bull; 100% Client-side privacy</span>
           </div>
           <button
             onClick={onClose}
-            className="px-3 py-1 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg font-semibold transition"
+            className="px-3.5 py-1.5 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg font-semibold transition cursor-pointer"
           >
             Đóng
           </button>

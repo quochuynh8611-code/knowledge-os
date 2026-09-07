@@ -253,7 +253,8 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
     await screen.findByText("Tứ Niệm Xứ gồm những gì?");
 
     // Lật thẻ
-    fireEvent.keyDown(window, { code: "Space", key: " " });
+    const cardEl = screen.getByTestId("flashcard-card");
+    fireEvent.click(cardEl);
     await screen.findByText("Thân, Thọ, Tâm, Pháp.");
 
     // Bấm Again (rating 1)
