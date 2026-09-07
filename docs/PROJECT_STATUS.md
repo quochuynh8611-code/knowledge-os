@@ -12,41 +12,24 @@
 
 **Status**: ✅ Completed  
 **Tag**: `v0.13.0`  
-**Tests**: 224/224 PASS (100% — 31 new tests)  
+**Tests**: 31/31 PASS (100%)  
 **Typecheck**: 0 errors
 
 ### Features Delivered
 
-1. ✅ **Topic Dashboard & Knowledge Aggregation**:
-   - 6 KPI Summary Cards: Ghi chú, Thẻ Flashcard, Tài liệu nguồn, Tỷ lệ nhớ (%), Chuỗi học tập (Streak), Thời gian học.
-   - Interactive SVG Retention Trend Chart (0–100% Y-axis, 80% optimal target watermark line, time presets 7d, 30d, 90d, all).
-   - Top 10 recent research activities list with type-specific icon badges and timestamps.
-2. ✅ **Cross-Domain Research Timeline**:
-   - Consolidated event stream (`NOTE_CREATED`, `NOTE_UPDATED`, `FLASHCARD_CREATED`, `REVIEW_COMPLETED`, `RESOURCE_ADDED`).
-   - Grouping into relative date buckets (`Hôm nay`, `Hôm qua`, `Tuần này`, `Tháng này`, `Cũ hơn`).
-   - Filter toolbar: text search query and event type chips (`Tất cả`, `Ghi chú`, `Flashcards`, `Ôn tập`, `Tài liệu`).
-   - Click-to-preview event modal with metadata and navigate action.
-3. ✅ **Cross-Domain Full-Text Search (BM25 Engine)**:
-   - In-memory Okapi BM25 ranking algorithm ($k_1 = 1.2, b = 0.75$) across notes, flashcards, and resources.
-   - Multi-lingual normalization: Vietnamese diacritics removal and Sanskrit/Pāli IAST accent normalization (`normalizeScholarText`).
-   - Keyword highlighting in titles and snippet windows using `<mark>` tags.
-   - Entity type filter pills and execution latency indicator ($< 5ms$).
-   - Global keyboard shortcut `Ctrl+Shift+F` / `Cmd+Shift+F`.
-4. ✅ **Export Research Report**:
-   - Synthesize structured Markdown research report with YAML frontmatter, overview metrics table, note contents, flashcards SRS state table, resources, and timeline milestones.
-   - Interactive modal with section selection checkboxes and live markdown preview.
-   - Download `.md` file with UTF-8 BOM (`\uFEFF`) for perfect character display across operating systems.
-   - Copy to clipboard with instant user feedback and Print / Export PDF support.
-5. ✅ **TopicDetail Integration**:
-   - Dedicated "Nghiên cứu" tab in `TopicDetail.tsx` with toolbar buttons for instant search and report export.
+1. ✅ Topic Dashboard (KPIs: notes, flashcards, resources, retention, streak, time)
+2. ✅ Research Timeline (event stream, grouping, filters)
+3. ✅ Full-Text Search (BM25 in-memory, accent normalization for Vietnamese + Pāli/IAST)
+4. ✅ Export Report (Markdown + PDF, YAML frontmatter, live preview)
 
 ### Technical Decisions
 
-- **Zero Schema Migrations**: All aggregation, timeline events, and BM25 indexing are derived purely at runtime from existing models (`Topic`, `Note`, `Resource`, `Flashcard`, `FlashcardReview`).
-- **Zero Heavy External Libraries**: SVG charting rendered with pure React SVG; search engine executed with pure TypeScript BM25 index.
-- **Defensive Data Collections**: Safe `Array.isArray` fallback guards for all collections.
+- Zero schema migration (runtime aggregation only)
+- In-memory BM25 with k1=1.2, b=0.75
+- UTF-8 BOM cho Markdown export
+- Browser print cho PDF (zero dependencies)
 
-### Files Created / Modified
+### Files Changed
 
 - `src/lib/researchAggregationService.ts` (new)
 - `src/lib/researchTimelineService.ts` (new)
@@ -56,17 +39,13 @@
 - `src/components/research/ResearchTimeline.tsx` (new)
 - `src/components/research/ResearchSearchModal.tsx` (new)
 - `src/components/research/ExportReportModal.tsx` (new)
-- `src/components/research/index.ts` (new)
 - `src/components/topics/TopicDetail.tsx` (modified)
-- `docs/specs/phase-f7-0-research-dashboard.md` (new)
-- `docs/adr/f7.0-research-dashboard.md` (new)
-- `docs/implementation-plans/f7.0-research-dashboard.md` (new)
-- `tests/unit/research-aggregation-service.test.ts` (new)
-- `tests/unit/topic-dashboard.test.tsx` (new)
-- `tests/unit/research-timeline.test.tsx` (new)
-- `tests/unit/research-search-engine.test.tsx` (new)
-- `tests/unit/research-report-generator.test.tsx` (new)
-- `tests/integration/research-dashboard-integration.test.tsx` (new)
+- `tests/` (6 new test files)
+
+### Next Phase
+
+- F7.1: AI-Powered Insights (retention predictions, study recommendations)
+- F8.0: Collaboration Features (shared topics, peer review, study groups)
 
 ---
 
