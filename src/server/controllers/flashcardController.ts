@@ -141,7 +141,13 @@ export async function recordReview(req: Request, res: Response) {
 export async function getDueFlashcards(req: Request, res: Response) {
   try {
     const topicId = req.query.topicId ? String(req.query.topicId) : undefined;
-    const cards = await flashcardService.getDueFlashcards({ topicId });
+    const rawPriority = req.query.priority ? String(req.query.priority) : undefined;
+    const priority =
+      rawPriority === "new" || rawPriority === "low_retention" || rawPriority === "due"
+        ? rawPriority
+        : undefined;
+
+    const cards = await flashcardService.getDueFlashcards({ topicId, priority });
     res.json(cards);
   } catch (err: unknown) {
     const msg =
@@ -169,6 +175,23 @@ export async function getReviewsByFlashcardId(req: Request, res: Response) {
   } catch (err: unknown) {
     const msg =
       err instanceof Error ? err.message : "Failed to fetch flashcard reviews";
+    res.status(500).json({ error: msg });
+  }
+}
+
+export async function getAllReviews(req: Request, res: Response) {
+  try {
+    const { topicId, rating, fromDate, toDate } = req.query;
+    const reviews = await flashcardService.getAllFlashcardReviews({
+      topicId: typeof topicId === "string" ? topicId : undefined,
+      rating: rating ? Number(rating) : undefined,
+      fromDate: typeof fromDate === "string" ? fromDate : undefined,
+      toDate: typeof toDate === "string" ? toDate : undefined,
+    });
+    res.json(reviews);
+  } catch (err: unknown) {
+    const msg =
+      err instanceof Error ? err.message : "Failed to fetch all flashcard reviews";
     res.status(500).json({ error: msg });
   }
 }

@@ -1,6 +1,9 @@
 export * from "./FlashcardCardView";
 export * from "./FlashcardAnalyticsWidget";
 export * from "./FlashcardReviewStudio";
+export * from "./FlashcardReviewHistoryModal";
+export * from "./FlashcardExportModal";
+export * from "./ReviewDashboardHeader";
 export * from "../modals/FlashcardFormModal";
 export * from "../modals/FlashcardImportModal";
 export * from "./CardBrowser";
@@ -9,3 +12,4 @@ export * from "./CardConfirmModal";
 export * from "./StudyLauncher";
 export * from "./FlashcardAnalyticsDashboard";
 export * from "./DuplicateDetectionDashboard";
+

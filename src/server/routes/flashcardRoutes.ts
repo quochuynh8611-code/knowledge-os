@@ -18,6 +18,7 @@ export function createFlashcardRouter(_prisma?: PrismaClient | any): Router {
 
   // Standard Flashcard CRUD endpoints
   router.get("/flashcards", flashcardController.getFlashcards);
+  router.get("/flashcards/reviews", flashcardController.getAllReviews);
   router.get("/flashcards/:id/reviews", flashcardController.getReviewsByFlashcardId);
   router.get("/flashcards/:id", flashcardController.getFlashcardById);
   router.post("/flashcards", flashcardController.createFlashcard);

@@ -1,15 +1,18 @@
 import React, { useMemo } from "react";
 import { parseClozeDeletions } from "../../lib/clozeParser";
 import type { Flashcard } from "../../types/flashcard";
-import { Sparkles, Eye, RotateCw } from "lucide-react";
+import { Sparkles, Eye, RotateCw, Pencil, History } from "lucide-react";
 
 export interface FlashcardCardViewProps {
   card: Pick<Flashcard, "id" | "type" | "front" | "back"> & {
     topicId?: string;
     lifecycleStatus?: string;
+    schedule?: any;
   };
   isFlipped: boolean;
   onFlip?: () => void;
+  onEdit?: () => void;
+  onHistory?: () => void;
 }
 
 /**
@@ -19,6 +22,8 @@ export function FlashcardCardView({
   card,
   isFlipped,
   onFlip,
+  onEdit,
+  onHistory,
 }: FlashcardCardViewProps) {
   const isCloze = card.type === "cloze";
 
@@ -119,9 +124,41 @@ export function FlashcardCardView({
         <span className="uppercase tracking-wider px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
           {isCloze ? "Thẻ Điền Khuyết (Cloze)" : "Thẻ Khái Niệm (Basic)"}
         </span>
-        <div className="flex items-center gap-1.5 text-stone-400">
-          <RotateCw className="w-3.5 h-3.5" />
-          <span>{isFlipped ? "Mặt sau" : "Mặt trước (Space để lật)"}</span>
+        <div className="flex items-center gap-2">
+          {onEdit && (
+            <button
+              type="button"
+              data-testid="btn-quick-edit-card"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              title="Chỉnh sửa nhanh (Ctrl+E)"
+              aria-label="Chỉnh sửa thẻ"
+              className="p-1 rounded-lg text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onHistory && (
+            <button
+              type="button"
+              data-testid="btn-view-card-history"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHistory();
+              }}
+              title="Xem lịch sử ôn tập (Ctrl+H)"
+              aria-label="Xem lịch sử ôn tập"
+              className="p-1 rounded-lg text-stone-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+            >
+              <History className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <div className="flex items-center gap-1.5 text-stone-400">
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>{isFlipped ? "Mặt sau" : "Mặt trước (Space để lật)"}</span>
+          </div>
         </div>
       </div>
 

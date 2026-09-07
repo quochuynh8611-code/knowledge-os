@@ -2,17 +2,60 @@
 
 > **Cập nhật lần cuối:** 2026-09-07  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D) & FLASHCARD SPACED REPETITION SUBSYSTEM (F6.0–F6.10) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.10.0` — 33/33 UNIT/INTEGRATION PASS, 4/4 PLAYWRIGHT E2E PASS, 0 TSC ERRORS)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D) & FLASHCARD SPACED REPETITION SUBSYSTEM (F6.0–F6.11) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.11.0` — 173/173 PASS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **PHASE F6.11 (REVIEW MODE ENHANCEMENTS) ĐANG TRIỂN KHAI (KHẢO SÁT HỆ THỐNG, TECHNICAL SPEC VÀ IMPLEMENTATION PLAN HOÀN TẤT)**.
+## Phase F6.11 — Review Mode Enhancements (2026-09-07)
+
+**Status**: ✅ Completed  
+**Tag**: `v0.11.0`  
+**Tests**: 173/173 PASS (100%)  
+**Typecheck**: 0 errors
+
+### Features Delivered
+
+1. ✅ Dashboard Header (due today, new cards, retention rate, streak days)
+2. ✅ Priority Filter (due | new | low_retention với weighted scoring)
+3. ✅ Quick Edit Modal (Ctrl+E / Cmd+E, in-place updates)
+4. ✅ View History Modal (Ctrl+H / Cmd+H, SM-2 timeline)
+5. ✅ Export CSV (session-based + full history, RFC 4180 + UTF-8 BOM)
+6. ✅ Session Complete Celebration (confetti, stats, rating breakdown)
+
+### Technical Decisions
+
+- Zero schema migration (tận dụng schema hiện có)
+- Weighted scoring cho low_retention (lapses, easeFactor, retentionRate)
+- In-place updates không reset session progress
+- CSV export với UTF-8 BOM cho Excel tiếng Việt
+
+### Files Changed
+
+- `src/lib/flashcardReviewSessionUtils.ts` (new)
+- `src/components/flashcards/ReviewDashboardHeader.tsx` (new)
+- `src/components/flashcards/FlashcardReviewHistoryModal.tsx` (new)
+- `src/components/flashcards/FlashcardExportModal.tsx` (new)
+- `src/components/flashcards/FlashcardReviewStudio.tsx` (modified)
+- `src/components/modals/FlashcardFormModal.tsx` (modified)
+- `src/server/services/flashcardService.ts` (modified)
+- `src/server/controllers/flashcardController.ts` (modified)
+- `src/server/routes/flashcardRoutes.ts` (modified)
+- `src/services/dataRepository.ts` (modified)
+- `tests/` (6 new integration test files)
+
+### Next Phase
+
+- F6.12: SRS Algorithm Tuning (advanced analytics, adaptive scheduling)
+- F7.0: Research Dashboard (multi-domain aggregation)
+
+---
+
 - **Tiến độ Subsystem Flashcard & Spaced Repetition (F6.0 $\rightarrow$ F6.11):**
-  - **Phase F6.11 — Review Mode Enhancements (Đang thực hiện):**
-    - **Mục tiêu:** Nâng cấp trải nghiệm phòng ôn tập `FlashcardReviewStudio`: Dashboard thống kê nhanh (`ReviewDashboardHeader`), lọc hàng đợi ưu tiên (`?priority=due|new|low_retention`), sửa nhanh thẻ khi học (`Ctrl+E`), xem lịch sử thẻ khi học (`Ctrl+H`), và xuất kết quả phiên ôn tập ra CSV.
-    - **Tài liệu:** Đã hoàn thành Deep Dive Codebase và lập đặc tả [`docs/specs/phase-f6-11-review-mode-enhancements.md`](docs/specs/phase-f6-11-review-mode-enhancements.md) cùng kế hoạch triển khai.
+  - **Phase F6.11 — Review Mode Enhancements (Hoàn thành — Tag `v0.11.0`):**
+    - **Mục tiêu:** Nâng cấp phòng ôn tập `FlashcardReviewStudio`: KPI Header 4 thẻ, bộ lọc ưu tiên `priority`, Quick Edit in-place `Ctrl+E`, xem lịch sử `Ctrl+H`, xuất CSV phiên & lịch sử, Celebration Screen kèm phân bổ điểm & confetti.
+    - **Tài liệu:** Spec [`docs/specs/phase-f6-11-review-mode-enhancements.md`](docs/specs/phase-f6-11-review-mode-enhancements.md) và Implementation Plan.
   - **Phase F6.10 — Note-to-Flashcard Integration (Hoàn thành — Tag `v0.10.0`):**
     - **Mục tiêu:** Tích hợp liền mạch quy trình chuyển đổi tri thức từ bài đọc ghi chú (Note Reader) thành Flashcard với thao tác bôi đen text, auto-detect cloze, batch import bullet list và chân trang hiển thị thẻ liên kết.
     - **Kiến trúc & Giải pháp (ADR-F6.10):**

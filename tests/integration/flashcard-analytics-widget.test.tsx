@@ -43,6 +43,7 @@ describe("FlashcardAnalyticsWidget Integration Tests", () => {
     reviewCards: 25,
     dueToday: 8,
     retentionRate: 88,
+    streakDays: 4,
   };
 
   beforeEach(() => {

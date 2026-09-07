@@ -22,13 +22,17 @@ import {
 export interface FlashcardFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (createdCard: Flashcard) => void;
+  onSuccess?: (card: Flashcard) => void;
   defaultTopicId?: string;
-  dataRepository?: { createFlashcard: (input: unknown) => Promise<Flashcard> };
+  dataRepository?: {
+    createFlashcard?: (input: unknown) => Promise<Flashcard>;
+    updateFlashcard?: (id: string, input: unknown) => Promise<Flashcard>;
+  };
   initialFront?: string;
   initialBack?: string;
   initialType?: FlashcardType;
   defaultNoteId?: string;
+  editingCard?: Flashcard | null;
 }
 
 const defaultRepository =
@@ -58,7 +62,9 @@ export function FlashcardFormModal({
   initialBack,
   initialType,
   defaultNoteId,
+  editingCard,
 }: FlashcardFormModalProps) {
+  const isEdit = Boolean(editingCard);
   const dataContext = useSafeData();
   const topics = dataContext.topics || [];
   const notes = dataContext.notes || [];
@@ -70,12 +76,24 @@ export function FlashcardFormModal({
 
 
 
-  const [topicId, setTopicId] = useState<string>("");
-  const [noteId, setNoteId] = useState<string>("");
-  const [resourceId, setResourceId] = useState<string>("");
-  const [type, setType] = useState<FlashcardType>("basic");
-  const [front, setFront] = useState<string>("");
-  const [back, setBack] = useState<string>("");
+  const [topicId, setTopicId] = useState<string>(
+    () => editingCard?.topicId || defaultTopicId || ""
+  );
+  const [noteId, setNoteId] = useState<string>(
+    () => editingCard?.noteId || defaultNoteId || ""
+  );
+  const [resourceId, setResourceId] = useState<string>(
+    () => editingCard?.resourceId || ""
+  );
+  const [type, setType] = useState<FlashcardType>(
+    () => editingCard?.type || initialType || "basic"
+  );
+  const [front, setFront] = useState<string>(
+    () => editingCard?.front || initialFront || ""
+  );
+  const [back, setBack] = useState<string>(
+    () => editingCard?.back || initialBack || ""
+  );
 
   const [errorTopic, setErrorTopic] = useState<string>("");
   const [errorFront, setErrorFront] = useState<string>("");
@@ -84,36 +102,58 @@ export function FlashcardFormModal({
 
   const frontInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Initialize or reset form
+  const prevIsOpenRef = useRef(false);
+
+  // Initialize or reset form only on modal open transition or card change
   useEffect(() => {
-    if (isOpen) {
-      setTopicId(defaultTopicId || "");
-      setNoteId(defaultNoteId || "");
-      setResourceId("");
+    const isOpening = isOpen && !prevIsOpenRef.current;
+    if (isOpen && (isOpening || editingCard?.id)) {
+      if (editingCard) {
+        setTopicId(editingCard.topicId || defaultTopicId || "");
+        setNoteId(editingCard.noteId || defaultNoteId || "");
+        setResourceId(editingCard.resourceId || "");
+        setType(editingCard.type || "basic");
+        setFront(editingCard.front || "");
+        setBack(editingCard.back || "");
+      } else {
+        setTopicId(defaultTopicId || "");
+        setNoteId(defaultNoteId || "");
+        setResourceId("");
 
-      let resolvedType: FlashcardType = initialType || "basic";
-      let resolvedFront = initialFront || "";
-      let resolvedBack = initialBack || "";
+        let resolvedType: FlashcardType = initialType || "basic";
+        let resolvedFront = initialFront || "";
+        let resolvedBack = initialBack || "";
 
-      if (initialFront) {
-        const clozeDetection = detectClozeFromSelection(initialFront);
-        if (clozeDetection.hasCloze) {
-          resolvedType = "cloze";
-          if (!resolvedBack && clozeDetection.items.length > 0) {
-            resolvedBack = clozeDetection.items.map((i) => i.answer).join(", ");
+        if (initialFront) {
+          const clozeDetection = detectClozeFromSelection(initialFront);
+          if (clozeDetection.hasCloze) {
+            resolvedType = "cloze";
+            if (!resolvedBack && clozeDetection.items.length > 0) {
+              resolvedBack = clozeDetection.items.map((i) => i.answer).join(", ");
+            }
           }
         }
+
+        setType(resolvedType);
+        setFront(resolvedFront);
+        setBack(resolvedBack);
       }
 
-      setType(resolvedType);
-      setFront(resolvedFront);
-      setBack(resolvedBack);
       setErrorTopic("");
       setErrorFront("");
       setErrorBack("");
       setSubmitting(false);
     }
-  }, [isOpen, defaultTopicId, defaultNoteId, initialFront, initialBack, initialType, topics]);
+    prevIsOpenRef.current = isOpen;
+  }, [
+    isOpen,
+    editingCard?.id,
+    defaultTopicId,
+    defaultNoteId,
+    initialFront,
+    initialBack,
+    initialType,
+  ]);
 
   if (!isOpen) return null;
 
@@ -195,21 +235,60 @@ export function FlashcardFormModal({
 
     setSubmitting(true);
     try {
-      const created = await repository.createFlashcard({
-        topicId,
+      if (isEdit && editingCard) {
+        let updated: Flashcard;
+        if (repository.updateFlashcard) {
+          updated = await repository.updateFlashcard(editingCard.id, {
+            topicId,
+            noteId: noteId || null,
+            resourceId: resourceId || null,
+            type,
+            front: trimmedFront,
+            back: trimmedBack,
+          });
+        } else {
+          const res = await fetch(`/api/flashcards/${editingCard.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              topicId,
+              noteId: noteId || null,
+              resourceId: resourceId || null,
+              type,
+              front: trimmedFront,
+              back: trimmedBack,
+            }),
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || "Cập nhật thẻ thất bại");
+          }
+          updated = await res.json();
+        }
 
-        noteId: noteId || null,
-        resourceId: resourceId || null,
-        type,
-        front: trimmedFront,
-        back: trimmedBack,
-        lifecycleStatus: "active",
-      });
+        onSuccess?.(updated);
+        onClose();
+      } else {
+        const created = await repository.createFlashcard({
+          topicId,
+          noteId: noteId || null,
+          resourceId: resourceId || null,
+          type,
+          front: trimmedFront,
+          back: trimmedBack,
+          lifecycleStatus: "active",
+        });
 
-      onSuccess?.(created);
-      onClose();
+        onSuccess?.(created);
+        onClose();
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Tạo thẻ thất bại";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : isEdit
+          ? "Cập nhật thẻ thất bại"
+          : "Tạo thẻ thất bại";
       setErrorFront(msg);
     } finally {
       setSubmitting(false);
@@ -220,7 +299,7 @@ export function FlashcardFormModal({
     <div
       data-testid="flashcard-form-modal"
       role="dialog"
-      aria-label="Tạo Flashcard Mới"
+      aria-label={isEdit ? "Chỉnh Sửa Flashcard" : "Tạo Flashcard Mới"}
       onClick={(e) => e.stopPropagation()}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200"
     >
@@ -233,10 +312,12 @@ export function FlashcardFormModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-stone-900 dark:text-stone-100">
-                Tạo Flashcard Mới
+                {isEdit ? "Chỉnh Sửa Flashcard" : "Tạo Flashcard Mới"}
               </h2>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Tạo thẻ câu hỏi ôn tập lặp lại ngắt quãng (SM-2)
+                {isEdit
+                  ? "Cập nhật nội dung câu hỏi và đáp án thẻ nhớ"
+                  : "Tạo thẻ câu hỏi ôn tập lặp lại ngắt quãng (SM-2)"}
               </p>
             </div>
           </div>
@@ -266,6 +347,9 @@ export function FlashcardFormModal({
               className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="">-- Chọn chủ đề --</option>
+              {topicId && !topics.some((t) => t.id === topicId) && (
+                <option value={topicId}>Chủ đề: {topicId}</option>
+              )}
               {topics.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.title}
@@ -437,7 +521,7 @@ export function FlashcardFormModal({
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  <span>Lưu Flashcard</span>
+                  <span>{isEdit ? "Lưu thay đổi" : "Lưu Flashcard"}</span>
                 </>
               )}
             </button>

@@ -18,7 +18,12 @@ import type {
   FlashcardReviewResponse,
   FlashcardState,
   FlashcardLifecycleStatus,
+  FlashcardPriorityFilter,
 } from "../../types/flashcard";
+import {
+  calculateStreakDays,
+  isLowRetention,
+} from "../../lib/flashcardReviewSessionUtils";
 import { Prisma } from "@prisma/client";
 
 export interface FlashcardProgressStats {
@@ -28,6 +33,7 @@ export interface FlashcardProgressStats {
   reviewCards: number;
   dueToday: number;
   retentionRate: number; // percentage (0 - 100)
+  streakDays?: number;
 }
 
 function mapPrismaFlashcard(record: any): Flashcard {
@@ -52,7 +58,7 @@ function mapPrismaFlashcard(record: any): Flashcard {
   };
 }
 
-function mapPrismaSchedule(record: any): FlashcardSchedule {
+function mapPrismaSchedule(record: any, retentionRate?: number): FlashcardSchedule {
   return {
     id: record.id,
     flashcardId: record.flashcardId,
@@ -78,6 +84,7 @@ function mapPrismaSchedule(record: any): FlashcardSchedule {
       record.lastReviewedAt instanceof Date
         ? record.lastReviewedAt.toISOString()
         : record.lastReviewedAt ?? null,
+    retentionRate: record.retentionRate ?? retentionRate,
     updatedAt:
       record.updatedAt instanceof Date
         ? record.updatedAt.toISOString()
@@ -425,15 +432,81 @@ export async function recordReviewAtomic(
 /**
  * Returns due flashcards for today:
  * - Filtered by lifecycleStatus = 'active'
- * - Filtered by dueAt <= now
- * - Sorted by dueAt ASC, tie-broken deterministically by flashcard.id ASC
+ * - Filtered by priority:
+ *   - 'due' (default): active cards with dueAt <= now
+ *   - 'new': active cards with schedule.state == 'new'
+ *   - 'low_retention': active cards with weighted scoring isLowRetention() >= 0.4
+ * - Sorted deterministically
  */
 export async function getDueFlashcards(filters?: {
   topicId?: string;
   now?: Date;
+  priority?: FlashcardPriorityFilter;
 }): Promise<Flashcard[]> {
   const currentNow = filters?.now || new Date();
+  const priority = filters?.priority || "due";
 
+  if (priority === "new") {
+    const cards = await prisma.flashcard.findMany({
+      where: {
+        lifecycleStatus: "active",
+        ...(filters?.topicId ? { topicId: filters.topicId } : {}),
+        schedule: {
+          state: "new",
+        },
+      },
+      include: { schedule: true },
+      orderBy: [{ id: "asc" }],
+    });
+    return cards.map(mapPrismaFlashcard);
+  }
+
+  if (priority === "low_retention") {
+    const cards = await prisma.flashcard.findMany({
+      where: {
+        lifecycleStatus: "active",
+        ...(filters?.topicId ? { topicId: filters.topicId } : {}),
+      },
+      include: {
+        schedule: true,
+        reviews: {
+          select: { rating: true },
+        },
+      },
+      orderBy: [{ id: "asc" }],
+    });
+
+    const mappedCards = cards.map((card) => {
+      let cardRetention = 1.0;
+      if (card.reviews && card.reviews.length > 0) {
+        const remembered = card.reviews.filter(
+          (r) => r.rating === 3 || r.rating === 4
+        ).length;
+        cardRetention = remembered / card.reviews.length;
+      }
+      const mapped = mapPrismaFlashcard(card);
+      if (mapped.schedule) {
+        mapped.schedule.retentionRate = cardRetention;
+      }
+      return mapped;
+    });
+
+    const lowRetentionCards = mappedCards.filter(isLowRetention);
+
+    lowRetentionCards.sort((a, b) => {
+      const easeA = a.schedule?.easeFactor ?? 2.5;
+      const easeB = b.schedule?.easeFactor ?? 2.5;
+      if (easeA !== easeB) return easeA - easeB;
+      const lapsesA = a.schedule?.lapses ?? 0;
+      const lapsesB = b.schedule?.lapses ?? 0;
+      if (lapsesA !== lapsesB) return lapsesB - lapsesA;
+      return a.id.localeCompare(b.id);
+    });
+
+    return lowRetentionCards;
+  }
+
+  // Default: priority === 'due'
   const cards = await prisma.flashcard.findMany({
     where: {
       lifecycleStatus: "active",
@@ -455,7 +528,7 @@ export async function getDueFlashcards(filters?: {
 }
 
 /**
- * Computes in-memory progress statistics for flashcards.
+ * Computes in-memory progress statistics for flashcards including streakDays.
  */
 export async function getFlashcardProgress(filters?: {
   topicId?: string;
@@ -492,21 +565,27 @@ export async function getFlashcardProgress(filters?: {
     }
   }
 
-  // Calculate retention rate from recent reviews
-  const recentReviews = await prisma.flashcardReview.findMany({
+  // Calculate streakDays and retention rate from user reviews
+  const allReviews = await prisma.flashcardReview.findMany({
     where: {
       ...(filters?.topicId ? { topicId: filters.topicId } : {}),
     },
-    take: 200,
+    select: {
+      rating: true,
+      reviewedAt: true,
+    },
     orderBy: { reviewedAt: "desc" },
   });
 
+  const streakDays = calculateStreakDays(allReviews, now);
+
   let retentionRate = 100;
-  if (recentReviews.length > 0) {
-    const rememberedCount = recentReviews.filter(
+  if (allReviews.length > 0) {
+    const recent = allReviews.slice(0, 200);
+    const rememberedCount = recent.filter(
       (r) => r.rating === 3 || r.rating === 4
     ).length;
-    retentionRate = Math.round((rememberedCount / recentReviews.length) * 100);
+    retentionRate = Math.round((rememberedCount / recent.length) * 100);
   }
 
   return {
@@ -516,6 +595,7 @@ export async function getFlashcardProgress(filters?: {
     reviewCards,
     dueToday,
     retentionRate,
+    streakDays,
   };
 }
 
@@ -527,6 +607,43 @@ export async function getFlashcardReviews(
 ): Promise<FlashcardReview[]> {
   const reviews = await prisma.flashcardReview.findMany({
     where: { flashcardId },
+    orderBy: { reviewedAt: "desc" },
+  });
+  return reviews.map(mapPrismaReview);
+}
+
+/**
+ * Retrieves all review history events across all cards, with optional filters.
+ */
+export async function getAllFlashcardReviews(filters?: {
+  topicId?: string;
+  rating?: number;
+  fromDate?: string | Date;
+  toDate?: string | Date;
+}): Promise<FlashcardReview[]> {
+  const where: any = {};
+  if (filters?.topicId && filters.topicId !== "all") {
+    where.topicId = filters.topicId;
+  }
+  if (filters?.rating) {
+    where.rating = Number(filters.rating);
+  }
+  if (filters?.fromDate || filters?.toDate) {
+    where.reviewedAt = {};
+    if (filters.fromDate) {
+      where.reviewedAt.gte = new Date(filters.fromDate);
+    }
+    if (filters.toDate) {
+      const d = new Date(filters.toDate);
+      if (typeof filters.toDate === "string" && filters.toDate.length === 10) {
+        d.setHours(23, 59, 59, 999);
+      }
+      where.reviewedAt.lte = d;
+    }
+  }
+
+  const reviews = await prisma.flashcardReview.findMany({
+    where,
     orderBy: { reviewedAt: "desc" },
   });
   return reviews.map(mapPrismaReview);

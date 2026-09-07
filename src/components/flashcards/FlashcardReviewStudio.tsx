@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import type { Flashcard } from "../../types/flashcard";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { Flashcard, FlashcardReview, ReviewRating } from "../../types/flashcard";
 import { FlashcardCardView } from "./FlashcardCardView";
 import { FlashcardFormModal } from "../modals/FlashcardFormModal";
 import { FlashcardImportModal } from "../modals/FlashcardImportModal";
+import { FlashcardReviewHistoryModal } from "./FlashcardReviewHistoryModal";
+import { FlashcardExportModal } from "./FlashcardExportModal";
 import { shortcutScope } from "../../lib/shortcutScope";
 import { useData } from "../../context/DataContext";
 import confetti from "canvas-confetti";
@@ -23,6 +25,9 @@ import {
   BookOpen,
   X,
   ArrowLeft,
+  Download,
+  FileSpreadsheet,
+  Trophy,
 } from "lucide-react";
 
 import type { StudySessionType } from "../../lib/studySessionLogic";
@@ -75,10 +80,55 @@ export function FlashcardReviewStudio({
   const [inactivityWarning, setInactivityWarning] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [sessionReviews, setSessionReviews] = useState<FlashcardReview[]>([]);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [sessionStats, setSessionStats] = useState<{
+    totalCards: number;
+    correctRate: number;
+    timeSpentSeconds: number;
+    ratingBreakdown: Record<1 | 2 | 3 | 4, number>;
+  } | null>(null);
+
+  const cardsMap = useMemo(() => {
+    const map = new Map<string, Flashcard>();
+    for (const card of cards) {
+      map.set(card.id, card);
+    }
+    return map;
+  }, [cards]);
 
   // Inactivity tracking
   const lastActiveRef = useRef<number>(Date.now());
   const cardStartTimeRef = useRef<number>(Date.now());
+
+  // Quick edit current card
+  const handleOpenQuickEdit = useCallback(() => {
+    if (cards[currentIndex]) {
+      setIsEditModalOpen(true);
+    }
+  }, [cards, currentIndex]);
+
+  // View history current card
+  const handleOpenHistory = useCallback(() => {
+    if (cards[currentIndex]) {
+      setIsHistoryModalOpen(true);
+    }
+  }, [cards, currentIndex]);
+
+  const handleQuickEditSuccess = useCallback(
+    (updatedCard: Flashcard) => {
+      setCards((prev) =>
+        prev.map((c, idx) =>
+          idx === currentIndex ? { ...c, ...updatedCard } : c
+        )
+      );
+      setIsEditModalOpen(false);
+    },
+    [currentIndex]
+  );
 
   // Reset activity timestamp
   const recordActivity = useCallback(() => {
@@ -96,6 +146,9 @@ export function FlashcardReviewStudio({
       setCurrentIndex(0);
       setIsFlipped(false);
       setIsCompleted(false);
+      setShowCelebration(false);
+      setSessionStats(null);
+      setSessionReviews([]);
       cardStartTimeRef.current = Date.now();
       lastActiveRef.current = Date.now();
       return;
@@ -135,6 +188,9 @@ export function FlashcardReviewStudio({
       setCurrentIndex(0);
       setIsFlipped(false);
       setIsCompleted(false);
+      setShowCelebration(false);
+      setSessionStats(null);
+      setSessionReviews([]);
       cardStartTimeRef.current = Date.now();
       lastActiveRef.current = Date.now();
     }
@@ -190,10 +246,12 @@ export function FlashcardReviewStudio({
           ? crypto.randomUUID()
           : `evt-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
+      let recordedReview: FlashcardReview | null = null;
+
       // Post review via API only if not in Cram Mode
       if (!isCram) {
         try {
-          await fetch("/api/flashcards/review", {
+          const res = await fetch("/api/flashcards/review", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -205,6 +263,12 @@ export function FlashcardReviewStudio({
               reviewDurationMs: elapsedMs,
             }),
           });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.review) {
+              recordedReview = data.review;
+            }
+          }
           if (effectiveSessionType === "new") {
             incrementNewCardsLearnedToday(1);
           }
@@ -213,25 +277,73 @@ export function FlashcardReviewStudio({
         }
       }
 
+      if (!recordedReview) {
+        recordedReview = {
+          id: `session-rev-${clientEventId}`,
+          clientEventId,
+          flashcardId: currentCard.id,
+          cardId: currentCard.id,
+          topicId: currentCard.topicId,
+          rating: rating as ReviewRating,
+          reviewDurationMs: elapsedMs,
+          reviewedAt: new Date().toISOString(),
+          stateBefore: currentCard.schedule?.state || "new",
+          stateAfter: rating >= 3 ? "review" : "relearning",
+          intervalBefore: currentCard.schedule?.interval ?? 0,
+          intervalAfter: rating >= 3 ? (currentCard.schedule?.interval ?? 1) : 0,
+          easeFactorBefore: currentCard.schedule?.easeFactor ?? 2.5,
+          easeFactorAfter: currentCard.schedule?.easeFactor ?? 2.5,
+          dueBeforeAt: currentCard.schedule?.dueAt || new Date().toISOString(),
+          dueAfterAt: new Date().toISOString(),
+        };
+      }
+
+      setSessionReviews((prev) => [...prev, recordedReview!]);
+
       // Next card transition
       if (currentIndex + 1 < cards.length) {
         setCurrentIndex((prev) => prev + 1);
         setIsFlipped(false);
         cardStartTimeRef.current = Date.now();
       } else {
+        const nextReviews = [...sessionReviews, recordedReview!];
+        const breakdown: Record<1 | 2 | 3 | 4, number> = {
+          1: 0,
+          2: 0,
+          3: 0,
+          4: 0,
+        };
+        for (const r of nextReviews) {
+          if (r.rating in breakdown) {
+            breakdown[r.rating as 1 | 2 | 3 | 4] += 1;
+          }
+        }
+        const rememberedCount = (breakdown[3] || 0) + (breakdown[4] || 0);
+        const correctRate =
+          nextReviews.length > 0
+            ? Math.round((rememberedCount / nextReviews.length) * 100)
+            : 100;
+
+        setSessionStats({
+          totalCards: cards.length,
+          correctRate,
+          timeSpentSeconds: sessionSeconds,
+          ratingBreakdown: breakdown,
+        });
         setIsCompleted(true);
+        setShowCelebration(true);
         try {
           confetti({
-            particleCount: 60,
-            spread: 70,
-            origin: { y: 0.7 },
+            particleCount: 80,
+            spread: 80,
+            origin: { y: 0.6 },
           });
         } catch {
           // Safe fallback
         }
       }
     },
-    [cards, currentIndex, recordActivity]
+    [cards, currentIndex, recordActivity, sessionReviews, sessionSeconds]
   );
 
   // Register flashcard_review scope when active review queue is present and not completed
@@ -270,7 +382,33 @@ export function FlashcardReviewStudio({
           target.closest('[data-modal]')
         );
 
-      if (isInput || isInsideModal || isCreateModalOpen || isImportModalOpen) {
+      if (
+        isInput ||
+        isInsideModal ||
+        isCreateModalOpen ||
+        isImportModalOpen ||
+        isEditModalOpen ||
+        isHistoryModalOpen ||
+        isExportModalOpen
+      ) {
+        return;
+      }
+
+      // Ctrl+E or Cmd+E to Quick Edit current card
+      if ((e.ctrlKey || e.metaKey) && (e.key === "e" || e.key === "E")) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        handleOpenQuickEdit();
+        return;
+      }
+
+      // Ctrl+H or Cmd+H to View History of current card
+      if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        handleOpenHistory();
         return;
       }
 
@@ -299,7 +437,20 @@ export function FlashcardReviewStudio({
 
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [handleFlip, handleRate, isFlipped, loading, cards.length, isCompleted, isCreateModalOpen, isImportModalOpen]);
+  }, [
+    handleFlip,
+    handleRate,
+    handleOpenQuickEdit,
+    handleOpenHistory,
+    isFlipped,
+    loading,
+    cards.length,
+    isCompleted,
+    isCreateModalOpen,
+    isImportModalOpen,
+    isEditModalOpen,
+    isHistoryModalOpen,
+  ]);
 
   // 1. Loading State
   if (loading) {
@@ -391,64 +542,186 @@ export function FlashcardReviewStudio({
   }
 
   // 3. Celebration State
-  if (isCompleted) {
+  if (isCompleted || showCelebration) {
+    const totalCount = sessionStats?.totalCards ?? cards.length;
+    const correctRate = sessionStats?.correctRate ?? 100;
+    const timeSpent = sessionStats?.timeSpentSeconds ?? sessionSeconds;
+    const breakdown = sessionStats?.ratingBreakdown ?? {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+    };
+
     return (
-      <div
-        data-testid="session-completed-view"
-        className="flex flex-col items-center justify-center p-8 md:p-12 text-center max-w-lg mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl space-y-6"
-      >
-        <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
-          <CheckCheck className="w-8 h-8" />
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">
-            {topicTitle
-              ? "Hoàn thành phiên ôn tập cho chủ đề này!"
-              : "Hoàn thành phiên ôn tập!"}
-          </h2>
-          <p className="text-sm text-stone-500 dark:text-stone-400 mt-1">
-            {topicTitle
-              ? `Toàn bộ ${cards.length} thẻ của chủ đề "${topicTitle}" đã được ghi nhận lịch biểu mới.`
-              : `Toàn bộ ${cards.length} thẻ trong phiên đã được ghi nhận lịch biểu mới.`}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-6 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200/80 dark:border-stone-700 w-full justify-around text-center">
-          <div>
-            <span className="text-xs text-stone-400 block">Số thẻ</span>
-            <span className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              {cards.length}
+      <>
+        <div
+          data-testid="session-completed-view"
+          className="flex flex-col items-center justify-center p-6 sm:p-10 text-center max-w-xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl space-y-6 animate-in fade-in zoom-in-95 duration-200"
+        >
+          {/* Header Trophy & Sparkles */}
+          <div className="relative">
+            <div className="w-18 h-18 rounded-3xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-4 ring-emerald-500/10">
+              <Trophy className="w-9 h-9" />
+            </div>
+            <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 fill-amber-950" />
             </span>
           </div>
-          <div className="w-px h-8 bg-stone-200 dark:bg-stone-700" />
-          <div>
-            <span className="text-xs text-stone-400 block">Thời gian</span>
-            <span className="text-lg font-bold text-stone-900 dark:text-stone-100">
-              {formatTimer(sessionSeconds)}
-            </span>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3 w-full">
-          <button
-            data-testid="btn-review-again"
-            onClick={loadDueCards}
-            className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-sm transition shadow-sm"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Ôn tập lại</span>
-          </button>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm transition cursor-pointer"
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+              {topicTitle
+                ? `Hoàn thành phiên ôn tập cho "${topicTitle}"!`
+                : "Hoàn thành phiên ôn tập!"}
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1 max-w-md mx-auto">
+              {correctRate >= 80
+                ? "Xuất sắc! Bạn đã ghi nhớ rất tốt kiến thức trong phiên học hôm nay."
+                : "Rất tốt! Bạn đang củng cố kiến thức ngày càng vững chắc."}
+            </p>
+          </div>
+
+          {/* Key Metrics Grid */}
+          <div className="grid grid-cols-3 gap-3 w-full">
+            <div className="p-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200/80 dark:border-stone-700 text-center">
+              <span className="text-[11px] font-medium text-stone-500 dark:text-stone-400 block mb-1">
+                Số thẻ đã học
+              </span>
+              <span
+                data-testid="celebration-stat-total"
+                className="text-xl font-bold font-mono text-stone-900 dark:text-stone-100"
+              >
+                {totalCount}
+              </span>
+            </div>
+
+            <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 text-center">
+              <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 block mb-1">
+                Tỷ lệ nhớ đúng
+              </span>
+              <span
+                data-testid="celebration-stat-correct-rate"
+                className="text-xl font-bold font-mono text-emerald-700 dark:text-emerald-300"
+              >
+                {correctRate}%
+              </span>
+            </div>
+
+            <div className="p-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-200/80 dark:border-stone-700 text-center">
+              <span className="text-[11px] font-medium text-stone-500 dark:text-stone-400 block mb-1">
+                Thời gian ôn
+              </span>
+              <span
+                data-testid="celebration-stat-time"
+                className="text-xl font-bold font-mono text-stone-900 dark:text-stone-100"
+              >
+                {formatTimer(timeSpent)}
+              </span>
+            </div>
+          </div>
+
+          {/* Rating Breakdown Section */}
+          <div className="w-full text-left bg-stone-50/70 dark:bg-stone-800/30 p-4 rounded-2xl border border-stone-200/60 dark:border-stone-800 space-y-2.5">
+            <span className="text-xs font-bold text-stone-700 dark:text-stone-300 block">
+              Chi tiết các lượt đánh giá
+            </span>
+            <div
+              data-testid="celebration-rating-breakdown"
+              className="grid grid-cols-4 gap-2"
             >
-              <Home className="w-4 h-4" />
-              <span>{topicTitle ? "Quay lại chủ đề" : "Thoát"}</span>
+              <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 text-center">
+                <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 block">
+                  Quên [1]
+                </span>
+                <span
+                  data-testid="breakdown-rating-1"
+                  className="text-base font-bold font-mono text-rose-800 dark:text-rose-300"
+                >
+                  {breakdown[1] || 0}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-900/60 text-center">
+                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block">
+                  Khó [2]
+                </span>
+                <span
+                  data-testid="breakdown-rating-2"
+                  className="text-base font-bold font-mono text-amber-800 dark:text-amber-300"
+                >
+                  {breakdown[2] || 0}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900/60 text-center">
+                <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 block">
+                  Nhớ [3]
+                </span>
+                <span
+                  data-testid="breakdown-rating-3"
+                  className="text-base font-bold font-mono text-emerald-800 dark:text-emerald-300"
+                >
+                  {breakdown[3] || 0}
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-900/60 text-center">
+                <span className="text-[10px] font-bold text-sky-700 dark:text-sky-400 block">
+                  Dễ [4]
+                </span>
+                <span
+                  data-testid="breakdown-rating-4"
+                  className="text-base font-bold font-mono text-sky-800 dark:text-sky-300"
+                >
+                  {breakdown[4] || 0}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full pt-1">
+            <button
+              data-testid="btn-review-again"
+              onClick={loadDueCards}
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm transition shadow-sm cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Ôn tập lại</span>
             </button>
-          )}
+            <button
+              type="button"
+              data-testid="btn-export-completed-session"
+              onClick={() => setIsExportModalOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 font-bold text-sm transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Xuất CSV phiên</span>
+            </button>
+            {onClose && (
+              <button
+                data-testid="btn-exit-session"
+                onClick={onClose}
+                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 font-semibold text-sm transition cursor-pointer"
+              >
+                <Home className="w-4 h-4" />
+                <span>{topicTitle ? "Về chủ đề" : "Thoát"}</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+
+        {isExportModalOpen && (
+          <FlashcardExportModal
+            isOpen={isExportModalOpen}
+            onClose={() => setIsExportModalOpen(false)}
+            sessionReviews={sessionReviews}
+            cardsMap={cardsMap}
+            currentTopicId={topicId}
+          />
+        )}
+      </>
     );
   }
 
@@ -538,6 +811,16 @@ export function FlashcardReviewStudio({
             <Upload className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Nhập CSV</span>
           </button>
+          <button
+            type="button"
+            data-testid="btn-open-export-csv"
+            onClick={() => setIsExportModalOpen(true)}
+            title="Xuất CSV (Phiên hiện tại & Toàn bộ lịch sử)"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Xuất CSV</span>
+          </button>
           {onClose && (
             <button
               type="button"
@@ -566,6 +849,8 @@ export function FlashcardReviewStudio({
           card={currentCard}
           isFlipped={isFlipped}
           onFlip={handleFlip}
+          onEdit={handleOpenQuickEdit}
+          onHistory={handleOpenHistory}
         />
       )}
 
@@ -643,6 +928,31 @@ export function FlashcardReviewStudio({
           onClose={() => setIsImportModalOpen(false)}
           onSuccess={() => loadDueCards()}
           defaultTopicId={topicId}
+        />
+      )}
+      {isEditModalOpen && currentCard && (
+        <FlashcardFormModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={handleQuickEditSuccess}
+          editingCard={currentCard}
+          defaultTopicId={currentCard.topicId || topicId}
+        />
+      )}
+      {isHistoryModalOpen && currentCard && (
+        <FlashcardReviewHistoryModal
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          card={currentCard}
+        />
+      )}
+      {isExportModalOpen && (
+        <FlashcardExportModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          sessionReviews={sessionReviews}
+          cardsMap={cardsMap}
+          currentTopicId={topicId}
         />
       )}
     </div>

@@ -26,8 +26,10 @@ import type {
   FlashcardSchedule,
   FlashcardReviewResponse,
   FlashcardProgressStats,
+  FlashcardPriorityFilter,
 } from "../types/flashcard";
 import { calculateFlashcardNextReview } from "../lib/flashcardScheduler";
+import { isLowRetention } from "../lib/flashcardReviewSessionUtils";
 
 export type { FlashcardProgressStats };
 
@@ -89,7 +91,11 @@ export interface IDataRepository {
   deleteFlashcard?(id: string): Promise<boolean>;
   recordFlashcardReview?(input: unknown): Promise<FlashcardReviewResponse>;
   recordReviewAtomic?(input: unknown): Promise<FlashcardReviewResponse>;
-  getDueFlashcards?(filters?: { topicId?: string; now?: Date }): Promise<Flashcard[]>;
+  getDueFlashcards?(filters?: {
+    topicId?: string;
+    now?: Date;
+    priority?: FlashcardPriorityFilter;
+  }): Promise<Flashcard[]>;
   getFlashcardProgress?(filters?: { topicId?: string }): Promise<FlashcardProgressStats>;
 }
 
@@ -499,12 +505,22 @@ export class LocalStorageDataRepository implements IDataRepository {
   async getDueFlashcards(filters?: {
     topicId?: string;
     now?: Date;
+    priority?: FlashcardPriorityFilter;
   }): Promise<Flashcard[]> {
     const cards = this._getFlashcards();
     const nowIso = (filters?.now || new Date()).toISOString();
+    const priority = filters?.priority || "due";
+
     return cards.filter((c) => {
       if (c.lifecycleStatus && c.lifecycleStatus !== "active") return false;
       if (filters?.topicId && c.topicId !== filters.topicId) return false;
+
+      if (priority === "new") {
+        return c.schedule?.state === "new";
+      }
+      if (priority === "low_retention") {
+        return isLowRetention(c);
+      }
       if (!c.schedule) return true;
       return c.schedule.dueAt <= nowIso;
     });
@@ -1120,8 +1136,12 @@ export class ApiDataRepository implements IDataRepository {
   async getDueFlashcards(filters?: {
     topicId?: string;
     now?: Date;
+    priority?: FlashcardPriorityFilter;
   }): Promise<Flashcard[]> {
-    const query = filters?.topicId ? `?topicId=${encodeURIComponent(filters.topicId)}` : "";
+    const params = new URLSearchParams();
+    if (filters?.topicId) params.set("topicId", filters.topicId);
+    if (filters?.priority) params.set("priority", filters.priority);
+    const query = params.toString() ? `?${params.toString()}` : "";
     const url = this.getUrl(`/flashcards/due${query}`) || `${this.apiBaseUrl}/flashcards/due${query}`;
     try {
       const res = await fetch(url);

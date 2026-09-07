@@ -33,8 +33,15 @@ export interface FlashcardSchedule {
   lapses: number; // Number of times card went back to relearning
   lastReviewedAt?: string | null;
   lastReviewed?: string | null; // Backward compatibility alias
+  retentionRate?: number; // 0.0 - 1.0 (or percentage)
   updatedAt: string;
 }
+
+export type FlashcardWithSchedule = Flashcard & {
+  schedule: FlashcardSchedule;
+};
+
+export type FlashcardPriorityFilter = "due" | "new" | "low_retention";
 
 export interface FlashcardReview {
   id: string; // Server UUID primary key
@@ -102,5 +109,6 @@ export interface FlashcardProgressStats {
   reviewCards: number;
   dueToday: number;
   retentionRate: number;
+  streakDays?: number;
 }
 
