@@ -5,6 +5,14 @@ import { FlashcardFormModal } from "../modals/FlashcardFormModal";
 import { FlashcardImportModal } from "../modals/FlashcardImportModal";
 import { FlashcardReviewHistoryModal } from "./FlashcardReviewHistoryModal";
 import { FlashcardExportModal } from "./FlashcardExportModal";
+import { RetentionCurveChart } from "./RetentionCurveChart";
+import { ExamCountdownToolbar } from "./ExamCountdownToolbar";
+import { SrsVariantComparisonModal } from "./SrsVariantComparisonModal";
+import {
+  calculateCardPriorityScore,
+  getCardAlgorithmVariant,
+  calculateAdaptiveSchedule,
+} from "../../lib/srsAlgorithmTuning";
 import { shortcutScope } from "../../lib/shortcutScope";
 import { useData } from "../../context/DataContext";
 import confetti from "canvas-confetti";
@@ -28,6 +36,8 @@ import {
   Download,
   FileSpreadsheet,
   Trophy,
+  Activity,
+  GitCompare,
 } from "lucide-react";
 
 import type { StudySessionType } from "../../lib/studySessionLogic";
@@ -42,6 +52,8 @@ export interface FlashcardReviewStudioProps {
   sessionType?: StudySessionType;
   cramMode?: boolean;
   initialQueue?: Flashcard[];
+  smartQueueEnabled?: boolean;
+  examDate?: string | null;
 }
 
 function useSafeData() {
@@ -64,6 +76,8 @@ export function FlashcardReviewStudio({
   sessionType = "review",
   cramMode = false,
   initialQueue,
+  smartQueueEnabled: propSmartQueue,
+  examDate: propExamDate,
 }: FlashcardReviewStudioProps) {
   const effectiveSessionType: StudySessionType =
     sessionType || (cramMode ? "cram" : "review");
@@ -92,6 +106,68 @@ export function FlashcardReviewStudio({
     ratingBreakdown: Record<1 | 2 | 3 | 4, number>;
   } | null>(null);
 
+  // F6.12: SRS Tuning & Adaptive states
+  const [examDate, setExamDate] = useState<string | null>(() => {
+    if (propExamDate !== undefined) return propExamDate;
+    try {
+      return localStorage.getItem("srs_exam_date") || null;
+    } catch {
+      return null;
+    }
+  });
+  const [smartQueueEnabled, setSmartQueueEnabled] = useState<boolean>(() => {
+    if (propSmartQueue !== undefined) return propSmartQueue;
+    if (initialQueue) return false;
+    try {
+      return localStorage.getItem("srs_smart_queue_enabled") === "true";
+    } catch {
+      return false;
+    }
+  });
+  const [showRetentionCurve, setShowRetentionCurve] = useState(false);
+  const [isAbTestModalOpen, setIsAbTestModalOpen] = useState(false);
+  const [allReviews, setAllReviews] = useState<FlashcardReview[]>([]);
+
+  // Fetch all reviews for topic/vault to power Retention Curve & A/B testing on demand
+  useEffect(() => {
+    if (!showRetentionCurve && !isAbTestModalOpen) return;
+    let isMounted = true;
+    async function fetchReviews() {
+      try {
+        const url = topicId
+          ? `/api/flashcards/reviews?topicId=${encodeURIComponent(topicId)}`
+          : "/api/flashcards/reviews";
+        const res = await fetch(url);
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setAllReviews(data);
+          }
+        }
+      } catch {
+        // Safe fallback
+      }
+    }
+    fetchReviews();
+    return () => {
+      isMounted = false;
+    };
+  }, [topicId, showRetentionCurve, isAbTestModalOpen]);
+
+  // Dynamically sort queue by Smart Priority Score when smartQueueEnabled is active
+  const displayCards = useMemo(() => {
+    if (!smartQueueEnabled) return cards;
+    return [...cards].sort((a, b) => {
+      const scoreA = calculateCardPriorityScore(a, {
+        examDate: examDate || undefined,
+      });
+      const scoreB = calculateCardPriorityScore(b, {
+        examDate: examDate || undefined,
+      });
+      return scoreB - scoreA;
+    });
+  }, [cards, smartQueueEnabled, examDate]);
+
   const cardsMap = useMemo(() => {
     const map = new Map<string, Flashcard>();
     for (const card of cards) {
@@ -106,28 +182,28 @@ export function FlashcardReviewStudio({
 
   // Quick edit current card
   const handleOpenQuickEdit = useCallback(() => {
-    if (cards[currentIndex]) {
+    if (displayCards[currentIndex]) {
       setIsEditModalOpen(true);
     }
-  }, [cards, currentIndex]);
+  }, [displayCards, currentIndex]);
 
   // View history current card
   const handleOpenHistory = useCallback(() => {
-    if (cards[currentIndex]) {
+    if (displayCards[currentIndex]) {
       setIsHistoryModalOpen(true);
     }
-  }, [cards, currentIndex]);
+  }, [displayCards, currentIndex]);
 
   const handleQuickEditSuccess = useCallback(
     (updatedCard: Flashcard) => {
       setCards((prev) =>
-        prev.map((c, idx) =>
-          idx === currentIndex ? { ...c, ...updatedCard } : c
+        prev.map((c) =>
+          c.id === updatedCard.id ? { ...c, ...updatedCard } : c
         )
       );
       setIsEditModalOpen(false);
     },
-    [currentIndex]
+    []
   );
 
   // Reset activity timestamp
@@ -237,7 +313,7 @@ export function FlashcardReviewStudio({
   const handleRate = useCallback(
     async (rating: number) => {
       recordActivity();
-      const currentCard = cards[currentIndex];
+      const currentCard = displayCards[currentIndex];
       if (!currentCard) return;
 
       const elapsedMs = Math.max(0, Date.now() - cardStartTimeRef.current);
@@ -301,7 +377,7 @@ export function FlashcardReviewStudio({
       setSessionReviews((prev) => [...prev, recordedReview!]);
 
       // Next card transition
-      if (currentIndex + 1 < cards.length) {
+      if (currentIndex + 1 < displayCards.length) {
         setCurrentIndex((prev) => prev + 1);
         setIsFlipped(false);
         cardStartTimeRef.current = Date.now();
@@ -325,7 +401,7 @@ export function FlashcardReviewStudio({
             : 100;
 
         setSessionStats({
-          totalCards: cards.length,
+          totalCards: displayCards.length,
           correctRate,
           timeSpentSeconds: sessionSeconds,
           ratingBreakdown: breakdown,
@@ -343,24 +419,24 @@ export function FlashcardReviewStudio({
         }
       }
     },
-    [cards, currentIndex, recordActivity, sessionReviews, sessionSeconds]
+    [displayCards, currentIndex, recordActivity, sessionReviews, sessionSeconds, isCram, effectiveSessionType]
   );
 
   // Register flashcard_review scope when active review queue is present and not completed
   useEffect(() => {
-    if (!loading && cards.length > 0 && !isCompleted) {
+    if (!loading && displayCards.length > 0 && !isCompleted) {
       const unregister = shortcutScope.pushScope("flashcard_review");
       return () => {
         unregister();
       };
     }
-  }, [loading, cards.length, isCompleted]);
+  }, [loading, displayCards.length, isCompleted]);
 
   // Scoped keyboard shortcuts with input/modal protection and priority
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if session is not active or empty or loading
-      if (loading || cards.length === 0 || isCompleted) {
+      if (loading || displayCards.length === 0 || isCompleted) {
         return;
       }
 
@@ -389,7 +465,8 @@ export function FlashcardReviewStudio({
         isImportModalOpen ||
         isEditModalOpen ||
         isHistoryModalOpen ||
-        isExportModalOpen
+        isExportModalOpen ||
+        isAbTestModalOpen
       ) {
         return;
       }
@@ -725,7 +802,7 @@ export function FlashcardReviewStudio({
     );
   }
 
-  const currentCard = cards[currentIndex];
+  const currentCard = displayCards[currentIndex];
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -813,6 +890,30 @@ export function FlashcardReviewStudio({
           </button>
           <button
             type="button"
+            data-testid="btn-toggle-retention-curve"
+            onClick={() => setShowRetentionCurve((prev) => !prev)}
+            title="Biểu đồ đường cong quên lãng"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+              showRetentionCurve
+                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                : "bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Đường cong</span>
+          </button>
+          <button
+            type="button"
+            data-testid="btn-open-ab-testing"
+            onClick={() => setIsAbTestModalOpen(true)}
+            title="A/B Testing: SM-2 vs Adaptive SRS"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/80 hover:bg-purple-100 dark:hover:bg-purple-900 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs font-semibold transition cursor-pointer"
+          >
+            <GitCompare className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">A/B Testing</span>
+          </button>
+          <button
+            type="button"
             data-testid="btn-open-export-csv"
             onClick={() => setIsExportModalOpen(true)}
             title="Xuất CSV (Phiên hiện tại & Toàn bộ lịch sử)"
@@ -842,6 +943,27 @@ export function FlashcardReviewStudio({
         </div>
       </div>
 
+      {/* Exam Countdown & Smart Queue Toolbar */}
+      <ExamCountdownToolbar
+        examDate={examDate}
+        smartQueueEnabled={smartQueueEnabled}
+        onExamDateChange={(date) => setExamDate(date)}
+        onSmartQueueToggle={(enabled) => {
+          setSmartQueueEnabled(enabled);
+          setCurrentIndex(0);
+          setIsFlipped(false);
+        }}
+        totalCardsCount={displayCards.length}
+      />
+
+      {/* Retention Curve Chart (collapsible) */}
+      {showRetentionCurve && (
+        <RetentionCurveChart
+          cards={displayCards}
+          reviews={[...allReviews, ...sessionReviews]}
+          onClose={() => setShowRetentionCurve(false)}
+        />
+      )}
 
       {/* Card Rendering */}
       {currentCard && (
@@ -953,6 +1075,14 @@ export function FlashcardReviewStudio({
           sessionReviews={sessionReviews}
           cardsMap={cardsMap}
           currentTopicId={topicId}
+        />
+      )}
+      {isAbTestModalOpen && (
+        <SrsVariantComparisonModal
+          isOpen={isAbTestModalOpen}
+          onClose={() => setIsAbTestModalOpen(false)}
+          cards={displayCards}
+          reviews={[...allReviews, ...sessionReviews]}
         />
       )}
     </div>

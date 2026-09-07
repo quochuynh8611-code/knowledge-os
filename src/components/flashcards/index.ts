@@ -12,4 +12,7 @@ export * from "./CardConfirmModal";
 export * from "./StudyLauncher";
 export * from "./FlashcardAnalyticsDashboard";
 export * from "./DuplicateDetectionDashboard";
+export * from "./RetentionCurveChart";
+export * from "./ExamCountdownToolbar";
+export * from "./SrsVariantComparisonModal";
 
