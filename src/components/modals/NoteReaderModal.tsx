@@ -255,7 +255,7 @@ export function NoteReaderModal({
           </div>
 
           {/* Note Body with Readability Formatting */}
-          <div className="text-sm sm:text-base text-stone-800 dark:text-stone-200 leading-relaxed font-sans bg-stone-50/80 dark:bg-stone-950/40 p-6 sm:p-8 rounded-3xl border border-stone-200/80 dark:border-stone-800/80 shadow-2xs">
+          <div className="text-sm sm:text-base text-stone-800 dark:text-stone-200 leading-relaxed font-sans bg-stone-50/90 dark:bg-stone-950/50 p-6 sm:p-9 md:p-10 rounded-3xl border border-stone-200/90 dark:border-stone-800/90 shadow-2xs">
             <MarkdownReadabilityRenderer
               content={note.content}
               topics={topics}

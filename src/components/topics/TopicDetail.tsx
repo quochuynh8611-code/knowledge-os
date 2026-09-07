@@ -28,6 +28,7 @@ import {
   Layers,
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
+import { NoteReaderModal } from "../modals/NoteReaderModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
@@ -133,6 +134,7 @@ export function TopicDetail() {
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [readingNote, setReadingNote] = useState<Note | null>(null);
 
   // Research Dashboard & Search states (Phase F7.0)
   const [showResearchSearchModal, setShowResearchSearchModal] = useState(false);
@@ -272,8 +274,22 @@ export function TopicDetail() {
     );
   }
 
-  // Filter notes and resources belonging to this topic
-  const topicNotes = notes.filter((n) => n.topicId === topic.id);
+  // Filter notes and resources belonging to this topic (supporting primary topicId and multi-topic topicIds array without duplicates)
+  const topicNotes = React.useMemo(() => {
+    if (!topic?.id) return [];
+    const seen = new Set<string>();
+    return (notes || []).filter((n) => {
+      if (seen.has(n.id)) return false;
+      const matches =
+        n.topicId === topic.id ||
+        (Array.isArray(n.topicIds) && n.topicIds.includes(topic.id));
+      if (matches) {
+        seen.add(n.id);
+        return true;
+      }
+      return false;
+    });
+  }, [notes, topic?.id]);
   const topicResources = resources.filter((r) => r.topicId === topic.id);
 
   // Linked topics
@@ -495,11 +511,12 @@ export function TopicDetail() {
         </button>
 
         <button
+          data-testid="tab-btn-notes"
           onClick={() => setActiveTab("notes")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
             activeTab === "notes"
-              ? "border-amber-700 text-amber-900"
-              : "border-transparent text-stone-600 hover:text-stone-900"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
           <FileText className="w-4 h-4" /> Ghi Chú ({topicNotes.length})
@@ -670,15 +687,16 @@ export function TopicDetail() {
       {activeTab === "notes" && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-stone-900">
-              Ghi chú nghiên cứu ({topicNotes.length} notes)
+            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+              <span>Ghi chú nghiên cứu ({topicNotes.length} notes)</span>
             </h3>
             <button
               onClick={() => {
                 setEditingNote(null);
                 setShowNoteModal(true);
               }}
-              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Thêm ghi chú mới
             </button>
@@ -689,25 +707,25 @@ export function TopicDetail() {
               const getTypeIcon = () => {
                 switch (note.type) {
                   case "insight":
-                    return <Lightbulb className="w-3.5 h-3.5 text-amber-700" />;
+                    return <Lightbulb className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />;
                   case "question":
-                    return <HelpCircle className="w-3.5 h-3.5 text-rose-700" />;
+                    return <HelpCircle className="w-3.5 h-3.5 text-rose-700 dark:text-rose-400" />;
                   case "summary":
                     return (
-                      <Bookmark className="w-3.5 h-3.5 text-emerald-700" />
+                      <Bookmark className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                     );
                   default:
-                    return <FileText className="w-3.5 h-3.5 text-blue-700" />;
+                    return <FileText className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />;
                 }
               };
 
               return (
                 <div
                   key={note.id}
-                  className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-2.5 flex flex-col justify-between hover:border-amber-300 transition"
+                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-4 shadow-2xs space-y-2.5 flex flex-col justify-between transition"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[11px] text-stone-500 border-b border-stone-100 pb-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800 pb-1.5">
                       <span className="font-bold uppercase tracking-wider flex items-center gap-1">
                         {getTypeIcon()}
                         {note.type}
@@ -715,44 +733,63 @@ export function TopicDetail() {
                       <span>{formatTimeAgo(note.createdAt)}</span>
                     </div>
 
-                    <h4 className="font-bold text-stone-900 text-sm">
+                    <h4 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
                       {note.title}
                     </h4>
 
-                    <p className="text-xs text-stone-700 leading-relaxed line-clamp-4">
+                    <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed line-clamp-4">
                       {toReadablePlainTextPreview(note.content)}
                     </p>
                   </div>
 
-                  <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px]">
-                    <div className="flex flex-wrap gap-1">
+                  <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px]">
+                    <div className="flex flex-wrap gap-1 max-w-[60%]">
                       {(note.tags ?? []).map((t) => (
                         <span
                           key={t}
-                          className="px-1.5 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]"
+                          className="px-1.5 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 rounded text-[10px]"
                         >
                           #{t}
                         </span>
                       ))}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
-                        onClick={() => {
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReadingNote(note);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800/80 rounded-xl text-xs font-semibold shadow-2xs hover:shadow-xs transition cursor-pointer"
+                        title="Đọc nội dung trong khung lớn"
+                        aria-label={`Đọc tiếp ghi chú ${note.title}`}
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+                        <span>Đọc tiếp</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setEditingNote(note);
                           setShowNoteModal(true);
                         }}
-                        className="p-1 text-stone-400 hover:text-stone-700 rounded"
+                        className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
                         title="Sửa ghi chú"
+                        aria-label="Sửa ghi chú"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (window.confirm("Xóa ghi chú này?"))
                             deleteNote(note.id);
                         }}
-                        className="p-1 text-stone-400 hover:text-rose-700 rounded"
+                        className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition cursor-pointer"
                         title="Xóa ghi chú"
+                        aria-label="Xóa ghi chú"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -1340,6 +1377,16 @@ export function TopicDetail() {
         }}
         defaultTopicId={topic.id}
         initialNote={editingNote}
+      />
+      <NoteReaderModal
+        isOpen={Boolean(readingNote)}
+        note={readingNote}
+        onClose={() => setReadingNote(null)}
+        onEdit={(noteToEdit) => {
+          setReadingNote(null);
+          setEditingNote(noteToEdit);
+          setShowNoteModal(true);
+        }}
       />
       <ResourceFormModal
         isOpen={showResourceModal}

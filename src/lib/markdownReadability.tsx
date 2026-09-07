@@ -686,10 +686,11 @@ export function MarkdownReadabilityRenderer({
       blocks.push(
         <blockquote
           key={`quote-${keyIndex}`}
-          className="border-l-4 border-amber-600 dark:border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 p-3.5 my-3.5 rounded-r-xl space-y-1.5 italic text-stone-700 dark:text-stone-300 text-xs sm:text-sm"
+          data-blockquote="true"
+          className="border-l-4 border-amber-500 dark:border-amber-400 bg-amber-50/70 dark:bg-amber-950/30 px-4 py-3.5 my-4 rounded-r-2xl space-y-2 italic text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed sm:leading-7 shadow-2xs"
         >
           {blockquoteBuffer.map((quoteText, qIdx) => (
-            <p key={`quote-line-${keyIndex}-${qIdx}`} className="leading-relaxed">
+            <p key={`quote-line-${keyIndex}-${qIdx}`} className="leading-relaxed sm:leading-7">
               {renderInline(quoteText)}
             </p>
           ))}
@@ -706,10 +707,10 @@ export function MarkdownReadabilityRenderer({
 
       if (isTask) {
         blocks.push(
-          <ul key={`task-list-${keyIndex}`} className="space-y-1.5 my-3 pl-1">
+          <ul key={`task-list-${keyIndex}`} className="space-y-2.5 my-4 pl-1">
             {listBuffer.map((item, lIdx) => (
-              <li key={`task-${keyIndex}-${lIdx}`} className="flex items-start gap-2 text-xs sm:text-sm leading-relaxed text-stone-800 dark:text-stone-200">
-                <span className="mt-0.5 text-stone-500 dark:text-stone-400 shrink-0">
+              <li key={`task-${keyIndex}-${lIdx}`} className="flex items-start gap-2.5 text-sm sm:text-base leading-relaxed sm:leading-7 text-stone-800 dark:text-stone-200">
+                <span className="mt-1 text-stone-500 dark:text-stone-400 shrink-0">
                   {item.checked ? (
                     <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   ) : (
@@ -725,9 +726,9 @@ export function MarkdownReadabilityRenderer({
         );
       } else if (isOrdered) {
         blocks.push(
-          <ol key={`ordered-list-${keyIndex}`} className="list-decimal list-outside ml-5 space-y-1 my-3 text-stone-800 dark:text-stone-200 text-xs sm:text-sm leading-relaxed">
+          <ol key={`ordered-list-${keyIndex}`} className="list-decimal list-outside ml-6 space-y-2 my-4 text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed sm:leading-7">
             {listBuffer.map((item, lIdx) => (
-              <li key={`ol-${keyIndex}-${lIdx}`}>
+              <li key={`ol-${keyIndex}-${lIdx}`} className="pl-1">
                 {renderInline(item.text)}
               </li>
             ))}
@@ -735,9 +736,9 @@ export function MarkdownReadabilityRenderer({
         );
       } else {
         blocks.push(
-          <ul key={`unordered-list-${keyIndex}`} className="list-disc list-outside ml-5 space-y-1 my-3 text-stone-800 dark:text-stone-200 text-xs sm:text-sm leading-relaxed">
+          <ul key={`unordered-list-${keyIndex}`} className="list-disc list-outside ml-6 space-y-2 my-4 text-stone-800 dark:text-stone-200 text-sm sm:text-base leading-relaxed sm:leading-7">
             {listBuffer.map((item, lIdx) => (
-              <li key={`ul-${keyIndex}-${lIdx}`}>
+              <li key={`ul-${keyIndex}-${lIdx}`} className="pl-1">
                 {renderInline(item.text)}
               </li>
             ))}
@@ -756,12 +757,12 @@ export function MarkdownReadabilityRenderer({
       );
 
       blocks.push(
-        <div key={`table-wrapper-${keyIndex}`} className="overflow-x-auto my-4 border border-stone-200 dark:border-stone-800 rounded-xl shadow-2xs">
+        <div key={`table-wrapper-${keyIndex}`} className="overflow-x-auto my-5 border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-2xs">
           <table className="w-full text-left text-xs sm:text-sm border-collapse">
-            <thead className="bg-stone-100 dark:bg-stone-900 border-b border-stone-200 dark:border-stone-800">
+            <thead className="bg-stone-100/90 dark:bg-stone-900/90 border-b border-stone-200 dark:border-stone-800">
               <tr>
                 {headerRow.map((h, hIdx) => (
-                  <th key={`th-${keyIndex}-${hIdx}`} className="p-2.5 font-bold text-stone-900 dark:text-stone-100">
+                  <th key={`th-${keyIndex}-${hIdx}`} className="p-3 sm:p-3.5 font-bold text-stone-900 dark:text-stone-100 font-sans">
                     {renderInline(h)}
                   </th>
                 ))}
@@ -771,7 +772,7 @@ export function MarkdownReadabilityRenderer({
               {dataRows.map((row, rIdx) => (
                 <tr key={`tr-${keyIndex}-${rIdx}`} className="hover:bg-stone-50 dark:hover:bg-stone-900/50 transition">
                   {row.map((cell, cIdx) => (
-                    <td key={`td-${keyIndex}-${rIdx}-${cIdx}`} className="p-2.5 text-stone-700 dark:text-stone-300">
+                    <td key={`td-${keyIndex}-${rIdx}-${cIdx}`} className="p-3 sm:p-3.5 text-stone-700 dark:text-stone-300">
                       {renderInline(cell)}
                     </td>
                   ))}
@@ -786,7 +787,7 @@ export function MarkdownReadabilityRenderer({
       // Fallback nếu không đủ cấu trúc bảng
       tableBuffer.forEach((line, tIdx) => {
         blocks.push(
-          <p key={`table-fallback-${keyIndex}-${tIdx}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
+          <p key={`table-fallback-${keyIndex}-${tIdx}`} className="leading-relaxed sm:leading-7 text-stone-800 dark:text-stone-200 text-sm sm:text-base">
             {renderInline(line)}
           </p>
         );
@@ -806,7 +807,7 @@ export function MarkdownReadabilityRenderer({
         blocks.push(
           <pre
             key={`codeblock-${i}`}
-            className="p-4 bg-stone-900 text-stone-100 dark:bg-stone-950 rounded-2xl font-mono text-xs sm:text-sm overflow-x-auto my-3.5 border border-stone-800 leading-relaxed"
+            className="p-4 sm:p-5 bg-stone-900 text-stone-100 dark:bg-stone-950 rounded-2xl font-mono text-xs sm:text-sm overflow-x-auto my-4 border border-stone-800 leading-relaxed shadow-xs"
           >
             <code>{codeBlockBuffer.join('\n')}</code>
           </pre>
@@ -846,7 +847,7 @@ export function MarkdownReadabilityRenderer({
         <hr
           key={`hr-${i}`}
           data-divider="true"
-          className="border-t border-stone-200 dark:border-stone-800 my-5"
+          className="border-t border-stone-200 dark:border-stone-800 my-6"
         />
       );
       continue;
@@ -866,7 +867,7 @@ export function MarkdownReadabilityRenderer({
           <h1
             key={`h1-${i}`}
             data-heading="1"
-            className="text-xl sm:text-2xl font-bold text-stone-950 dark:text-stone-50 font-serif-title mt-5 mb-2.5 pb-1.5 border-b border-stone-200 dark:border-stone-800"
+            className="text-xl sm:text-2xl md:text-3xl font-bold text-stone-950 dark:text-stone-50 font-serif-title mt-7 mb-3.5 pb-2 border-b border-stone-200/90 dark:border-stone-800 tracking-tight leading-snug"
           >
             {renderInline(headingText)}
           </h1>
@@ -876,20 +877,30 @@ export function MarkdownReadabilityRenderer({
           <h2
             key={`h2-${i}`}
             data-heading="2"
-            className="text-lg sm:text-xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-4 mb-2"
+            className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-6 mb-3 tracking-tight leading-snug"
           >
             {renderInline(headingText)}
           </h2>
         );
-      } else {
+      } else if (level === 3) {
         blocks.push(
           <h3
             key={`h3-${i}`}
             data-heading="3"
-            className="text-base sm:text-lg font-bold text-stone-850 dark:text-stone-150 font-serif-title mt-3 mb-1.5"
+            className="text-base sm:text-lg md:text-xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-5 mb-2.5 leading-snug"
           >
             {renderInline(headingText)}
           </h3>
+        );
+      } else {
+        blocks.push(
+          <h4
+            key={`h4-${i}`}
+            data-heading="4"
+            className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200 font-serif-title mt-4 mb-2 leading-snug"
+          >
+            {renderInline(headingText)}
+          </h4>
         );
       }
       continue;
@@ -935,7 +946,7 @@ export function MarkdownReadabilityRenderer({
 
     // 9. Regular paragraph line / empty line
     if (!trimmed) {
-      blocks.push(<div key={`spacer-${i}`} className="h-2.5" />);
+      blocks.push(<div key={`spacer-${i}`} className="h-4 sm:h-5" />);
     } else {
       const isBlockEmbed =
         trimmed.startsWith('![[') &&
@@ -946,19 +957,19 @@ export function MarkdownReadabilityRenderer({
 
       if (isBlockEmbed) {
         blocks.push(
-          <div key={`embed-${i}`} className="my-1">
+          <div key={`embed-${i}`} className="my-2">
             {renderInline(trimmed)}
           </div>
         );
       } else if (hasEmbed) {
         blocks.push(
-          <div key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
+          <div key={`p-${i}`} className="leading-relaxed sm:leading-7 text-stone-800 dark:text-stone-200 text-sm sm:text-base">
             {renderInline(line)}
           </div>
         );
       } else {
         blocks.push(
-          <p key={`p-${i}`} className="leading-relaxed text-stone-800 dark:text-stone-200 text-xs sm:text-sm">
+          <p key={`p-${i}`} className="leading-relaxed sm:leading-7 text-stone-800 dark:text-stone-200 text-sm sm:text-base">
             {renderInline(line)}
           </p>
         );
@@ -970,5 +981,5 @@ export function MarkdownReadabilityRenderer({
   flushList(lines.length);
   flushTable(lines.length);
 
-  return <div className={`space-y-1.5 ${className}`}>{blocks}</div>;
+  return <div className={`space-y-3.5 sm:space-y-4 ${className}`}>{blocks}</div>;
 }

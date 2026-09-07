@@ -133,6 +133,54 @@ Tham chiếu đến [[Kỳ Môn Độn Giáp|Kỳ Môn]] trong phương pháp đ
       expect(container.textContent).not.toContain('- [x]');
       expect(container.textContent).not.toContain('- [ ]');
     });
+
+    it('áp dụng typography phân cấp rõ ràng (H1, H2, H3) và line-height thoáng đãng (sm:leading-7)', () => {
+      const longResearchContent = `
+# Phân Tích Cấu Trúc Luận Điểm
+Đây là đoạn phân tích thứ nhất với nội dung nghiên cứu chuyên sâu, cần cỡ chữ và khoảng cách dòng dễ đọc.
+
+## Dữ Liệu Thực Nghiệm
+Đoạn phân tích thứ hai trình bày các phát hiện và số liệu cụ thể.
+
+> Trích dẫn tri thức cốt lõi với nhịp thị giác thanh lịch và viền nổi bật.
+
+### Tiểu Tiết Kỹ Thuật
+- Ý mục danh sách 1
+- Ý mục danh sách 2
+`;
+      const { container } = render(
+        <MarkdownReadabilityRenderer content={longResearchContent} topics={mockTopics} />
+      );
+
+      // Check headings hierarchy
+      const h1 = container.querySelector('h1[data-heading="1"]');
+      expect(h1).toBeInTheDocument();
+      expect(h1).toHaveClass('font-serif-title');
+
+      const h2 = container.querySelector('h2[data-heading="2"]');
+      expect(h2).toBeInTheDocument();
+      expect(h2).toHaveClass('font-serif-title');
+
+      const h3 = container.querySelector('h3[data-heading="3"]');
+      expect(h3).toBeInTheDocument();
+      expect(h3).toHaveClass('font-serif-title');
+
+      // Check blockquote
+      const quote = container.querySelector('blockquote[data-blockquote="true"]');
+      expect(quote).toBeInTheDocument();
+      expect(quote).toHaveClass('border-amber-500');
+
+      // Check container spacing class has breathing room
+      const rootDiv = container.firstElementChild;
+      expect(rootDiv?.className).toContain('space-y-3.5');
+
+      // Check paragraph text has comfortable reading classes
+      const paragraphs = container.querySelectorAll('p');
+      expect(paragraphs.length).toBeGreaterThan(0);
+      paragraphs.forEach((p) => {
+        expect(p.className).toContain('leading-relaxed');
+      });
+    });
   });
 
   describe('3. NotesManager Card Interaction & CTA Clarity', () => {
