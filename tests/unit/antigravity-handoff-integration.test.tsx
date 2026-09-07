@@ -105,19 +105,25 @@ vi.mock('../../src/context/DataContext', () => ({
   }),
 }));
 
-describe('Phase 3: AntigravityHandoffModal UI Integration Tests', () => {
+describe('Phase 3: AntigravityHandoffModal UI Integration Tests (Scholar Inspector)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('1. Render tiêu đề, topic selector, prompt mode switcher, bundle preview khi modal mở', () => {
+  it('1. Render tiêu đề Scholar Inspector, context badge, topic selector, prompt mode switcher, bundle preview khi modal mở', () => {
     render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
 
-    expect(screen.getByText(/Antigravity AI Scholar Handoff/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Antigravity AI Scholar Inspector/i })).toBeInTheDocument();
+    expect(screen.getByTestId('scholar-topic-context-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('scholar-topic-context-badge')).toHaveTextContent('Vi Diệu Pháp Toàn Tập');
     expect(screen.getByRole('combobox')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Phân Tích Khái Niệm/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Ngữ Nguyên & Thuật Ngữ/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Tổng Hợp Liên Ngành/i })).toBeInTheDocument();
+
+    // 3 Tabs
+    expect(screen.getByRole('tab', { name: /Gói Bàn Giao/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Đồ Thị 1-Hop/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /System Prompt/i })).toBeInTheDocument();
+
+    // Default Bundle Preview
     expect(screen.getByText(/## 1. System Directive & Academic Persona/i)).toBeInTheDocument();
     expect(screen.getByText(/## 3. Multi-Hop Knowledge Graph Topology/i)).toBeInTheDocument();
   });
@@ -168,5 +174,76 @@ describe('Phase 3: AntigravityHandoffModal UI Integration Tests', () => {
     fireEvent.change(select, { target: { value: 'topic-dich' } });
 
     expect(screen.getAllByText(/Kinh Dịch Chu Dịch/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('5. Tự động đồng bộ selectedTopicId khi props.topic thay đổi trong lúc modal mở', async () => {
+    const { rerender } = render(
+      <AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />
+    );
+
+    expect(screen.getByTestId('scholar-topic-context-badge')).toHaveTextContent('Vi Diệu Pháp Toàn Tập');
+    expect(screen.getByRole('combobox')).toHaveValue('topic-abhidharma');
+
+    // Rerender with mockTopic2 (Kinh Dịch)
+    rerender(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic2} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scholar-topic-context-badge')).toHaveTextContent('Kinh Dịch Chu Dịch');
+      expect(screen.getByRole('combobox')).toHaveValue('topic-dich');
+    });
+  });
+
+  it('6. Chuyển sang Tab Đồ Thị 1-Hop Topology và render danh sách liên kết', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const topologyTab = screen.getByRole('tab', { name: /Đồ Thị 1-Hop/i });
+    fireEvent.click(topologyTab);
+
+    // Topic 1 has 1 link to Kinh Dịch Chu Dịch
+    await waitFor(() => {
+      expect(screen.getByTestId('scholar-topology-view')).toBeInTheDocument();
+      expect(screen.getByText('Kinh Dịch Chu Dịch')).toBeInTheDocument();
+      expect(screen.getByText(/RELATED/i)).toBeInTheDocument();
+      expect(screen.getByText(/4\/5/i)).toBeInTheDocument();
+    });
+  });
+
+  it('7. Tab Đồ Thị 1-Hop Topology hiển thị empty state khi chủ đề không có liên kết', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic2} />);
+
+    const topologyTab = screen.getByRole('tab', { name: /Đồ Thị 1-Hop/i });
+    fireEvent.click(topologyTab);
+
+    // Topic 2 has no links
+    await waitFor(() => {
+      expect(screen.getByTestId('scholar-topology-empty-state')).toBeInTheDocument();
+      expect(screen.getByText(/Chưa có liên kết 1-hop nào được ghi nhận cho chủ đề này/i)).toBeInTheDocument();
+    });
+  });
+
+  it('8. Chuyển sang Tab System Prompt và sao chép Prompt', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const promptTab = screen.getByRole('tab', { name: /System Prompt/i });
+    fireEvent.click(promptTab);
+
+    expect(screen.getByRole('button', { name: /Phân Tích Khái Niệm/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ngữ Nguyên & Thuật Ngữ/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tổng Hợp Liên Ngành/i })).toBeInTheDocument();
+
+    const copyPromptBtn = screen.getByRole('button', { name: /Sao chép Prompt Chuyên Sâu/i });
+    fireEvent.click(copyPromptBtn);
+
+    expect(writeTextMock).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText(/Đã sao chép Prompt!/i)).toBeInTheDocument();
+    });
   });
 });

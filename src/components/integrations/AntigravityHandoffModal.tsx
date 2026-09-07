@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import {
   X,
@@ -6,16 +6,20 @@ import {
   Copy,
   Download,
   CheckCircle2,
-  Brain,
-  Share2,
   FileText,
-  Compass,
-  Layers,
+  Network,
+  Terminal,
   BookOpen,
+  Layers,
+  Compass,
+  ArrowUpRight,
+  ShieldCheck,
+  Link2,
 } from 'lucide-react';
 import {
   packageHandoffBundleForAntigravity,
   generateAntigravityPrompt,
+  AntigravityResearchMode,
 } from '../../lib/antigravity';
 import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
@@ -35,13 +39,18 @@ export function AntigravityHandoffModal({
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     topic?.id || topics[0]?.id || ''
   );
-  const [researchMode, setResearchMode] = useState<
-    'concept_analysis' | 'terminology_exegesis' | 'cross_domain_synthesis' | 'scholar_analysis' | 'pali_sanskrit_exegesis' | 'cross_domain_link'
-  >('concept_analysis');
+  const [researchMode, setResearchMode] = useState<AntigravityResearchMode>('concept_analysis');
   const [customQuery, setCustomQuery] = useState('');
   const [copiedBundle, setCopiedBundle] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState<'bundle' | 'prompt'>('bundle');
+  const [activeTab, setActiveTab] = useState<'bundle' | 'topology' | 'prompt'>('bundle');
+
+  // Auto-sync topic context when modal opens with a provided topic prop
+  useEffect(() => {
+    if (isOpen && topic?.id) {
+      setSelectedTopicId(topic.id);
+    }
+  }, [isOpen, topic?.id]);
 
   if (!isOpen) return null;
 
@@ -55,6 +64,14 @@ export function AntigravityHandoffModal({
   const specializedPrompt = currentTopic
     ? generateAntigravityPrompt(currentTopic, researchMode, customQuery)
     : '';
+
+  const topicNotesCount = (notes || []).filter((n) => n.topicId === currentTopic?.id).length;
+  const topicResourcesCount = (resources || []).filter((r) => r.topicId === currentTopic?.id).length;
+  const topicLinksCount = currentTopic?.links?.length || 0;
+
+  let domainLabel = currentTopic?.categoryName || currentTopic?.type || 'Nghiên Cứu';
+  if (currentTopic?.type === 'phat-hoc') domainLabel = 'Phật Học';
+  else if (currentTopic?.type === 'huyen-hoc') domainLabel = 'Huyền Học';
 
   const handleCopyBundle = async () => {
     try {
@@ -110,14 +127,14 @@ export function AntigravityHandoffModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 id="antigravity-handoff-title" className="text-base font-bold tracking-tight text-white">
-                  Antigravity AI Scholar Handoff Bundle
+                  Antigravity AI Scholar Inspector
                 </h2>
                 <span className="text-[10px] font-mono uppercase bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/30 font-semibold">
-                  Phase 3 Ready
+                  Reasoning Boundary
                 </span>
               </div>
               <p className="text-xs text-stone-300">
-                Đóng gói bối cảnh tri thức 6 phần &amp; Đồ thị 1-hop trực tiếp phục vụ Reasoning AI Agent
+                Khảo sát &amp; Đóng gói bối cảnh tri thức 6 phần cùng Đồ thị 1-hop cho Reasoning AI Agent
               </p>
             </div>
           </div>
@@ -130,160 +147,295 @@ export function AntigravityHandoffModal({
           </button>
         </div>
 
-        {/* Control Toolbar */}
-        <div className="p-4 md:px-6 border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/90 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* Topic Selector */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
-                Chủ đề đóng gói bàn giao:
-              </label>
-              <select
-                value={selectedTopicId}
-                onChange={(e) => setSelectedTopicId(e.target.value)}
-                className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
-              >
-                {topics.map((t) => {
-                  const domainTag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
-                  return (
-                    <option key={t.id} value={t.id}>
-                      [{domainTag}] {t.title}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            {/* Research Mode */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
-                Chế độ nghiên cứu học thuật:
-              </label>
-              <div className="grid grid-cols-3 gap-1 bg-stone-200/80 dark:bg-stone-800 p-1 rounded-xl text-[11px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setResearchMode('concept_analysis')}
-                  className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'concept_analysis' || researchMode === 'scholar_analysis'
-                      ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
-                  }`}
-                >
-                  Phân Tích Khái Niệm
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResearchMode('terminology_exegesis')}
-                  className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis'
-                      ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
-                  }`}
-                >
-                  Ngữ Nguyên &amp; Thuật Ngữ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResearchMode('cross_domain_synthesis')}
-                  className={`py-1.5 px-2 rounded-lg transition text-center truncate cursor-pointer ${
-                    researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link'
-                      ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
-                      : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
-                  }`}
-                >
-                  Tổng Hợp Liên Ngành
-                </button>
-              </div>
-            </div>
+        {/* Topic Context Indicator & Selector Bar */}
+        <div className="px-4 py-3 md:px-6 border-b border-stone-200 dark:border-stone-800 bg-stone-50/90 dark:bg-stone-950/90 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div
+            data-testid="scholar-topic-context-badge"
+            className="flex items-center gap-2 w-full sm:w-auto"
+          >
+            <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">Chủ đề:</span>
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 bg-amber-100/70 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5">
+              <span>[{domainLabel}]</span>
+              <span>{currentTopic?.title}</span>
+              <span className="text-[10px] font-mono opacity-70">({topicLinksCount} links)</span>
+            </span>
           </div>
 
-          {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-            <div className="flex items-center gap-1 bg-stone-200/70 dark:bg-stone-800 p-1 rounded-xl text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setActiveTab('bundle')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  activeTab === 'bundle'
-                    ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-                }`}
-              >
-                Gói Bàn Giao (6 Sections)
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('prompt')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  activeTab === 'prompt'
-                    ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-                }`}
-              >
-                System Prompt Chuyên Sâu
-              </button>
-            </div>
+          <div className="w-full sm:w-64">
+            <select
+              value={selectedTopicId}
+              onChange={(e) => setSelectedTopicId(e.target.value)}
+              className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+            >
+              {topics.map((t) => {
+                const tag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
+                return (
+                  <option key={t.id} value={t.id}>
+                    [{tag}] {t.title}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-2">
-              {activeTab === 'bundle' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleCopyBundle}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
-                  >
-                    {copiedBundle ? (
-                      <>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                        <span>Đã sao chép Handoff Bundle!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Sao chép Handoff Bundle</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadBundle}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
-                  >
-                    <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
-                    <span>Tải Tệp Handoff (.md)</span>
-                  </button>
-                </>
-              ) : (
+        {/* 3 Tabs Navigation Toolbar */}
+        <div className="px-4 md:px-6 py-2.5 border-b border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-900/90 flex flex-wrap items-center justify-between gap-2">
+          <div role="tablist" className="flex items-center gap-1 bg-stone-200/70 dark:bg-stone-800 p-1 rounded-xl text-xs font-semibold">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'bundle'}
+              onClick={() => setActiveTab('bundle')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'bundle'
+                  ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Gói Bàn Giao (6 Sections)</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'topology'}
+              onClick={() => setActiveTab('topology')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'topology'
+                  ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              <Network className="w-3.5 h-3.5" />
+              <span>Đồ Thị 1-Hop ({topicLinksCount})</span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'prompt'}
+              onClick={() => setActiveTab('prompt')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                activeTab === 'prompt'
+                  ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              <Terminal className="w-3.5 h-3.5" />
+              <span>System Prompt Chuyên Sâu</span>
+            </button>
+          </div>
+
+          {/* Quick Actions depending on activeTab */}
+          <div className="flex items-center gap-2">
+            {activeTab === 'bundle' && (
+              <>
                 <button
                   type="button"
-                  onClick={handleCopyPrompt}
+                  onClick={handleCopyBundle}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
                 >
-                  {copiedPrompt ? (
+                  {copiedBundle ? (
                     <>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                      <span>Đã sao chép Prompt!</span>
+                      <span>Đã sao chép Handoff Bundle!</span>
                     </>
                   ) : (
                     <>
                       <Copy className="w-3.5 h-3.5" />
-                      <span>Sao chép Prompt Chuyên Sâu</span>
+                      <span>Sao chép Handoff Bundle</span>
                     </>
                   )}
                 </button>
-              )}
-            </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadBundle}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+                >
+                  <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
+                  <span>Tải Tệp Handoff (.md)</span>
+                </button>
+              </>
+            )}
+
+            {activeTab === 'prompt' && (
+              <button
+                type="button"
+                onClick={handleCopyPrompt}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                {copiedPrompt ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Đã sao chép Prompt!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao chép Prompt Chuyên Sâu</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Content Viewer */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/40 dark:bg-stone-900/40">
-          {activeTab === 'bundle' ? (
-            <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 font-mono text-xs text-stone-800 dark:text-stone-200 whitespace-pre-wrap leading-relaxed shadow-inner">
-              {handoffBundle}
+        {/* Content Viewer (Role TabPanel) */}
+        <div role="tabpanel" className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/40 dark:bg-stone-900/40 text-xs">
+          {/* TAB 1: Bundle Preview */}
+          {activeTab === 'bundle' && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2 p-3 bg-white dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-600 dark:text-stone-300">
+                <span className="font-semibold text-stone-900 dark:text-white">Cấu trúc Bundle:</span>
+                <span className="px-2 py-0.5 bg-stone-100 dark:bg-stone-700 rounded text-[11px] font-mono">
+                  {topicNotesCount} Ghi chú
+                </span>
+                <span className="px-2 py-0.5 bg-stone-100 dark:bg-stone-700 rounded text-[11px] font-mono">
+                  {topicResourcesCount} Tài liệu
+                </span>
+                <span className="px-2 py-0.5 bg-stone-100 dark:bg-stone-700 rounded text-[11px] font-mono">
+                  {topicLinksCount} Đồ thị 1-hop
+                </span>
+                <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded text-[11px] font-mono">
+                  Zero Binary
+                </span>
+              </div>
+              <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 font-mono text-xs text-stone-800 dark:text-stone-200 whitespace-pre-wrap leading-relaxed shadow-inner">
+                {handoffBundle}
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* TAB 2: 1-Hop Knowledge Graph Topology */}
+          {activeTab === 'topology' && (
             <div className="space-y-4">
+              {currentTopic?.links && currentTopic.links.length > 0 ? (
+                <div data-testid="scholar-topology-view" className="space-y-3">
+                  <div className="p-3 bg-white dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-stone-900 dark:text-white">
+                        Ma Trận Liên Kết Đồ Thị 1-Hop
+                      </h4>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Chỉ các liên kết trực tiếp được định tuyến sang AI Agent để đảm bảo tính chặt chẽ của suy luận.
+                      </p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded-full font-bold text-xs border border-amber-300 dark:border-amber-800">
+                      {currentTopic.links.length} Quan hệ
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {currentTopic.links.map((link) => {
+                      const targetTitle =
+                        link.targetTitle ||
+                        topics.find((t) => t.id === link.targetId)?.title ||
+                        link.targetId;
+                      const linkTypeUpper = (link.linkType || 'related').toUpperCase();
+                      const strength = link.strength || 3;
+
+                      return (
+                        <div
+                          key={link.id || link.targetId}
+                          className="p-3.5 bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl hover:border-amber-400 dark:hover:border-amber-700 transition flex items-start justify-between gap-3 shadow-2xs"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <ArrowUpRight className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                              <span className="font-bold text-stone-900 dark:text-stone-100 text-xs">
+                                {targetTitle}
+                              </span>
+                              <span className="px-2 py-0.5 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700 rounded text-[10px] font-mono font-bold">
+                                {linkTypeUpper}
+                              </span>
+                            </div>
+                            {link.notes && (
+                              <p className="text-[11px] text-stone-600 dark:text-stone-400 pl-6">
+                                Ghi chú: {link.notes}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 bg-stone-50 dark:bg-stone-900 px-2.5 py-1 rounded-lg border border-stone-200 dark:border-stone-800">
+                            <span className="text-[10px] text-stone-500">Độ mạnh:</span>
+                            <span className="font-mono font-bold text-amber-700 dark:text-amber-400">
+                              {strength}/5
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  data-testid="scholar-topology-empty-state"
+                  className="py-12 px-4 text-center space-y-3 bg-white dark:bg-stone-950 rounded-xl border border-dashed border-stone-300 dark:border-stone-800"
+                >
+                  <div className="w-10 h-10 mx-auto rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-400 dark:text-stone-500">
+                    <Link2 className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                      Chưa có liên kết 1-hop nào được ghi nhận cho chủ đề này.
+                    </p>
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400 max-w-md mx-auto">
+                      Bạn có thể thiết lập các mối liên hệ khái niệm trong bảng chi tiết chủ đề hoặc đồ thị tri thức để AI có thêm góc nhìn liên đới.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: System Prompt */}
+          {activeTab === 'prompt' && (
+            <div className="space-y-4">
+              {/* Research Mode Selector */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+                  Chế độ nghiên cứu học thuật:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 bg-stone-200/80 dark:bg-stone-800 p-1.5 rounded-xl text-[11px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => setResearchMode('concept_analysis')}
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                      researchMode === 'concept_analysis' || researchMode === 'scholar_analysis'
+                        ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
+                        : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+                    }`}
+                  >
+                    Phân Tích Khái Niệm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResearchMode('terminology_exegesis')}
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                      researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis'
+                        ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
+                        : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+                    }`}
+                  >
+                    Ngữ Nguyên &amp; Thuật Ngữ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResearchMode('cross_domain_synthesis')}
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                      researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link'
+                        ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
+                        : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
+                    }`}
+                  >
+                    Tổng Hợp Liên Ngành
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Query */}
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
                   Câu hỏi học thuật tùy chỉnh (Tùy chọn):
@@ -296,6 +448,8 @@ export function AntigravityHandoffModal({
                   className="w-full text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                 />
               </div>
+
+              {/* Prompt Output Viewer */}
               <div className="bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-4 font-mono text-xs text-stone-800 dark:text-stone-200 whitespace-pre-wrap leading-relaxed shadow-inner">
                 {specializedPrompt}
               </div>
@@ -306,7 +460,7 @@ export function AntigravityHandoffModal({
         {/* Footer Guidance */}
         <div className="px-4 md:px-6 py-3 bg-stone-50 dark:bg-stone-950 border-t border-stone-200 dark:border-stone-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-stone-500 dark:text-stone-400 text-[11px]">
           <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Zero Binary Ingestion &bull; 1-Hop Graph Scope &bull; 100% Client-side privacy</span>
           </div>
           <button
