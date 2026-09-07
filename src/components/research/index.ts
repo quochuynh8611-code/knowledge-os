@@ -5,3 +5,4 @@ export * from "./ExportReportModal";
 export * from "./RetentionPredictionChart";
 export * from "./TopicRecommendations";
 export * from "./StudyPatternsHeatmap";
+export * from "./NotificationSettingsModal";
