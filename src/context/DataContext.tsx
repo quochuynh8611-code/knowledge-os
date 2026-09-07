@@ -81,6 +81,8 @@ interface DataContextType {
   tags: Tag[];
   activeTab: ActiveTab;
   selectedTopicId: string | null;
+  subView: "browse" | "review" | "launch" | "analytics" | "duplicates" | null;
+  sessionType: "review" | "new" | "weak" | "cram" | null;
   searchQuery: string;
   selectedCategoryFilter: string | null;
   selectedTagFilter: string | null;
@@ -103,6 +105,14 @@ interface DataContextType {
   setSelectedCategoryFilter: (catId: string | null) => void;
   setSelectedTagFilter: (tag: string | null) => void;
   openTopicDetail: (topicId: string) => void;
+  openFlashcardReview: (
+    topicId?: string | null,
+    sessionType?: "review" | "new" | "weak" | "cram"
+  ) => void;
+  openCardBrowser: (topicId?: string | null) => void;
+  openStudyLauncher: (topicId?: string | null) => void;
+  openFlashcardAnalytics: (topicId?: string | null) => void;
+  openDuplicateDetection: (topicId?: string | null) => void;
 
   // Actions - Categories
   addCategory: (categoryData: Omit<Category, "id">) => string;
@@ -177,6 +187,8 @@ export type DomainDataContextType = Omit<
   DataContextType,
   | "activeTab"
   | "selectedTopicId"
+  | "subView"
+  | "sessionType"
   | "searchQuery"
   | "selectedCategoryFilter"
   | "selectedTagFilter"
@@ -186,6 +198,11 @@ export type DomainDataContextType = Omit<
   | "setSelectedCategoryFilter"
   | "setSelectedTagFilter"
   | "openTopicDetail"
+  | "openFlashcardReview"
+  | "openCardBrowser"
+  | "openStudyLauncher"
+  | "openFlashcardAnalytics"
+  | "openDuplicateDetection"
   | "activeTimerTopicId"
   | "timerSeconds"
   | "isTimerRunning"
@@ -1055,6 +1072,8 @@ function DataProviderBridge({
       },
       activeTab: nav.activeTab,
       selectedTopicId: nav.selectedTopicId,
+      subView: nav.subView,
+      sessionType: nav.sessionType,
       searchQuery: nav.searchQuery,
       selectedCategoryFilter: nav.selectedCategoryFilter,
       selectedTagFilter: nav.selectedTagFilter,
@@ -1064,6 +1083,11 @@ function DataProviderBridge({
       setSelectedCategoryFilter: nav.setSelectedCategoryFilter,
       setSelectedTagFilter: nav.setSelectedTagFilter,
       openTopicDetail: nav.openTopicDetail,
+      openFlashcardReview: nav.openFlashcardReview,
+      openCardBrowser: nav.openCardBrowser,
+      openStudyLauncher: nav.openStudyLauncher,
+      openFlashcardAnalytics: nav.openFlashcardAnalytics,
+      openDuplicateDetection: nav.openDuplicateDetection,
       activeTimerTopicId: timer.activeTimerTopicId,
       timerSeconds: timer.timerSeconds,
       isTimerRunning: timer.isTimerRunning,

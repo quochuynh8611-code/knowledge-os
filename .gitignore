@@ -12,3 +12,5 @@ backups/*.json
 backups/*.tmp
 !backups/.gitkeep
 .cache/
+test-results/
+playwright-report/

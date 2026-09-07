@@ -17,7 +17,20 @@ import {
   RestoreRequestSchema,
   RestoreResponseSchema,
   DbHealthResponseSchema,
+  FlashcardCreateSchema,
+  FlashcardUpdateSchema,
+  FlashcardReviewInputSchema,
 } from "../lib/validation";
+import type {
+  Flashcard,
+  FlashcardSchedule,
+  FlashcardReviewResponse,
+  FlashcardProgressStats,
+} from "../types/flashcard";
+import { calculateFlashcardNextReview } from "../lib/flashcardScheduler";
+
+export type { FlashcardProgressStats };
+
 
 export interface RepositorySyncResult {
   isOnline: boolean;
@@ -69,6 +82,15 @@ export interface IDataRepository {
 
   // 8. Full Storage Reset (P0.2 - SSOT)
   resetAllData(): Promise<boolean>;
+
+  // 9. Flashcards & Spaced Repetition (Phase F4)
+  createFlashcard?(input: unknown): Promise<Flashcard>;
+  updateFlashcard?(id: string, input: unknown): Promise<Flashcard>;
+  deleteFlashcard?(id: string): Promise<boolean>;
+  recordFlashcardReview?(input: unknown): Promise<FlashcardReviewResponse>;
+  recordReviewAtomic?(input: unknown): Promise<FlashcardReviewResponse>;
+  getDueFlashcards?(filters?: { topicId?: string; now?: Date }): Promise<Flashcard[]>;
+  getFlashcardProgress?(filters?: { topicId?: string }): Promise<FlashcardProgressStats>;
 }
 
 /**
@@ -332,6 +354,198 @@ export class LocalStorageDataRepository implements IDataRepository {
       "UNSUPPORTED_OFFLINE_OPERATION: Disaster recovery and database health checks require an active server connection.",
     );
   }
+
+  private _getFlashcards(): Flashcard[] {
+    const raw = safeGetLocalStorageItem(`${this.storageKey}_flashcards`);
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+
+  private _saveFlashcards(cards: Flashcard[]): void {
+    safeSetLocalStorageItem(`${this.storageKey}_flashcards`, JSON.stringify(cards));
+  }
+
+  // 9. Flashcards & Spaced Repetition (Offline LocalStorage implementation)
+  async createFlashcard(input: unknown): Promise<Flashcard> {
+    const parsed = FlashcardCreateSchema.parse(input);
+    const now = new Date().toISOString();
+    const id = `fc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const newCard: Flashcard = {
+      id,
+      topicId: parsed.topicId,
+      noteId: parsed.noteId || null,
+      resourceId: parsed.resourceId || null,
+      type: parsed.type,
+      front: parsed.front,
+      back: parsed.back,
+      lifecycleStatus: parsed.lifecycleStatus || "active",
+      createdAt: now,
+      updatedAt: now,
+      schedule: {
+        id: `fcs-${id}`,
+        flashcardId: id,
+        state: "new",
+        dueAt: now,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        lapses: 0,
+        lastReviewedAt: null,
+        updatedAt: now,
+      },
+    };
+    const cards = this._getFlashcards();
+    cards.push(newCard);
+    this._saveFlashcards(cards);
+    return newCard;
+  }
+
+  async updateFlashcard(id: string, input: unknown): Promise<Flashcard> {
+    const parsed = FlashcardUpdateSchema.parse(input);
+    const cards = this._getFlashcards();
+    const idx = cards.findIndex((c) => c.id === id);
+    if (idx === -1) {
+      throw new Error(`Flashcard not found with ID: ${id}`);
+    }
+    const existing = cards[idx];
+    const updated: Flashcard = {
+      ...existing,
+      ...(parsed.topicId !== undefined && { topicId: parsed.topicId }),
+      ...(parsed.noteId !== undefined && { noteId: parsed.noteId }),
+      ...(parsed.resourceId !== undefined && { resourceId: parsed.resourceId }),
+      ...(parsed.type !== undefined && { type: parsed.type }),
+      ...(parsed.front !== undefined && { front: parsed.front }),
+      ...(parsed.back !== undefined && { back: parsed.back }),
+      ...(parsed.lifecycleStatus !== undefined && { lifecycleStatus: parsed.lifecycleStatus }),
+      updatedAt: new Date().toISOString(),
+    };
+    cards[idx] = updated;
+    this._saveFlashcards(cards);
+    return updated;
+  }
+
+  async deleteFlashcard(id: string): Promise<boolean> {
+    const cards = this._getFlashcards();
+    const filtered = cards.filter((c) => c.id !== id);
+    this._saveFlashcards(filtered);
+    return true;
+  }
+
+  async recordFlashcardReview(input: unknown): Promise<FlashcardReviewResponse> {
+    return this.recordReviewAtomic(input);
+  }
+
+  async recordReviewAtomic(input: unknown): Promise<FlashcardReviewResponse> {
+    const validated = FlashcardReviewInputSchema.parse(input);
+    const cards = this._getFlashcards();
+    const card = cards.find((c) => c.id === validated.flashcardId);
+    if (!card) {
+      throw new Error(`Flashcard with ID ${validated.flashcardId} not found`);
+    }
+    const currentSchedule = card.schedule || {
+      id: `fcs-${card.id}`,
+      flashcardId: card.id,
+      state: "new" as const,
+      dueAt: card.createdAt,
+      interval: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      lapses: 0,
+      lastReviewedAt: null,
+      updatedAt: card.createdAt,
+    };
+
+    const calculation = calculateFlashcardNextReview({
+      currentSchedule,
+      rating: validated.rating,
+      referenceDate: new Date(),
+    });
+
+    const nowIso = new Date().toISOString();
+    const updatedSchedule: FlashcardSchedule = {
+      ...currentSchedule,
+      ...calculation.nextSchedule,
+      updatedAt: nowIso,
+    };
+
+    card.schedule = updatedSchedule;
+    card.updatedAt = nowIso;
+    this._saveFlashcards(cards);
+
+    const reviewLog = {
+      id: `rev-${Date.now()}`,
+      clientEventId: validated.clientEventId,
+      flashcardId: card.id,
+      topicId: card.topicId,
+      rating: validated.rating,
+      reviewDurationMs: validated.reviewDurationMs,
+      ...calculation.reviewPayload,
+    };
+
+    return {
+      success: true,
+      duplicate: false,
+      clientEventId: validated.clientEventId,
+      review: reviewLog,
+      schedule: updatedSchedule,
+    };
+  }
+
+
+  async getDueFlashcards(filters?: {
+    topicId?: string;
+    now?: Date;
+  }): Promise<Flashcard[]> {
+    const cards = this._getFlashcards();
+    const nowIso = (filters?.now || new Date()).toISOString();
+    return cards.filter((c) => {
+      if (c.lifecycleStatus && c.lifecycleStatus !== "active") return false;
+      if (filters?.topicId && c.topicId !== filters.topicId) return false;
+      if (!c.schedule) return true;
+      return c.schedule.dueAt <= nowIso;
+    });
+  }
+
+  async getFlashcardProgress(filters?: {
+    topicId?: string;
+  }): Promise<FlashcardProgressStats> {
+    const cards = this._getFlashcards().filter((c) => {
+      if (c.lifecycleStatus && c.lifecycleStatus !== "active") return false;
+      if (filters?.topicId && c.topicId !== filters.topicId) return false;
+      return true;
+    });
+
+    const nowIso = new Date().toISOString();
+    let newCards = 0;
+    let learningCards = 0;
+    let reviewCards = 0;
+    let dueToday = 0;
+
+    for (const card of cards) {
+      const state = card.schedule?.state || "new";
+      if (state === "new") newCards++;
+      else if (state === "learning" || state === "relearning") learningCards++;
+      else if (state === "review") reviewCards++;
+
+      if (!card.schedule || card.schedule.dueAt <= nowIso) {
+        dueToday++;
+      }
+    }
+
+    return {
+      totalCards: cards.length,
+      newCards,
+      learningCards,
+      reviewCards,
+      dueToday,
+      retentionRate: cards.length === 0 ? 100 : Math.round(((cards.length - dueToday) / cards.length) * 100),
+    };
+  }
+
 }
 
 /**
@@ -828,5 +1042,113 @@ export class ApiDataRepository implements IDataRepository {
     }
     const data = await res.json();
     return DbHealthResponseSchema.parse(data);
+  }
+
+  // 9. Flashcards & Spaced Repetition (REST API integration)
+  async createFlashcard(input: unknown): Promise<Flashcard> {
+    const fallbackCard = await this.localFallback.createFlashcard(input);
+    const url = this.getUrl("/flashcards") || `${this.apiBaseUrl}/flashcards`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // offline fallback
+    }
+    return fallbackCard;
+  }
+
+  async updateFlashcard(id: string, input: unknown): Promise<Flashcard> {
+    const fallbackCard = await this.localFallback.updateFlashcard(id, input);
+    const url = this.getUrl(`/flashcards/${id}`) || `${this.apiBaseUrl}/flashcards/${id}`;
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // offline fallback
+    }
+    return fallbackCard;
+  }
+
+  async deleteFlashcard(id: string): Promise<boolean> {
+    await this.localFallback.deleteFlashcard(id);
+    const url = this.getUrl(`/flashcards/${id}`) || `${this.apiBaseUrl}/flashcards/${id}`;
+    try {
+      const res = await fetch(url, { method: "DELETE" });
+      return res.ok;
+    } catch {
+      return true;
+    }
+  }
+
+  async recordFlashcardReview(input: unknown): Promise<FlashcardReviewResponse> {
+    return this.recordReviewAtomic(input);
+  }
+
+  async recordReviewAtomic(input: unknown): Promise<FlashcardReviewResponse> {
+    const url = this.getUrl("/flashcards/review") || `${this.apiBaseUrl}/flashcards/review`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        await this.localFallback.recordReviewAtomic(input).catch(() => {});
+        return data;
+      }
+    } catch {
+      // offline fallback
+    }
+    return this.localFallback.recordReviewAtomic(input);
+  }
+
+  async getDueFlashcards(filters?: {
+    topicId?: string;
+    now?: Date;
+  }): Promise<Flashcard[]> {
+    const query = filters?.topicId ? `?topicId=${encodeURIComponent(filters.topicId)}` : "";
+    const url = this.getUrl(`/flashcards/due${query}`) || `${this.apiBaseUrl}/flashcards/due${query}`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // offline fallback
+    }
+    return this.localFallback.getDueFlashcards(filters);
+  }
+
+  async getFlashcardProgress(filters?: {
+    topicId?: string;
+  }): Promise<FlashcardProgressStats> {
+    const query = filters?.topicId ? `?topicId=${encodeURIComponent(filters.topicId)}` : "";
+    const url = this.getUrl(`/flashcards/progress${query}`) || `${this.apiBaseUrl}/flashcards/progress${query}`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return data;
+      }
+    } catch {
+      // offline fallback
+    }
+    return this.localFallback.getFlashcardProgress(filters);
   }
 }

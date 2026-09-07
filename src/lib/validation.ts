@@ -739,3 +739,191 @@ export type ValidatedDbHealthResponse = z.infer<typeof DbHealthResponseSchema>;
 export type ValidatedGeminiResearchInput = z.infer<
   typeof GeminiResearchInputSchema
 >;
+
+// ==========================================
+// 6. FLASHCARD & SPACED REPETITION SCHEMAS
+// ==========================================
+
+export const FlashcardTypeEnum = z.enum(["basic", "cloze"], {
+  message: "Loại thẻ flashcard không hợp lệ (chỉ chấp nhận 'basic' hoặc 'cloze')",
+});
+
+export const FlashcardStateEnum = z.enum(
+  ["new", "learning", "review", "relearning"],
+  {
+    message: "Trạng thái lặp lại ngắt quãng không hợp lệ",
+  },
+);
+
+export const FlashcardLifecycleStatusEnum = z.enum(
+  ["active", "suspended", "archived"],
+  {
+    message: "Trạng thái vòng đời thẻ không hợp lệ",
+  },
+);
+
+export const ReviewRatingEnum = z.union(
+  [z.literal(1), z.literal(2), z.literal(3), z.literal(4)],
+  {
+    message: "Đánh giá ôn tập phải là số nguyên từ 1 đến 4 (1: Again, 2: Hard, 3: Good, 4: Easy)",
+  },
+);
+
+export const FlashcardScheduleSchema = z
+  .object({
+    id: z.string().min(1, "Schedule ID không được để trống"),
+    flashcardId: z.string().min(1, "flashcardId không được để trống").optional(),
+    cardId: z.string().min(1, "cardId không được để trống").optional(),
+    state: FlashcardStateEnum,
+    dueAt: z.string().datetime().or(z.string().min(1)).optional(),
+    due: z.string().datetime().or(z.string().min(1)).optional(),
+    interval: z
+      .number()
+      .int("interval phải là số nguyên")
+      .min(0, "interval phải lớn hơn hoặc bằng 0")
+      .default(0),
+    easeFactor: z
+      .number()
+      .min(1.3, "easeFactor không được nhỏ hơn 1.3")
+      .max(3.5, "easeFactor không được lớn hơn 3.5")
+      .default(2.5),
+    repetitions: z
+      .number()
+      .int("repetitions phải là số nguyên")
+      .min(0, "repetitions phải lớn hơn hoặc bằng 0")
+      .default(0),
+    lapses: z
+      .number()
+      .int("lapses phải là số nguyên")
+      .min(0, "lapses phải lớn hơn hoặc bằng 0")
+      .default(0),
+    lastReviewedAt: z.string().datetime().or(z.string().min(1)).nullable().optional(),
+    lastReviewed: z.string().datetime().or(z.string().min(1)).nullable().optional(),
+    updatedAt: z.string().datetime().or(z.string().min(1)).optional(),
+  })
+  .refine((data) => !!(data.flashcardId || data.cardId), {
+    message: "flashcardId hoặc cardId không được để trống",
+    path: ["flashcardId"],
+  })
+  .refine((data) => !!(data.dueAt || data.due), {
+    message: "dueAt hoặc due không được để trống",
+    path: ["dueAt"],
+  });
+
+export const FlashcardCreateSchema = z.object({
+  topicId: z.string().min(1, "Topic ID không được để trống"),
+  noteId: z.string().nullable().optional(),
+  resourceId: z.string().nullable().optional(),
+  type: FlashcardTypeEnum,
+  front: z.string().min(1, "Mặt trước không được để trống"),
+  back: z.string({ message: "Mặt sau không được để trống" }),
+  lifecycleStatus: FlashcardLifecycleStatusEnum.default("active"),
+});
+
+export const FlashcardCreateInputSchema = FlashcardCreateSchema;
+
+export const FlashcardUpdateSchema = FlashcardCreateSchema.partial();
+
+/**
+ * Schema riêng biệt cho action "Tạm ngưng thẻ từ Duplicate Detection".
+ *
+ * Phân biệt với FlashcardUpdateSchema (PATCH chung) — schema này:
+ * - Chỉ cho phép lifecycleStatus = "suspended" (literal, không phải enum toàn bộ).
+ * - Bắt buộc expectedTopicId khi đang ở Topic-scoped mode.
+ *   - Nếu có: server guard-check card.topicId === expectedTopicId → 403 nếu mismatch.
+ *   - Nếu không có: Global Duplicate Dashboard flow — chỉ validate card tồn tại.
+ * - Route riêng POST /api/flashcards/:id/suspend-duplicate để isolate intent.
+ */
+export const FlashcardSuspendDuplicateSchema = z.object({
+  lifecycleStatus: z.literal("suspended", {
+    message: "suspend-duplicate chỉ chấp nhận lifecycleStatus = 'suspended'",
+  }),
+  expectedTopicId: z
+    .string()
+    .min(1, "expectedTopicId không được để trống khi được cung cấp")
+    .optional(),
+});
+
+export const FlashcardSchema = FlashcardCreateSchema.extend({
+  id: z.string().min(1, "Flashcard ID không được để trống"),
+  schedule: FlashcardScheduleSchema.optional(),
+  createdAt: z.string().datetime().or(z.string().min(1)).optional(),
+  updatedAt: z.string().datetime().or(z.string().min(1)).optional(),
+});
+
+export const FlashcardReviewCreateSchema = z
+  .object({
+    clientEventId: z.string().trim().min(1, "clientEventId không được để trống"),
+    flashcardId: z.string().min(1, "flashcardId không được để trống").optional(),
+    cardId: z.string().min(1, "cardId không được để trống").optional(),
+    topicId: z.string().min(1, "Topic ID không được để trống"),
+    rating: ReviewRatingEnum,
+    reviewDurationMs: z
+      .number()
+      .int("reviewDurationMs phải là số nguyên")
+      .min(0, "reviewDurationMs phải lớn hơn hoặc bằng 0"),
+    reviewedAt: z.string().datetime().or(z.string().min(1)),
+    stateBefore: FlashcardStateEnum,
+    stateAfter: FlashcardStateEnum,
+    intervalBefore: z.number().int().min(0, "intervalBefore phải lớn hơn hoặc bằng 0"),
+    intervalAfter: z.number().int().min(0, "intervalAfter phải lớn hơn hoặc bằng 0"),
+    easeFactorBefore: z.number().min(1.3).max(3.5),
+    easeFactorAfter: z.number().min(1.3).max(3.5),
+    dueBeforeAt: z.string().datetime().or(z.string().min(1)).optional(),
+    dueBefore: z.string().datetime().or(z.string().min(1)).optional(),
+    dueAfterAt: z.string().datetime().or(z.string().min(1)).optional(),
+    dueAfter: z.string().datetime().or(z.string().min(1)).optional(),
+  })
+  .refine((data) => !!(data.flashcardId || data.cardId), {
+    message: "flashcardId hoặc cardId không được để trống",
+    path: ["flashcardId"],
+  })
+  .refine((data) => !!(data.dueBeforeAt || data.dueBefore), {
+    message: "dueBeforeAt hoặc dueBefore không được để trống",
+    path: ["dueBeforeAt"],
+  })
+  .refine((data) => !!(data.dueAfterAt || data.dueAfter), {
+    message: "dueAfterAt hoặc dueAfter không được để trống",
+    path: ["dueAfterAt"],
+  });
+
+export const FlashcardReviewSchema = FlashcardReviewCreateSchema.and(
+  z.object({
+    id: z.string().min(1, "Review ID không được để trống"),
+  }),
+);
+
+export const FlashcardReviewInputSchema = z
+  .object({
+    clientEventId: z.string().trim().min(1, "clientEventId không được để trống"),
+    flashcardId: z.string().min(1, "flashcardId không được để trống").optional(),
+    cardId: z.string().min(1, "cardId không được để trống").optional(),
+    topicId: z.string().min(1, "Topic ID không được để trống"),
+    rating: ReviewRatingEnum,
+    reviewDurationMs: z
+      .number()
+      .int("reviewDurationMs phải là số nguyên")
+      .min(0, "reviewDurationMs phải lớn hơn hoặc bằng 0"),
+  })
+  .refine((data) => !!(data.flashcardId || data.cardId), {
+    message: "flashcardId hoặc cardId không được để trống",
+    path: ["flashcardId"],
+  });
+
+export const FlashcardReviewResponseSchema = z.object({
+  success: z.boolean(),
+  duplicate: z.boolean(),
+  clientEventId: z.string().trim().min(1, "clientEventId không được để trống"),
+  review: FlashcardReviewSchema,
+  schedule: FlashcardScheduleSchema,
+});
+
+export type ValidatedFlashcard = z.infer<typeof FlashcardSchema>;
+export type ValidatedFlashcardCreate = z.infer<typeof FlashcardCreateSchema>;
+export type ValidatedFlashcardSchedule = z.infer<typeof FlashcardScheduleSchema>;
+export type ValidatedFlashcardReview = z.infer<typeof FlashcardReviewSchema>;
+export type ValidatedFlashcardReviewCreate = z.infer<typeof FlashcardReviewCreateSchema>;
+export type ValidatedFlashcardReviewInput = z.infer<typeof FlashcardReviewInputSchema>;
+export type ValidatedFlashcardReviewResponse = z.infer<typeof FlashcardReviewResponseSchema>;
+export type ValidatedFlashcardSuspendDuplicate = z.infer<typeof FlashcardSuspendDuplicateSchema>;
+

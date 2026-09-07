@@ -22,6 +22,8 @@ import {
   Search,
   Sparkles,
   Brain,
+  Zap,
+  Copy,
 } from "lucide-react";
 import {
   useCommandPalette,
@@ -81,6 +83,31 @@ const AntigravityHandoffModal = React.lazy(() =>
     default: m.AntigravityHandoffModal,
   }))
 );
+const FlashcardReviewStudio = React.lazy(() =>
+  import("./components/flashcards/FlashcardReviewStudio").then((m) => ({
+    default: m.FlashcardReviewStudio,
+  }))
+);
+const CardBrowser = React.lazy(() =>
+  import("./components/flashcards/CardBrowser").then((m) => ({
+    default: m.CardBrowser,
+  }))
+);
+const StudyLauncher = React.lazy(() =>
+  import("./components/flashcards/StudyLauncher").then((m) => ({
+    default: m.StudyLauncher,
+  }))
+);
+const FlashcardAnalyticsDashboard = React.lazy(() =>
+  import("./components/flashcards/FlashcardAnalyticsDashboard").then((m) => ({
+    default: m.FlashcardAnalyticsDashboard,
+  }))
+);
+const DuplicateDetectionDashboard = React.lazy(() =>
+  import("./components/flashcards/DuplicateDetectionDashboard").then((m) => ({
+    default: m.DuplicateDetectionDashboard,
+  }))
+);
 
 function TabLoadingFallback() {
   return (
@@ -95,6 +122,7 @@ function TabLoadingFallback() {
 
 function AppContent() {
   const { activeTab, setActiveTab, selectedTopicId, openTopicDetail,
+    subView, sessionType, openFlashcardReview, openCardBrowser, openStudyLauncher, openFlashcardAnalytics, openDuplicateDetection,
     activeTimerTopicId, timerSeconds, isTimerRunning,
     pauseStudyTimer, resumeStudyTimer, stopAndSaveStudyTimer,
     logStudyTime, topics, addNote, updateTopicProgress,
@@ -141,6 +169,24 @@ function AppContent() {
           "chuyen giao",
         ],
         action: () => setShowAntigravityModal(true),
+      },
+      {
+        id: "act-open-flashcards",
+        title: "Ôn Tập Thẻ Nhớ (Flashcards)",
+        description:
+          "Thu hồi chủ động (Active Recall) với thuật toán ngắt quãng SM-2",
+        category: "Hành động nhanh",
+        icon: Brain,
+        keywords: [
+          "flashcards",
+          "the nho",
+          "on tap",
+          "review",
+          "spaced repetition",
+          "active recall",
+          "sm2",
+        ],
+        action: () => setActiveTab("flashcards"),
       },
     ],
     []
@@ -224,6 +270,138 @@ function AppContent() {
           <React.Suspense fallback={<TabLoadingFallback />}>
             <DocsExplorerView />
           </React.Suspense>
+        );
+      case "flashcards":
+        if (subView === "duplicates") {
+          return (
+            <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-4">
+              <React.Suspense fallback={<TabLoadingFallback />}>
+                <DuplicateDetectionDashboard
+                  topicId={selectedTopicId || undefined}
+                />
+              </React.Suspense>
+            </div>
+          );
+        }
+        if (subView === "analytics") {
+          return (
+            <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-4">
+              <React.Suspense fallback={<TabLoadingFallback />}>
+                <FlashcardAnalyticsDashboard
+                  topicId={selectedTopicId || undefined}
+                  onLaunchSession={(st) => {
+                    openFlashcardReview(selectedTopicId, st);
+                  }}
+                />
+              </React.Suspense>
+            </div>
+          );
+        }
+        if (subView === "launch") {
+          return (
+            <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-4">
+              <React.Suspense fallback={<TabLoadingFallback />}>
+                <StudyLauncher
+                  topicId={selectedTopicId || undefined}
+                  onLaunchSession={(st) => {
+                    openFlashcardReview(selectedTopicId, st);
+                  }}
+                  onOpenBrowser={() => {
+                    openCardBrowser(selectedTopicId);
+                  }}
+                />
+              </React.Suspense>
+            </div>
+          );
+        }
+        if (subView === "browse") {
+          return (
+            <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-amber-700 dark:text-amber-400" />
+                  <h2 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                    Trình Duyệt Thẻ Nhớ (Card Browser)
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openStudyLauncher(selectedTopicId)}
+                    className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Khởi tạo học</span>
+                  </button>
+                  <button
+                    onClick={() => openFlashcardReview(selectedTopicId)}
+                    className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    <span>Chuyển sang Ôn tập</span>
+                  </button>
+                </div>
+              </div>
+              <React.Suspense fallback={<TabLoadingFallback />}>
+                <CardBrowser
+                  topicId={selectedTopicId || undefined}
+                  onClose={() => {
+                    if (selectedTopicId) {
+                      openTopicDetail(selectedTopicId);
+                    } else {
+                      setActiveTab("dashboard");
+                    }
+                  }}
+                />
+              </React.Suspense>
+            </div>
+          );
+        }
+        return (
+          <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-4">
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => openDuplicateDetection(selectedTopicId)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Trùng lặp</span>
+              </button>
+              <button
+                onClick={() => openFlashcardAnalytics(selectedTopicId)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Phân tích</span>
+              </button>
+              <button
+                onClick={() => openStudyLauncher(selectedTopicId)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Khởi tạo học</span>
+              </button>
+              <button
+                onClick={() => openCardBrowser(selectedTopicId)}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Duyệt danh sách thẻ</span>
+              </button>
+            </div>
+            <React.Suspense fallback={<TabLoadingFallback />}>
+              <FlashcardReviewStudio
+                topicId={selectedTopicId || undefined}
+                sessionType={sessionType || undefined}
+                onClose={() => {
+                  if (selectedTopicId) {
+                    openTopicDetail(selectedTopicId);
+                  } else {
+                    setActiveTab("dashboard");
+                  }
+                }}
+              />
+            </React.Suspense>
+          </div>
         );
       default:
         return <DashboardHome />;

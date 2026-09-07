@@ -53,6 +53,9 @@ model Topic {
   noteLinks     NoteTopicLink[] // multi-topic notes
   topicTags     TopicTag[]      // normalized tag relation
   snapshots     KnowledgeProgressSnapshot[] // append-only progress history
+  // Native Flashcard & SRS relations
+  flashcards       Flashcard[]
+  flashcardReviews FlashcardReview[]
 }
 
 model Note {
@@ -69,6 +72,8 @@ model Note {
   updatedAt  DateTime @updatedAt
   // Research Storage v1: additive multi-topic relation
   additionalTopics NoteTopicLink[]
+  // Native Flashcard optional relation
+  flashcards       Flashcard[]
 }
 
 model Resource {
@@ -81,7 +86,9 @@ model Resource {
   url       String?
   filePath  String?
   notes     String?
-  createdAt DateTime @default(now())
+  createdAt  DateTime    @default(now())
+  // Native Flashcard optional relation
+  flashcards Flashcard[]
 }
 
 model KnowledgeLink {
@@ -153,4 +160,67 @@ model KnowledgeProgressSnapshot {
   capturedAt    DateTime @default(now())
   progressData  Json     // immutable copy of StudyProgress at capture time
   triggerReason String?  // 'manual' | 'session_complete' | 'milestone'
+}
+
+// ─── Native Flashcard & Spaced Repetition (SM-2) ──────────────────────────────
+
+model Flashcard {
+  id              String             @id @default(uuid())
+  topicId         String
+  topic           Topic              @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  noteId          String?
+  note            Note?              @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  resourceId      String?
+  resource        Resource?          @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  type            String             @default("basic") // 'basic' | 'cloze'
+  front           String
+  back            String
+  lifecycleStatus String             @default("active") // 'active' | 'suspended' | 'archived'
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  schedule        FlashcardSchedule?
+  reviews         FlashcardReview[]
+
+  @@index([topicId])
+  @@index([lifecycleStatus])
+}
+
+model FlashcardSchedule {
+  id             String    @id @default(uuid())
+  flashcardId    String    @unique
+  flashcard      Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  state          String    @default("new") // 'new' | 'learning' | 'review' | 'relearning'
+  dueAt          DateTime  @default(now())
+  interval       Int       @default(0)
+  easeFactor     Float     @default(2.5)
+  repetitions    Int       @default(0)
+  lapses         Int       @default(0)
+  lastReviewedAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@index([dueAt])
+}
+
+model FlashcardReview {
+  id               String    @id @default(uuid()) // Server-generated PK UUID
+  clientEventId    String    @unique             // Option A: Client-generated Idempotency Key
+  flashcardId      String
+  flashcard        Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+  topicId          String
+  topic            Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  rating           Int       // 1: Again, 2: Hard, 3: Good, 4: Easy
+  reviewDurationMs Int       @default(0)
+  reviewedAt       DateTime  @default(now())
+  stateBefore      String
+  stateAfter       String
+  intervalBefore   Int
+  intervalAfter    Int
+  easeFactorBefore Float
+  easeFactorAfter  Float
+  dueBeforeAt      DateTime
+  dueAfterAt       DateTime
+
+  @@index([flashcardId])
+  @@index([topicId])
+  @@index([reviewedAt])
 }

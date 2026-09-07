@@ -7,6 +7,7 @@ import { TodayLearningHero } from './TodayLearningHero';
 import { WeeklyCadenceBar } from './WeeklyCadenceBar';
 import { LearningStateCard } from './LearningStateCard';
 import { ResumeStudyQueue } from './ResumeStudyQueue';
+import { FlashcardAnalyticsWidget } from '../flashcards/FlashcardAnalyticsWidget';
 import {
   getDomainLearningStates,
   getWeeklyLearningCadence,
@@ -107,6 +108,11 @@ export function DashboardHome() {
 
       {/* Khối 2: Weekly Learning Cadence & Momentum Horizon */}
       <WeeklyCadenceBar cadence={weeklyCadence} />
+
+      {/* Khối 2.5: Flashcard & Retention Progress Analytics (Phase F5) */}
+      <section>
+        <FlashcardAnalyticsWidget />
+      </section>
 
       {/* Khối 3: Multi-Disciplinary Learning State Hub */}
       <section className="space-y-3.5 sm:space-y-4">

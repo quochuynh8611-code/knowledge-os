@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { formatTimeAgo } from "../../lib/spaced-repetition";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
+import { TextSelectionPopover } from "../notes/TextSelectionPopover";
+import { FlashcardFormModal } from "./FlashcardFormModal";
+import { detectClozeFromSelection } from "../../lib/detectClozeFromSelection";
+import { NoteCardListSection, clearNoteCardsCache } from "../notes/NoteCardListSection";
 
 export interface NoteReaderModalProps {
   isOpen: boolean;
@@ -35,17 +39,111 @@ export function NoteReaderModal({
   const [copiedPath, setCopiedPath] = useState(false);
   const [copiedContent, setCopiedContent] = useState(false);
 
+  // US1: Text selection & Flashcard Form integration
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const [selectedText, setSelectedText] = useState<string>("");
+
+  const [isFlashcardModalOpen, setIsFlashcardModalOpen] = useState(false);
+  const [cardsRefreshKey, setCardsRefreshKey] = useState(0);
+  const [flashcardInitialData, setFlashcardInitialData] = useState<{
+    initialFront?: string;
+    initialBack?: string;
+    initialType?: "basic" | "cloze";
+    defaultNoteId?: string;
+  }>({});
+
+  const handleCreateFlashcardFromSelection = (textToUse?: string) => {
+    const text = textToUse || selectedText;
+    if (!text || text.trim().length === 0) return;
+
+    const clozeDetection = detectClozeFromSelection(text);
+    setFlashcardInitialData({
+      initialFront: text,
+      initialType: clozeDetection.hasCloze ? "cloze" : "basic",
+      defaultNoteId: note?.id,
+    });
+    setIsFlashcardModalOpen(true);
+    setIsPopoverOpen(false);
+  };
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
-        onClose();
+    if (!isOpen) {
+      setIsPopoverOpen(false);
+      setPopoverPosition(null);
+      setSelectedText("");
+      return;
+    }
+
+    let timer: any = null;
+
+    const updateSelection = () => {
+      const selection = window.getSelection();
+      if (
+        !selection ||
+        selection.isCollapsed ||
+        !selection.toString() ||
+        selection.toString().trim().length < 2
+      ) {
+        setIsPopoverOpen(false);
+        setPopoverPosition(null);
+        setSelectedText("");
+        return;
+      }
+
+      const text = selection.toString().trim();
+      try {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        const centerLeft = rect.left + rect.width / 2;
+        const top = rect.top;
+        setPopoverPosition({ top, left: centerLeft });
+        setSelectedText(text);
+        setIsPopoverOpen(true);
+      } catch {
+        // Range may be invalid
       }
     };
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-    }
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+
+    const handleDebouncedSelection = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(updateSelection, 100);
+    };
+
+    const handleMouseUp = () => {
+      updateSelection();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isFlashcardModalOpen) {
+          setIsFlashcardModalOpen(false);
+        } else if (isPopoverOpen) {
+          setIsPopoverOpen(false);
+        } else {
+          onClose();
+        }
+      } else if (e.altKey && (e.key === "f" || e.key === "F")) {
+        const selection = window.getSelection();
+        const text = selection?.toString()?.trim() || selectedText;
+        if (text && text.length >= 2) {
+          e.preventDefault();
+          handleCreateFlashcardFromSelection(text);
+        }
+      }
+    };
+
+    document.addEventListener("selectionchange", handleDebouncedSelection);
+    document.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("selectionchange", handleDebouncedSelection);
+      document.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose, selectedText, isPopoverOpen, isFlashcardModalOpen, note?.id]);
 
   if (!isOpen || !note) return null;
 
@@ -213,6 +311,19 @@ export function NoteReaderModal({
               ))}
             </div>
           )}
+
+          {/* Linked Flashcards Section (US4) */}
+          <NoteCardListSection
+            key={`${note.id}-${cardsRefreshKey}`}
+            noteId={note.id}
+            topicId={note.topicId}
+            onCreateCardClick={() => {
+              setFlashcardInitialData({
+                defaultNoteId: note.id,
+              });
+              setIsFlashcardModalOpen(true);
+            }}
+          />
         </div>
 
         {/* Footer Actions */}
@@ -256,6 +367,30 @@ export function NoteReaderModal({
           </button>
         </div>
       </div>
+
+      {/* Floating text selection popover */}
+      <TextSelectionPopover
+        isOpen={isPopoverOpen}
+        position={popoverPosition}
+        selectionText={selectedText}
+        onCreateCard={handleCreateFlashcardFromSelection}
+        onClose={() => setIsPopoverOpen(false)}
+      />
+
+      {/* Modal creating flashcard from note text selection */}
+      {isFlashcardModalOpen && (
+        <FlashcardFormModal
+          isOpen={isFlashcardModalOpen}
+          onClose={() => setIsFlashcardModalOpen(false)}
+          onSuccess={() => {
+            if (note?.id) clearNoteCardsCache(note.id);
+            setCardsRefreshKey((k) => k + 1);
+          }}
+          defaultTopicId={note.topicId}
+          defaultNoteId={note.id}
+          {...flashcardInitialData}
+        />
+      )}
     </div>
   );
 }

@@ -21,6 +21,10 @@ import {
   ExternalLink,
   Play,
   FolderTree,
+  Search,
+  Zap,
+  TrendingUp,
+  Copy,
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
@@ -32,6 +36,12 @@ import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceL
 import { ObsidianDocumentViewerModal } from "../modals/ObsidianDocumentViewerModal";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { getStoredVaultName } from "../../lib/obsidian";
+import { useNavigation } from "../../context/NavigationContext";
+import { FlashcardAnalyticsWidget } from "../flashcards/FlashcardAnalyticsWidget";
+import { CardBrowser, StudyLauncher, FlashcardAnalyticsDashboard, DuplicateDetectionDashboard } from "../flashcards";
+import { FlashcardFormModal } from "../modals/FlashcardFormModal";
+import { FlashcardImportModal } from "../modals/FlashcardImportModal";
+import type { FlashcardProgressStats } from "../../types/flashcard";
 // Phase 17B: new toolbar sub-components
 import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
 import { StudyCTA } from "./StudyCTA";
@@ -91,7 +101,16 @@ export function TopicDetail() {
   } = useData();
 
   const [activeTab, setActiveTab] = useState<
-    "content" | "notes" | "links" | "resources" | "spaced"
+    | "content"
+    | "notes"
+    | "links"
+    | "resources"
+    | "flashcards"
+    | "card_browser"
+    | "study_launcher"
+    | "analytics"
+    | "duplicates"
+    | "spaced"
   >("content");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
@@ -107,6 +126,34 @@ export function TopicDetail() {
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
 
+  // Flashcards state (Phase F6.4)
+  const [flashcardStats, setFlashcardStats] = useState<FlashcardProgressStats | null>(null);
+  const [, setLoadingFlashcards] = useState(false);
+  const [showCreateFlashcardModal, setShowCreateFlashcardModal] = useState(false);
+  const [showImportFlashcardModal, setShowImportFlashcardModal] = useState(false);
+
+  // Navigation facade for deep-linking
+  const navigation = (() => {
+    try {
+      return useNavigation();
+    } catch {
+      return null;
+    }
+  })();
+
+  // Sync with deep-link subView=browse or launch
+  React.useEffect(() => {
+    if (navigation?.subView === "browse") {
+      setActiveTab("card_browser");
+    } else if (navigation?.subView === "launch") {
+      setActiveTab("study_launcher");
+    } else if (navigation?.subView === "analytics") {
+      setActiveTab("analytics");
+    } else if (navigation?.subView === "duplicates") {
+      setActiveTab("duplicates");
+    }
+  }, [navigation?.subView]);
+
   // Link addition helper
   const [showAddLink, setShowAddLink] = useState(false);
   const [targetTopicId, setTargetTopicId] = useState("");
@@ -116,6 +163,41 @@ export function TopicDetail() {
   const [linkStrength, setLinkStrength] = useState(3);
 
   const topic = topics.find((t) => t.id === selectedTopicId) || topics[0];
+
+  const loadTopicFlashcardsProgress = React.useCallback(async () => {
+    if (!topic?.id) return;
+    try {
+      setLoadingFlashcards(true);
+      const res = await fetch(`/api/flashcards/progress?topicId=${encodeURIComponent(topic.id)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFlashcardStats(data);
+      }
+    } catch {
+      // safe fallback
+    } finally {
+      setLoadingFlashcards(false);
+    }
+  }, [topic?.id]);
+
+  React.useEffect(() => {
+    loadTopicFlashcardsProgress();
+  }, [loadTopicFlashcardsProgress]);
+
+  React.useEffect(() => {
+    const handler = () => loadTopicFlashcardsProgress();
+    window.addEventListener("flashcard-updated", handler);
+    return () => window.removeEventListener("flashcard-updated", handler);
+  }, [loadTopicFlashcardsProgress]);
+
+  const handleOpenFlashcardReview = () => {
+    if (!topic?.id) return;
+    if (navigation?.openFlashcardReview) {
+      navigation.openFlashcardReview(topic.id);
+    } else {
+      window.location.hash = `#/flashcards/${encodeURIComponent(topic.id)}`;
+    }
+  };
 
   if (!topic) {
     return (
@@ -207,6 +289,20 @@ export function TopicDetail() {
             className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Ôn tập SM-2
+          </button>
+
+          {/* Quick Topic Flashcard Due Button */}
+          <button
+            data-testid="btn-quick-topic-flashcards"
+            onClick={handleOpenFlashcardReview}
+            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            title={`Ôn ${flashcardStats?.dueToday ?? 0} thẻ đến hạn của chủ đề này`}
+          >
+            <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+            <span>Thẻ nhớ</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-200/70 dark:bg-amber-800/60 text-amber-900 dark:text-amber-200 text-[10px] font-bold font-mono">
+              {flashcardStats?.dueToday ?? 0}
+            </span>
           </button>
 
           {/* Research Tools dropdown (AI Scholar / Handoff / Obsidian / NotebookLM) */}
@@ -365,12 +461,93 @@ export function TopicDetail() {
           onClick={() => setActiveTab("resources")}
           className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
             activeTab === "resources"
-              ? "border-amber-700 text-amber-900"
-              : "border-transparent text-stone-600 hover:text-stone-900"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
           <Library className="w-4 h-4" /> Tài Liệu Đính Kèm (
           {topicResources.length})
+        </button>
+
+        <button
+          data-testid="tab-btn-flashcards"
+          onClick={() => setActiveTab("flashcards")}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "flashcards"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Brain className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Thẻ Nhớ (
+          {flashcardStats?.totalCards ?? flashcardStats?.total ?? 0})
+        </button>
+
+        <button
+          data-testid="tab-btn-card-browser"
+          onClick={() => {
+            setActiveTab("card_browser");
+            if (navigation?.openCardBrowser) {
+              navigation.openCardBrowser(topic.id);
+            }
+          }}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "card_browser"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Search className="w-4 h-4 text-stone-500" /> Danh sách thẻ
+        </button>
+
+        <button
+          data-testid="tab-btn-study-launcher"
+          onClick={() => {
+            setActiveTab("study_launcher");
+            if (navigation?.openStudyLauncher) {
+              navigation.openStudyLauncher(topic.id);
+            }
+          }}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "study_launcher"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Zap className="w-4 h-4 text-stone-500" /> Khởi tạo học
+        </button>
+
+        <button
+          data-testid="tab-btn-analytics"
+          onClick={() => {
+            setActiveTab("analytics");
+            if (navigation?.openFlashcardAnalytics) {
+              navigation.openFlashcardAnalytics(topic.id);
+            }
+          }}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "analytics"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 text-stone-500" /> Phân tích
+        </button>
+
+        <button
+          data-testid="tab-btn-duplicates"
+          onClick={() => {
+            setActiveTab("duplicates");
+            if (navigation?.openDuplicateDetection) {
+              navigation.openDuplicateDetection(topic.id);
+            }
+          }}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "duplicates"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Copy className="w-4 h-4 text-stone-500" /> Trùng lặp
         </button>
       </div>
 
@@ -812,7 +989,205 @@ export function TopicDetail() {
         </div>
       )}
 
+      {activeTab === "flashcards" && (
+        <div className="space-y-6">
+          {/* Topic Flashcard Summary Hub */}
+          <div
+            data-testid="topic-flashcard-summary"
+            className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-6"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+              <div>
+                <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-amber-700" />
+                  Không gian ôn tập thẻ nhớ: {topic.title}
+                </h3>
+                <p className="text-xs text-stone-500 mt-1">
+                  Ôn tập các khái niệm, định nghĩa và kinh văn thuộc chủ đề này theo thuật toán ngắt quãng SRS.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  data-testid="btn-start-topic-review"
+                  onClick={handleOpenFlashcardReview}
+                  className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer"
+                >
+                  <Brain className="w-4 h-4" />
+                  <span>
+                    {flashcardStats?.dueToday && flashcardStats.dueToday > 0
+                      ? `Ôn ${flashcardStats.dueToday} thẻ đến hạn`
+                      : "Không có thẻ đến hạn"}
+                  </span>
+                </button>
+
+                <button
+                  data-testid="btn-topic-create-card"
+                  onClick={() => setShowCreateFlashcardModal(true)}
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tạo thẻ mới</span>
+                </button>
+
+                <button
+                  data-testid="btn-topic-import-csv"
+                  onClick={() => setShowImportFlashcardModal(true)}
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Nhập CSV / TSV</span>
+                </button>
+
+                <button
+                  data-testid="btn-open-card-browser"
+                  onClick={() => {
+                    setActiveTab("card_browser");
+                    if (navigation?.openCardBrowser) {
+                      navigation.openCardBrowser(topic.id);
+                    }
+                  }}
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Duyệt danh sách thẻ</span>
+                </button>
+
+                <button
+                  data-testid="btn-open-study-launcher"
+                  onClick={() => {
+                    setActiveTab("study_launcher");
+                    if (navigation?.openStudyLauncher) {
+                      navigation.openStudyLauncher(topic.id);
+                    }
+                  }}
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Trung tâm học tập</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Metric counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                <div className="text-[11px] font-medium text-amber-800 uppercase tracking-wider">
+                  Đến hạn hôm nay
+                </div>
+                <div
+                  data-testid="stat-due-count"
+                  className="text-2xl font-bold text-amber-950 mt-1 font-mono"
+                >
+                  {flashcardStats?.dueToday ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl">
+                <div className="text-[11px] font-medium text-blue-800 uppercase tracking-wider">
+                  Thẻ mới (New)
+                </div>
+                <div
+                  data-testid="stat-new-count"
+                  className="text-2xl font-bold text-blue-950 mt-1 font-mono"
+                >
+                  {flashcardStats?.newCards ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-orange-50/70 border border-orange-200/80 rounded-xl">
+                <div className="text-[11px] font-medium text-orange-800 uppercase tracking-wider">
+                  Đang học (Learning)
+                </div>
+                <div
+                  data-testid="stat-learning-count"
+                  className="text-2xl font-bold text-orange-950 mt-1 font-mono"
+                >
+                  {flashcardStats?.learningCards ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
+                <div className="text-[11px] font-medium text-emerald-800 uppercase tracking-wider">
+                  Đang ôn (Review)
+                </div>
+                <div
+                  data-testid="stat-review-count"
+                  className="text-2xl font-bold text-emerald-950 mt-1 font-mono"
+                >
+                  {flashcardStats?.reviewCards ?? 0}
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-xl col-span-2 sm:col-span-1">
+                <div className="text-[11px] font-medium text-stone-700 uppercase tracking-wider">
+                  Tỷ lệ ghi nhớ
+                </div>
+                <div
+                  data-testid="stat-retention-rate"
+                  className="text-2xl font-bold text-stone-900 mt-1 font-mono"
+                >
+                  {flashcardStats?.retentionRate !== undefined ? `${flashcardStats.retentionRate}%` : "0%"}
+                </div>
+              </div>
+            </div>
+
+            {/* Embedded Analytics for this topic */}
+            <div className="pt-2">
+              <FlashcardAnalyticsWidget topicId={topic.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "card_browser" && (
+        <CardBrowser topicId={topic.id} />
+      )}
+
+      {activeTab === "study_launcher" && (
+        <StudyLauncher
+          topicId={topic.id}
+          onLaunchSession={(sessionType) => {
+            if (navigation?.openFlashcardReview) {
+              navigation.openFlashcardReview(topic.id, sessionType);
+            }
+          }}
+          onOpenBrowser={() => {
+            setActiveTab("card_browser");
+            if (navigation?.openCardBrowser) {
+              navigation.openCardBrowser(topic.id);
+            }
+          }}
+        />
+      )}
+
+      {activeTab === "analytics" && (
+        <FlashcardAnalyticsDashboard topicId={topic.id} />
+      )}
+
+      {activeTab === "duplicates" && (
+        <DuplicateDetectionDashboard topicId={topic.id} />
+      )}
+
       {/* Modals */}
+      <FlashcardFormModal
+        isOpen={showCreateFlashcardModal}
+        onClose={() => setShowCreateFlashcardModal(false)}
+        defaultTopicId={topic.id}
+        onSuccess={() => {
+          loadTopicFlashcardsProgress();
+          window.dispatchEvent(new CustomEvent("flashcard-updated"));
+        }}
+      />
+      <FlashcardImportModal
+        isOpen={showImportFlashcardModal}
+        onClose={() => setShowImportFlashcardModal(false)}
+        defaultTopicId={topic.id}
+        onSuccess={() => {
+          loadTopicFlashcardsProgress();
+          window.dispatchEvent(new CustomEvent("flashcard-updated"));
+        }}
+      />
       <NoteFormModal
         isOpen={showNoteModal}
         onClose={() => {

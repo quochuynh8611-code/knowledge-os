@@ -124,3 +124,6 @@ export interface StudySessionLog {
   timestamp: string;
   notes?: string;
 }
+
+export * from './flashcard';
+

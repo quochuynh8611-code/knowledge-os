@@ -13,6 +13,7 @@ import { createResourceRouter } from "./src/server/routes/resourceRoutes";
 import { createStudyProgressRouter } from "./src/server/routes/studyProgressRoutes";
 import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
+import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
@@ -82,6 +83,9 @@ async function startServer() {
 
   // 5. Idempotent Hydration Sync Endpoint
   app.use("/api", createSyncRouter(prisma));
+
+  // 6. Flashcards & Spaced Repetition Subsystem (Phase F4)
+  app.use("/api", createFlashcardRouter(prisma));
 
   // ==========================================
   // BACKUP ROUTES (EXPORT & RESTORE)

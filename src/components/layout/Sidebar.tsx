@@ -140,6 +140,11 @@ export function Sidebar() {
       badge: reviewQueue.length > 0 ? `${reviewQueue.length} cần ôn` : undefined,
       highlight: reviewQueue.length > 0,
     },
+    {
+      id: 'flashcards',
+      label: 'Thẻ nhớ (Flashcards)',
+      icon: Brain,
+    },
     { id: 'topics', label: 'Chủ đề học', icon: FolderTree, badge: stats.totalTopics },
   ];
 

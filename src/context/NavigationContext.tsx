@@ -20,16 +20,28 @@ export type { ActiveTab, NavigationRouteState };
 export interface NavigationContextType {
   activeTab: ActiveTab;
   selectedTopicId: string | null;
+  subView: "browse" | "review" | "launch" | "analytics" | "duplicates" | null;
+  sessionType: "review" | "new" | "weak" | "cram" | null;
   searchQuery: string;
   selectedCategoryFilter: string | null;
   selectedTagFilter: string | null;
 
   setActiveTab: (tab: ActiveTab) => void;
   setSelectedTopicId: (id: string | null) => void;
+  setSubView: (view: "browse" | "review" | "launch" | "analytics" | "duplicates" | null) => void;
+  setSessionType: (type: "review" | "new" | "weak" | "cram" | null) => void;
   setSearchQuery: (query: string) => void;
   setSelectedCategoryFilter: (catId: string | null) => void;
   setSelectedTagFilter: (tag: string | null) => void;
   openTopicDetail: (topicId: string) => void;
+  openFlashcardReview: (
+    topicId?: string | null,
+    sessionType?: "review" | "new" | "weak" | "cram"
+  ) => void;
+  openCardBrowser: (topicId?: string | null) => void;
+  openStudyLauncher: (topicId?: string | null) => void;
+  openFlashcardAnalytics: (topicId?: string | null) => void;
+  openDuplicateDetection: (topicId?: string | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(
@@ -49,6 +61,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     return {
       activeTab: "dashboard" as ActiveTab,
       selectedTopicId: null,
+      subView: undefined,
       searchQuery: "",
       selectedCategoryFilter: null,
       selectedTagFilter: null,
@@ -61,6 +74,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const [selectedTopicId, setSelectedTopicIdState] = useState<string | null>(
     initialState.selectedTopicId,
   );
+  const [subView, setSubViewState] = useState<
+    "browse" | "review" | "launch" | "analytics" | "duplicates" | null
+  >(initialState.subView || null);
+  const [sessionType, setSessionTypeState] = useState<
+    "review" | "new" | "weak" | "cram" | null
+  >(initialState.sessionType || null);
   const [searchQuery, setSearchQueryState] = useState(initialState.searchQuery);
   const [selectedCategoryFilter, setSelectedCategoryFilterState] = useState<
     string | null
@@ -79,6 +98,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     const targetHash = buildLocationHash({
       activeTab,
       selectedTopicId,
+      subView: subView || undefined,
+      sessionType: sessionType || undefined,
       searchQuery,
       selectedCategoryFilter,
       selectedTagFilter,
@@ -97,6 +118,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   }, [
     activeTab,
     selectedTopicId,
+    subView,
+    sessionType,
     searchQuery,
     selectedCategoryFilter,
     selectedTagFilter,
@@ -113,6 +136,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       isSyncingFromHash.current = true;
       setActiveTabState(parsed.activeTab);
       setSelectedTopicIdState(parsed.selectedTopicId);
+      setSubViewState(parsed.subView || null);
+      setSessionTypeState(parsed.sessionType || null);
       setSearchQueryState(parsed.searchQuery);
       setSelectedCategoryFilterState(parsed.selectedCategoryFilter);
       setSelectedTagFilterState(parsed.selectedTagFilter);
@@ -129,7 +154,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
 
   const setActiveTab = useCallback((tab: ActiveTab) => {
     setActiveTabState(tab);
-    if (tab !== "topics") {
+    setSubViewState(null);
+    if (tab !== "topics" && tab !== "flashcards") {
       setSelectedTopicIdState(null);
     }
   }, []);
@@ -137,6 +163,20 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const setSelectedTopicId = useCallback((id: string | null) => {
     setSelectedTopicIdState(id);
   }, []);
+
+  const setSubView = useCallback(
+    (view: "browse" | "review" | "launch" | "analytics" | "duplicates" | null) => {
+      setSubViewState(view);
+    },
+    []
+  );
+
+  const setSessionType = useCallback(
+    (type: "review" | "new" | "weak" | "cram" | null) => {
+      setSessionTypeState(type);
+    },
+    []
+  );
 
   const setSearchQuery = useCallback((query: string) => {
     setSearchQueryState(query);
@@ -153,29 +193,114 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const openTopicDetail = useCallback((topicId: string) => {
     setSelectedTopicIdState(topicId);
     setActiveTabState("topics");
+    setSubViewState(null);
+  }, []);
+
+  const openFlashcardReview = useCallback(
+    (
+      topicId?: string | null,
+      type?: "review" | "new" | "weak" | "cram"
+    ) => {
+      setSelectedTopicIdState(topicId || null);
+      setActiveTabState("flashcards");
+      setSubViewState(null);
+      setSessionTypeState(type || null);
+    },
+    []
+  );
+
+  const openCardBrowser = useCallback((topicId?: string | null) => {
+    if (topicId) {
+      setSelectedTopicIdState(topicId);
+      setActiveTabState("topics");
+      setSubViewState("browse");
+    } else {
+      setSelectedTopicIdState(null);
+      setActiveTabState("flashcards");
+      setSubViewState("browse");
+    }
+  }, []);
+
+  const openStudyLauncher = useCallback((topicId?: string | null) => {
+    if (topicId) {
+      setSelectedTopicIdState(topicId);
+      setActiveTabState("topics");
+      setSubViewState("launch");
+    } else {
+      setSelectedTopicIdState(null);
+      setActiveTabState("flashcards");
+      setSubViewState("launch");
+    }
+  }, []);
+
+  const openFlashcardAnalytics = useCallback((topicId?: string | null) => {
+    if (topicId) {
+      setSelectedTopicIdState(topicId);
+      setActiveTabState("topics");
+      setSubViewState("analytics");
+    } else {
+      setSelectedTopicIdState(null);
+      setActiveTabState("flashcards");
+      setSubViewState("analytics");
+    }
+  }, []);
+
+  const openDuplicateDetection = useCallback((topicId?: string | null) => {
+    if (topicId) {
+      setSelectedTopicIdState(topicId);
+      setActiveTabState("topics");
+      setSubViewState("duplicates");
+    } else {
+      setSelectedTopicIdState(null);
+      setActiveTabState("flashcards");
+      setSubViewState("duplicates");
+    }
   }, []);
 
   const value = useMemo<NavigationContextType>(
     () => ({
       activeTab,
       selectedTopicId,
+      subView,
+      sessionType,
       searchQuery,
       selectedCategoryFilter,
       selectedTagFilter,
       setActiveTab,
       setSelectedTopicId,
+      setSubView,
+      setSessionType,
       setSearchQuery,
       setSelectedCategoryFilter,
       setSelectedTagFilter,
       openTopicDetail,
+      openFlashcardReview,
+      openCardBrowser,
+      openStudyLauncher,
+      openFlashcardAnalytics,
+      openDuplicateDetection,
     }),
     [
       activeTab,
       selectedTopicId,
+      subView,
+      sessionType,
       searchQuery,
       selectedCategoryFilter,
       selectedTagFilter,
+      setActiveTab,
+      setSelectedTopicId,
+      setSubView,
+      setSessionType,
+      setSearchQuery,
+      setSelectedCategoryFilter,
+      setSelectedTagFilter,
       openTopicDetail,
+      openFlashcardReview,
+      openCardBrowser,
+      openStudyLauncher,
+      openFlashcardAnalytics,
+      openDuplicateDetection,
     ],
   );
 

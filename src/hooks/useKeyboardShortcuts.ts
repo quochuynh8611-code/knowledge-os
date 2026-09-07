@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from "react";
+import { shortcutScope } from "../lib/shortcutScope";
 
 export interface ShortcutItem {
   key: string;
@@ -29,12 +30,13 @@ export function useKeyboardShortcuts({
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (disabled) return;
+      if (e.defaultPrevented) return;
 
       const isInput =
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
         e.target instanceof HTMLSelectElement ||
-        (e.target instanceof HTMLElement && e.target.isContentEditable);
+        (e.target instanceof HTMLElement && (e.target.isContentEditable || e.target.getAttribute("contenteditable") === "true"));
 
       const isCmdOrCtrl = e.metaKey || e.ctrlKey;
 
@@ -69,6 +71,13 @@ export function useKeyboardShortcuts({
         !e.ctrlKey &&
         !e.metaKey
       ) {
+        // Suppress conflicting keys 1-4 when flashcard review scope is active
+        if (
+          shortcutScope.isScopeActive("flashcard_review") &&
+          ["1", "2", "3", "4"].includes(e.key)
+        ) {
+          return;
+        }
         const tabMap: Record<string, string> = {
           "1": "dashboard",
           "2": "topics",
