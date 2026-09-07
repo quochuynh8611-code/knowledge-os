@@ -258,9 +258,9 @@ export function parseClozeDeletions(rawText: string): ClozeItem[];
 - **F6.0**: Manual Creation Modal & CSV/TSV Batch Import Parser. (Hoàn thành)
 - **F6.0.1**: Scoped Keyboard Shortcut Priority Manager. (Hoàn thành)
 - **F6.4**: Topic-Scoped Flashcard Review Hub (`#/flashcards/:topicId`). (Hoàn thành)
-- **F6.5**: Card Browser & Card Lifecycle Management (Search, Filter, Sort, History, Suspend, Restore, Archive). (Đang thực hiện)
-- **F6.6**: Custom/Cram Review Sessions & Multi-Topic Review Queue. (Roadmap)
-- **F6.7**: Hierarchical Topic Card Inheritance (Descendant Topic Inclusion). (Roadmap)
-- **F6.9**: Duplicate Card Detection & Intelligent Merging. (Roadmap)
-- **F6.10**: **Note-to-Flashcard Integration** (Tạo flashcard từ văn bản bôi đen trong ghi chú, tự động nhận diện cloze, batch creation). Chi tiết xem tại [phase-f6-10-note-to-flashcard-integration.md](file:///Users/mr.chem/Documents/Lap-trinh/Dashboard-update/docs/specs/phase-f6-10-note-to-flashcard-integration.md).
+- **F6.5**: Card Browser & Card Lifecycle Management (Search, Filter, Sort, History, Suspend, Restore, Archive). (Hoàn thành)
+- **F6.9**: Duplicate Card Detection & Intelligent Merging (Deterministic Key, Levenshtein Match, Scope Guard, Device Activity Log). (Hoàn thành)
+- **F6.10**: **Note-to-Flashcard Integration** (Tạo flashcard từ văn bản bôi đen trong ghi chú, tự động nhận diện cloze, batch creation, NoteCardListSection, E2E Playwright, Tag `v0.10.0`). (Hoàn thành)
+- **F6.6**: Custom/Cram Review Sessions & Multi-Topic Review Queue. (Roadmap tiếp theo)
+- **F6.7**: Hierarchical Topic Card Inheritance (Descendant Topic Inclusion). (Roadmap tiếp theo)
 

@@ -1,15 +1,38 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-09-05
-> **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17 & PHASE P4.1–P4.2F (OBSIDIAN VAULT BRIDGE SUBSYSTEM) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TẤT ĐỊNH (218 / 218 TEST FILES PASS — 1,394 / 1,394 TESTS PASS 100% GREEN)**
+> **Cập nhật lần cuối:** 2026-09-07  
+> **Người phụ trách:** Staff Software Engineer / Technical Architect  
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D) & FLASHCARD SPACED REPETITION SUBSYSTEM (F6.0–F6.10) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.10.0` — 33/33 UNIT/INTEGRATION PASS, 4/4 PLAYWRIGHT E2E PASS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **PHASE P4.1–P4.2F (OBSIDIAN VAULT BRIDGE SUBSYSTEM) HOÀN TẤT TRỌN VẸN 7 GIAI ĐOẠN LIÊN HOÀN (15 COMMITS, 25 TARGETED TEST FILES / 176 TESTS PASS, 218/218 REPO SUITES PASS — 1,394/1,394 TESTS PASS TRÊN BRANCH `neh1`)**.
-- **Tiến độ Subsystem Obsidian Vault Bridge (P4.1 $\rightarrow$ P4.2F):**
+- **Trạng thái thực thi:** **PHASE F6.10 (NOTE-TO-FLASHCARD INTEGRATION) HOÀN TẤT TOÀN DIỆN VÀ ĐÃ ĐƯỢC PHÁT HÀNH (TAG `v0.10.0`, COMMIT `9e289d5` TRÊN BRANCH `neh1`)**.
+- **Tiến độ Subsystem Flashcard & Spaced Repetition (F6.0 $\rightarrow$ F6.10):**
+  - **Phase F6.10 — Note-to-Flashcard Integration (Hoàn thành — Tag `v0.10.0`):**
+    - **Mục tiêu:** Tích hợp liền mạch quy trình chuyển đổi tri thức từ bài đọc ghi chú (Note Reader) thành Flashcard với thao tác bôi đen text, auto-detect cloze, batch import bullet list và chân trang hiển thị thẻ liên kết.
+    - **Kiến trúc & Giải pháp (ADR-F6.10):**
+      - US1: `TextSelectionPopover` fixed position, debounce 100ms, shortcut **Alt+F**, chuyển giao selection sang `FlashcardFormModal` với `defaultNoteId` và `defaultTopicId`.
+      - US2: Parser thuần túy `detectClozeFromSelection` với regex Anki `{{c1::...}}`, tự động active tab Cloze và điền mẫu câu hỏi.
+      - US3: Parser `parseNoteBulletListToCards` hỗ trợ separator (`::`, ` - `, `:`), cloze bullet list, giới hạn an toàn 50 thẻ/lần, tạo tuần tự kèm thanh tiến độ.
+      - US4: Component `NoteCardListSection` ở cuối bài đọc, client cache 5 phút, cơ chế refresh tức thì khi thêm thẻ mới.
+      - Event Bubbling Hardening: Bổ sung `stopPropagation()` và `onMouseDown.preventDefault()` trên Popover và Form Modal ngăn ngừa đóng nhầm `NoteReaderModal`.
+    - **Kiểm thử & Chất lượng:**
+      - 33/33 Unit & Integration tests PASS (100% GREEN).
+      - 4/4 Playwright E2E scenarios PASS (`tests/e2e/f6.10-note-to-flashcard.spec.ts` trong 9.5s).
+      - `npx tsc --noEmit` 0 errors; `npm run build` Vite + esbuild thành công.
+    - **Tài liệu & Tự động hóa:**
+      - Spec: [`docs/specs/phase-f6-10-note-to-flashcard-integration.md`](docs/specs/phase-f6-10-note-to-flashcard-integration.md)
+      - ADR: [`docs/adr/f6.10-note-to-flashcard-integration.md`](docs/adr/f6.10-note-to-flashcard-integration.md)
+      - User Guide: [`docs/user-guides/f6.10-note-to-flashcard.md`](docs/user-guides/f6.10-note-to-flashcard.md)
+      - Release Notes: [`docs/releases/F6.10-release-notes.md`](docs/releases/F6.10-release-notes.md) & [`.github/RELEASE_NOTES_F6.10.md`](.github/RELEASE_NOTES_F6.10.md)
+      - Script: [`scripts/release-f6.10.sh`](scripts/release-f6.10.sh) & [`scripts/create-github-release-f6.10.sh`](scripts/create-github-release-f6.10.sh)
+  - **Phase F6.9 — Duplicate Card Detection & Intelligent Merging (Hoàn thành):**
+    - Deterministic key matching, Levenshtein distance, Scope Guard, Device Activity Log, và Conflict Resolution Modal.
+  - **Phase F6.5 — Card Browser & Card Lifecycle Management (Hoàn thành):**
+    - Trình duyệt thẻ, lọc đa tiêu chí, tìm kiếm full-text, sắp xếp động, lịch sử ôn tập, Suspend, Restore, Archive.
+- **Tiến độ Subsystem Obsidian Vault Bridge (P4.1 $\rightarrow$ P4.3D):**
   - **Kiến trúc nền tảng (ADR-064):** Kết nối an toàn giữa Obsidian Vault cục bộ và Knowledge OS theo nguyên lý Read-Only Vault Bridge. SSOT thuộc về Obsidian Vault; Knowledge OS chỉ lưu metadata Resource (`type: 'md'`), không sao chép raw Markdown vào PostgreSQL DB; bảo vệ 12-step path traversal guard, từ chối symlink, ẩn đường dẫn máy chủ qua placeholder `[VAULT_ROOT]`, và non-destructive unlink.
   - **Chi tiết 7 giai đoạn triển khai:**
     1. **Phase P4.1 — Read-Only Bridge & Topic Viewer (Commits `e36cdf7`, `549a1ce`):** Backend path sanitizer, parser YAML frontmatter/outline, API `GET /status` & `GET /file`, modal đọc `ObsidianDocumentViewerModal.tsx` và modal liên kết `ObsidianTopicResourceLinkModal.tsx`.
