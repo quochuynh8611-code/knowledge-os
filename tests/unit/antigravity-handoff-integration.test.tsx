@@ -246,4 +246,137 @@ describe('Phase 3: AntigravityHandoffModal UI Integration Tests (Scholar Inspect
       expect(screen.getByText(/Đã sao chép Prompt!/i)).toBeInTheDocument();
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // ADR-071: Phase 2 Accessibility & Interaction Hardening Tests
+  // ---------------------------------------------------------------------------
+  it('9. Dialog Escape: gọi onClose khi nhấn phím Escape lúc modal mở, không kích hoạt khi modal đóng', () => {
+    const onCloseMock = vi.fn();
+    const { unmount } = render(
+      <AntigravityHandoffModal isOpen={true} onClose={onCloseMock} topic={mockTopic} />
+    );
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
+
+    // Unmount (simulate modal closed/unmounted)
+    unmount();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('10. WAI-ARIA Tabs Keyboard Navigation: hỗ trợ ArrowRight, ArrowLeft, Home, End kèm wrap-around và auto-focus', async () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const bundleTab = screen.getByRole('tab', { name: /Gói Bàn Giao/i });
+    const topologyTab = screen.getByRole('tab', { name: /Đồ Thị 1-Hop/i });
+    const promptTab = screen.getByRole('tab', { name: /System Prompt/i });
+
+    // Focus on initial tab (Bundle)
+    bundleTab.focus();
+    expect(bundleTab).toHaveAttribute('aria-selected', 'true');
+
+    // Press ArrowRight -> moves to Topology
+    fireEvent.keyDown(bundleTab, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(topologyTab).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByTestId('scholar-topology-view')).toBeInTheDocument();
+    });
+
+    // Press ArrowRight -> moves to Prompt
+    fireEvent.keyDown(topologyTab, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(promptTab).toHaveAttribute('aria-selected', 'true');
+    });
+
+    // Press ArrowRight from last tab -> wraps around to Bundle
+    fireEvent.keyDown(promptTab, { key: 'ArrowRight' });
+    await waitFor(() => {
+      expect(bundleTab).toHaveAttribute('aria-selected', 'true');
+    });
+
+    // Press ArrowLeft from first tab -> wraps around to Prompt
+    fireEvent.keyDown(bundleTab, { key: 'ArrowLeft' });
+    await waitFor(() => {
+      expect(promptTab).toHaveAttribute('aria-selected', 'true');
+    });
+
+    // Press Home -> moves to first tab (Bundle)
+    fireEvent.keyDown(promptTab, { key: 'Home' });
+    await waitFor(() => {
+      expect(bundleTab).toHaveAttribute('aria-selected', 'true');
+    });
+
+    // Press End -> moves to last tab (Prompt)
+    fireEvent.keyDown(bundleTab, { key: 'End' });
+    await waitFor(() => {
+      expect(promptTab).toHaveAttribute('aria-selected', 'true');
+    });
+  });
+
+  it('11. Semantics WAI-ARIA: Tab và TabPanel liên kết 2 chiều qua id, aria-controls, aria-labelledby', () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const bundleTab = screen.getByRole('tab', { name: /Gói Bàn Giao/i });
+    expect(bundleTab).toHaveAttribute('id', 'scholar-tab-bundle');
+    expect(bundleTab).toHaveAttribute('aria-controls', 'scholar-tabpanel-bundle');
+
+    const tabPanel = screen.getByRole('tabpanel');
+    expect(tabPanel).toHaveAttribute('id', 'scholar-tabpanel-bundle');
+    expect(tabPanel).toHaveAttribute('aria-labelledby', 'scholar-tab-bundle');
+  });
+
+  it('12. Screen Reader Live Announcements: vùng aria-live="polite" phát âm báo khi sao chép bundle/prompt hoặc lỗi', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: writeTextMock,
+      },
+    });
+
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    const liveRegion = screen.getByRole('status');
+    expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+
+    // 1. Copy Bundle
+    const copyBundleBtn = screen.getByRole('button', { name: /Sao chép Handoff Bundle/i });
+    fireEvent.click(copyBundleBtn);
+
+    await waitFor(() => {
+      expect(liveRegion).toHaveTextContent(/Đã sao chép Handoff Bundle vào bộ nhớ tạm/i);
+    });
+
+    // 2. Switch to Prompt tab and copy prompt
+    const promptTab = screen.getByRole('tab', { name: /System Prompt/i });
+    fireEvent.click(promptTab);
+
+    const copyPromptBtn = screen.getByRole('button', { name: /Sao chép Prompt Chuyên Sâu/i });
+    fireEvent.click(copyPromptBtn);
+
+    await waitFor(() => {
+      expect(liveRegion).toHaveTextContent(/Đã sao chép Prompt chuyên sâu vào bộ nhớ tạm/i);
+    });
+  });
+
+  it('13. Form Associativity: Các label liên kết với input/select thông qua htmlFor và id chuẩn hóa', () => {
+    render(<AntigravityHandoffModal isOpen={true} onClose={vi.fn()} topic={mockTopic} />);
+
+    // Check Topic Selector
+    const topicLabel = screen.getByText(/Chủ đề đóng gói bàn giao:/i);
+    expect(topicLabel).toHaveAttribute('for', 'scholar-topic-selector');
+    expect(screen.getByRole('combobox')).toHaveAttribute('id', 'scholar-topic-selector');
+
+    // Switch to Prompt tab
+    const promptTab = screen.getByRole('tab', { name: /System Prompt/i });
+    fireEvent.click(promptTab);
+
+    const queryLabel = screen.getByText(/Câu hỏi học thuật tùy chỉnh/i);
+    expect(queryLabel).toHaveAttribute('for', 'scholar-custom-query-input');
+    expect(screen.getByPlaceholderText(/Ví dụ: Phân tích 7 tâm sở biến hành/i)).toHaveAttribute(
+      'id',
+      'scholar-custom-query-input'
+    );
+  });
 });

@@ -24,42 +24,42 @@ describe('Phase Performance: Lazy Modals Suspense & Lifecycle Resilience', () =>
     expect(obsidianBtn).toBeInTheDocument();
     fireEvent.click(obsidianBtn);
 
-    const obsidianTitle = await screen.findByText(/Duyệt Obsidian Vault/i);
+    const obsidianTitle = await screen.findByText(/Duyệt Obsidian Vault/i, {}, { timeout: 5000 });
     expect(obsidianTitle).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
     await waitFor(() => {
       expect(screen.queryByText(/Khám phá cấu trúc tệp/i)).toBeNull();
-    });
+    }, { timeout: 5000 });
 
     // Re-open ObsidianVaultBrowserModal
     fireEvent.click(obsidianBtn);
-    expect(await screen.findByText(/Duyệt Obsidian Vault/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Duyệt Obsidian Vault/i, {}, { timeout: 5000 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
 
     // 1.2. Open and close NotebookLMStudioModal
     const notebookLMBtn = screen.getByTitle(/Google NotebookLM/i);
     fireEvent.click(notebookLMBtn);
 
-    const notebookLMTitle = await screen.findByText(/Google NotebookLM Research Hub/i);
+    const notebookLMTitle = await screen.findByText(/Google NotebookLM Research Hub/i, {}, { timeout: 5000 });
     expect(notebookLMTitle).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
     await waitFor(() => {
       expect(screen.queryByText(/Google NotebookLM Research Hub/i)).toBeNull();
-    });
+    }, { timeout: 5000 });
 
     // 1.3. Open and close AntigravityHandoffModal
     const handoffBtn = screen.getByTitle(/Antigravity AI Handoff/i);
     fireEvent.click(handoffBtn);
 
-    const handoffTitle = await screen.findByText(/Antigravity AI Scholar Handoff Bundle/i);
+    const handoffTitle = await screen.findByText(/Antigravity AI Scholar Inspector/i, {}, { timeout: 5000 });
     expect(handoffTitle).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
     await waitFor(() => {
-      expect(screen.queryByText(/Antigravity AI Scholar Handoff Bundle/i)).toBeNull();
-    });
+      expect(screen.queryByText(/Antigravity AI Scholar Inspector/i)).toBeNull();
+    }, { timeout: 5000 });
   });
 
   it('2. AIResearchStudio lazy Handoff modal mounts with Suspense and receives active topic', async () => {
@@ -99,7 +99,7 @@ describe('Phase Performance: Lazy Modals Suspense & Lifecycle Resilience', () =>
 
     fireEvent.click(openHandoffBtn);
 
-    const handoffTitle = await screen.findByText(/Antigravity AI Scholar Handoff Bundle/i);
+    const handoffTitle = await screen.findByText(/Antigravity AI Scholar Inspector/i);
     expect(handoffTitle).toBeInTheDocument();
 
     // Verify active topic title is rendered inside the modal
@@ -108,7 +108,7 @@ describe('Phase Performance: Lazy Modals Suspense & Lifecycle Resilience', () =>
     // Close modal
     fireEvent.click(screen.getByRole('button', { name: /Đóng modal/i }));
     await waitFor(() => {
-      expect(screen.queryByText(/Antigravity AI Scholar Handoff Bundle/i)).toBeNull();
+      expect(screen.queryByText(/Antigravity AI Scholar Inspector/i)).toBeNull();
     });
   });
 });

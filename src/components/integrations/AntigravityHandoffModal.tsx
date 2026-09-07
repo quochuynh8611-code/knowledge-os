@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
 import {
   X,
@@ -9,9 +9,6 @@ import {
   FileText,
   Network,
   Terminal,
-  BookOpen,
-  Layers,
-  Compass,
   ArrowUpRight,
   ShieldCheck,
   Link2,
@@ -30,6 +27,9 @@ interface AntigravityHandoffModalProps {
   topic?: Topic;
 }
 
+type TabType = 'bundle' | 'topology' | 'prompt';
+const TABS: TabType[] = ['bundle', 'topology', 'prompt'];
+
 export function AntigravityHandoffModal({
   isOpen,
   onClose,
@@ -43,7 +43,12 @@ export function AntigravityHandoffModal({
   const [customQuery, setCustomQuery] = useState('');
   const [copiedBundle, setCopiedBundle] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [activeTab, setActiveTab] = useState<'bundle' | 'topology' | 'prompt'>('bundle');
+  const [activeTab, setActiveTab] = useState<TabType>('bundle');
+  const [announcement, setAnnouncement] = useState('');
+
+  // Refs for focus management
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const initialFocusRef = useRef<HTMLButtonElement | null>(null);
 
   // Auto-sync topic context when modal opens with a provided topic prop
   useEffect(() => {
@@ -51,6 +56,76 @@ export function AntigravityHandoffModal({
       setSelectedTopicId(topic.id);
     }
   }, [isOpen, topic?.id]);
+
+  // Focus-on-open and focus restoration on unmount/close
+  useEffect(() => {
+    if (isOpen) {
+      previousActiveElementRef.current = document.activeElement as HTMLElement | null;
+      // Focus on active tab or first interactive element
+      const timer = setTimeout(() => {
+        initialFocusRef.current?.focus();
+      }, 50);
+      return () => {
+        clearTimeout(timer);
+        if (
+          previousActiveElementRef.current &&
+          typeof previousActiveElementRef.current.focus === 'function' &&
+          previousActiveElementRef.current.isConnected
+        ) {
+          previousActiveElementRef.current.focus();
+        }
+      };
+    }
+  }, [isOpen]);
+
+  // Dialog Escape key listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // WAI-ARIA Tabs keyboard navigation
+  const handleTabKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, currentTab: TabType) => {
+      const currentIndex = TABS.indexOf(currentTab);
+      let targetIndex = -1;
+
+      switch (e.key) {
+        case 'ArrowRight':
+          targetIndex = (currentIndex + 1) % TABS.length;
+          break;
+        case 'ArrowLeft':
+          targetIndex = (currentIndex - 1 + TABS.length) % TABS.length;
+          break;
+        case 'Home':
+          targetIndex = 0;
+          break;
+        case 'End':
+          targetIndex = TABS.length - 1;
+          break;
+        default:
+          return;
+      }
+
+      e.preventDefault();
+      const targetTab = TABS[targetIndex];
+      setActiveTab(targetTab);
+
+      // Programmatically focus the newly active tab
+      const targetElement = document.getElementById(`scholar-tab-${targetTab}`);
+      if (targetElement) {
+        targetElement.focus();
+      }
+    },
+    []
+  );
 
   if (!isOpen) return null;
 
@@ -79,9 +154,11 @@ export function AntigravityHandoffModal({
         await navigator.clipboard.writeText(handoffBundle);
       }
       setCopiedBundle(true);
+      setAnnouncement('Đã sao chép Handoff Bundle vào bộ nhớ tạm');
       setTimeout(() => setCopiedBundle(false), 2000);
     } catch (err) {
       console.error('Failed to copy handoff bundle', err);
+      setAnnouncement('Không thể sao chép vào bộ nhớ tạm');
     }
   };
 
@@ -91,9 +168,11 @@ export function AntigravityHandoffModal({
         await navigator.clipboard.writeText(specializedPrompt);
       }
       setCopiedPrompt(true);
+      setAnnouncement('Đã sao chép Prompt chuyên sâu vào bộ nhớ tạm');
       setTimeout(() => setCopiedPrompt(false), 2000);
     } catch (err) {
       console.error('Failed to copy prompt', err);
+      setAnnouncement('Không thể sao chép vào bộ nhớ tạm');
     }
   };
 
@@ -108,6 +187,7 @@ export function AntigravityHandoffModal({
     a.download = `Antigravity-Handoff-${sanitizeFileName(currentTopic.title)}.md`;
     a.click();
     URL.revokeObjectURL(url);
+    setAnnouncement(`Đã tải xuống tệp ${a.download}`);
   };
 
   return (
@@ -117,6 +197,16 @@ export function AntigravityHandoffModal({
       aria-labelledby="antigravity-handoff-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
     >
+      {/* Visually Hidden Live Announcements Region */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {announcement}
+      </div>
+
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden text-stone-900 dark:text-stone-100">
         {/* Header */}
         <div className="p-4 md:px-6 md:py-4 bg-gradient-to-r from-amber-950 via-stone-900 to-amber-900 text-stone-100 flex items-center justify-between border-b border-amber-900/50">
@@ -140,7 +230,7 @@ export function AntigravityHandoffModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer"
+            className="p-1.5 text-stone-400 hover:text-white hover:bg-stone-800 rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             aria-label="Đóng modal"
           >
             <X className="w-5 h-5" />
@@ -161,11 +251,18 @@ export function AntigravityHandoffModal({
             </span>
           </div>
 
-          <div className="w-full sm:w-64">
+          <div className="w-full sm:w-72 flex items-center gap-2">
+            <label
+              htmlFor="scholar-topic-selector"
+              className="text-xs font-semibold text-stone-600 dark:text-stone-400 whitespace-nowrap shrink-0"
+            >
+              Chủ đề đóng gói bàn giao:
+            </label>
             <select
+              id="scholar-topic-selector"
               value={selectedTopicId}
               onChange={(e) => setSelectedTopicId(e.target.value)}
-              className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+              className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-1.5 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               {topics.map((t) => {
                 const tag = t.type === 'phat-hoc' ? 'Phật Học' : t.type === 'huyen-hoc' ? 'Huyền Học' : (t.categoryName || t.type || 'Nghiên Cứu');
@@ -181,13 +278,22 @@ export function AntigravityHandoffModal({
 
         {/* 3 Tabs Navigation Toolbar */}
         <div className="px-4 md:px-6 py-2.5 border-b border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-900/90 flex flex-wrap items-center justify-between gap-2">
-          <div role="tablist" className="flex items-center gap-1 bg-stone-200/70 dark:bg-stone-800 p-1 rounded-xl text-xs font-semibold">
+          <div
+            role="tablist"
+            aria-label="Các phần khảo cứu học thuật"
+            className="flex items-center gap-1 bg-stone-200/70 dark:bg-stone-800 p-1 rounded-xl text-xs font-semibold"
+          >
             <button
+              id="scholar-tab-bundle"
+              ref={activeTab === 'bundle' ? initialFocusRef : null}
               type="button"
               role="tab"
               aria-selected={activeTab === 'bundle'}
+              aria-controls="scholar-tabpanel-bundle"
+              tabIndex={activeTab === 'bundle' ? 0 : -1}
               onClick={() => setActiveTab('bundle')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              onKeyDown={(e) => handleTabKeyDown(e, 'bundle')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 activeTab === 'bundle'
                   ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -198,11 +304,15 @@ export function AntigravityHandoffModal({
             </button>
 
             <button
+              id="scholar-tab-topology"
               type="button"
               role="tab"
               aria-selected={activeTab === 'topology'}
+              aria-controls="scholar-tabpanel-topology"
+              tabIndex={activeTab === 'topology' ? 0 : -1}
               onClick={() => setActiveTab('topology')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              onKeyDown={(e) => handleTabKeyDown(e, 'topology')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 activeTab === 'topology'
                   ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -213,11 +323,15 @@ export function AntigravityHandoffModal({
             </button>
 
             <button
+              id="scholar-tab-prompt"
               type="button"
               role="tab"
               aria-selected={activeTab === 'prompt'}
+              aria-controls="scholar-tabpanel-prompt"
+              tabIndex={activeTab === 'prompt' ? 0 : -1}
               onClick={() => setActiveTab('prompt')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer ${
+              onKeyDown={(e) => handleTabKeyDown(e, 'prompt')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                 activeTab === 'prompt'
                   ? 'bg-white dark:bg-stone-700 text-amber-900 dark:text-amber-200 shadow-xs'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -235,7 +349,7 @@ export function AntigravityHandoffModal({
                 <button
                   type="button"
                   onClick={handleCopyBundle}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   {copiedBundle ? (
                     <>
@@ -252,7 +366,7 @@ export function AntigravityHandoffModal({
                 <button
                   type="button"
                   onClick={handleDownloadBundle}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   <Download className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
                   <span>Tải Tệp Handoff (.md)</span>
@@ -264,7 +378,7 @@ export function AntigravityHandoffModal({
               <button
                 type="button"
                 onClick={handleCopyPrompt}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-700 hover:bg-amber-800 dark:bg-amber-800 dark:hover:bg-amber-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
               >
                 {copiedPrompt ? (
                   <>
@@ -283,7 +397,13 @@ export function AntigravityHandoffModal({
         </div>
 
         {/* Content Viewer (Role TabPanel) */}
-        <div role="tabpanel" className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/40 dark:bg-stone-900/40 text-xs">
+        <div
+          id={`scholar-tabpanel-${activeTab}`}
+          role="tabpanel"
+          aria-labelledby={`scholar-tab-${activeTab}`}
+          tabIndex={0}
+          className="flex-1 overflow-y-auto p-4 md:p-6 bg-stone-50/40 dark:bg-stone-900/40 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500/40"
+        >
           {/* TAB 1: Bundle Preview */}
           {activeTab === 'bundle' && (
             <div className="space-y-3">
@@ -395,14 +515,23 @@ export function AntigravityHandoffModal({
             <div className="space-y-4">
               {/* Research Mode Selector */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+                <label
+                  htmlFor="scholar-mode-selector-group"
+                  id="scholar-mode-selector-label"
+                  className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5"
+                >
                   Chế độ nghiên cứu học thuật:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 bg-stone-200/80 dark:bg-stone-800 p-1.5 rounded-xl text-[11px] font-semibold">
+                <div
+                  id="scholar-mode-selector-group"
+                  role="group"
+                  aria-labelledby="scholar-mode-selector-label"
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 bg-stone-200/80 dark:bg-stone-800 p-1.5 rounded-xl text-[11px] font-semibold"
+                >
                   <button
                     type="button"
                     onClick={() => setResearchMode('concept_analysis')}
-                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                       researchMode === 'concept_analysis' || researchMode === 'scholar_analysis'
                         ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                         : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
@@ -413,7 +542,7 @@ export function AntigravityHandoffModal({
                   <button
                     type="button"
                     onClick={() => setResearchMode('terminology_exegesis')}
-                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                       researchMode === 'terminology_exegesis' || researchMode === 'pali_sanskrit_exegesis'
                         ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                         : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
@@ -424,7 +553,7 @@ export function AntigravityHandoffModal({
                   <button
                     type="button"
                     onClick={() => setResearchMode('cross_domain_synthesis')}
-                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-lg transition text-center truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                       researchMode === 'cross_domain_synthesis' || researchMode === 'cross_domain_link'
                         ? 'bg-white dark:bg-stone-700 text-amber-950 dark:text-amber-200 shadow-xs'
                         : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100'
@@ -435,17 +564,21 @@ export function AntigravityHandoffModal({
                 </div>
               </div>
 
-              {/* Custom Query */}
+              {/* Custom Query Input with explicit htmlFor & ID */}
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
+                <label
+                  htmlFor="scholar-custom-query-input"
+                  className="block text-[11px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1"
+                >
                   Câu hỏi học thuật tùy chỉnh (Tùy chọn):
                 </label>
                 <input
+                  id="scholar-custom-query-input"
                   type="text"
                   value={customQuery}
                   onChange={(e) => setCustomQuery(e.target.value)}
                   placeholder="Ví dụ: Phân tích 7 tâm sở biến hành trong lộ trình thiền tuệ..."
-                  className="w-full text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                  className="w-full text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus-visible:ring-2 focus-visible:ring-amber-500"
                 />
               </div>
 
@@ -465,7 +598,7 @@ export function AntigravityHandoffModal({
           </div>
           <button
             onClick={onClose}
-            className="px-3.5 py-1.5 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg font-semibold transition cursor-pointer"
+            className="px-3.5 py-1.5 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
           >
             Đóng
           </button>

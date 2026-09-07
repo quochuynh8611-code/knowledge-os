@@ -9,7 +9,7 @@ import { DataProvider } from "../../src/context/DataContext";
 describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("1. Injected Deep Actions in App", () => {
@@ -57,7 +57,7 @@ describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", (
       // Verify Antigravity Handoff modal appears
       await waitFor(() => {
         expect(
-          screen.getByText(/Antigravity AI Scholar Handoff Bundle/i)
+          screen.getByText(/Antigravity AI Scholar Inspector/i)
         ).toBeInTheDocument();
       });
     });
