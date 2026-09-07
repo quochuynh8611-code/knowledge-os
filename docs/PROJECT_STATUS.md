@@ -2,11 +2,73 @@
 
 > **Cập nhật lần cuối:** 2026-09-07  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D) & FLASHCARD SPACED REPETITION SUBSYSTEM (F6.0–F6.12) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.12.0` — 193/193 PASS, 0 TSC ERRORS)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12) & RESEARCH DASHBOARD (F7.0) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.13.0` — 224/224 PASS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+
+## Phase F7.0 — Research Dashboard (Multi-Domain) (2026-09-07)
+
+**Status**: ✅ Completed  
+**Tag**: `v0.13.0`  
+**Tests**: 224/224 PASS (100% — 31 new tests)  
+**Typecheck**: 0 errors
+
+### Features Delivered
+
+1. ✅ **Topic Dashboard & Knowledge Aggregation**:
+   - 6 KPI Summary Cards: Ghi chú, Thẻ Flashcard, Tài liệu nguồn, Tỷ lệ nhớ (%), Chuỗi học tập (Streak), Thời gian học.
+   - Interactive SVG Retention Trend Chart (0–100% Y-axis, 80% optimal target watermark line, time presets 7d, 30d, 90d, all).
+   - Top 10 recent research activities list with type-specific icon badges and timestamps.
+2. ✅ **Cross-Domain Research Timeline**:
+   - Consolidated event stream (`NOTE_CREATED`, `NOTE_UPDATED`, `FLASHCARD_CREATED`, `REVIEW_COMPLETED`, `RESOURCE_ADDED`).
+   - Grouping into relative date buckets (`Hôm nay`, `Hôm qua`, `Tuần này`, `Tháng này`, `Cũ hơn`).
+   - Filter toolbar: text search query and event type chips (`Tất cả`, `Ghi chú`, `Flashcards`, `Ôn tập`, `Tài liệu`).
+   - Click-to-preview event modal with metadata and navigate action.
+3. ✅ **Cross-Domain Full-Text Search (BM25 Engine)**:
+   - In-memory Okapi BM25 ranking algorithm ($k_1 = 1.2, b = 0.75$) across notes, flashcards, and resources.
+   - Multi-lingual normalization: Vietnamese diacritics removal and Sanskrit/Pāli IAST accent normalization (`normalizeScholarText`).
+   - Keyword highlighting in titles and snippet windows using `<mark>` tags.
+   - Entity type filter pills and execution latency indicator ($< 5ms$).
+   - Global keyboard shortcut `Ctrl+Shift+F` / `Cmd+Shift+F`.
+4. ✅ **Export Research Report**:
+   - Synthesize structured Markdown research report with YAML frontmatter, overview metrics table, note contents, flashcards SRS state table, resources, and timeline milestones.
+   - Interactive modal with section selection checkboxes and live markdown preview.
+   - Download `.md` file with UTF-8 BOM (`\uFEFF`) for perfect character display across operating systems.
+   - Copy to clipboard with instant user feedback and Print / Export PDF support.
+5. ✅ **TopicDetail Integration**:
+   - Dedicated "Nghiên cứu" tab in `TopicDetail.tsx` with toolbar buttons for instant search and report export.
+
+### Technical Decisions
+
+- **Zero Schema Migrations**: All aggregation, timeline events, and BM25 indexing are derived purely at runtime from existing models (`Topic`, `Note`, `Resource`, `Flashcard`, `FlashcardReview`).
+- **Zero Heavy External Libraries**: SVG charting rendered with pure React SVG; search engine executed with pure TypeScript BM25 index.
+- **Defensive Data Collections**: Safe `Array.isArray` fallback guards for all collections.
+
+### Files Created / Modified
+
+- `src/lib/researchAggregationService.ts` (new)
+- `src/lib/researchTimelineService.ts` (new)
+- `src/lib/researchSearchEngine.ts` (new)
+- `src/lib/researchReportGenerator.ts` (new)
+- `src/components/research/TopicDashboard.tsx` (new)
+- `src/components/research/ResearchTimeline.tsx` (new)
+- `src/components/research/ResearchSearchModal.tsx` (new)
+- `src/components/research/ExportReportModal.tsx` (new)
+- `src/components/research/index.ts` (new)
+- `src/components/topics/TopicDetail.tsx` (modified)
+- `docs/specs/phase-f7-0-research-dashboard.md` (new)
+- `docs/adr/f7.0-research-dashboard.md` (new)
+- `docs/implementation-plans/f7.0-research-dashboard.md` (new)
+- `tests/unit/research-aggregation-service.test.ts` (new)
+- `tests/unit/topic-dashboard.test.tsx` (new)
+- `tests/unit/research-timeline.test.tsx` (new)
+- `tests/unit/research-search-engine.test.tsx` (new)
+- `tests/unit/research-report-generator.test.tsx` (new)
+- `tests/integration/research-dashboard-integration.test.tsx` (new)
+
+---
 
 ## Phase F6.12 — SRS Algorithm Tuning (2026-09-07)
 

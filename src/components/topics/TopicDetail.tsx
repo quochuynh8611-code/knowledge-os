@@ -25,6 +25,7 @@ import {
   Zap,
   TrendingUp,
   Copy,
+  Layers,
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
@@ -41,7 +42,13 @@ import { FlashcardAnalyticsWidget } from "../flashcards/FlashcardAnalyticsWidget
 import { CardBrowser, StudyLauncher, FlashcardAnalyticsDashboard, DuplicateDetectionDashboard } from "../flashcards";
 import { FlashcardFormModal } from "../modals/FlashcardFormModal";
 import { FlashcardImportModal } from "../modals/FlashcardImportModal";
-import type { FlashcardProgressStats } from "../../types/flashcard";
+import type { FlashcardProgressStats, Flashcard, FlashcardReview } from "../../types/flashcard";
+import {
+  TopicDashboard,
+  ResearchTimeline,
+  ResearchSearchModal,
+  ExportReportModal,
+} from "../research";
 // Phase 17B: new toolbar sub-components
 import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
 import { StudyCTA } from "./StudyCTA";
@@ -111,6 +118,7 @@ export function TopicDetail() {
     | "analytics"
     | "duplicates"
     | "spaced"
+    | "research"
   >("content");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
@@ -125,6 +133,12 @@ export function TopicDetail() {
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  // Research Dashboard & Search states (Phase F7.0)
+  const [showResearchSearchModal, setShowResearchSearchModal] = useState(false);
+  const [showExportReportModal, setShowExportReportModal] = useState(false);
+  const [topicCards, setTopicCards] = useState<Flashcard[]>([]);
+  const [topicReviews, setTopicReviews] = useState<FlashcardReview[]>([]);
 
   // Flashcards state (Phase F6.4)
   const [flashcardStats, setFlashcardStats] = useState<FlashcardProgressStats | null>(null);
@@ -141,7 +155,7 @@ export function TopicDetail() {
     }
   })();
 
-  // Sync with deep-link subView=browse or launch
+  // Sync with deep-link subView=browse, launch, analytics, duplicates, research
   React.useEffect(() => {
     if (navigation?.subView === "browse") {
       setActiveTab("card_browser");
@@ -151,8 +165,22 @@ export function TopicDetail() {
       setActiveTab("analytics");
     } else if (navigation?.subView === "duplicates") {
       setActiveTab("duplicates");
+    } else if ((navigation?.subView as string) === "research") {
+      setActiveTab("research");
     }
   }, [navigation?.subView]);
+
+  // Keyboard shortcut Ctrl+Shift+F / Cmd+Shift+F for Research Search Modal
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        setShowResearchSearchModal(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Link addition helper
   const [showAddLink, setShowAddLink] = useState(false);
@@ -184,11 +212,42 @@ export function TopicDetail() {
     loadTopicFlashcardsProgress();
   }, [loadTopicFlashcardsProgress]);
 
+  const loadResearchAssets = React.useCallback(async () => {
+    if (!topic?.id) return;
+    try {
+      const [cardsRes, reviewsRes] = await Promise.all([
+        fetch(`/api/flashcards?topicId=${encodeURIComponent(topic.id)}`),
+        fetch(`/api/flashcards/reviews?topicId=${encodeURIComponent(topic.id)}`),
+      ]);
+      if (cardsRes.ok) {
+        const cardsData = await cardsRes.json();
+        if (Array.isArray(cardsData)) {
+          setTopicCards(cardsData);
+        }
+      }
+      if (reviewsRes.ok) {
+        const reviewsData = await reviewsRes.json();
+        if (Array.isArray(reviewsData)) {
+          setTopicReviews(reviewsData);
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+  }, [topic?.id]);
+
   React.useEffect(() => {
-    const handler = () => loadTopicFlashcardsProgress();
+    loadResearchAssets();
+  }, [loadResearchAssets]);
+
+  React.useEffect(() => {
+    const handler = () => {
+      loadTopicFlashcardsProgress();
+      loadResearchAssets();
+    };
     window.addEventListener("flashcard-updated", handler);
     return () => window.removeEventListener("flashcard-updated", handler);
-  }, [loadTopicFlashcardsProgress]);
+  }, [loadTopicFlashcardsProgress, loadResearchAssets]);
 
   const handleOpenFlashcardReview = () => {
     if (!topic?.id) return;
@@ -548,6 +607,20 @@ export function TopicDetail() {
           }`}
         >
           <Copy className="w-4 h-4 text-stone-500" /> Trùng lặp
+        </button>
+
+        <button
+          data-testid="tab-btn-research"
+          onClick={() => {
+            setActiveTab("research");
+          }}
+          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            activeTab === "research"
+              ? "border-indigo-700 text-indigo-900 dark:border-indigo-500 dark:text-indigo-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Layers className="w-4 h-4 text-stone-500" /> Nghiên cứu
         </button>
       </div>
 
@@ -1168,6 +1241,77 @@ export function TopicDetail() {
       {activeTab === "duplicates" && (
         <DuplicateDetectionDashboard topicId={topic.id} />
       )}
+
+      {activeTab === "research" && (
+        <div className="space-y-8" data-testid="research-tab-content">
+          <TopicDashboard
+            topicId={topic.id}
+            topicTitle={topic.title}
+            topicCategory={topic.categoryName || domainName}
+            notes={notes}
+            flashcards={topicCards}
+            resources={resources}
+            reviews={topicReviews}
+            onOpenSearch={() => setShowResearchSearchModal(true)}
+            onOpenExport={() => setShowExportReportModal(true)}
+            onNavigateTab={(tab) => setActiveTab(tab as any)}
+          />
+
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-indigo-500" />
+                <span>Dòng Thời Gian Nghiên Cứu (Research Timeline)</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Toàn bộ dòng chảy sự kiện từ ghi chú, thẻ flashcard, các phiên ôn tập đến tài liệu nguồn.
+              </p>
+            </div>
+            <ResearchTimeline
+              topicId={topic.id}
+              topicTitle={topic.title}
+              topics={topics}
+              notes={notes}
+              flashcards={topicCards}
+              resources={resources}
+              reviews={topicReviews}
+              onNavigateEntity={(type) => {
+                if (type === "notes") setActiveTab("notes");
+                else if (type === "flashcards") setActiveTab("card_browser");
+                else if (type === "resources") setActiveTab("resources");
+                else if (type === "reviews") setActiveTab("analytics");
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Research Modals (Phase F7.0) */}
+      <ResearchSearchModal
+        isOpen={showResearchSearchModal}
+        onClose={() => setShowResearchSearchModal(false)}
+        topicId={topic.id}
+        topicTitle={topic.title}
+        notes={notes}
+        flashcards={topicCards}
+        resources={resources}
+        topics={topics}
+        onSelectResult={(result) => {
+          if (result.document.type === "note") setActiveTab("notes");
+          else if (result.document.type === "flashcard") setActiveTab("card_browser");
+          else if (result.document.type === "resource") setActiveTab("resources");
+        }}
+      />
+      <ExportReportModal
+        isOpen={showExportReportModal}
+        onClose={() => setShowExportReportModal(false)}
+        topic={topic}
+        categoryTitle={topic.categoryName || domainName}
+        notes={notes}
+        flashcards={topicCards}
+        reviews={topicReviews}
+        resources={resources}
+      />
 
       {/* Modals */}
       <FlashcardFormModal
