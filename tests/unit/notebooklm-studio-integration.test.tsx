@@ -104,6 +104,20 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/research-sessions') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: 'mock-session-1',
+            topicId: 'topic-ky-mon',
+            status: 'active',
+            artifacts: [],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -288,5 +302,259 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     expect(screen.getByText(/Mediated Workflow via Antigravity 2.0/i)).toBeInTheDocument();
     expect(screen.getByText(/100% Client-side/i)).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 9. End-to-End User Journey: Studio Modal -> Create Artifact -> Open Drawer -> 3 Tabs -> Close Drawer
+  // ---------------------------------------------------------------------------
+  it('11. Complete E2E Journey: creates artifact, clicks Thẩm định, navigates 3 tabs in Review Drawer, and closes drawer', async () => {
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // 1. Create Artifact in Locker
+    const toggleButton = screen.getByRole('button', { name: /Thêm Kết Quả/i });
+    fireEvent.click(toggleButton);
+
+    const titleInput = screen.getByPlaceholderText(/Ví dụ: Tóm tắt Podcast 2 Hosts/i);
+    fireEvent.change(titleInput, { target: { value: 'Bản Đúc Kết Kỳ Môn v2.1' } });
+
+    const contentInput = screen.getByPlaceholderText(/Dán nội dung tóm lược từ NotebookLM/i);
+    fireEvent.change(contentInput, { target: { value: '# Luận Điểm Chính\nPhân tích cấu trúc Tam Kỳ Lục Nghi [1].' } });
+
+    const saveButton = screen.getByRole('button', { name: /Lưu Kết Quả/i });
+    fireEvent.click(saveButton);
+
+    // 2. Verify Artifact appears with Version Badge & Thẩm định button
+    await waitFor(() => {
+      expect(screen.getByText('Bản Đúc Kết Kỳ Môn v2.1')).toBeInTheDocument();
+      expect(screen.getByText('Source package v1')).toBeInTheDocument();
+    });
+
+    // 3. Click "Thẩm định" button to open ArtifactReviewDrawer
+    const thamDinhBtn = screen.getByRole('button', { name: /Thẩm định/i });
+    expect(thamDinhBtn).toBeInTheDocument();
+    fireEvent.click(thamDinhBtn);
+
+    // 4. Verify ArtifactReviewDrawer is opened
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Bản Đúc Kết Kỳ Môn v2.1' })).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-source-version-badge')).toHaveTextContent('Source package v1');
+    });
+
+    // 5. Tab 1: Nội dung Markdown is visible by default (appears in both modal card & drawer)
+    const contentElements = screen.getAllByText(/Phân tích cấu trúc Tam Kỳ Lục Nghi/i);
+    expect(contentElements.length).toBeGreaterThanOrEqual(2);
+
+    // 6. Tab 2: Switch to Trích dẫn nguồn
+    const citationTab = screen.getByRole('button', { name: /Trích dẫn nguồn/i });
+    fireEvent.click(citationTab);
+    expect(screen.getByText(/Không có trích dẫn nguồn riêng lẻ/i)).toBeInTheDocument();
+
+    // 7. Tab 3: Switch to Lịch sử chuyển nạp
+    const importsTab = screen.getByRole('button', { name: /Lịch sử chuyển nạp/i });
+    fireEvent.click(importsTab);
+    expect(screen.getByText(/Chưa có thao tác chuyển nạp nào/i)).toBeInTheDocument();
+
+    // 8. Close Drawer by clicking the close button
+    const closeDrawerBtn = screen.getByRole('button', { name: /Đóng bảng thẩm định/i });
+    fireEvent.click(closeDrawerBtn);
+
+    // 9. Verify Drawer is closed (heading is unmounted)
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Bản Đúc Kết Kỳ Môn v2.1' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('12. Real Session Sync: loads backend artifact with imports history and verifies Review Drawer tabs', async () => {
+    const mockSessionArtifact = {
+      id: '9d50fbdc-e191-4811-ac50-978da242515f',
+      sessionId: 'f1624e8a-675a-44c7-9f5b-c2f1fe2dd04a',
+      topicId: 'topic-ky-mon',
+      artifactType: 'study_guide',
+      title: 'Study Guide Devanāgarī Phonetics v2.1',
+      rawContent: '# Bảng Chữ Cái Devanāgarī\nTổng quan 14 nguyên âm và 33 phụ âm [1].',
+      contentHash: 'fb63c8fd5f5ac276f3d152e6a332683c0e333d7c41864b7f5c31d3de8091a9d4',
+      idempotencyKey: '44f617e33945b554280a6633a3462af4a55e5670be956b7b6853fc9b5e104041',
+      status: 'validated',
+      citationCount: 0,
+      sourcePackageVersion: 1,
+      citations: [],
+      imports: [
+        {
+          id: 'imp-note-1',
+          artifactId: '9d50fbdc-e191-4811-ac50-978da242515f',
+          targetType: 'note',
+          targetNoteId: 'c7caec82-562a-4e0e-9927-93db3899eee4',
+          status: 'success',
+          itemCount: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'imp-flash-2',
+          artifactId: '9d50fbdc-e191-4811-ac50-978da242515f',
+          targetType: 'flashcards',
+          status: 'success',
+          itemCount: 2,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url === '/api/research-sessions') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            id: 'f1624e8a-675a-44c7-9f5b-c2f1fe2dd04a',
+            topicId: 'topic-ky-mon',
+            artifacts: [mockSessionArtifact],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // Wait for session sync to load artifact
+    await waitFor(() => {
+      expect(screen.getByText('Study Guide Devanāgarī Phonetics v2.1')).toBeInTheDocument();
+      expect(screen.getByText('Source package v1')).toBeInTheDocument();
+      expect(screen.getByText('validated')).toBeInTheDocument();
+    });
+
+    // Open review drawer
+    const reviewBtn = screen.getByRole('button', { name: /Thẩm định & Nhập/i });
+    fireEvent.click(reviewBtn);
+
+    // Verify Drawer content
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Study Guide Devanāgarī Phonetics v2.1' })).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-source-version-badge')).toHaveTextContent('Source package v1');
+    });
+
+    // Check Tab 3 (Imports history has 2 items)
+    const importsTab = screen.getByRole('button', { name: /Lịch sử chuyển nạp/i });
+    fireEvent.click(importsTab);
+    expect(screen.getByText(/Ghi chú ID: c7caec82/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sinh 2 Flashcard\(s\)/i)).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 10. Phase UX: Active Topic Context, Context Bar, Empty State & Quick Switch
+  // ---------------------------------------------------------------------------
+  it('13. Synchronizes selectedTopicId when props.topic changes while isOpen is true', async () => {
+    const { rerender } = render(
+      <NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />
+    );
+
+    // Initial topic is mockTopics[0] (Kỳ Môn Độn Giáp Toàn Thư)
+    expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
+      'Kỳ Môn Độn Giáp Toàn Thư'
+    );
+    expect(screen.getByRole('combobox')).toHaveValue('topic-ky-mon');
+
+    // Rerender with mockTopics[1] (Vi Diệu Pháp Toàn Tập)
+    rerender(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
+        'Vi Diệu Pháp Toàn Tập'
+      );
+      expect(screen.getByRole('combobox')).toHaveValue('topic-vi-dieu-phap');
+    });
+  });
+
+  it('14. Renders Artifact Locker Context Bar with topic title, count badge, and session badge', async () => {
+    localStorage.setItem(
+      notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'art-km-1',
+          topicId: 'topic-ky-mon',
+          type: 'study_guide',
+          title: 'Study Guide Kỳ Môn 1',
+          content: 'Nội dung...',
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    );
+
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    const contextBar = screen.getByTestId('artifact-locker-context-bar');
+    expect(contextBar).toBeInTheDocument();
+    expect(contextBar).toHaveTextContent('Kỳ Môn Độn Giáp Toàn Thư');
+
+    const countBadge = screen.getByTestId('artifact-locker-count-badge');
+    expect(countBadge).toHaveTextContent('1 kết quả');
+
+    await waitFor(() => {
+      const sessionBadge = screen.getByTestId('artifact-locker-session-badge');
+      expect(sessionBadge).toBeInTheDocument();
+      expect(sessionBadge).toHaveTextContent(/Session: active/i);
+    });
+  });
+
+  it('15. Renders contextual empty state with topic title and Quick Switch button for other topic with artifacts', async () => {
+    // Topic 0 has 1 artifact in localStorage, Topic 1 has none
+    localStorage.setItem(
+      notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'art-km-1',
+          topicId: 'topic-ky-mon',
+          type: 'study_guide',
+          title: 'Study Guide Kỳ Môn 1',
+          content: 'Nội dung...',
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    );
+
+    // Render modal with Topic 1 (Vi Diệu Pháp) which has 0 artifacts
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
+
+    // Check Contextual Empty State
+    const emptyState = screen.getByTestId('artifact-locker-empty-state');
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState).toHaveTextContent('Vi Diệu Pháp Toàn Tập');
+
+    // Check Quick Switch to Topic 0
+    const quickSwitchContainer = screen.getByTestId('artifact-locker-quick-switch');
+    expect(quickSwitchContainer).toBeInTheDocument();
+    expect(quickSwitchContainer).toHaveTextContent('Kỳ Môn Độn Giáp Toàn Thư');
+
+    const switchBtn = screen.getByTestId('quick-switch-topic-topic-ky-mon');
+    expect(switchBtn).toBeInTheDocument();
+    expect(switchBtn).toHaveTextContent('1');
+
+    // Click Quick Switch to switch to Topic 0
+    fireEvent.click(switchBtn);
+
+    // After switch, Context Bar updates to Topic 0 and displays the artifact
+    await waitFor(() => {
+      expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
+        'Kỳ Môn Độn Giáp Toàn Thư'
+      );
+      expect(screen.getByRole('combobox')).toHaveValue('topic-ky-mon');
+      expect(screen.getByText('Study Guide Kỳ Môn 1')).toBeInTheDocument();
+    });
+  });
+
+  it('16. Does NOT render Quick Switch when there are no localArtifacts for other topics', () => {
+    // localStorage has 0 artifacts for any topic
+    localStorage.removeItem(notebooklmLib.NOTEBOOKLM_STORAGE_KEY);
+
+    render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
+
+    // Contextual Empty State is rendered
+    expect(screen.getByTestId('artifact-locker-empty-state')).toBeInTheDocument();
+
+    // Quick Switch MUST NOT be rendered
+    expect(screen.queryByTestId('artifact-locker-quick-switch')).not.toBeInTheDocument();
   });
 });

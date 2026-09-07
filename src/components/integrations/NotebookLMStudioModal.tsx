@@ -108,6 +108,13 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
     }
   }, []);
 
+  // Sync selectedTopicId when modal is open and props.topic is provided
+  useEffect(() => {
+    if (isOpen && topic?.id) {
+      setSelectedTopicId(topic.id);
+    }
+  }, [isOpen, topic?.id]);
+
   useEffect(() => {
     if (isOpen) {
       setLocalArtifacts(getStoredArtifacts());
@@ -393,6 +400,16 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
   // Merge session artifacts with local artifacts (deduped by title/id)
   const displayLocalArtifacts = localArtifacts.filter((a) => a.topicId === currentTopic?.id);
   const displaySessionArtifacts = sessionArtifacts.filter((a) => a.topicId === currentTopic?.id);
+  const dedupedSessionArtifacts = displaySessionArtifacts.filter(
+    (sa) => !displayLocalArtifacts.some((la) => la.title === sa.title)
+  );
+  const currentTopicArtifactCount = displayLocalArtifacts.length + dedupedSessionArtifacts.length;
+
+  // Find other topics that have local artifacts for Quick Switch
+  const otherTopicsWithArtifacts = topics.filter((t) => {
+    if (t.id === currentTopic?.id) return false;
+    return localArtifacts.some((a) => a.topicId === t.id);
+  });
 
   return (
     <div
@@ -668,7 +685,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
             )}
           </div>
 
-          {/* Section 3: NotebookLM Artifacts Locker */}
+            {/* Section 3: NotebookLM Artifacts Locker */}
           <div className="bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-xs text-stone-900 dark:text-stone-100">
@@ -693,6 +710,33 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                   <Plus className="w-3.5 h-3.5" />
                   <span>Thêm Kết Quả</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Topic Context Indicator Bar */}
+            <div
+              data-testid="artifact-locker-context-bar"
+              className="flex flex-wrap items-center justify-between gap-2 p-3 bg-stone-50 dark:bg-stone-950/70 border border-stone-200 dark:border-stone-800 rounded-xl text-xs"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-stone-500 dark:text-stone-400">Chủ đề hiện hành:</span>
+                <span className="font-bold text-stone-900 dark:text-stone-100">{currentTopic?.title || 'Chưa chọn'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  data-testid="artifact-locker-count-badge"
+                  className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-[11px] font-semibold border border-blue-200 dark:border-blue-800"
+                >
+                  {currentTopicArtifactCount} kết quả
+                </span>
+                {currentSession && (
+                  <span
+                    data-testid="artifact-locker-session-badge"
+                    className="px-2.5 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[11px] font-mono border border-stone-300 dark:border-stone-700 uppercase font-semibold"
+                  >
+                    Session: {currentSession.status}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -935,8 +979,51 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
                   ))}
               </div>
             ) : (
-              <div className="py-6 text-center text-stone-400 dark:text-stone-500">
-                <p className="text-xs">Chưa có kết quả Audio Overview hay Study Guide nào được lưu cho chủ đề này.</p>
+              <div
+                data-testid="artifact-locker-empty-state"
+                className="py-8 px-4 text-center space-y-3 bg-stone-50/50 dark:bg-stone-950/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-800 text-stone-500 dark:text-stone-400"
+              >
+                <div className="w-10 h-10 mx-auto rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center text-stone-400 dark:text-stone-500">
+                  <Headphones className="w-5 h-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                    Chưa có kết quả Audio Overview hay Study Guide nào được lưu cho chủ đề <span className="font-bold text-stone-900 dark:text-stone-100">"{currentTopic?.title}"</span>.
+                  </p>
+                  <p className="text-[11px]">
+                    Bạn có thể đóng gói tài liệu nguồn bên trên để gửi cho Antigravity hoặc nạp kết quả thủ công vào hệ thống.
+                  </p>
+                </div>
+
+                {otherTopicsWithArtifacts.length > 0 && (
+                  <div
+                    data-testid="artifact-locker-quick-switch"
+                    className="pt-3 border-t border-stone-200 dark:border-stone-800 flex flex-col items-center gap-2"
+                  >
+                    <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-400">
+                      Chủ đề khác đã có kết quả sẵn:
+                    </span>
+                    <div className="flex flex-wrap justify-center gap-1.5">
+                      {otherTopicsWithArtifacts.map((t) => {
+                        const count = localArtifacts.filter((a) => a.topicId === t.id).length;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            data-testid={`quick-switch-topic-${t.id}`}
+                            onClick={() => setSelectedTopicId(t.id)}
+                            className="px-2.5 py-1 bg-white dark:bg-stone-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                          >
+                            <span>{t.title}</span>
+                            <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold">
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
