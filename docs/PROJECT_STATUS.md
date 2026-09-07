@@ -2,11 +2,57 @@
 
 > **Cập nhật lần cuối:** 2026-09-07  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12) & RESEARCH DASHBOARD (F7.0) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.13.0` — 224/224 PASS, 0 TSC ERRORS)**
+> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12), RESEARCH DASHBOARD (F7.0) & AI-POWERED INSIGHTS (F7.1) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.14.0` — 63/63 PASS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+
+## Phase F7.1 — AI-Powered Insights & Predictive Analytics (2026-09-07)
+
+**Status**: ✅ Completed  
+**Tag**: `v0.14.0`  
+**Tests**: 63/63 PASS (100%)  
+**Typecheck**: 0 errors
+
+### Features Delivered
+
+1. ✅ Retention Predictions & Forgetting Curve (exponential decay $R = e^{-t/S}$, 80% & 95% confidence bands, optimal review date, calibration engine)
+2. ✅ Study Recommendations (multi-criteria utility scoring, explainable rationales, time-budget filtering 15m/30m/60m, anti-fatigue diversity)
+3. ✅ Circadian Pattern Detection (24×7 matrix, SVG heatmap, peak study hours identification with statistical delta vs baseline)
+4. ✅ Smart Notifications (browser notifications, anti-spam rate limiting: max 3/24h, min 2h gap, snooze 1h/1d/3d, in-app fallback)
+5. ✅ Topic Dashboard Integration (AI Insights section, card selector dropdown, header notification button with alert badge)
+
+### Technical Decisions
+
+- Zero database schema migrations (pure runtime client-side calculations)
+- Zero external heavy ML dependencies (pure TypeScript mathematical models)
+- Lightweight React SVG charts (zero chart bundle bloat)
+- LocalStorage persistence for snooze states and rate-limiting history
+
+### Files Changed
+
+- `src/lib/retentionPredictionEngine.ts` (new)
+- `src/lib/studyRecommendationEngine.ts` (new)
+- `src/lib/studyPatternEngine.ts` (new)
+- `src/lib/smartNotificationService.ts` (new)
+- `src/components/research/RetentionPredictionChart.tsx` (new)
+- `src/components/research/TopicRecommendations.tsx` (new)
+- `src/components/research/StudyPatternsHeatmap.tsx` (new)
+- `src/components/research/NotificationSettingsModal.tsx` (new)
+- `src/components/research/TopicDashboard.tsx` (modified)
+- `src/components/research/index.ts` (modified)
+- `docs/specs/phase-f7-1-ai-powered-insights.md` (new)
+- `docs/adr/f7.1-ai-powered-insights.md` (new)
+- `docs/implementation-plans/f7.1-ai-powered-insights.md` (new)
+- `.github/RELEASE_NOTES_F7.1.md` (new)
+- `tests/` (9 test suites, 63 tests)
+
+### Next Phase
+
+- F8.0: Collaboration Features (shared topics, peer review, study groups)
+
+---
 
 ## Phase F7.0 — Research Dashboard (Multi-Domain) (2026-09-07)
 
