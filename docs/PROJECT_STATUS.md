@@ -8,8 +8,11 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
-- **Trạng thái thực thi:** **PHASE F6.10 (NOTE-TO-FLASHCARD INTEGRATION) HOÀN TẤT TOÀN DIỆN VÀ ĐÃ ĐƯỢC PHÁT HÀNH (TAG `v0.10.0`, COMMIT `9e289d5` TRÊN BRANCH `neh1`)**.
-- **Tiến độ Subsystem Flashcard & Spaced Repetition (F6.0 $\rightarrow$ F6.10):**
+- **Trạng thái thực thi:** **PHASE F6.11 (REVIEW MODE ENHANCEMENTS) ĐANG TRIỂN KHAI (KHẢO SÁT HỆ THỐNG, TECHNICAL SPEC VÀ IMPLEMENTATION PLAN HOÀN TẤT)**.
+- **Tiến độ Subsystem Flashcard & Spaced Repetition (F6.0 $\rightarrow$ F6.11):**
+  - **Phase F6.11 — Review Mode Enhancements (Đang thực hiện):**
+    - **Mục tiêu:** Nâng cấp trải nghiệm phòng ôn tập `FlashcardReviewStudio`: Dashboard thống kê nhanh (`ReviewDashboardHeader`), lọc hàng đợi ưu tiên (`?priority=due|new|low_retention`), sửa nhanh thẻ khi học (`Ctrl+E`), xem lịch sử thẻ khi học (`Ctrl+H`), và xuất kết quả phiên ôn tập ra CSV.
+    - **Tài liệu:** Đã hoàn thành Deep Dive Codebase và lập đặc tả [`docs/specs/phase-f6-11-review-mode-enhancements.md`](docs/specs/phase-f6-11-review-mode-enhancements.md) cùng kế hoạch triển khai.
   - **Phase F6.10 — Note-to-Flashcard Integration (Hoàn thành — Tag `v0.10.0`):**
     - **Mục tiêu:** Tích hợp liền mạch quy trình chuyển đổi tri thức từ bài đọc ghi chú (Note Reader) thành Flashcard với thao tác bôi đen text, auto-detect cloze, batch import bullet list và chân trang hiển thị thẻ liên kết.
     - **Kiến trúc & Giải pháp (ADR-F6.10):**

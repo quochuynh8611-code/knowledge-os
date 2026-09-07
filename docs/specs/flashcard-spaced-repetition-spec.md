@@ -261,6 +261,7 @@ export function parseClozeDeletions(rawText: string): ClozeItem[];
 - **F6.5**: Card Browser & Card Lifecycle Management (Search, Filter, Sort, History, Suspend, Restore, Archive). (Hoàn thành)
 - **F6.9**: Duplicate Card Detection & Intelligent Merging (Deterministic Key, Levenshtein Match, Scope Guard, Device Activity Log). (Hoàn thành)
 - **F6.10**: **Note-to-Flashcard Integration** (Tạo flashcard từ văn bản bôi đen trong ghi chú, tự động nhận diện cloze, batch creation, NoteCardListSection, E2E Playwright, Tag `v0.10.0`). (Hoàn thành)
+- **F6.11**: **Review Mode Enhancements** (Review Queue Dashboard Header, Priority Filters, Quick Edit Ctrl+E, View History Ctrl+H, CSV Session Export). (Đang thực hiện - Chi tiết tại [phase-f6-11-review-mode-enhancements.md](phase-f6-11-review-mode-enhancements.md))
 - **F6.6**: Custom/Cram Review Sessions & Multi-Topic Review Queue. (Roadmap tiếp theo)
 - **F6.7**: Hierarchical Topic Card Inheritance (Descendant Topic Inclusion). (Roadmap tiếp theo)
 
