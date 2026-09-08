@@ -11,6 +11,7 @@ import {
   FileWarning,
 } from 'lucide-react';
 import { Topic } from '../types';
+import { HeadingSlugger } from './headingSlugger';
 import {
   ObsidianTransclusionResolver,
   isNoteTransclusion,
@@ -57,6 +58,133 @@ export function sanitizeVaultMarkdown(rawMarkdown: string): string {
 }
 
 /**
+ * Chuẩn hóa nội dung Markdown an toàn dành riêng cho hiển thị (render boundary),
+ * không làm biến dạng dữ liệu nguồn, bảo toàn toàn bộ code blocks, inline code,
+ * URLs, Markdown links, số thập phân, phiên bản, identifiers kỹ thuật và thương hiệu.
+ */
+export function normalizeMarkdownForDisplay(rawContent?: string): string {
+  if (!rawContent) return '';
+
+  const codeBlocks: string[] = [];
+  const inlineCodes: string[] = [];
+  const protectedTokens: string[] = [];
+
+  // 1. Bảo toàn Fenced Code Blocks (```...```)
+  let text = rawContent.replace(/```[\s\S]*?```/g, (match) => {
+    const idx = codeBlocks.length;
+    codeBlocks.push(match);
+    return `\u0000CODEBLOCK_${idx}\u0000`;
+  });
+
+  // 2. Bảo toàn Inline Code (`...`)
+  text = text.replace(/`[^`\n]+`/g, (match) => {
+    const idx = inlineCodes.length;
+    inlineCodes.push(match);
+    return `\u0000INLINECODE_${idx}\u0000`;
+  });
+
+  // 3. Bảo toàn URLs, Markdown Links, Wiki Links, Image Embeds, Emails, Endpoint Paths, Key-Value Params, Technical Identifiers & Brands
+  const protectedPattern = new RegExp(
+    [
+      // Wiki links / embeds
+      /!\[\[[^\]]+\]\]|\[\[[^\]]+\]\]/.source,
+      // Markdown images / links
+      /!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)/.source,
+      // URLs
+      /(?:https?|mailto|obsidian):\/\/[^\s)\]]+/.source,
+      // Emails
+      /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.source,
+      // Absolute / API Paths
+      /(?:\/[a-zA-Z0-9._~:/?#\[\]@!$&'()*+,;=-]+)/.source,
+      // Key-Value Params
+      /(?:[a-zA-Z0-9_]+=[a-zA-Z0-9_]+)/.source,
+      // Namespaced technical identifiers (e.g. metadata:Title, namespace:ClassName)
+      /(?<![\p{L}\p{N}])(?:[a-zA-Z0-9_]+:[a-zA-Z0-9_]+)(?![\p{L}\p{N}])/u.source,
+      // IP Addresses
+      /\b\d{1,3}(?:\.\d{1,3}){3}\b/.source,
+      // Semver / Versions / Model versions
+      /\bv\d+(?:\.\d+)+\b/.source,
+      /(?:[a-zA-Z0-9-]+-\d+\.\d+(?:-[a-zA-Z0-9-]+)*)/.source,
+      // Decimals
+      /(?<!\.)\b\d+\.\d+\b(?!\.)/.source,
+      // Specific Known Brands & Acronyms
+      /(?<![\p{L}\p{N}])(?:iPhone|iPad|iPod|iMac|macOS|iOS|eBay|PayPal|GitHub|GitLab|JavaScript|TypeScript|React|NodeJS|OAuth|OpenID|WebAssembly|GraphQL)(?![\p{L}\p{N}])/u.source,
+      // Standard camelCase variables with 2+ lowercase prefix chars (e.g. processPayment, userProfile, isLoading, getUserName, camelCaseVariable)
+      /(?<![\p{L}\p{N}])[a-z]{2,}(?:[A-Z][a-z0-9]*)+(?![\p{L}\p{N}])/u.source,
+      // PascalCase / UpperCamelCase (e.g. KnowledgeGraph, ResearchNote, MarkdownRenderer, YouTubeMusic, MacBookPro, NoteReaderModal)
+      /(?<![\p{L}\p{N}])[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+(?![\p{L}\p{N}])/u.source,
+      // Acronym prefix + PascalCase (e.g. AIResearch, LLMModel, PDFReader, HTTPServer, CRISPRCas9)
+      /(?<![\p{L}\p{N}])[A-Z]{2,}[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)*(?![\p{L}\p{N}])/u.source,
+      // PascalCase + Acronym suffix (e.g. NotionAI)
+      /(?<![\p{L}\p{N}])[A-Z][a-z0-9]+[A-Z]{2,}(?![\p{L}\p{N}])/u.source,
+      // PascalCase + Acronym + PascalCase (e.g. OpenAIResearch)
+      /(?<![\p{L}\p{N}])[A-Z][a-z0-9]+[A-Z]{2,}[A-Z][a-z0-9]+(?![\p{L}\p{N}])/u.source,
+      // Lowercase prefix + Acronym suffix / mid (e.g. mRNASeq, eGFR, pHValue)
+      /(?<![\p{L}\p{N}])[a-z]+[A-Z]{2,}(?:[A-Z][a-z0-9]+)*(?![\p{L}\p{N}])/u.source,
+      /(?<![\p{L}\p{N}])[a-z][A-Z][A-Z]+[a-z0-9]*(?![\p{L}\p{N}])/u.source,
+      /(?<![\p{L}\p{N}])pH[A-Z][a-z0-9]*(?![\p{L}\p{N}])/u.source,
+    ].join('|'),
+    'gu'
+  );
+
+  text = text.replace(protectedPattern, (match) => {
+    const idx = protectedTokens.length;
+    protectedTokens.push(match);
+    return `\u0000TOKEN_${idx}\u0000`;
+  });
+
+  // 4. Chuẩn hóa cấu trúc Section / Heading / Paragraph breaks trước
+  // Tách newline trước Section Numbering e.g. "đông y.1. Phương pháp" hoặc "học.1.1. Ứng dụng"
+  text = text.replace(
+    /([)\p{Ll}\p{Lu}0-9])\.\s*(\d+(?:\.\d+)*\.)\s+([\p{Lu}])/gu,
+    '$1.\n\n$2 $3'
+  );
+
+  // 5. Chuẩn hóa theo từng dòng prose
+  const lines = text.split(/\r?\n/);
+  const normalizedLines = lines.map((line) => {
+    let processed = line;
+
+    // 5a. Chuẩn hóa Heading Markdown thiếu khoảng trắng ở đầu dòng: e.g. ##Tiêu đề -> ## Tiêu đề
+    processed = processed.replace(/^(#{1,6})([^\s#].*)$/, '$1 $2');
+
+    // 5b. Phục hồi dấu cách sau dấu chấm bị dính với câu mới trong prose: e.g. "bệnh.Để" -> "bệnh. Để", "YHCT).Để" -> "YHCT). Để"
+    processed = processed.replace(/([)\p{Ll}])\.(\p{Lu})/gu, '$1. $2');
+
+    // 5c. Phục hồi dấu cách sau dấu hai chấm trong prose: e.g. "chủ động:Truy xuất" -> "chủ động: Truy xuất"
+    processed = processed.replace(/([)\p{Ll}\p{Lu}]+):(\p{Lu})/gu, '$1: $2');
+
+    // 5d. Word Boundary Recovery (Phục hồi từ OCR dính chữ hoa/thường):
+    // Case 1: All-caps (>=2 ký tự) dính vào Title-case, e.g. "CÁ NHÂNSự" -> "CÁ NHÂN Sự"
+    processed = processed.replace(/([\p{Lu}]{2,})([\p{Lu}][\p{Ll}]+)/gu, '$1 $2');
+
+    // Case 2: Chữ thường dính vào TitleCase (e.g. "Đông yViệc", "nâng caoViệc", "thứcỨng", "yActive", "RecallTăng", "RepetitionTối", "TechniqueChuyển", "rõ ràngDiễn")
+    processed = processed.replace(/([\p{Ll}])([\p{Lu}][\p{Ll}]+)/gu, '$1 $2');
+
+    return processed;
+  });
+
+  text = normalizedLines.join('\n');
+
+  // 6. Khôi phục Protected Tokens
+  text = text.replace(/\u0000TOKEN_(\d+)\u0000/g, (_, idx) => {
+    return protectedTokens[parseInt(idx, 10)] ?? '';
+  });
+
+  // 7. Khôi phục Inline Code
+  text = text.replace(/\u0000INLINECODE_(\d+)\u0000/g, (_, idx) => {
+    return inlineCodes[parseInt(idx, 10)] ?? '';
+  });
+
+  // 8. Khôi phục Fenced Code Blocks
+  text = text.replace(/\u0000CODEBLOCK_(\d+)\u0000/g, (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)] ?? '';
+  });
+
+  return text;
+}
+
+/**
  * Chuẩn hóa nội dung Markdown thành văn bản thuần (plain text) trơn tru,
  * lọc sạch toàn bộ ký tự điều khiển cú pháp (#, **, _, >, ---, ```, [[ ]], [text](url), tables, html)
  * phục vụ cho card preview, line-clamp và search snippet.
@@ -64,7 +192,7 @@ export function sanitizeVaultMarkdown(rawMarkdown: string): string {
 export function toReadablePlainTextPreview(content?: string, maxLength?: number): string {
   if (!content) return '';
 
-  let text = content;
+  let text = normalizeMarkdownForDisplay(content);
 
   // 1. Chuyển đổi Wiki Links [[Tên Chủ Đề]] hoặc [[Tên Chủ Đề|Bí danh]] thành văn bản thuần
   text = text.replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, '$1');
@@ -659,8 +787,11 @@ export function MarkdownReadabilityRenderer({
     return <p className="text-stone-400 italic text-sm">Chưa có nội dung ghi chú.</p>;
   }
 
+  const slugger = new HeadingSlugger();
+  const normalizedContent = normalizeMarkdownForDisplay(content);
+
   // Tách nội dung theo dòng để xử lý các block elements
-  const lines = content.split(/\r?\n/);
+  const lines = normalizedContent.split(/\r?\n/);
   const blocks: React.ReactNode[] = [];
 
   const renderInline = (val: string) =>
@@ -861,13 +992,15 @@ export function MarkdownReadabilityRenderer({
       flushTable(i);
       const level = headingMatch[1].length;
       const headingText = headingMatch[2];
+      const headingId = slugger.slug(headingText);
 
       if (level === 1) {
         blocks.push(
           <h1
             key={`h1-${i}`}
+            id={headingId}
             data-heading="1"
-            className="text-xl sm:text-2xl md:text-3xl font-bold text-stone-950 dark:text-stone-50 font-serif-title mt-7 mb-3.5 pb-2 border-b border-stone-200/90 dark:border-stone-800 tracking-tight leading-snug"
+            className="text-xl sm:text-2xl md:text-3xl font-bold text-stone-950 dark:text-stone-50 font-serif-title mt-7 mb-3.5 pb-2 border-b border-stone-200/90 dark:border-stone-800 tracking-tight leading-snug scroll-mt-6"
           >
             {renderInline(headingText)}
           </h1>
@@ -876,8 +1009,9 @@ export function MarkdownReadabilityRenderer({
         blocks.push(
           <h2
             key={`h2-${i}`}
+            id={headingId}
             data-heading="2"
-            className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-6 mb-3 tracking-tight leading-snug"
+            className="text-lg sm:text-xl md:text-2xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-6 mb-3 tracking-tight leading-snug scroll-mt-6"
           >
             {renderInline(headingText)}
           </h2>
@@ -886,8 +1020,9 @@ export function MarkdownReadabilityRenderer({
         blocks.push(
           <h3
             key={`h3-${i}`}
+            id={headingId}
             data-heading="3"
-            className="text-base sm:text-lg md:text-xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-5 mb-2.5 leading-snug"
+            className="text-base sm:text-lg md:text-xl font-bold text-stone-900 dark:text-stone-100 font-serif-title mt-5 mb-2.5 leading-snug scroll-mt-6"
           >
             {renderInline(headingText)}
           </h3>
@@ -896,8 +1031,9 @@ export function MarkdownReadabilityRenderer({
         blocks.push(
           <h4
             key={`h4-${i}`}
+            id={headingId}
             data-heading="4"
-            className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200 font-serif-title mt-4 mb-2 leading-snug"
+            className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200 font-serif-title mt-4 mb-2 leading-snug scroll-mt-6"
           >
             {renderInline(headingText)}
           </h4>

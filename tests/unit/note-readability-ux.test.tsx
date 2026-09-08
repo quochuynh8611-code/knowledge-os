@@ -8,6 +8,7 @@ import { Note, Topic } from '../../src/types';
 import {
   toReadablePlainTextPreview,
   MarkdownReadabilityRenderer,
+  normalizeMarkdownForDisplay,
 } from '../../src/lib/markdownReadability';
 
 describe('Note Readability UX & Focus Reader Enhancements', () => {
@@ -360,6 +361,252 @@ Tham chiếu đến [[Kỳ Môn Độn Giáp|Kỳ Môn]] trong phương pháp đ
       expect(closeButtons.length).toBeGreaterThan(0);
       fireEvent.click(closeButtons[0]);
       expect(handleClose).toHaveBeenCalled();
+    });
+  });
+
+  describe('5. Feature: Hiển thị ghi chú OCR an toàn (normalizeMarkdownForDisplay)', () => {
+    describe('5.1 Positive OCR Cases (Phục hồi ranh giới từ & cấu trúc)', () => {
+      it('1. Phục hồi "Đông yViệc" -> "Đông y Việc"', () => {
+        const raw = 'trong Đông yViệc chuyển đổi từ tư duy';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('trong Đông y Việc chuyển đổi từ tư duy');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('2. Phục hồi "CÁ NHÂNSự phức tạp" -> "CÁ NHÂN Sự phức tạp"', () => {
+        const raw = 'TRI THỨC CÁ NHÂNSự phức tạp của YHCT';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('TRI THỨC CÁ NHÂN Sự phức tạp của YHCT');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('3. Phục hồi "nâng caoViệc" -> "nâng cao Việc"', () => {
+        const raw = 'nhận thức nâng caoViệc tiếp thu tri thức';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('nhận thức nâng cao Việc tiếp thu tri thức');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('4. Phục hồi "thứcỨng" -> "thức Ứng"', () => {
+        const raw = 'thần kinh / Nhận thứcỨng dụng cụ thể trong Đông y';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('thần kinh / Nhận thức Ứng dụng cụ thể trong Đông y');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('5. Phục hồi "yActive" -> "y Active"', () => {
+        const raw = 'thực hành Đông yActive Recall là kỹ thuật then chốt';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('thực hành Đông y Active Recall là kỹ thuật then chốt');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('6. Phục hồi "RecallTăng" / "RecallTổng" -> "Recall Tăng" / "Recall Tổng"', () => {
+        const raw = 'Active RecallTăng cường mật độ kết nối và RecallTổng quát';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('Active Recall Tăng cường mật độ kết nối và Recall Tổng quát');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('7. Phục hồi "RepetitionTối" / "RepetitionTỉ" -> "Repetition Tối" / "Repetition Tỉ"', () => {
+        const raw = 'Spaced RepetitionTối ưu hóa đường cong quên và RepetitionTỉ lệ';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('Spaced Repetition Tối ưu hóa đường cong quên và Repetition Tỉ lệ');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('8. Phục hồi "TechniqueChuyển" -> "Technique Chuyển"', () => {
+        const raw = 'Feynman TechniqueChuyển đổi tri thức ẩn thành hiển';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('Feynman Technique Chuyển đổi tri thức ẩn thành hiển');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('9. Phục hồi "rõ ràngDiễn" / "rộngDẫn" -> "rõ ràng Diễn" / "rộng Dẫn"', () => {
+        const raw = 'hiển thị rõ ràngDiễn giải chi tiết và mở rộngDẫn xuất';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toBe('hiển thị rõ ràng Diễn giải chi tiết và mở rộng Dẫn xuất');
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('10. Tách section marker "đông y.1. Phương pháp" và "học.1.1. Ứng dụng"', () => {
+        const raw = 'ghi nhớ trong Đông y.1. Phương pháp luận thần kinh học.1.1. Ứng dụng nhận thức';
+        const inputCopy = raw;
+        const normalized = normalizeMarkdownForDisplay(raw);
+        expect(normalized).toContain('\n1. Phương pháp luận');
+        expect(normalized).toContain('\n1.1. Ứng dụng');
+        expect(raw).toBe(inputCopy);
+      });
+    });
+
+    describe('5.2 Negative Protection Cases (Bảo vệ tuyệt đối mã định danh & thương hiệu)', () => {
+      it('11. Bảo vệ "iPhone" không bị tách', () => {
+        const raw = 'Sử dụng ứng dụng trên thiết bị iPhone 15 Pro Max.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('12. Bảo vệ "eBay" không bị tách', () => {
+        const raw = 'Mua sắm sách khảo cứu trên eBay quốc tế.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('13. Bảo vệ "camelCaseVariable" không bị tách', () => {
+        const raw = 'Khai báo biến camelCaseVariable trong mã nguồn.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('14. Bảo vệ "NoteReaderModal" không bị tách', () => {
+        const raw = 'Component NoteReaderModal chịu trách nhiệm hiển thị.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('15. Bảo vệ "HTTPServer" không bị tách', () => {
+        const raw = 'Cấu hình HTTPServer xử lý request đồng thời.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('16. Bảo vệ "v1.2.3" không bị tách', () => {
+        const raw = 'Phiên bản release v1.2.3 ổn định.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('17. Bảo vệ "model-1.0.0-beta" không bị tách', () => {
+        const raw = 'Deploy model model-1.0.0-beta lên cluster.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('18. Bảo vệ "192.168.1.1" không bị tách', () => {
+        const raw = 'Truy cập router tại địa chỉ IP 192.168.1.1 trong mạng LAN.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('19. Bảo vệ "3.14159" không bị tách', () => {
+        const raw = 'Số Pi xấp xỉ bằng 3.14159 trong toán học.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      it('20. Bảo vệ "user@example.com" không bị tách', () => {
+        const raw = 'Gửi phản hồi về hòm thư user@example.com để được trợ giúp.';
+        const inputCopy = raw;
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+        expect(raw).toBe(inputCopy);
+      });
+
+      // Hardening Negative Regression Tests (18 cases - no false positives)
+      const hardeningCases = [
+        'OpenAIResearch',
+        'YouTubeMusic',
+        'MacBookPro',
+        'NotionAI',
+        'processPayment',
+        'userProfile',
+        'isLoading',
+        'getUserName',
+        'KnowledgeGraph',
+        'ResearchNote',
+        'MarkdownRenderer',
+        'AIResearch',
+        'LLMModel',
+        'PDFReader',
+        'mRNASeq',
+        'CRISPRCas9',
+        'eGFR',
+        'pHValue',
+      ];
+
+      hardeningCases.forEach((term, idx) => {
+        it(`Hardening ${idx + 1}: Chuỗi "${term}" giữ nguyên tuyệt đối (negative protection / no false positive)`, () => {
+          // 1. Standalone term assertion
+          const rawTerm = term;
+          const rawTermCopy = `${rawTerm}`;
+          const outputTerm = normalizeMarkdownForDisplay(rawTerm);
+          expect(outputTerm).toBe(rawTerm);
+          expect(rawTerm).toBe(rawTermCopy);
+
+          // 2. In-sentence context assertion
+          const rawSentence = `Tài liệu kỹ thuật chứa identifier ${term} cần bảo toàn.`;
+          const rawSentenceCopy = `${rawSentence}`;
+          const outputSentence = normalizeMarkdownForDisplay(rawSentence);
+          expect(outputSentence).toBe(rawSentence);
+          expect(rawSentence).toBe(rawSentenceCopy);
+        });
+      });
+    });
+
+    describe('5.3 Markdown Structure Preservation', () => {
+      it('21. Bảo toàn Markdown Headings chuẩn', () => {
+        const raw = '# Tiêu Đề Cấp 1\n## Tiêu Đề Cấp 2\n### Tiêu Đề Cấp 3';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+
+      it('22. Bảo toàn Ordered List chuẩn', () => {
+        const raw = '1. Mục thứ nhất\n2. Mục thứ hai\n3. Mục thứ ba';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+
+      it('23. Bảo toàn Blockquote chuẩn', () => {
+        const raw = '> Trích dẫn lời Phật dạy trong Kinh Di Giáo.';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+
+      it('24. Bảo toàn Inline Code', () => {
+        const raw = 'Đoạn văn với `const app = HTTPServer(iPhone);` trong nội dung.';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+
+      it('25. Bảo toàn Fenced Code Block', () => {
+        const raw = '```typescript\nfunction render(note: NoteReaderModal) {\n  return note.id;\n}\n```';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+    });
+
+    describe('5.4 Additional Safety Scenarios', () => {
+      it('Phục hồi dấu cách sau dấu chấm câu dính chữ: "bệnh.Để" -> "bệnh. Để"', () => {
+        const raw = 'Trị bệnh.Để đạt hiệu quả cao cần dùng thuốc.';
+        expect(normalizeMarkdownForDisplay(raw)).toBe('Trị bệnh. Để đạt hiệu quả cao cần dùng thuốc.');
+      });
+
+      it('Phục hồi dấu cách sau dấu hai chấm: "chủ động:Truy xuất" -> "chủ động: Truy xuất"', () => {
+        const raw = 'Tự chủ động:Truy xuất nguồn dữ liệu.';
+        expect(normalizeMarkdownForDisplay(raw)).toBe('Tự chủ động: Truy xuất nguồn dữ liệu.');
+      });
+
+      it('Không tự ý chèn newline nếu chỉ là đoạn văn dài thuần túy không có section marker', () => {
+        const raw = 'Văn bản một dòng dài liên tục từ tài liệu scan OCR không có dấu hiệu phân đoạn xuống dòng rõ ràng.';
+        expect(normalizeMarkdownForDisplay(raw)).toBe(raw);
+      });
+
+      it('Không phá URLs, endpoints và technical query parameters', () => {
+        const raw = 'API: https://example.com/api/v1:Create?key=value&tag=YHCT';
+        expect(normalizeMarkdownForDisplay(raw)).toContain('https://example.com/api/v1:Create?key=value&tag=YHCT');
+      });
     });
   });
 });

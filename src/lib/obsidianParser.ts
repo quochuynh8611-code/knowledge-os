@@ -1,3 +1,5 @@
+import { HeadingSlugger } from "./headingSlugger";
+
 export interface OutlineItem {
   level: number;
   text: string;
@@ -10,40 +12,65 @@ export interface ParsedObsidianNote {
   content: string;
 }
 
-/**
- * Creates a URL-friendly slug ID from heading text
- */
-function slugifyHeading(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[đĐ]/g, "d")
-    .replace(/\./g, "-") // replace periods in numbering (1.1 -> 1-1)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove diacritics
-    .replace(/[^\w\s-]/g, "") // remove punctuation except hyphens/spaces
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}
+export { HeadingSlugger };
 
 /**
- * Lightweight parser for YAML frontmatter without external unsafe dependencies
+ * Lightweight parser for YAML frontmatter without external unsafe dependencies.
+ * Supports inline lists [a, b], multi-line lists (- item), quoted strings, booleans, and numbers.
  */
-function parseSimpleYamlFrontmatter(yamlString: string): Record<string, any> {
+export function parseSimpleYamlFrontmatter(yamlString: string): Record<string, any> {
   const result: Record<string, any> = {};
-  const lines = yamlString.split("\n");
+  const lines = yamlString.split(/\r?\n/);
 
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
+  let currentListKey: string | null = null;
+  let currentList: string[] = [];
 
-    const colonIndex = line.indexOf(":");
+  const flushList = () => {
+    if (currentListKey) {
+      result[currentListKey] = currentList;
+      currentListKey = null;
+      currentList = [];
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    // Check if line is a list item under current list key: "  - item" or "- item"
+    const listItemMatch = trimmed.match(/^-\s+(.+)$/);
+    if (listItemMatch && currentListKey) {
+      let itemVal = listItemMatch[1].trim();
+      if (
+        (itemVal.startsWith('"') && itemVal.endsWith('"')) ||
+        (itemVal.startsWith("'") && itemVal.endsWith("'"))
+      ) {
+        itemVal = itemVal.slice(1, -1);
+      }
+      currentList.push(itemVal);
+      continue;
+    }
+
+    // Otherwise, flush existing list and look for a new key
+    flushList();
+
+    const colonIndex = rawLine.indexOf(":");
     if (colonIndex === -1) continue;
 
-    const key = line.slice(0, colonIndex).trim();
-    let valueStr = line.slice(colonIndex + 1).trim();
+    const key = rawLine.slice(0, colonIndex).trim();
+    if (!key) continue;
 
-    // Check array: [item1, item2]
+    let valueStr = rawLine.slice(colonIndex + 1).trim();
+
+    // If valueStr is empty, this could be the start of a multi-line list (e.g. "tags:")
+    if (valueStr === "") {
+      currentListKey = key;
+      currentList = [];
+      continue;
+    }
+
+    // Check inline array: [item1, item2]
     if (valueStr.startsWith("[") && valueStr.endsWith("]")) {
       const inner = valueStr.slice(1, -1).trim();
       if (!inner) {
@@ -77,6 +104,7 @@ function parseSimpleYamlFrontmatter(yamlString: string): Record<string, any> {
     }
   }
 
+  flushList();
   return result;
 }
 
@@ -94,7 +122,7 @@ export function parseObsidianFrontmatterAndOutline(
   let frontmatter: Record<string, any> = {};
   let bodyContent = rawMarkdown;
 
-  // Check YAML Frontmatter block: ^---\r?\n([\s\S]*?)\r?\n---(\r?\n|$)
+  // Check YAML Frontmatter block: ^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)
   const frontmatterRegex = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
   const match = rawMarkdown.match(frontmatterRegex);
 
@@ -104,9 +132,10 @@ export function parseObsidianFrontmatterAndOutline(
     bodyContent = rawMarkdown.slice(match[0].length);
   }
 
-  // Extract headings outline while ignoring code blocks (```...```)
+  // Extract headings outline using HeadingSlugger
+  const slugger = new HeadingSlugger();
   const outline: OutlineItem[] = [];
-  const lines = rawMarkdown.split("\n");
+  const lines = rawMarkdown.split(/\r?\n/);
   let inCodeBlock = false;
 
   for (const rawLine of lines) {
@@ -128,7 +157,7 @@ export function parseObsidianFrontmatterAndOutline(
       outline.push({
         level,
         text: headingText,
-        id: slugifyHeading(headingText),
+        id: slugger.slug(headingText),
       });
     }
   }
@@ -136,6 +165,6 @@ export function parseObsidianFrontmatterAndOutline(
   return {
     frontmatter,
     outline,
-    content: rawMarkdown,
+    content: bodyContent,
   };
 }
