@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   X,
   RefreshCw,
@@ -10,11 +10,18 @@ import {
   Loader2,
   Trash2,
   ArrowLeft,
+  Search,
 } from 'lucide-react';
 import { Resource } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
 import { ObsidianWikiLinkResolver } from '../../lib/obsidianWikiLinkResolver';
 import { ObsidianTransclusionResolver } from '../../lib/obsidianTransclusionResolver';
+import {
+  saveReadingPosition,
+  restoreReadingPosition,
+  getHeadingFromQueryParam,
+  updateHeadingQueryParam,
+} from '../../lib/readingPosition';
 
 interface OutlineItem {
   level: number;
@@ -83,29 +90,6 @@ function sanitizeVaultMarkdown(rawMarkdown: string): string {
   return sanitized;
 }
 
-function scrollToHeading(headingText?: string) {
-  if (!headingText) return;
-  const clean = headingText.trim().toLowerCase();
-
-  const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
-  for (const el of Array.from(headings)) {
-    if (el.textContent?.trim().toLowerCase() === clean) {
-      if (typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
-      return;
-    }
-  }
-
-  const slug = clean
-    .replace(/[^a-z0-9àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ\s-]/gi, '')
-    .replace(/\s+/g, '-');
-  const elById = document.getElementById(clean) || document.getElementById(slug);
-  if (elById && typeof elById.scrollIntoView === 'function') {
-    elById.scrollIntoView({ behavior: 'smooth' });
-  }
-}
-
 export function ObsidianDocumentViewerModal({
   isOpen,
   onClose,
@@ -117,6 +101,20 @@ export function ObsidianDocumentViewerModal({
   const [fileData, setFileData] = useState<VaultFileResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showOutline, setShowOutline] = useState(true);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [outlineSearchQuery, setOutlineSearchQuery] = useState('');
+  const [debouncedOutlineSearch, setDebouncedOutlineSearch] = useState('');
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const outlineButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Debounce outline search by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedOutlineSearch(outlineSearchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [outlineSearchQuery]);
 
   // In-place navigation states for wiki-links
   const [currentPath, setCurrentPath] = useState<string | null>(null);
@@ -125,6 +123,46 @@ export function ObsidianDocumentViewerModal({
   const [transclusionResolver, setTransclusionResolver] = useState<ObsidianTransclusionResolver | null>(null);
   const [pendingHeading, setPendingHeading] = useState<string | null>(null);
   const [isAutoRefreshed, setIsAutoRefreshed] = useState(false);
+
+  const handleScrollToHeading = useCallback((headingId?: string, headingText?: string) => {
+    if (!headingId && !headingText) return;
+
+    if (scrollContainerRef.current) {
+      if (headingId) {
+        const escapedId = CSS.escape(headingId);
+        const targetEl = scrollContainerRef.current.querySelector(`#${escapedId}`);
+        if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setActiveHeadingId(headingId);
+          if (resource) {
+            saveReadingPosition(resource.id, headingId);
+          }
+          updateHeadingQueryParam(headingId);
+          return;
+        }
+      }
+
+      if (headingText) {
+        const clean = headingText.trim().toLowerCase();
+        const headings = scrollContainerRef.current.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        for (const el of Array.from(headings)) {
+          if (el.textContent?.trim().toLowerCase() === clean) {
+            if (typeof el.scrollIntoView === 'function') {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              if (headingId) {
+                setActiveHeadingId(headingId);
+                if (resource) {
+                  saveReadingPosition(resource.id, headingId);
+                }
+                updateHeadingQueryParam(headingId);
+              }
+            }
+            return;
+          }
+        }
+      }
+    }
+  }, [resource]);
 
   const fetchVaultDocument = useCallback(async (filePathToFetch: string, isRefresh = false) => {
     if (!filePathToFetch) return;
@@ -259,7 +297,7 @@ export function ObsidianDocumentViewerModal({
     const activePath = currentPath || resource?.filePath;
     if (!targetFilePath || targetFilePath === activePath) {
       if (heading) {
-        scrollToHeading(heading);
+        handleScrollToHeading(undefined, heading);
       }
       return;
     }
@@ -285,12 +323,26 @@ export function ObsidianDocumentViewerModal({
   useEffect(() => {
     if (fileData && pendingHeading) {
       const timer = setTimeout(() => {
-        scrollToHeading(pendingHeading);
+        handleScrollToHeading(undefined, pendingHeading);
         setPendingHeading(null);
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [fileData, pendingHeading]);
+  }, [fileData, pendingHeading, handleScrollToHeading]);
+
+  // Step 4: Restore reading position from URL query param or localStorage
+  useEffect(() => {
+    if (!fileData) return;
+    const queryHeading = getHeadingFromQueryParam();
+    const storedHeading = resource ? restoreReadingPosition(resource.id) : null;
+    const targetHeading = queryHeading || storedHeading;
+    if (targetHeading) {
+      const timer = setTimeout(() => {
+        handleScrollToHeading(targetHeading);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [fileData, resource, handleScrollToHeading]);
 
   if (!isOpen || !resource) return null;
 
@@ -398,7 +450,7 @@ export function ObsidianDocumentViewerModal({
         {/* Viewer Body */}
         <div className="flex-1 flex overflow-hidden">
           {/* Main Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4">
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-20 text-stone-500 space-y-2">
                 <Loader2 className="w-6 h-6 animate-spin text-purple-700" />
@@ -451,27 +503,74 @@ export function ObsidianDocumentViewerModal({
           {/* Outline Drawer (Table of Contents) */}
           {fileData?.outline && fileData.outline.length > 0 && (
             <div className="w-64 border-l border-stone-200 bg-white p-4 overflow-y-auto hidden md:block">
-              <div className="flex items-center gap-2 text-xs font-bold text-stone-700 uppercase tracking-wider mb-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-stone-700 uppercase tracking-wider mb-2">
                 <ListTree className="w-4 h-4 text-purple-700" />
                 <span>Mục lục (Outline)</span>
               </div>
+
+              {/* Outline Search Input */}
+              <div className="relative mb-3">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm mục lục..."
+                  value={outlineSearchQuery}
+                  onChange={(e) => setOutlineSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-2.5 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:ring-1 focus:ring-purple-500 focus:bg-white transition"
+                />
+              </div>
+
               <nav className="space-y-1">
-                {fileData.outline.map((heading, idx) => (
-                  <a
-                    key={idx}
-                    href={`#${heading.id}`}
-                    className={`block text-xs text-stone-600 hover:text-purple-900 py-1 transition truncate ${
-                      heading.level === 1
-                        ? 'font-bold'
-                        : heading.level === 2
-                          ? 'pl-3'
-                          : 'pl-6 text-stone-500'
-                    }`}
-                    title={heading.text}
-                  >
-                    {heading.text}
-                  </a>
-                ))}
+                {fileData.outline
+                  .filter((heading) =>
+                    debouncedOutlineSearch
+                      ? heading.text.toLowerCase().includes(debouncedOutlineSearch.toLowerCase())
+                      : true
+                  )
+                  .map((heading, idx, filteredArr) => (
+                    <button
+                      key={`${heading.id}-${idx}`}
+                      ref={(el) => {
+                        outlineButtonsRef.current[idx] = el;
+                      }}
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleScrollToHeading(heading.id, heading.text);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const nextIdx = (idx + 1) % filteredArr.length;
+                          outlineButtonsRef.current[nextIdx]?.focus();
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const prevIdx = (idx - 1 + filteredArr.length) % filteredArr.length;
+                          outlineButtonsRef.current[prevIdx]?.focus();
+                        } else if (e.key === 'Home') {
+                          e.preventDefault();
+                          outlineButtonsRef.current[0]?.focus();
+                        } else if (e.key === 'End') {
+                          e.preventDefault();
+                          outlineButtonsRef.current[filteredArr.length - 1]?.focus();
+                        }
+                      }}
+                      className={`w-full text-left block text-xs hover:text-purple-900 py-1.5 transition truncate cursor-pointer rounded-lg px-2 ${
+                        activeHeadingId === heading.id
+                          ? 'bg-purple-100 text-purple-900 font-semibold'
+                          : 'text-stone-600 hover:bg-stone-50'
+                      } ${
+                        heading.level === 1
+                          ? 'font-bold'
+                          : heading.level === 2
+                            ? 'pl-4'
+                            : 'pl-7 text-stone-500'
+                      }`}
+                      title={heading.text}
+                    >
+                      {heading.text}
+                    </button>
+                  ))}
               </nav>
             </div>
           )}
