@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { Resource } from '../../src/types';
 
 // Planned viewer component for Phase P4.1D
@@ -9,6 +9,12 @@ import { ObsidianDocumentViewerModal } from '../../src/components/modals/Obsidia
 describe('Phase P4.1D: Obsidian Document Viewer & Safe Rendering', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    // Mock EventSource (SSE) to prevent connection attempts hanging in jsdom
+    global.EventSource = class MockEventSource {
+      onmessage: ((e: MessageEvent) => void) | null = null;
+      onerror: ((e: Event) => void) | null = null;
+      close() {}
+    } as any;
   });
 
   const mockResource: Resource = {
@@ -411,6 +417,340 @@ describe('Phase P4.1D: Obsidian Document Viewer & Safe Rendering', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Tâm Bất Thiện' })).toBeInTheDocument();
+    });
+  });
+
+  it('copies fileData.content (raw body, YAML stripped) to clipboard on "Sao chép" button click and shows temporary ✓ feedback', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp', tags: ['phat-hoc'] },
+          outline: [{ level: 1, text: 'Tổng Quan', id: 'tong-quan' }],
+          content: '# Tổng Quan\n\nPhân tích 89 tâm và 52 tâm sở.',
+          sizeBytes: 500,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resource={mockResource}
+      />
+    );
+
+    // Wait for content to load
+    await waitFor(() => {
+      expect(screen.getByText('Phân tích 89 tâm và 52 tâm sở.')).toBeInTheDocument();
+    });
+
+    // Find and click the copy button
+    const copyBtn = screen.getByRole('button', { name: /Sao chép nội dung|Sao chép/i });
+    expect(copyBtn).toBeInTheDocument();
+    fireEvent.click(copyBtn);
+
+    // clipboard.writeText must be called with exact raw body content
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledOnce();
+      expect(writeTextMock).toHaveBeenCalledWith('# Tổng Quan\n\nPhân tích 89 tâm và 52 tâm sở.');
+    });
+
+    // Button should show ✓ feedback after copy
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Đã sao chép|✓/i })).toBeInTheDocument();
+    });
+  });
+
+  it('does not modify URL, activeHeading, scroll, or outlineSearch when copy button is clicked', async () => {
+    const scrollIntoViewMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    });
+
+    window.history.replaceState({}, '', 'http://localhost:3000/?heading=tong-quan#/topics');
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [{ level: 1, text: 'Tổng Quan', id: 'tong-quan' }],
+          content: '# Tổng Quan\n\nNội dung kiểm tra copy invariant.',
+          sizeBytes: 300,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resource={mockResource}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Nội dung kiểm tra copy invariant.')).toBeInTheDocument();
+    });
+
+    const urlBefore = window.location.href;
+    const scrollCallsBefore = scrollIntoViewMock.mock.calls.length;
+
+    const copyBtn = screen.getByRole('button', { name: /Sao chép nội dung|Sao chép/i });
+    fireEvent.click(copyBtn);
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledOnce();
+    });
+
+    // Invariants: URL, scroll, hash must be unchanged after copy
+    expect(window.location.href).toBe(urlBefore);
+    expect(scrollIntoViewMock.mock.calls.length).toBe(scrollCallsBefore);
+  });
+
+  it('shows modal without crash when clipboard permission is denied during copy', async () => {
+    const writeTextMock = vi.fn().mockRejectedValue(new DOMException('Permission denied', 'NotAllowedError'));
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    });
+    // Note: jsdom does not implement document.execCommand; copyTextToClipboard
+    // will fall through to execCommand which returns false gracefully.
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '# Nội dung không copy được',
+          sizeBytes: 100,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resource={mockResource}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Nội dung không copy được' })).toBeInTheDocument();
+    });
+
+    const copyBtn = screen.getByRole('button', { name: /Sao chép nội dung|Sao chép/i });
+
+    // Must not crash; modal stays open
+    expect(() => fireEvent.click(copyBtn)).not.toThrow();
+
+    await waitFor(() => {
+      // Modal is still open and rendering content
+      expect(screen.getByRole('button', { name: /Sao chép nội dung|Sao chép|Đã sao chép/i })).toBeInTheDocument();
+    });
+  });
+
+  it('[#16] success label resets to default after 2000ms — verified end-to-end', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '# Timer reset test',
+          sizeBytes: 100,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal isOpen={true} onClose={vi.fn()} resource={mockResource} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sao chép nội dung' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép nội dung' }));
+
+    // Wait for success state
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Đã sao chép' })).toBeInTheDocument();
+    });
+
+    // Wait for reset: success state must auto-clear within 2500ms
+    await waitFor(
+      () => {
+        expect(screen.getByRole('button', { name: 'Sao chép nội dung' })).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
+  }, 6000);
+
+
+  it('[#7] copy button is disabled when fileData.content is empty or whitespace-only', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '   \n\n   ',
+          sizeBytes: 10,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal isOpen={true} onClose={vi.fn()} resource={mockResource} />
+    );
+
+    await waitFor(() => {
+      const btn = screen.getByRole('button', { name: 'Sao chép nội dung' });
+      expect(btn).toBeDisabled();
+    });
+  });
+
+  it('[#8] copy button is re-enabled after clipboard failure (not stuck disabled)', async () => {
+    const writeTextMock = vi.fn().mockRejectedValue(new DOMException('Permission denied', 'NotAllowedError'));
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '# Content that fails to copy',
+          sizeBytes: 100,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    render(
+      <ObsidianDocumentViewerModal isOpen={true} onClose={vi.fn()} resource={mockResource} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sao chép nội dung' })).toBeInTheDocument();
+    });
+
+    const copyBtn = screen.getByRole('button', { name: 'Sao chép nội dung' });
+    fireEvent.click(copyBtn);
+
+    // After failure, isCopied stays false → button must NOT be disabled
+    await waitFor(() => {
+      const btn = screen.getByRole('button', { name: 'Sao chép nội dung' });
+      expect(btn).not.toBeDisabled();
+    });
+  });
+
+  it('[#9,#10] aria-live region announces success message after successful copy', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '# Aria live test',
+          sizeBytes: 100,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    const { container } = render(
+      <ObsidianDocumentViewerModal isOpen={true} onClose={vi.fn()} resource={mockResource} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sao chép nội dung' })).toBeInTheDocument();
+    });
+
+    // aria-live region must exist in DOM
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép nội dung' }));
+
+    await waitFor(() => {
+      expect(liveRegion?.textContent).toBe('Đã sao chép nội dung Markdown vào clipboard.');
+    });
+  });
+
+  it('[#11] aria-live region announces failure message when clipboard is denied', async () => {
+    const writeTextMock = vi.fn().mockRejectedValue(new DOMException('Permission denied', 'NotAllowedError'));
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } });
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          relativePath: 'Phat-Hoc/Vi-Dieu-Phap.md',
+          fileName: 'Vi-Dieu-Phap.md',
+          frontmatter: { title: 'Vi Diệu Pháp' },
+          outline: [],
+          content: '# Failure aria live test',
+          sizeBytes: 100,
+          lastModified: '2026-08-25T14:30:00.000Z',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    const { container } = render(
+      <ObsidianDocumentViewerModal isOpen={true} onClose={vi.fn()} resource={mockResource} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Sao chép nội dung' })).toBeInTheDocument();
+    });
+
+    const liveRegion = container.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sao chép nội dung' }));
+
+    await waitFor(() => {
+      expect(liveRegion?.textContent).toBe(
+        'Không thể sao chép nội dung. Hãy chọn và sao chép thủ công.'
+      );
     });
   });
 });

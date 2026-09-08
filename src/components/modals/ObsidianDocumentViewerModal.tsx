@@ -11,6 +11,8 @@ import {
   Trash2,
   ArrowLeft,
   Search,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Resource } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
@@ -22,6 +24,7 @@ import {
   getHeadingFromQueryParam,
   updateHeadingQueryParam,
 } from '../../lib/readingPosition';
+import { copyTextToClipboard } from '../../lib/clipboard';
 
 interface OutlineItem {
   level: number;
@@ -104,9 +107,19 @@ export function ObsidianDocumentViewerModal({
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [outlineSearchQuery, setOutlineSearchQuery] = useState('');
   const [debouncedOutlineSearch, setDebouncedOutlineSearch] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'failure'>('idle');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const outlineButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup copy timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
 
   // Debounce outline search by 300ms
   useEffect(() => {
@@ -406,6 +419,57 @@ export function ObsidianDocumentViewerModal({
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span>Làm mới từ Vault</span>
             </button>
+
+            {fileData && (
+              <button
+                onClick={async () => {
+                  if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+                  const success = await copyTextToClipboard(fileData.content);
+                  if (success) {
+                    setIsCopied(true);
+                    setCopyStatus('success');
+                    copyTimeoutRef.current = setTimeout(() => {
+                      setIsCopied(false);
+                      setCopyStatus('idle');
+                    }, 2000);
+                  } else {
+                    setCopyStatus('failure');
+                    copyTimeoutRef.current = setTimeout(() => {
+                      setCopyStatus('idle');
+                    }, 4000);
+                  }
+                }}
+                disabled={isCopied || !fileData.content.trim()}
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
+                title="Sao chép nội dung Markdown vào clipboard"
+                aria-label={isCopied ? 'Đã sao chép' : 'Sao chép nội dung'}
+              >
+                {isCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="text-emerald-700">Đã sao chép</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Sao chép nội dung</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* aria-live region: screen-reader announcements for copy success/failure */}
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {copyStatus === 'success'
+                ? 'Đã sao chép nội dung Markdown vào clipboard.'
+                : copyStatus === 'failure'
+                  ? 'Không thể sao chép nội dung. Hãy chọn và sao chép thủ công.'
+                  : ''}
+            </span>
 
             {resource.url && (
               <a
