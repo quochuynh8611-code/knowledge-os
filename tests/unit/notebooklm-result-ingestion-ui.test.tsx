@@ -74,8 +74,14 @@ describe('Post-Phase 5: NotebookLM Result Ingestion & Job Completion UI Tests', 
   it('1. Thao tác Chuẩn bị Handoff hoặc Sao chép CLI giữ nguyên trạng thái queued, không tự hoàn tất', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
+
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
+
+    // Open Advanced details accordion
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('handoff-jobs-tracker-list')).toBeInTheDocument();
@@ -97,15 +103,13 @@ describe('Post-Phase 5: NotebookLM Result Ingestion & Job Completion UI Tests', 
   it('2. Nạp Artifact kết quả hợp lệ chuyển trạng thái Job tương ứng sang success', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    // Step 1: Prepare handoff job for study_guide
+    // Step 1: Prepare handoff job for study_guide in Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText(/queued/i)).toBeInTheDocument();
-    });
-
-    // Step 2: Open Add Artifact form
+    // Step 2: Switch to Step 3 and open Add Artifact form
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
     const addArtifactBtn = screen.getByText(/Thêm Kết Quả/i);
     fireEvent.click(addArtifactBtn);
 
@@ -124,6 +128,9 @@ describe('Post-Phase 5: NotebookLM Result Ingestion & Job Completion UI Tests', 
     const submitBtn = screen.getByRole('button', { name: /Lưu Kết Quả/i });
     fireEvent.click(submitBtn);
 
+    // Open Advanced details accordion to check job status
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
+
     // Step 4: Tracker should now display success badge for that job
     await waitFor(() => {
       expect(screen.getByText(/success/i)).toBeInTheDocument();
@@ -136,15 +143,13 @@ describe('Post-Phase 5: NotebookLM Result Ingestion & Job Completion UI Tests', 
   it('3. Lỗi xác thực khi nạp Artifact giữ nguyên trạng thái queued cho Job', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    // Prepare job
+    // Prepare job in Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
 
-    await waitFor(() => {
-      expect(screen.getByText(/queued/i)).toBeInTheDocument();
-    });
-
-    // Open form and submit empty content
+    // Switch to Step 3 and submit empty content
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
     const addArtifactBtn = screen.getByText(/Thêm Kết Quả/i);
     fireEvent.click(addArtifactBtn);
 
@@ -153,6 +158,9 @@ describe('Post-Phase 5: NotebookLM Result Ingestion & Job Completion UI Tests', 
 
     // Validation error shown
     expect(screen.getByText(/Nội dung artifact không được để trống/i)).toBeInTheDocument();
+
+    // Open Advanced details accordion to check job status
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
 
     // Job must still be queued
     expect(screen.getByText(/queued/i)).toBeInTheDocument();

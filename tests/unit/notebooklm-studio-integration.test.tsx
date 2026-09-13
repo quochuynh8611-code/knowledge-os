@@ -1,8 +1,7 @@
 /**
- * NotebookLM Studio Modal UI Integration Test Suite (Phase 2b)
+ * NotebookLM Studio Modal UI Integration Test Suite (Phase 2b & F8.1)
  *
- * ADR: ADR-012 (docs/adr/ADR-012-local-file-picker-and-knowledge-bridge.md)
- * Gherkin: docs/gherkin/file-picker-and-knowledge-bridge.feature (Scenario 7)
+ * ADR: ADR-012 & ADR-071
  * Target: src/components/integrations/NotebookLMStudioModal.tsx
  */
 
@@ -100,7 +99,7 @@ vi.mock('../../src/context/DataContext', () => ({
   }),
 }));
 
-describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
+describe('ADR-012 & ADR-071: NotebookLM Studio Modal Integration Tests', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
@@ -128,18 +127,15 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it('2. Renders header, topic selector, external link, source preview, and artifacts locker when isOpen is true', () => {
+  it('2. Renders header, topic selector, external link, source preview, and stepper when isOpen is true', () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    expect(screen.getByText(/Google NotebookLM Research Hub/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /NotebookLM/i })).toBeInTheDocument();
     expect(screen.getByText(/Chủ đề đang đóng gói nguồn:/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Mở Google NotebookLM/i })).toHaveAttribute(
-      'href',
-      'https://notebooklm.google.com/'
-    );
+    expect(screen.getByRole('button', { name: /Mở Google NotebookLM/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sao chép nguồn/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Tải File Nguồn/i })).toBeInTheDocument();
-    expect(screen.getByText(/Kho Kết Quả Từ NotebookLM/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Bước 1: Nguồn/i })).toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------------
@@ -189,8 +185,11 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
   // ---------------------------------------------------------------------------
   // 4. Artifact Locker Form & CRUD
   // ---------------------------------------------------------------------------
-  it('5. Submitting new artifact saves it to locker and displays it in list', async () => {
+  it('5. Submitting new artifact in Step 3 saves it to locker and displays it in list', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
 
     // Open add artifact form
     const toggleButton = screen.getByRole('button', { name: /Thêm Kết Quả/i });
@@ -227,13 +226,16 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
   // ---------------------------------------------------------------------------
   // 6. Antigravity 2.0 Task Prompt Generator & Copy Flow
   // ---------------------------------------------------------------------------
-  it('7. Renders Antigravity 2.0 Task Prompt generator and copies prompt to clipboard', async () => {
+  it('7. Renders Antigravity 2.0 Task Prompt generator in Step 2 and copies prompt to clipboard', async () => {
     const writeTextMock = vi.fn().mockResolvedValue(undefined);
     Object.assign(navigator, {
       clipboard: { writeText: writeTextMock },
     });
 
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // Switch to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
 
     expect(screen.getByText(/Task Prompt Cho Antigravity 2.0/i)).toBeInTheDocument();
 
@@ -249,8 +251,11 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
   // ---------------------------------------------------------------------------
   // 7. Validation Alerts & Error Feedback on Import
   // ---------------------------------------------------------------------------
-  it('8. Displays validation error alerts when submitting empty content or invalid URL', async () => {
+  it('8. Displays validation error alerts when submitting empty content or invalid URL in Step 3', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // Switch to Step 3
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
 
     const toggleButton = screen.getByRole('button', { name: /Thêm Kết Quả/i });
     fireEvent.click(toggleButton);
@@ -270,9 +275,9 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 8. Metadata Badges & Mediated Workflow Disclaimer
+  // 8. Metadata Badges & Advanced Section
   // ---------------------------------------------------------------------------
-  it('9. Renders metadata badges (antigravity-2.0, notebooklm) on stored artifact cards', () => {
+  it('9. Renders metadata badges (antigravity-2.0, notebooklm) on stored artifact cards in Step 3', () => {
     localStorage.setItem(
       notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
       JSON.stringify([
@@ -292,25 +297,30 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Step 3
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
+
     expect(screen.getByText('Study Guide Bát Trận')).toBeInTheDocument();
     expect(screen.getByText('antigravity-2.0')).toBeInTheDocument();
     expect(screen.getByText('notebooklm')).toBeInTheDocument();
   });
 
-  it('10. Displays mediated workflow disclaimer stating no direct API sync is performed', () => {
+  it('10. Displays advanced details toggle for headless CLI & Job Tracker', () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    expect(screen.getByText(/Mediated Workflow via Antigravity 2.0/i)).toBeInTheDocument();
-    expect(screen.getByText(/100% Client-side/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chi tiết kỹ thuật nâng cao/i)).toBeInTheDocument();
   });
 
   // ---------------------------------------------------------------------------
   // 9. End-to-End User Journey: Studio Modal -> Create Artifact -> Open Drawer -> 3 Tabs -> Close Drawer
   // ---------------------------------------------------------------------------
-  it('11. Complete E2E Journey: creates artifact, clicks Thẩm định, navigates 3 tabs in Review Drawer, and closes drawer', async () => {
+  it('11. Complete E2E Journey: creates artifact in Step 3, clicks Thẩm định, navigates 3 tabs in Review Drawer, and closes drawer', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    // 1. Create Artifact in Locker
+    // 1. Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
+
+    // 2. Create Artifact in Locker
     const toggleButton = screen.getByRole('button', { name: /Thêm Kết Quả/i });
     fireEvent.click(toggleButton);
 
@@ -323,42 +333,42 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
     const saveButton = screen.getByRole('button', { name: /Lưu Kết Quả/i });
     fireEvent.click(saveButton);
 
-    // 2. Verify Artifact appears with Version Badge & Thẩm định button
+    // 3. Verify Artifact appears with Version Badge & Thẩm định button
     await waitFor(() => {
       expect(screen.getByText('Bản Đúc Kết Kỳ Môn v2.1')).toBeInTheDocument();
       expect(screen.getByText('Source package v1')).toBeInTheDocument();
     });
 
-    // 3. Click "Thẩm định" button to open ArtifactReviewDrawer
-    const thamDinhBtn = screen.getByRole('button', { name: /Thẩm định/i });
+    // 4. Click "Thẩm định" button to open ArtifactReviewDrawer
+    const thamDinhBtn = screen.getByRole('button', { name: /^Thẩm định$/i });
     expect(thamDinhBtn).toBeInTheDocument();
     fireEvent.click(thamDinhBtn);
 
-    // 4. Verify ArtifactReviewDrawer is opened
+    // 5. Verify ArtifactReviewDrawer is opened
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Bản Đúc Kết Kỳ Môn v2.1' })).toBeInTheDocument();
       expect(screen.getByTestId('artifact-source-version-badge')).toHaveTextContent('Source package v1');
     });
 
-    // 5. Tab 1: Nội dung Markdown is visible by default (appears in both modal card & drawer)
+    // 6. Tab 1: Nội dung Markdown is visible by default
     const contentElements = screen.getAllByText(/Phân tích cấu trúc Tam Kỳ Lục Nghi/i);
     expect(contentElements.length).toBeGreaterThanOrEqual(2);
 
-    // 6. Tab 2: Switch to Trích dẫn nguồn
+    // 7. Tab 2: Switch to Trích dẫn nguồn
     const citationTab = screen.getByRole('button', { name: /Trích dẫn nguồn/i });
     fireEvent.click(citationTab);
     expect(screen.getByText(/Không có trích dẫn nguồn riêng lẻ/i)).toBeInTheDocument();
 
-    // 7. Tab 3: Switch to Lịch sử chuyển nạp
+    // 8. Tab 3: Switch to Lịch sử chuyển nạp
     const importsTab = screen.getByRole('button', { name: /Lịch sử chuyển nạp/i });
     fireEvent.click(importsTab);
     expect(screen.getByText(/Chưa có thao tác chuyển nạp nào/i)).toBeInTheDocument();
 
-    // 8. Close Drawer by clicking the close button
+    // 9. Close Drawer by clicking the close button
     const closeDrawerBtn = screen.getByRole('button', { name: /Đóng bảng thẩm định/i });
     fireEvent.click(closeDrawerBtn);
 
-    // 9. Verify Drawer is closed (heading is unmounted)
+    // 10. Verify Drawer is closed
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Bản Đúc Kết Kỳ Môn v2.1' })).not.toBeInTheDocument();
     });
@@ -419,6 +429,9 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
+
     // Wait for session sync to load artifact
     await waitFor(() => {
       expect(screen.getByText('Study Guide Devanāgarī Phonetics v2.1')).toBeInTheDocument();
@@ -452,23 +465,17 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
     );
 
     // Initial topic is mockTopics[0] (Kỳ Môn Độn Giáp Toàn Thư)
-    expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
-      'Kỳ Môn Độn Giáp Toàn Thư'
-    );
     expect(screen.getByRole('combobox')).toHaveValue('topic-ky-mon');
 
     // Rerender with mockTopics[1] (Vi Diệu Pháp Toàn Tập)
     rerender(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
-        'Vi Diệu Pháp Toàn Tập'
-      );
       expect(screen.getByRole('combobox')).toHaveValue('topic-vi-dieu-phap');
     });
   });
 
-  it('14. Renders Artifact Locker Context Bar with topic title, count badge, and session badge', async () => {
+  it('14. Renders Artifact Locker Context Bar with topic title, count badge, and session badge in Step 3', async () => {
     localStorage.setItem(
       notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
       JSON.stringify([
@@ -485,6 +492,9 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
+
     const contextBar = screen.getByTestId('artifact-locker-context-bar');
     expect(contextBar).toBeInTheDocument();
     expect(contextBar).toHaveTextContent('Kỳ Môn Độn Giáp Toàn Thư');
@@ -499,7 +509,7 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
     });
   });
 
-  it('15. Renders contextual empty state with topic title and Quick Switch button for other topic with artifacts', async () => {
+  it('15. Renders contextual empty state with topic title and Quick Switch button for other topic with artifacts in Step 3', async () => {
     // Topic 0 has 1 artifact in localStorage, Topic 1 has none
     localStorage.setItem(
       notebooklmLib.NOTEBOOKLM_STORAGE_KEY,
@@ -517,6 +527,9 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
 
     // Render modal with Topic 1 (Vi Diệu Pháp) which has 0 artifacts
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
+
+    // Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
 
     // Check Contextual Empty State
     const emptyState = screen.getByTestId('artifact-locker-empty-state');
@@ -540,16 +553,18 @@ describe('ADR-012 Phase 2b: NotebookLM Studio Modal Integration Tests', () => {
       expect(screen.getByTestId('artifact-locker-context-bar')).toHaveTextContent(
         'Kỳ Môn Độn Giáp Toàn Thư'
       );
-      expect(screen.getByRole('combobox')).toHaveValue('topic-ky-mon');
       expect(screen.getByText('Study Guide Kỳ Môn 1')).toBeInTheDocument();
     });
   });
 
-  it('16. Does NOT render Quick Switch when there are no localArtifacts for other topics', () => {
+  it('16. Does NOT render Quick Switch when there are no localArtifacts for other topics in Step 3', () => {
     // localStorage has 0 artifacts for any topic
     localStorage.removeItem(notebooklmLib.NOTEBOOKLM_STORAGE_KEY);
 
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[1]} />);
+
+    // Switch to Step 3: Results
+    fireEvent.click(screen.getByRole('button', { name: /Bước 3: Kết quả/i }));
 
     // Contextual Empty State is rendered
     expect(screen.getByTestId('artifact-locker-empty-state')).toBeInTheDocument();

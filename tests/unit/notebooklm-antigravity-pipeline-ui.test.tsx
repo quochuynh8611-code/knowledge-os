@@ -69,10 +69,13 @@ describe('Post-Phase 5: NotebookLM Studio Modal & Antigravity Pipeline UI Tests'
   });
 
   // ---------------------------------------------------------------------------
-  // Test 1: Renders Prepare Antigravity Handoff button
+  // Test 1: Renders Prepare Antigravity Handoff button in Prompt Step
   // ---------------------------------------------------------------------------
   it('1. Hiển thị nút "Chuẩn bị Handoff Antigravity" trong tab Task Prompt', () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
+
+    // Switch to Prompt step
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
 
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     expect(prepareBtn).toBeInTheDocument();
@@ -85,8 +88,14 @@ describe('Post-Phase 5: NotebookLM Studio Modal & Antigravity Pipeline UI Tests'
   it('2. Nhấn nút "Chuẩn bị Handoff Antigravity" tạo bản ghi queued và hiển thị lệnh CLI', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Prompt step
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
+
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
+
+    // Open Advanced details accordion to see CLI & Tracker
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('handoff-cli-command-preview')).toBeInTheDocument();
@@ -107,8 +116,14 @@ describe('Post-Phase 5: NotebookLM Studio Modal & Antigravity Pipeline UI Tests'
   it('3. Sao chép lệnh CLI headless vào clipboard thành công', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Prompt step
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
+
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
+
+    // Open Advanced details accordion
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('btn-copy-handoff-cli')).toBeInTheDocument();
@@ -131,8 +146,14 @@ describe('Post-Phase 5: NotebookLM Studio Modal & Antigravity Pipeline UI Tests'
   it('4. Cho phép xóa Job khỏi danh sách theo dõi tracker', async () => {
     render(<NotebookLMStudioModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
+    // Switch to Prompt step
+    fireEvent.click(screen.getByRole('button', { name: /Bước 2: Prompt/i }));
+
     const prepareBtn = screen.getByTestId('btn-prepare-antigravity-handoff');
     fireEvent.click(prepareBtn);
+
+    // Open Advanced details accordion
+    fireEvent.click(screen.getByRole('button', { name: /Chi tiết kỹ thuật nâng cao/i }));
 
     await waitFor(() => {
       expect(screen.getByTestId('btn-delete-handoff-job')).toBeInTheDocument();
