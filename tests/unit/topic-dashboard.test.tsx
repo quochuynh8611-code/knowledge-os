@@ -97,7 +97,7 @@ describe("TopicDashboard Component", () => {
       topicId: "topic-1",
       rating: 3,
       reviewDurationMs: 4000,
-      reviewedAt: "2026-09-05T08:00:00.000Z",
+      reviewedAt: new Date(Date.now() - 86400000).toISOString(),
     }),
     createMockReview({
       id: "rev-2",
@@ -105,7 +105,7 @@ describe("TopicDashboard Component", () => {
       topicId: "topic-1",
       rating: 4,
       reviewDurationMs: 5000,
-      reviewedAt: "2026-09-06T08:00:00.000Z",
+      reviewedAt: new Date().toISOString(),
     }),
   ];
 
