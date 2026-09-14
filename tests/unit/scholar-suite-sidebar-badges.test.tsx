@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider } from '../../src/context/DataContext';
 import { Sidebar } from '../../src/components/layout/Sidebar';
 import { getScholarSuiteCounts } from '../../src/lib/scholarSuite/selectors';
@@ -16,6 +16,12 @@ describe('Phase C: ScholarSuite Dynamic Sidebar Badges', () => {
     const counts = getScholarSuiteCounts();
     expect(counts.totalCittas).toBeGreaterThanOrEqual(2);
     expect(counts.totalHexagrams).toBeGreaterThanOrEqual(2);
+
+    // Open specialized tools collapsible group
+    const advancedToolsToggle = screen.getByRole('button', {
+      name: /công cụ phân tích khác/i,
+    });
+    fireEvent.click(advancedToolsToggle);
 
     // Verify dynamic badge values based on registry counts
     const cittaBadge = `${counts.totalCittas} Tâm`;

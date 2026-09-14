@@ -53,6 +53,11 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       expect(screen.getByText('Tìm kiếm')).toBeInTheDocument();
 
       // Specialized tools neutralized labels
+      const advancedToolsToggle = screen.getByRole('button', {
+        name: /công cụ phân tích khác/i,
+      });
+      fireEvent.click(advancedToolsToggle);
+
       expect(screen.getByText('Ma trận phân tích')).toBeInTheDocument();
       expect(screen.getByText('Mô hình hệ thống')).toBeInTheDocument();
       expect(screen.getByText('Từ điển thuật ngữ')).toBeInTheDocument();
