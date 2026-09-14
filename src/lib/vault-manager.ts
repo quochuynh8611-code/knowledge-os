@@ -84,6 +84,12 @@ export class ObsidianVaultManager {
     return this.activeProfile ? { ...this.activeProfile } : null;
   }
 
+  getVaultProfile(vaultId: string): ManagedVaultProfile | null {
+    if (!vaultId || typeof vaultId !== "string") return null;
+    const profile = this.registry.get(vaultId);
+    return profile ? { ...profile } : null;
+  }
+
   getActiveIndex(): ObsidianVaultIndex {
     return this.activeIndex;
   }

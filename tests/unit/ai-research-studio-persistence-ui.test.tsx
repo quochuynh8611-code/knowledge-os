@@ -165,7 +165,7 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
       expect(screen.getByText(/Nội dung khảo cứu Topic A/i)).toBeDefined();
 
       // Switch to Topic B
-      const topicSelect = screen.getByRole('combobox');
+      const topicSelect = screen.getByLabelText(/Chủ đề khảo cứu đang chọn:/i);
       fireEvent.change(topicSelect, { target: { value: topicB.id } });
 
       // Verify Topic B content loaded and Topic A content gone
@@ -177,7 +177,7 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
 
       // Should show empty state
       expect(screen.queryByText(/Nội dung khảo cứu Topic B/i)).toBeNull();
-      expect(screen.getByText(/Chọn một câu hỏi gợi ý phía trên hoặc nhập thắc mắc/i)).toBeDefined();
+      expect(screen.getByText(/Chọn cấu hình phạm vi nguồn/i)).toBeDefined();
     });
   });
 
@@ -194,7 +194,7 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
       expect(input.value).toBe('Dirty draft for Topic A that was never executed');
 
       // Switch topic to Topic C
-      const topicSelect = screen.getByRole('combobox');
+      const topicSelect = screen.getByLabelText(/Chủ đề khảo cứu đang chọn:/i);
       fireEvent.change(topicSelect, { target: { value: topicC.id } });
 
       // Input should be reset
@@ -238,7 +238,7 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
       fireEvent.click(submitBtn);
 
       // While loading, topic select should be disabled
-      const topicSelect = screen.getByRole('combobox') as HTMLSelectElement;
+      const topicSelect = screen.getByLabelText(/Chủ đề khảo cứu đang chọn:/i) as HTMLSelectElement;
       expect(topicSelect.disabled).toBe(true);
 
       // Wait for completion

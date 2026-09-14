@@ -15,18 +15,19 @@ describe("Phase P4.2B: Obsidian Index Builder", () => {
     fs.mkdirSync(path.join(tempVaultDir, ".obsidian"), { recursive: true });
     fs.mkdirSync(path.join(tempVaultDir, ".git"), { recursive: true });
 
-    // Files
+    // File 1: Frontmatter title present (wins over H1 in body)
     fs.writeFileSync(
       path.join(tempVaultDir, "Study", "Buddhism", "Bat-Chanh-Dao.md"),
       `---
 title: "Bát Chánh Đạo"
 tags: ["phat-hoc", "dao-de"]
 ---
-# Bát Chánh Đạo
+# Tiêu Đề H1 Khác Trong Body
 Con đường tám nhánh dẫn đến giải thoát và chấm dứt khổ đau.`,
       "utf8"
     );
 
+    // File 2: No frontmatter title, but H1 exists in body -> resolves to H1
     fs.writeFileSync(
       path.join(tempVaultDir, "Study", "Tu-Niem-Xu.md"),
       `# Tứ Niệm Xứ
@@ -34,10 +35,11 @@ Bốn đối tượng quán chiếu: thân, thọ, tâm, pháp.`,
       "utf8"
     );
 
+    // File 3: No frontmatter and no H1 -> fallback to filename without extension
     fs.writeFileSync(
       path.join(tempVaultDir, "README.md"),
-      `# Kho Tri Thức Obsidian
-Tài liệu tổng quan về hệ thống ghi chép cá nhân.`,
+      `Kho Tri Thức Obsidian
+Tài liệu tổng quan về hệ thống ghi chép cá nhân không chứa thẻ H1.`,
       "utf8"
     );
 
@@ -65,15 +67,61 @@ Tài liệu tổng quan về hệ thống ghi chép cá nhân.`,
     expect(paths).not.toContain(".obsidian/config.json");
     expect(paths).not.toContain("Study/image.png");
 
-    // Title resolution
+    // Branch 1: Frontmatter title resolution (wins over H1)
     const batChanhDao = docs.find((d) => d.filePath === "Study/Buddhism/Bat-Chanh-Dao.md");
     expect(batChanhDao?.title).toBe("Bát Chánh Đạo");
     expect(batChanhDao?.tags).toEqual(["phat-hoc", "dao-de"]);
     expect(batChanhDao?.content).toContain("Con đường tám nhánh");
 
-    // Fallback title from filename when frontmatter is missing
+    // Branch 2: H1 fallback resolution when frontmatter title is missing
     const tuNiemXu = docs.find((d) => d.filePath === "Study/Tu-Niem-Xu.md");
-    expect(tuNiemXu?.title).toBe("Tu-Niem-Xu");
+    expect(tuNiemXu?.title).toBe("Tứ Niệm Xứ");
+
+    // Branch 3: Filename fallback resolution when both frontmatter title and H1 are missing
+    const readme = docs.find((d) => d.filePath === "README.md");
+    expect(readme?.title).toBe("README");
+  });
+
+  it("locks title resolution priority: frontmatter.title > first H1 > filename fallback", async () => {
+    // 1. File with frontmatter title
+    fs.writeFileSync(
+      path.join(tempVaultDir, "Doc1.md"),
+      `---
+title: "Frontmatter Title"
+---
+# H1 Title Body
+Nội dung`,
+      "utf8"
+    );
+
+    // 2. File with H1 title and empty/absent frontmatter title
+    fs.writeFileSync(
+      path.join(tempVaultDir, "Doc2.md"),
+      `---
+tags: ["tag-only"]
+---
+# H1 Title Extracted
+Nội dung`,
+      "utf8"
+    );
+
+    // 3. File with no frontmatter and no H1
+    fs.writeFileSync(
+      path.join(tempVaultDir, "Doc3-Fallback.md"),
+      `## H2 Only
+Nội dung không có H1`,
+      "utf8"
+    );
+
+    const docs = await buildObsidianVaultIndex(tempVaultDir);
+
+    const doc1 = docs.find((d) => d.filePath === "Doc1.md");
+    const doc2 = docs.find((d) => d.filePath === "Doc2.md");
+    const doc3 = docs.find((d) => d.filePath === "Doc3-Fallback.md");
+
+    expect(doc1?.title).toBe("Frontmatter Title");
+    expect(doc2?.title).toBe("H1 Title Extracted");
+    expect(doc3?.title).toBe("Doc3-Fallback");
   });
 
   it("returns empty array for empty vault directory", async () => {

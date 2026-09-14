@@ -686,35 +686,178 @@ export const DbHealthResponseSchema = z.object({
 export const MAX_PROMPT_LENGTH = 20_000;
 export const MAX_HANDOFF_CONTEXT_LENGTH = 100_000;
 
-export const GeminiResearchInputSchema = z.object({
-  prompt: z
-    .string()
-    .min(1, "Yêu cầu nghiên cứu (prompt) không được để trống")
-    .max(
-      MAX_PROMPT_LENGTH,
-      `Yêu cầu nghiên cứu quá dài (tối đa ${MAX_PROMPT_LENGTH.toLocaleString()} ký tự)`,
-    ),
-  topicTitle: z.string().optional(),
-  category: z.string().optional(),
-  contextNotes: z
-    .string()
-    .max(
-      MAX_HANDOFF_CONTEXT_LENGTH,
-      `Ghi chú ngữ cảnh quá dài (tối đa ${MAX_HANDOFF_CONTEXT_LENGTH.toLocaleString()} ký tự)`,
-    )
-    .optional(),
-  mode: z
-    .enum([
-      "concept_analysis",
-      "terminology_exegesis",
-      "cross_domain_synthesis",
-      "scholar_analysis",
-      "pali_sanskrit_exegesis",
-      "cross_domain_link",
-    ])
-    .optional()
-    .default("concept_analysis"),
+export const ClientResearchSourceInputSchema = z.object({
+  sourceId: z.string().trim().min(1, "sourceId không được để trống"),
+  sourceType: z.enum(
+    ["canonical_text", "note", "resource", "flashcard", "obsidian_note"],
+    {
+      message:
+        "sourceType không hợp lệ (chấp nhận: 'canonical_text', 'note', 'resource', 'flashcard', 'obsidian_note')",
+    }
+  ),
+  title: z.string().trim().min(1, "Tiêu đề nguồn không được để trống"),
+  content: z.string().trim().min(1, "Nội dung nguồn không được để trống"),
 });
+
+export const ObsidianSelectedSourceRefSchema = z.object({
+  vaultProfileId: z.string().trim().min(1, "vaultProfileId không được để trống"),
+  relativePath: z
+    .string()
+    .trim()
+    .min(1, "relativePath không được để trống")
+    .refine(
+      (val) =>
+        !val.includes("\0") &&
+        !val.startsWith("/") &&
+        !/^[a-zA-Z]:[/\\]/.test(val) &&
+        !val.split(/[/\\]/).some((seg) => seg === ".." || seg === "."),
+      {
+        message: "Đường dẫn tài liệu Obsidian không hợp lệ",
+      }
+    ),
+});
+
+export const SourceScopeInputSchema = z
+  .object({
+    canonicalText: z.boolean().optional(),
+    topicDocuments: z.boolean().optional(), // Alias tương thích ngược cho canonicalText
+    notes: z.boolean().default(true),
+    resources: z.boolean().default(false),
+    flashcards: z.boolean().default(false),
+    obsidianVault: z.boolean().default(false),
+    externalResearch: z
+      .boolean()
+      .default(false)
+      .refine((val) => val === false, {
+        message: "Nghiên cứu bên ngoài (externalResearch) chưa được hỗ trợ trong Phase 2A",
+      }),
+  })
+  .transform((scope) => ({
+    canonicalText: scope.canonicalText ?? scope.topicDocuments ?? true,
+    notes: scope.notes,
+    resources: scope.resources,
+    flashcards: scope.flashcards,
+    obsidianVault: scope.obsidianVault,
+    externalResearch: false as const,
+  }));
+
+export const GeminiStructuredResponseSchema = z.object({
+  proposedOutline: z
+    .array(
+      z.object({
+        step: z.number(),
+        title: z.string(),
+        description: z.string().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+  content: z.string().min(1, "Nội dung phản hồi không được để trống"),
+  citations: z
+    .array(
+      z.object({
+        sourceRegistryId: z.string(),
+        evidenceStatus: z
+          .enum(["grounded", "inferred", "insufficient_evidence"])
+          .default("grounded"),
+      }),
+    )
+    .optional()
+    .default([]),
+  uncertainties: z
+    .array(
+      z.object({
+        point: z.string(),
+        reason: z.string(),
+      }),
+    )
+    .optional()
+    .default([]),
+});
+
+export const GeminiResearchInputSchema = z
+  .object({
+    prompt: z
+      .string()
+      .min(1, "Yêu cầu nghiên cứu (prompt) không được để trống")
+      .max(
+        MAX_PROMPT_LENGTH,
+        `Yêu cầu nghiên cứu quá dài (tối đa ${MAX_PROMPT_LENGTH.toLocaleString()} ký tự)`,
+      ),
+    topicTitle: z.string().optional(),
+    category: z.string().optional(),
+    contextNotes: z
+      .string()
+      .max(
+        MAX_HANDOFF_CONTEXT_LENGTH,
+        `Ghi chú ngữ cảnh quá dài (tối đa ${MAX_HANDOFF_CONTEXT_LENGTH.toLocaleString()} ký tự)`,
+      )
+      .optional(),
+    mode: z
+      .enum([
+        "concept_analysis",
+        "terminology_exegesis",
+        "cross_domain_synthesis",
+        "scholar_analysis",
+        "pali_sanskrit_exegesis",
+        "cross_domain_link",
+        "methodology_evaluation",
+      ])
+      .optional()
+      .default("concept_analysis"),
+    sourceScope: SourceScopeInputSchema.optional().default({
+      canonicalText: true,
+      notes: true,
+      resources: false,
+      flashcards: false,
+      obsidianVault: false,
+      externalResearch: false,
+    }),
+    depth: z.enum(["quick", "standard", "deep"]).optional().default("standard"),
+    outputFormat: z
+      .enum(["answer", "research_brief", "flashcards"])
+      .optional()
+      .default("answer"),
+    selectedSources: z.array(ClientResearchSourceInputSchema).optional(),
+    obsidianSources: z.array(ObsidianSelectedSourceRefSchema).optional(),
+  })
+  .superRefine((data, ctx) => {
+    const isObsidianEnabled = Boolean(data.sourceScope?.obsidianVault);
+    const hasObsidianSources = Boolean(data.obsidianSources && data.obsidianSources.length > 0);
+
+    // Rule 1: obsidianVault is false/disabled but obsidianSources are passed
+    if (!isObsidianEnabled && hasObsidianSources) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Không thể gửi danh sách tài liệu Obsidian khi phạm vi nguồn Obsidian đang bị tắt",
+        path: ["obsidianSources"],
+      });
+      return;
+    }
+
+    if (isObsidianEnabled && data.obsidianSources) {
+      // Rule 2: Max 3 obsidian sources
+      if (data.obsidianSources.length > 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tối đa chỉ được chọn 3 tài liệu Obsidian cho một yêu cầu khảo cứu",
+          path: ["obsidianSources"],
+        });
+        return;
+      }
+
+      // Rule 3: Single vaultProfileId per request
+      const vaultProfiles = new Set(data.obsidianSources.map((s) => s.vaultProfileId));
+      if (vaultProfiles.size > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Tất cả tài liệu Obsidian trong một yêu cầu phải thuộc cùng một Vault Profile",
+          path: ["obsidianSources"],
+        });
+        return;
+      }
+    }
+  });
 
 export type ValidatedTopic = z.infer<typeof TopicSchema>;
 export type ValidatedTopicCreate = z.infer<typeof TopicCreateSchema>;
@@ -738,6 +881,9 @@ export type ValidatedRestoreResponse = z.infer<typeof RestoreResponseSchema>;
 export type ValidatedDbHealthResponse = z.infer<typeof DbHealthResponseSchema>;
 export type ValidatedGeminiResearchInput = z.infer<
   typeof GeminiResearchInputSchema
+>;
+export type ValidatedGeminiStructuredResponse = z.infer<
+  typeof GeminiStructuredResponseSchema
 >;
 
 // ==========================================

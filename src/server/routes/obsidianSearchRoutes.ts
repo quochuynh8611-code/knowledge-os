@@ -9,21 +9,26 @@ export interface ObsidianSearchResponse {
 
 /**
  * Creates the Obsidian Vault Search Router
- * @param getVaultRoot Function resolving current approved local vault root directory
+ * @param getVaultRoot Function resolving approved local vault root directory, optionally accepting a vaultId
  * @param searchIndex Optional shared or injected search index instance
  */
 export function createObsidianSearchRouter(
-  getVaultRoot: () => string | null | undefined,
+  getVaultRoot: (vaultId?: string) => string | null | undefined,
   searchIndex?: ObsidianVaultIndex | (() => ObsidianVaultIndex)
 ): Router {
   const router = Router();
   const getIndex = typeof searchIndex === "function" ? searchIndex : () => (searchIndex || new ObsidianVaultIndex());
 
-  // GET /obsidian/vault/search?q=<query>
+  // GET /obsidian/vault/search?q=<query>&vaultId=<vaultId>&all=<true|false>
   router.get("/obsidian/vault/search", async (req: Request, res: Response) => {
-    const index = getIndex();
     try {
-      const root = getVaultRoot();
+      const rawVaultId = req.query.vaultId as string | undefined;
+      const vaultId =
+        rawVaultId && typeof rawVaultId === "string" && rawVaultId.trim().length > 0
+          ? rawVaultId.trim()
+          : undefined;
+
+      const root = typeof getVaultRoot === "function" ? getVaultRoot(vaultId) : getVaultRoot;
       if (!root || typeof root !== "string" || root.trim().length === 0) {
         res.status(503).json({
           error: "VAULT_NOT_CONFIGURED",
@@ -43,13 +48,20 @@ export function createObsidianSearchRouter(
         return;
       }
 
-      // Ensure index is built for current vault root
-      if (!index.isReady()) {
-        await index.build(root);
+      let targetIndex: ObsidianVaultIndex;
+      if (vaultId) {
+        // Build dedicated index for the specified scoped vault profile
+        targetIndex = new ObsidianVaultIndex();
+        await targetIndex.build(root);
+      } else {
+        targetIndex = getIndex();
+        if (!targetIndex.isReady()) {
+          await targetIndex.build(root);
+        }
       }
 
       if (isAll) {
-        const allDocs = index.getAllDocs();
+        const allDocs = targetIndex.getAllDocs();
         const results: ObsidianSearchResult[] = allDocs.map((doc) => ({
           title: doc.title,
           path: doc.filePath,
@@ -65,7 +77,7 @@ export function createObsidianSearchRouter(
       }
 
       const query = rawQuery!.trim().slice(0, 100);
-      const results = index.search(query, 50);
+      const results = targetIndex.search(query, 50);
 
       res.status(200).json({
         query,

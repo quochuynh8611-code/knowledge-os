@@ -62,7 +62,7 @@ async function startServer() {
   app.use("/api", createHealthRouter(prisma));
 
   // Antigravity & Gemini Research Scholar Endpoints
-  app.use("/api", createGeminiRouter(getGenAI));
+  app.use("/api", createGeminiRouter(getGenAI, () => obsidianVaultManager));
 
   // ==========================================
   // REST CRUD & PERSISTENCE ENDPOINTS (PHASE 2A)
@@ -133,7 +133,18 @@ async function startServer() {
 
   app.use("/api", createObsidianVaultRoutes(obsidianVaultManager));
   app.use("/api", createObsidianVaultTreeRouter(() => obsidianVaultManager.getActiveVaultRoot()));
-  app.use("/api", createObsidianSearchRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveIndex()));
+  app.use(
+    "/api",
+    createObsidianSearchRouter(
+      (vaultId?: string) => {
+        if (vaultId) {
+          return obsidianVaultManager.getVaultProfile(vaultId)?.rootPath || null;
+        }
+        return obsidianVaultManager.getActiveVaultRoot();
+      },
+      () => obsidianVaultManager.getActiveIndex()
+    )
+  );
   app.use("/api", createObsidianAttachmentRouter(() => obsidianVaultManager.getActiveVaultRoot()));
   app.use("/api", createObsidianWatcherRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveWatcher()));
 

@@ -93,10 +93,17 @@ export async function buildObsidianVaultIndex(
           const parsed = parseObsidianFrontmatterAndOutline(rawContent);
 
           const fileNameWithoutExt = path.basename(ent.name, ext);
-          const title =
+          let title =
             parsed.frontmatter?.title && typeof parsed.frontmatter.title === "string"
               ? parsed.frontmatter.title.trim()
               : fileNameWithoutExt;
+
+          if (title === fileNameWithoutExt) {
+            const h1Match = parsed.content.match(/^#\s+(.+)$/m);
+            if (h1Match && h1Match[1].trim()) {
+              title = h1Match[1].trim();
+            }
+          }
 
           const rawTags = parsed.frontmatter?.tags;
           const tags: string[] = Array.isArray(rawTags)

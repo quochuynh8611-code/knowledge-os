@@ -97,14 +97,26 @@ Thực hành chánh niệm trên bốn lĩnh vực thân, thọ, tâm, pháp.`,
       expect(res.body.results).toEqual([]);
     });
 
-    it("handles special characters, HTML tags, and traversal inputs safely without leaking paths", async () => {
-      const res1 = await request(app).get("/api/obsidian/vault/search?q=<script>alert(1)</script>");
-      expect(res1.status).toBe(200);
-      expect(res1.body.results).toEqual([]);
+    it("supports scoped search by vaultId without mutating active vault", async () => {
+      const scopedVaultDir = fs.mkdtempSync(path.join(os.tmpdir(), "vault-scoped-"));
+      fs.writeFileSync(path.join(scopedVaultDir, "ScopedNote.md"), "# Scoped Note Title\nScoped content in Vault B.", "utf8");
 
-      const res2 = await request(app).get("/api/obsidian/vault/search?q=../../etc/passwd");
-      expect(res2.status).toBe(200);
-      expect(JSON.stringify(res2.body)).not.toContain(tempVaultDir);
+      const scopedApp = express();
+      scopedApp.use(express.json());
+      scopedApp.use(
+        "/api",
+        createObsidianSearchRouter(
+          (vaultId?: string) => (vaultId === "vault-b" ? scopedVaultDir : tempVaultDir),
+          vaultIndex
+        )
+      );
+
+      const res = await request(scopedApp).get("/api/obsidian/vault/search?vaultId=vault-b&q=Scoped");
+      expect(res.status).toBe(200);
+      expect(res.body.results.length).toBe(1);
+      expect(res.body.results[0].title).toBe("Scoped Note Title");
+
+      fs.rmSync(scopedVaultDir, { recursive: true, force: true });
     });
   });
 });

@@ -19,7 +19,28 @@ export type AIResearchMode =
   | 'cross_domain_synthesis'
   | 'scholar_analysis'
   | 'pali_sanskrit_exegesis'
-  | 'cross_domain_link';
+  | 'cross_domain_link'
+  | 'methodology_evaluation';
+
+export interface AIResearchCitation {
+  id: string;
+  sourceRegistryId: string;
+  sourceId: string;
+  sourceType: 'canonical_text' | 'note' | 'resource' | 'flashcard' | 'obsidian_note';
+  sourceTitle: string;
+  evidenceStatus: 'grounded' | 'inferred' | 'insufficient_evidence';
+}
+
+export interface AIResearchUncertainty {
+  point: string;
+  reason: string;
+}
+
+export interface AIResearchPlanOutline {
+  step: number;
+  title: string;
+  description?: string;
+}
 
 export interface AIResearchSession {
   id: string;
@@ -29,6 +50,19 @@ export interface AIResearchSession {
   prompt: string;
   result: string;
   timestamp: number;
+  // Phase 2A Additions (Optional & Backward-compatible)
+  depth?: 'quick' | 'standard' | 'deep';
+  outputFormat?: 'answer' | 'research_brief' | 'flashcards';
+  citations?: AIResearchCitation[];
+  uncertainties?: AIResearchUncertainty[];
+  proposedOutline?: AIResearchPlanOutline[];
+  sourceStats?: {
+    selectedCount: number;
+    usedCount: number;
+    truncatedCount: number;
+    excludedCount: number;
+    totalCharsUsed: number;
+  };
 }
 
 export interface FormatMarkdownOptions {
@@ -38,7 +72,77 @@ export interface FormatMarkdownOptions {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const AI_RESEARCH_SESSIONS_STORAGE_KEY = 'knowledge_os_ai_research_sessions_v1';
+export const OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY = 'knowledge_os_obsidian_research_selection_v1';
 export const MAX_RESEARCH_SESSIONS = 20;
+
+export interface StoredObsidianTopicSelection {
+  version: 1;
+  topicId: string;
+  vaultProfileId: string;
+  selectedRelativePaths: string[];
+  updatedAt: number;
+}
+
+export function loadObsidianTopicSelection(topicId: string): StoredObsidianTopicSelection | null {
+  if (!topicId || typeof topicId !== 'string') return null;
+  const raw = safeGetLocalStorageItem(OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const map = JSON.parse(raw);
+    const item = map[topicId.trim()];
+    if (item && item.version === 1 && typeof item.vaultProfileId === 'string' && Array.isArray(item.selectedRelativePaths)) {
+      return item;
+    }
+  } catch {
+    // Ignore parse error
+  }
+  return null;
+}
+
+export function saveObsidianTopicSelection(selection: {
+  topicId: string;
+  vaultProfileId: string;
+  selectedRelativePaths: string[];
+}): boolean {
+  if (!selection || !selection.topicId || !selection.vaultProfileId) return false;
+  const raw = safeGetLocalStorageItem(OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY);
+  let map: Record<string, StoredObsidianTopicSelection> = {};
+  if (raw) {
+    try {
+      map = JSON.parse(raw);
+    } catch {
+      map = {};
+    }
+  }
+
+  // Enforce max 3 and relative paths only (never save absolute or raw content)
+  const sanitizedPaths = (selection.selectedRelativePaths || [])
+    .filter((p) => typeof p === 'string' && p.trim().length > 0 && !p.startsWith('/') && !/^[a-zA-Z]:[/\\]/.test(p))
+    .slice(0, 3);
+
+  map[selection.topicId.trim()] = {
+    version: 1,
+    topicId: selection.topicId.trim(),
+    vaultProfileId: selection.vaultProfileId.trim(),
+    selectedRelativePaths: sanitizedPaths,
+    updatedAt: Date.now(),
+  };
+
+  return safeSetLocalStorageItem(OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY, JSON.stringify(map));
+}
+
+export function clearObsidianTopicSelection(topicId: string): boolean {
+  if (!topicId || typeof topicId !== 'string') return false;
+  const raw = safeGetLocalStorageItem(OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY);
+  if (!raw) return true;
+  try {
+    const map = JSON.parse(raw);
+    delete map[topicId.trim()];
+    return safeSetLocalStorageItem(OBSIDIAN_RESEARCH_SELECTION_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    return false;
+  }
+}
 
 const VALID_RESEARCH_MODES = new Set<string>([
   'concept_analysis',
@@ -47,6 +151,7 @@ const VALID_RESEARCH_MODES = new Set<string>([
   'scholar_analysis',
   'pali_sanskrit_exegesis',
   'cross_domain_link',
+  'methodology_evaluation',
 ]);
 
 /**
@@ -63,6 +168,7 @@ const MODE_DISPLAY_NAMES: Record<AIResearchMode, string> = {
   pali_sanskrit_exegesis: 'Chiết Tự Pali / Sanskrit / Hán Cổ',
   cross_domain_synthesis: 'Tổng Hợp Liên Ngành',
   cross_domain_link: 'Đối Chiếu & Liên Kết Đa Ngành',
+  methodology_evaluation: 'Đánh Giá Phương Pháp Luận',
 };
 
 // ─── Slug & Filename Utilities ────────────────────────────────────────────────
@@ -243,7 +349,7 @@ export function formatResearchMarkdown(
   const isoDate = new Date(session.timestamp).toISOString();
   const localeDate = new Date(session.timestamp).toLocaleString('vi-VN');
 
-  return `# Khảo Cứu Antigravity AI: ${session.topicTitle}
+  let md = `# Khảo Cứu Antigravity AI: ${session.topicTitle}
 
 - **Chủ đề:** ${session.topicTitle}
 - **Lĩnh vực:** ${domain}
@@ -262,8 +368,24 @@ ${session.prompt}
 ## 2. Kết Quả Khảo Cứu & Tổng Hợp Học Thuật
 
 ${session.result}
-
----
-*Tài liệu được xuất tự động từ Antigravity AI Scholar & Research Engine.*
 `;
+
+  if (session.citations && session.citations.length > 0) {
+    md += `\n---\n\n## 3. Bằng Chứng & Nguồn Trích Dẫn\n\n`;
+    for (const cit of session.citations) {
+      const statusBadge = cit.evidenceStatus === 'grounded' ? 'Đã kiểm chứng (Grounded)' : cit.evidenceStatus === 'inferred' ? 'Suy luận (Inferred)' : 'Cần thêm bằng chứng';
+      md += `- \`[${cit.sourceRegistryId}]\` **${cit.sourceTitle}** (${cit.sourceType}) — *${statusBadge}*\n`;
+    }
+  }
+
+  if (session.uncertainties && session.uncertainties.length > 0) {
+    md += `\n---\n\n## 4. Độ Bất Định & Khoảng Trống Nghiên Cứu\n\n`;
+    for (const unc of session.uncertainties) {
+      md += `- **${unc.point}:** ${unc.reason}\n`;
+    }
+  }
+
+  md += `\n---\n*Tài liệu được xuất tự động từ Antigravity AI Scholar & Research Engine.*\n`;
+
+  return md;
 }

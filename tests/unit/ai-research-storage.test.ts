@@ -322,5 +322,70 @@ describe('Phase P6.0: AI Research Storage Library', () => {
       expect(md).toContain('Có 52 tâm sở chia thành 3 nhóm chính:');
       expect(md).toContain('*Tài liệu được xuất tự động từ Antigravity AI Scholar & Research Engine.*');
     });
+
+    it('4.3. formatResearchMarkdown includes citations and uncertainties when present', () => {
+      const sessionWithCitations: AIResearchSession = {
+        id: 'airs-test-citations',
+        topicId: 'topic-1',
+        topicTitle: 'Tứ Diệu Đế',
+        mode: 'concept_analysis',
+        prompt: 'Phân tích khổ đế',
+        result: 'Khổ đế là chân lý thứ nhất [^SRC-CANONICAL-1].',
+        timestamp: 1724857200000,
+        depth: 'deep',
+        outputFormat: 'research_brief',
+        citations: [
+          {
+            id: 'cit-1',
+            sourceRegistryId: 'SRC-CANONICAL-1',
+            sourceId: 'canon-1',
+            sourceType: 'canonical_text',
+            sourceTitle: 'Kinh Chuyển Pháp Luân',
+            evidenceStatus: 'grounded',
+          },
+        ],
+        uncertainties: [
+          {
+            point: 'Dị bản đối chiếu',
+            reason: 'Khác biệt về phân loại giữa các trường phái',
+          },
+        ],
+      };
+
+      const md = formatResearchMarkdown(sessionWithCitations);
+      expect(md).toContain('## 3. Bằng Chứng & Nguồn Trích Dẫn');
+      expect(md).toContain('`[SRC-CANONICAL-1]` **Kinh Chuyển Pháp Luân**');
+      expect(md).toContain('## 4. Độ Bất Định & Khoảng Trống Nghiên Cứu');
+      expect(md).toContain('Dị bản đối chiếu');
+    });
+
+    it('4.4. Hydrates legacy sessions lacking Phase 2A fields gracefully', () => {
+      const legacyRawSession = {
+        id: 'airs-legacy-1',
+        topicId: 'topic-legacy',
+        topicTitle: 'Chủ đề cũ',
+        mode: 'concept_analysis',
+        prompt: 'Prompt cũ',
+        result: 'Result cũ',
+        timestamp: 1724857000000,
+        // Không có depth, outputFormat, citations, uncertainties
+      };
+
+      localStorage.setItem(
+        AI_RESEARCH_SESSIONS_STORAGE_KEY,
+        JSON.stringify([legacyRawSession])
+      );
+
+      const sessions = getStoredResearchSessions();
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].id).toBe('airs-legacy-1');
+      expect(sessions[0].citations).toBeUndefined();
+      expect(sessions[0].depth).toBeUndefined();
+
+      // Exporting legacy session does not crash
+      const md = formatResearchMarkdown(sessions[0]);
+      expect(md).toContain('Chủ đề cũ');
+      expect(md).not.toContain('## 3. Bằng Chứng & Nguồn Trích Dẫn');
+    });
   });
 });
