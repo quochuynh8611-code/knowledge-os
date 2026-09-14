@@ -135,13 +135,21 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
     });
 
     render(<FlashcardReviewStudio />);
-    await screen.findByText("Tứ Niệm Xứ gồm những gì?");
+    const cardEl = await screen.findByTestId("flashcard-card");
+    expect(cardEl).toHaveAttribute("data-flipped", "false");
+    expect(await screen.findByText("Tứ Niệm Xứ gồm những gì?")).toBeInTheDocument();
+
+    // Flush React effects to guarantee keydown event listener is attached with loading = false
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     // Nhấn phím Space
     fireEvent.keyDown(window, { code: "Space", key: " " });
 
     // Thẻ lật sang mặt sau
     expect(await screen.findByText("Thân, Thọ, Tâm, Pháp.")).toBeInTheDocument();
+    expect(cardEl).toHaveAttribute("data-flipped", "true");
   });
 
   it("Scenario 4: Chấm điểm Good (3) và chuyển sang thẻ tiếp theo", async () => {
@@ -179,14 +187,15 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
       },
     };
 
-    global.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
-      if (url.includes("/api/flashcards/due")) {
+    global.fetch = vi.fn().mockImplementation((url: string | URL | Request, opts?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/flashcards/due")) {
         return Promise.resolve({
           ok: true,
           json: async () => mockDueCards,
         });
       }
-      if (url.includes("/api/flashcards/review") && opts?.method === "POST") {
+      if (urlStr.includes("/api/flashcards/review") && opts?.method === "POST") {
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -199,8 +208,9 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
     render(<FlashcardReviewStudio />);
     await screen.findByText("Tứ Niệm Xứ gồm những gì?");
 
-    // Lật thẻ trước
-    fireEvent.keyDown(window, { code: "Space", key: " " });
+    // Lật thẻ bằng click trực tiếp để phục vụ kiểm tra rating & submission
+    const cardEl = screen.getByTestId("flashcard-card");
+    fireEvent.click(cardEl);
     await screen.findByText("Thân, Thọ, Tâm, Pháp.");
 
     // Bấm nút Good (3) hoặc phím "3"
@@ -225,14 +235,15 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
 
   it("Scenario 5: Chấm điểm Again (1) gửi clientEventId bảo đảm Option A Idempotency", async () => {
     let callCount = 0;
-    global.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
-      if (url.includes("/api/flashcards/due")) {
+    global.fetch = vi.fn().mockImplementation((url: string | URL | Request, opts?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/flashcards/due")) {
         return Promise.resolve({
           ok: true,
           json: async () => [mockDueCards[0]],
         });
       }
-      if (url.includes("/api/flashcards/review")) {
+      if (urlStr.includes("/api/flashcards/review")) {
         callCount++;
         return Promise.resolve({
           ok: true,
@@ -286,14 +297,15 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
   });
 
   it("Scenario 7: Người dùng hoàn thành toàn bộ thẻ trong phiên (Celebration)", async () => {
-    global.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
-      if (url.includes("/api/flashcards/due")) {
+    global.fetch = vi.fn().mockImplementation((url: string | URL | Request, opts?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/flashcards/due")) {
         return Promise.resolve({
           ok: true,
           json: async () => [mockDueCards[0]],
         });
       }
-      if (url.includes("/api/flashcards/review")) {
+      if (urlStr.includes("/api/flashcards/review")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ success: true, duplicate: false }),
@@ -305,8 +317,9 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
     render(<FlashcardReviewStudio />);
     await screen.findByText("Tứ Niệm Xứ gồm những gì?");
 
-    // Lật và chấm điểm
-    fireEvent.keyDown(window, { code: "Space", key: " " });
+    // Lật và chấm điểm (dùng click để phục vụ kiểm tra celebration flow)
+    const cardEl = screen.getByTestId("flashcard-card");
+    fireEvent.click(cardEl);
     await screen.findByText("Thân, Thọ, Tâm, Pháp.");
     fireEvent.click(screen.getByTestId("rating-btn-3"));
 
@@ -331,14 +344,15 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
 
   it("Scenario 9: Không kích hoạt phím tắt rating 1-4 khi thẻ đang ở mặt trước", async () => {
     const reviewFetchSpy = vi.fn();
-    global.fetch = vi.fn().mockImplementation((url: string, opts?: any) => {
-      if (url.includes("/api/flashcards/due")) {
+    global.fetch = vi.fn().mockImplementation((url: string | URL | Request, opts?: RequestInit) => {
+      const urlStr = typeof url === "string" ? url : url.toString();
+      if (urlStr.includes("/api/flashcards/due")) {
         return Promise.resolve({
           ok: true,
           json: async () => mockDueCards,
         });
       }
-      if (url.includes("/api/flashcards/review")) {
+      if (urlStr.includes("/api/flashcards/review")) {
         reviewFetchSpy();
         return Promise.resolve({ ok: true, json: async () => ({}) });
       }
@@ -346,7 +360,14 @@ describe("FlashcardReviewStudio Integration Tests (Gherkin Scenarios 1-10)", () 
     });
 
     render(<FlashcardReviewStudio />);
-    await screen.findByText("Tứ Niệm Xứ gồm những gì?");
+    const cardEl = await screen.findByTestId("flashcard-card");
+    expect(cardEl).toHaveAttribute("data-flipped", "false");
+    expect(await screen.findByText("Tứ Niệm Xứ gồm những gì?")).toBeInTheDocument();
+
+    // Flush React effects to guarantee keydown listener is active
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     // Khi chưa lật thẻ, nhấn phím 1, 2, 3, 4
     fireEvent.keyDown(window, { key: "1" });

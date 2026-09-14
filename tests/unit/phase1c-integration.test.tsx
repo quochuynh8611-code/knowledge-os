@@ -83,11 +83,15 @@ describe("Phase 1C Integration Test Suite (End-to-End UI & Hotkeys)", () => {
     fireEvent.change(searchInput, { target: { value: "Abhidharma" } });
     fireEvent.submit(searchInput.closest("form")!);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Công Cụ Tra Cứu Toàn Diện/i),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/Bộ Lọc Chuyên Sâu/i)).toBeInTheDocument();
-    });
+    // AdvancedSearch is a React.lazy() component; explicit timeout prevents Suspense timeout during parallel suite execution
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/Công Cụ Tra Cứu Toàn Diện/i),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/Bộ Lọc Chuyên Sâu/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
   });
 });

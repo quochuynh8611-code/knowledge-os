@@ -31,11 +31,15 @@ describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", (
       fireEvent.click(notebookLMItem);
 
       // Verify NotebookLM Studio modal appears
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Google NotebookLM Research Hub/i)
-        ).toBeInTheDocument();
-      });
+      // Explicit timeout for React.lazy() / Suspense evaluation under full-suite parallel load
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText(/Google NotebookLM Research Hub/i)
+          ).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it("1.2. opens Antigravity Handoff modal when executed from Command Palette", async () => {
@@ -55,11 +59,15 @@ describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", (
       fireEvent.click(antigravityItem);
 
       // Verify Antigravity Handoff modal appears
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Antigravity AI Scholar Inspector/i)
-        ).toBeInTheDocument();
-      });
+      // Explicit timeout for React.lazy() / Suspense evaluation under full-suite parallel load
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText(/Antigravity AI Scholar Inspector/i)
+          ).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
   });
 

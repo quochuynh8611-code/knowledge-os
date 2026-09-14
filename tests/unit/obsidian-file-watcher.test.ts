@@ -7,6 +7,28 @@ import os from "os";
 import { ObsidianFileWatcher } from "../../src/lib/obsidianFileWatcher";
 import { createObsidianWatcherRouter } from "../../src/server/routes/obsidianWatcherRoutes";
 
+function isExpectedClientAbort(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const hasName = "name" in error && error.name === "AbortError";
+  const hasCode = "code" in error && error.code === "ECONNRESET";
+  const hasMessage =
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.toLowerCase().includes("hang up");
+
+  return hasName || hasCode || hasMessage;
+}
+
+function isDestroyable(stream: unknown): stream is { destroy: () => void } {
+  if (typeof stream !== "object" || stream === null) {
+    return false;
+  }
+  return "destroy" in stream && typeof stream.destroy === "function";
+}
+
 describe("Phase P4.2E: Obsidian File Watcher & SSE Auto-Refresh", () => {
   let tempVaultDir: string;
   let watcher: ObsidianFileWatcher;
@@ -132,13 +154,40 @@ describe("Phase P4.2E: Obsidian File Watcher & SSE Auto-Refresh", () => {
         .set("Accept", "text/event-stream")
         .buffer(true)
         .parse((res, cb) => {
+          let completed = false;
           let data = "";
-          res.on("data", (chunk) => {
-            data += chunk.toString();
-            // Close after receiving first chunk
+
+          const completeOnce = (err: Error | null, resultData: string) => {
+            if (completed) return;
+            completed = true;
+            cb(err, resultData);
+          };
+
+          // Attach error listener on stream to gracefully handle client-side abort without unhandled socket error
+          res.on("error", (err: unknown) => {
+            if (completed) return;
+            if (isExpectedClientAbort(err)) {
+              completeOnce(null, data);
+              return;
+            }
+            const normalizedError =
+              err instanceof Error ? err : new Error(String(err));
+            completeOnce(normalizedError, data);
+          });
+
+          res.on("data", (chunk: unknown) => {
+            if (Buffer.isBuffer(chunk)) {
+              data += chunk.toString("utf8");
+            } else if (typeof chunk === "string") {
+              data += chunk;
+            }
+
+            // Once initial connected event is received, complete parser and teardown client stream
             if (data.includes("connected")) {
-              (res as any).destroy();
-              cb(null, data);
+              completeOnce(null, data);
+              if (isDestroyable(res)) {
+                res.destroy();
+              }
             }
           });
         });
@@ -147,6 +196,29 @@ describe("Phase P4.2E: Obsidian File Watcher & SSE Auto-Refresh", () => {
       expect(res.headers["content-type"]).toContain("text/event-stream");
       expect(res.body).toContain("connected");
       expect(res.body).toContain("Stream.md");
+    });
+  });
+
+  describe("SSE Teardown Type-Safety & One-Shot Guard Helpers", () => {
+    it("isExpectedClientAbort correctly classifies abort/socket-hangup errors without casting", () => {
+      expect(isExpectedClientAbort({ name: "AbortError" })).toBe(true);
+      expect(isExpectedClientAbort({ code: "ECONNRESET" })).toBe(true);
+      expect(isExpectedClientAbort({ message: "socket hang up" })).toBe(true);
+      expect(isExpectedClientAbort(new Error("socket hang up"))).toBe(true);
+
+      expect(isExpectedClientAbort(new Error("Fatal database crash"))).toBe(false);
+      expect(isExpectedClientAbort(null)).toBe(false);
+      expect(isExpectedClientAbort(undefined)).toBe(false);
+      expect(isExpectedClientAbort(12345)).toBe(false);
+      expect(isExpectedClientAbort("string-error")).toBe(false);
+    });
+
+    it("isDestroyable safely detects destroyable stream objects", () => {
+      expect(isDestroyable({ destroy: () => {} })).toBe(true);
+      expect(isDestroyable({})).toBe(false);
+      expect(isDestroyable(null)).toBe(false);
+      expect(isDestroyable(undefined)).toBe(false);
+      expect(isDestroyable({ destroy: "not-a-function" })).toBe(false);
     });
   });
 });
