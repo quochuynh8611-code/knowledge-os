@@ -360,4 +360,102 @@ describe('Phase 2C.4: Data Management Modal Component Tests', () => {
     // MUST NOT display the LocalStorage offline capability banner
     expect(screen.queryByText(/Kho lưu trữ cục bộ/i)).not.toBeInTheDocument();
   });
+
+  // ---------------------------------------------------------------------------
+  // Test 12: Reset Tab Label and Semantic Copy
+  // ---------------------------------------------------------------------------
+  it('12. Tab Reset sử dụng nhãn chính xác "Đặt Lại Dữ Liệu Mẫu" và hiển thị đầy đủ cảnh báo xóa dữ liệu', () => {
+    render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={mockRepository} />);
+
+    const resetTab = screen.getByTestId('tab-reset');
+    expect(resetTab).toHaveTextContent(/Đặt Lại Dữ Liệu Mẫu/i);
+    expect(resetTab).not.toHaveTextContent(/Khôi Phục Gốc/i);
+
+    fireEvent.click(resetTab);
+
+    // Header & Description
+    expect(screen.getByText(/Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu\?/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt, sau đó nạp lại bộ dữ liệu mẫu ban đầu: Phật Học, Huyền Học, Đông Y và Học Ngôn Ngữ\./i
+      )
+    ).toBeInTheDocument();
+
+    // Prominent Warning
+    expect(screen.getByText(/Lưu ý quan trọng:/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /dữ liệu nghiên cứu cá nhân hóa, chủ đề, ghi chú, tài liệu và thẻ của bạn sẽ bị xóa/i
+      )
+    ).toBeInTheDocument();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 13: Reset Confirmation Gate Guard
+  // ---------------------------------------------------------------------------
+  it('13. Nút Reset bị disabled mặc định và chỉ mở khóa khi tick checkbox xác nhận', () => {
+    render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={mockRepository} />);
+
+    fireEvent.click(screen.getByTestId('tab-reset'));
+
+    const confirmBtn = screen.getByTestId('btn-confirm-reset');
+    expect(confirmBtn).toBeDisabled();
+
+    const checkbox = screen.getByTestId('reset-ack-checkbox');
+    expect(checkbox).not.toBeChecked();
+
+    // Tick checkbox
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+    expect(confirmBtn).not.toBeDisabled();
+
+    // Untick checkbox
+    fireEvent.click(checkbox);
+    expect(checkbox).not.toBeChecked();
+    expect(confirmBtn).toBeDisabled();
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 14: Backup CTA on Reset Tab
+  // ---------------------------------------------------------------------------
+  it('14. Nút Backup CTA trên tab Reset kích hoạt cơ chế xuất bản sao lưu hiện có', async () => {
+    render(<ExportImportModal isOpen={true} onClose={vi.fn()} repository={mockRepository} />);
+
+    fireEvent.click(screen.getByTestId('tab-reset'));
+
+    const backupBtn = screen.getByRole('button', {
+      name: /Tải xuống bản sao lưu JSON trước khi đặt lại/i,
+    });
+    expect(backupBtn).toBeInTheDocument();
+
+    fireEvent.click(backupBtn);
+
+    await waitFor(() => {
+      expect(mockRepository.exportBackupSnapshot).toHaveBeenCalled();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 15: Reset execution invokes resetToDefaultData and closes modal
+  // ---------------------------------------------------------------------------
+  it('15. Thực hiện Reset khi đã tick checkbox gọi resetToDefaultData và đóng modal', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const mockOnClose = vi.fn();
+
+    render(<ExportImportModal isOpen={true} onClose={mockOnClose} repository={mockRepository} />);
+
+    fireEvent.click(screen.getByTestId('tab-reset'));
+
+    const checkbox = screen.getByTestId('reset-ack-checkbox');
+    fireEvent.click(checkbox);
+
+    const confirmBtn = screen.getByTestId('btn-confirm-reset');
+    fireEvent.click(confirmBtn);
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringMatching(/xóa toàn bộ dữ liệu|không thể hoàn tác/i)
+    );
+    expect(mockResetToDefaultData).toHaveBeenCalled();
+    expect(mockOnClose).toHaveBeenCalled();
+  });
 });

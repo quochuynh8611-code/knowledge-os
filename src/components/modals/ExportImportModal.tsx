@@ -78,6 +78,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
   const [copied, setCopied] = useState(false);
   const [manifestCopied, setManifestCopied] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [isResetAcknowledged, setIsResetAcknowledged] = useState(false);
   const [libraryRootPath, setLibraryRootPath] = useState<string>(() => {
     return safeGetLocalStorageItem('knowledge_os_library_root_path') || '';
   });
@@ -87,6 +88,12 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
       setActiveTab(defaultTab);
     }
   }, [defaultTab, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'reset') {
+      setIsResetAcknowledged(false);
+    }
+  }, [isOpen, activeTab]);
 
   const handleLibraryRootChange = (newPath: string) => {
     setLibraryRootPath(newPath);
@@ -386,12 +393,14 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
   };
 
   const handleResetConfirm = () => {
+    if (!isResetAcknowledged) return;
     if (
       window.confirm(
-        'Bạn có chắc chắn muốn khôi phục dữ liệu mẫu gốc ban đầu không? Mọi chỉnh sửa tùy biến sẽ được làm mới.'
+        'Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt và không thể hoàn tác nếu chưa sao lưu. Bạn có chắc chắn muốn nạp lại dữ liệu mẫu ban đầu?'
       )
     ) {
       resetToDefaultData();
+      setIsResetAcknowledged(false);
       onClose();
     }
   };
@@ -507,7 +516,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                 : 'border-transparent text-stone-600 hover:text-stone-900'
             }`}
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Khôi Phục Gốc
+            <RefreshCw className="w-3.5 h-3.5" /> Đặt Lại Dữ Liệu Mẫu
           </button>
         </div>
 
@@ -959,21 +968,55 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           )}
 
           {activeTab === 'reset' && (
-            <div className="space-y-4 text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
-                <RefreshCw className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-stone-900">Khôi phục về dữ liệu nghiên cứu ban đầu?</h3>
-                <p className="text-xs text-stone-600 max-w-md mx-auto mt-1">
-                  Hệ thống sẽ nạp lại đầy đủ bộ giáo lý Abhidharma 7 bộ, Tam Tạng, Thiền định, Kỳ Môn Độn Giáp, Thái Ất, Tử Vi, Kinh Dịch và các ghi chú mẫu.
+            <div className="space-y-4 py-2">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto mb-3">
+                  <RefreshCw className="w-6 h-6" />
+                </div>
+                <h3 className="font-semibold text-stone-900 text-base">Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu?</h3>
+                <p className="text-xs text-stone-600 max-w-lg mx-auto mt-1.5 leading-relaxed">
+                  Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt, sau đó nạp lại bộ dữ liệu mẫu ban đầu: Phật Học, Huyền Học, Đông Y và Học Ngôn Ngữ.
                 </p>
               </div>
+
+              {/* Warning Notice */}
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-900">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Lưu ý quan trọng: </span>
+                  <span>dữ liệu nghiên cứu cá nhân hóa, chủ đề, ghi chú, tài liệu và thẻ của bạn sẽ bị xóa. Thao tác này không thể hoàn tác nếu bạn chưa tạo bản sao lưu.</span>
+                </div>
+              </div>
+
+              {/* Backup CTA */}
               <button
-                onClick={handleResetConfirm}
-                className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition"
+                type="button"
+                onClick={handleDownloadServerSnapshot}
+                className="w-full py-2.5 px-4 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition"
               >
-                Xác Nhận Khôi Phục Gốc
+                <Download className="w-3.5 h-3.5" /> Tải xuống bản sao lưu JSON trước khi đặt lại
+              </button>
+
+              {/* Acknowledgement Checkbox */}
+              <label className="flex items-start gap-2.5 text-left text-xs text-stone-700 bg-white p-3 rounded-xl border border-stone-200 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  data-testid="reset-ack-checkbox"
+                  checked={isResetAcknowledged}
+                  onChange={(e) => setIsResetAcknowledged(e.target.checked)}
+                  className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                />
+                <span>Tôi hiểu rằng toàn bộ dữ liệu tự tạo sẽ bị xóa và thay thế bằng dữ liệu mẫu ban đầu.</span>
+              </label>
+
+              {/* Destructive Action CTA */}
+              <button
+                data-testid="btn-confirm-reset"
+                onClick={handleResetConfirm}
+                disabled={!isResetAcknowledged}
+                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold transition disabled:bg-stone-300 disabled:text-stone-500 disabled:cursor-not-allowed"
+              >
+                Xác nhận đặt lại dữ liệu mẫu
               </button>
             </div>
           )}
