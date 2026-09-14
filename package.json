@@ -19,7 +19,8 @@
     "snapshot:create": "tsx scripts/backup-snapshot.ts",
     "snapshot:dry-run": "tsx scripts/backup-snapshot.ts --dry-run",
     "snapshot:verify": "tsx scripts/backup-snapshot.ts --verify",
-    "snapshot:prune": "tsx scripts/backup-snapshot.ts --prune"
+    "snapshot:prune": "tsx scripts/backup-snapshot.ts --prune",
+    "maintenance:cleanup-legacy-economy": "tsx scripts/maintenance/cleanup-legacy-economy.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
