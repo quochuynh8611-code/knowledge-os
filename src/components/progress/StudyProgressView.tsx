@@ -16,7 +16,7 @@ import {
   Filter,
   CalendarDays,
 } from 'lucide-react';
-import { Topic, TopicStatus, Category } from '../../types';
+import { Topic, TopicStatus, Category, StudyProgress } from '../../types';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
 import {
   calculateRetentionMetrics,
@@ -102,6 +102,56 @@ function getTopicPresentation(topic: Topic, categories?: Category[]) {
   };
 }
 
+const VALID_TOPIC_STATUSES: readonly TopicStatus[] = [
+  'not_started',
+  'in_progress',
+  'reviewing',
+  'completed',
+] as const;
+
+function isTopicStatus(value: unknown): value is TopicStatus {
+  return typeof value === 'string' && (VALID_TOPIC_STATUSES as readonly string[]).includes(value);
+}
+
+function toProgressPercent(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function toPositiveFinite(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return fallback;
+  return value;
+}
+
+function toFiniteNonNegative(value: unknown, fallback: number = 0): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return fallback;
+  return value;
+}
+
+function parseValidReviewDate(dateStr?: string | null): Date | null {
+  if (!dateStr || typeof dateStr !== 'string' || !dateStr.trim()) return null;
+  const parsed = new Date(dateStr);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getSafeStudyProgress(topic: Topic): StudyProgress {
+  const p = topic.studyProgress;
+  return {
+    topicId: typeof p?.topicId === 'string' && p.topicId.trim() ? p.topicId : topic.id,
+    status: isTopicStatus(p?.status) ? p.status : 'not_started',
+    progress: toProgressPercent(p?.progress),
+    interval: toFiniteNonNegative(p?.interval, 0),
+    easeFactor: toPositiveFinite(p?.easeFactor, 2.5),
+    repetitions: toFiniteNonNegative(p?.repetitions, 0),
+    totalNotes: toFiniteNonNegative(p?.totalNotes, 0),
+    timeSpent: toFiniteNonNegative(p?.timeSpent, 0),
+    startDate: typeof p?.startDate === 'string' ? p.startDate : undefined,
+    endDate: typeof p?.endDate === 'string' ? p.endDate : undefined,
+    nextReview: typeof p?.nextReview === 'string' ? p.nextReview : undefined,
+    lastStudied: typeof p?.lastStudied === 'string' ? p.lastStudied : undefined,
+  };
+}
+
 export function StudyProgressView() {
   const { topics, stats, reviewQueue, openTopicDetail, updateTopicProgress, categories } = useData();
 
@@ -112,8 +162,12 @@ export function StudyProgressView() {
   const [timerTopicId, setTimerTopicId] = useState<string | undefined>();
 
   // 1. Compute in-memory retention metrics and review forecast safely with dynamic categories
-  const retentionMetrics = useMemo(() => calculateRetentionMetrics(topics), [topics]);
-  const reviewForecast = useMemo(() => calculateReviewForecast(topics, 7, categories), [topics, categories]);
+  const safeTopics = useMemo(
+    () => (topics || []).map((t) => (t ? { ...t, studyProgress: getSafeStudyProgress(t) } : t)),
+    [topics]
+  );
+  const retentionMetrics = useMemo(() => calculateRetentionMetrics(safeTopics), [safeTopics]);
+  const reviewForecast = useMemo(() => calculateReviewForecast(safeTopics, 7, categories), [safeTopics, categories]);
 
   // Dynamic forecast domains and chart dataset
   const activeForecastDomains = useMemo(() => {
@@ -169,9 +223,11 @@ export function StudyProgressView() {
   }, [reviewForecast]);
 
   // Filtered topics
-  const filteredTopics = topics.filter((t) => {
+  const filteredTopics = (topics || []).filter((t) => {
+    if (!t) return false;
     if (statusFilter === 'all') return true;
-    return t.studyProgress.status === statusFilter;
+    const safeProgress = getSafeStudyProgress(t);
+    return safeProgress.status === statusFilter;
   });
 
   // Dynamic weekly study domains and data calculation
@@ -199,9 +255,10 @@ export function StudyProgressView() {
 
     // Compute total study time per domain for topics
     const domainTimeMap: Record<string, number> = {};
-    topics.forEach((t) => {
+    (topics || []).forEach((t) => {
+      if (!t) return;
       const rootDomain = categories?.length ? getTopicRootDomain(t, categories) : (t.type || 'other');
-      const timeSpent = t.studyProgress?.timeSpent || 0;
+      const timeSpent = toFiniteNonNegative(t.studyProgress?.timeSpent, 0);
       domainTimeMap[rootDomain] = (domainTimeMap[rootDomain] || 0) + timeSpent;
     });
 
@@ -302,7 +359,9 @@ export function StudyProgressView() {
           <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
             <span className="text-xs text-stone-500 block">Tỷ lệ ghi nhớ dự phóng</span>
             <span className="text-xl font-bold font-mono text-amber-900">
-              {retentionMetrics.estimatedRetentionRate}%
+              {Number.isFinite(retentionMetrics.estimatedRetentionRate)
+                ? retentionMetrics.estimatedRetentionRate
+                : 0}%
             </span>
             <span className="text-[10px] text-stone-400 block mt-0.5">
               Ước tính suy giảm theo chu kỳ
@@ -521,8 +580,10 @@ export function StudyProgressView() {
       {/* Topic Progress Cards */}
       <div className="space-y-4">
         {filteredTopics.map((topic) => {
-          const isOverdue =
-            topic.studyProgress.nextReview && new Date(topic.studyProgress.nextReview) <= new Date();
+          if (!topic) return null;
+          const progressData = getSafeStudyProgress(topic);
+          const reviewDate = parseValidReviewDate(progressData.nextReview);
+          const isOverdue = reviewDate !== null && reviewDate <= new Date();
           const presentation = getTopicPresentation(topic, categories);
 
           return (
@@ -570,14 +631,14 @@ export function StudyProgressView() {
                 <div className="flex flex-wrap items-center justify-between text-xs gap-2">
                   <div className="flex items-center gap-3 font-mono text-stone-700">
                     <span className="font-bold text-amber-900">
-                      {topic.studyProgress.progress}% hoàn thành
+                      {progressData.progress}% hoàn thành
                     </span>
                     <span>•</span>
-                    <span>⏱️ {topic.studyProgress.timeSpent} phút</span>
+                    <span>⏱️ {progressData.timeSpent} phút</span>
                     <span>•</span>
-                    <span>Khoảng cách: {topic.studyProgress.interval} ngày</span>
+                    <span>Khoảng cách: {progressData.interval} ngày</span>
                     <span>•</span>
-                    <span>Hệ số Ease: {topic.studyProgress.easeFactor}</span>
+                    <span>Hệ số Ease: {progressData.easeFactor}</span>
                   </div>
 
                   <div className="text-xs font-medium">
@@ -585,9 +646,9 @@ export function StudyProgressView() {
                       <span className="text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                         ⚠️ Next review: Hôm nay / Quá hạn
                       </span>
-                    ) : topic.studyProgress.nextReview ? (
+                    ) : reviewDate ? (
                       <span className="text-stone-600">
-                        Next review: {new Date(topic.studyProgress.nextReview).toLocaleDateString('vi-VN')}
+                        Next review: {reviewDate.toLocaleDateString('vi-VN')}
                       </span>
                     ) : (
                       <span className="text-stone-400">Chưa xếp lịch ôn</span>
@@ -600,14 +661,14 @@ export function StudyProgressView() {
                   <div className="flex-1 bg-stone-200 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${presentation.progressBarClass}`}
-                      style={{ width: `${topic.studyProgress.progress}%` }}
+                      style={{ width: `${progressData.progress}%` }}
                     />
                   </div>
                   <input
                     type="range"
                     min={0}
                     max={100}
-                    value={topic.studyProgress.progress}
+                    value={progressData.progress}
                     onChange={(e) => updateTopicProgress(topic.id, Number(e.target.value))}
                     className="w-24 accent-amber-700 cursor-pointer"
                   />
