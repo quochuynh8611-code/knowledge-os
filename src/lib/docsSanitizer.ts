@@ -26,9 +26,9 @@ export function sanitizeDocsPath(docsRoot: string, userPath: string): string | n
     return null;
   }
 
-  // Allowed file extensions: only markdown (.md) and gherkin feature (.feature)
+  // Allowed file extensions: markdown (.md), gherkin (.feature), and books (.epub)
   const ext = path.extname(resolvedTarget).toLowerCase();
-  if (ext !== ".md" && ext !== ".feature") {
+  if (ext !== ".md" && ext !== ".feature" && ext !== ".epub") {
     return null;
   }
 

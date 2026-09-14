@@ -12,12 +12,14 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Book,
 } from "lucide-react";
+import { FileViewer } from "./FileViewer";
 
 export interface DocItem {
   id: string;
   title: string;
-  category: "adr" | "specs" | "gherkin" | "runbooks" | "guides" | string;
+  category: "adr" | "specs" | "gherkin" | "runbooks" | "guides" | "books" | string;
   relativePath: string;
   status?: string;
   sizeBytes: number;
@@ -37,6 +39,7 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
 
   const fetchDocsList = useCallback(async () => {
     setIsLoadingList(true);
@@ -68,13 +71,33 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
     }
   }, []);
 
+  const handleDocClick = useCallback((doc: DocItem) => {
+    if (doc.relativePath.toLowerCase().endsWith(".epub") || doc.category === "books") {
+      const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
+      setActiveEpubFile({
+        fileName: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
+        fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+      });
+      return;
+    }
+    fetchDocContent(doc.relativePath);
+  }, [fetchDocContent]);
+
   useEffect(() => {
     fetchDocsList();
   }, [fetchDocsList]);
 
   useEffect(() => {
     if (initialPath) {
-      fetchDocContent(initialPath);
+      if (initialPath.toLowerCase().endsWith(".epub")) {
+        const sanitizedRelative = initialPath.replace(/^\/+/, "");
+        setActiveEpubFile({
+          fileName: initialPath.split("/").pop() || initialPath,
+          fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+        });
+      } else {
+        fetchDocContent(initialPath);
+      }
     }
   }, [initialPath, fetchDocContent]);
 
@@ -198,6 +221,16 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
             >
               Gherkin
             </button>
+            <button
+              onClick={() => setSelectedCategory("books")}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                selectedCategory === "books"
+                  ? "bg-amber-900 text-white shadow-xs"
+                  : "text-stone-600 hover:text-amber-900"
+              }`}
+            >
+              Sách EPUB
+            </button>
           </div>
 
           {/* Documents List */}
@@ -213,10 +246,12 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
             ) : (
               filteredDocs.map((doc) => {
                 const isSelected = selectedDoc?.relativePath === doc.relativePath;
+                const isEpub = doc.relativePath.toLowerCase().endsWith(".epub") || doc.category === "books";
                 return (
                   <button
                     key={doc.relativePath}
-                    onClick={() => fetchDocContent(doc.relativePath)}
+                    data-testid={`doc-item-${doc.id}`}
+                    onClick={() => handleDocClick(doc)}
                     className={`w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 cursor-pointer ${
                       isSelected
                         ? "bg-amber-50/80 border-amber-300 ring-1 ring-amber-400/40"
@@ -224,16 +259,21 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-xs font-bold text-stone-900 line-clamp-2">
-                        {doc.title}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 shrink-0" />}
+                        <span className="text-xs font-bold text-stone-900 line-clamp-2">
+                          {doc.title}
+                        </span>
+                      </div>
                       {doc.status && (
                         <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono shrink-0 ${
                             doc.status === "ACCEPTED"
                               ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                               : doc.status === "PROPOSED"
                               ? "bg-amber-100 text-amber-800 border border-amber-200"
+                              : doc.status === "EPUB"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300 font-semibold"
                               : "bg-stone-100 text-stone-700 border border-stone-200"
                           }`}
                         >
@@ -325,6 +365,15 @@ export function DocsExplorerView({ initialPath }: { initialPath?: string }) {
           )}
         </div>
       </div>
+
+      {/* EPUB Viewer Modal Overlay */}
+      {activeEpubFile && (
+        <FileViewer
+          fileUrl={activeEpubFile.fileUrl}
+          fileName={activeEpubFile.fileName}
+          onClose={() => setActiveEpubFile(null)}
+        />
+      )}
     </div>
   );
 }

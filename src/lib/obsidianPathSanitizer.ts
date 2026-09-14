@@ -420,6 +420,7 @@ export const ALLOWED_IMAGE_EXTENSIONS = new Set([
 
 export const ALLOWED_MEDIA_EXTENSIONS = new Set([
   ".pdf",
+  ".epub",
   ".mp4",
   ".webm",
   ".mov",
@@ -443,6 +444,7 @@ export const ATTACHMENT_MIME_TYPES: Record<string, string> = {
   ".bmp": "image/bmp",
   ".ico": "image/x-icon",
   ".pdf": "application/pdf",
+  ".epub": "application/epub+zip",
   ".mp4": "video/mp4",
   ".webm": "video/webm",
   ".mov": "video/quicktime",

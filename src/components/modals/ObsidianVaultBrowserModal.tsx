@@ -4,6 +4,7 @@ import {
   Folder,
   FolderOpen,
   FileText,
+  BookOpen,
   ChevronRight,
   ChevronDown,
   RefreshCw,
@@ -218,6 +219,8 @@ export function ObsidianVaultBrowserModal({
       const isExpanded = expandedFolders.has(item.path);
       const isLoadingChild = loadingFolders.has(item.path);
       const isMd = item.extension === ".md" || item.extension === ".markdown";
+      const isEpub = item.extension === ".epub" || item.name.toLowerCase().endsWith(".epub");
+      const isSelectable = isMd || isEpub;
 
       return (
         <div key={item.path} className="select-none">
@@ -225,6 +228,8 @@ export function ObsidianVaultBrowserModal({
             className={`flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs transition cursor-pointer ${
               isDir
                 ? "hover:bg-stone-100 text-stone-700 font-medium"
+                : isEpub
+                ? "hover:bg-amber-50 hover:text-amber-900 text-amber-900 font-medium"
                 : isMd
                 ? "hover:bg-purple-50 hover:text-purple-900 text-stone-600"
                 : "text-stone-400 opacity-60 cursor-default"
@@ -233,7 +238,7 @@ export function ObsidianVaultBrowserModal({
             onClick={() => {
               if (isDir) {
                 toggleFolder(item.path);
-              } else if (isMd) {
+              } else if (isSelectable) {
                 onSelectFile(item.path);
               }
             }}
@@ -258,6 +263,8 @@ export function ObsidianVaultBrowserModal({
               ) : (
                 <Folder className="w-4 h-4 text-amber-600 shrink-0" />
               )
+            ) : isEpub ? (
+              <BookOpen className="w-4 h-4 shrink-0 text-amber-700" />
             ) : (
               <FileText
                 className={`w-4 h-4 shrink-0 ${
@@ -439,7 +446,7 @@ export function ObsidianVaultBrowserModal({
           <span>
             {debouncedQuery
               ? "Bấm vào kết quả để xem ghi chú"
-              : "Bấm vào file Markdown (.md) để xem chi tiết"}
+              : "Bấm vào file Markdown (.md) hoặc Sách (.epub) để xem chi tiết"}
           </span>
           <button
             onClick={onClose}

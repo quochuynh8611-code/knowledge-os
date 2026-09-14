@@ -11,6 +11,7 @@ export default defineConfig({
     setupFiles: './tests/setup.ts',
     testTimeout: 15000,
     include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
       'tests/unit/**/*.{test,spec}.{ts,tsx}',
       'tests/integration/**/*.{test,spec}.{ts,tsx}',
     ],

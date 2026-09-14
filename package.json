@@ -36,6 +36,7 @@
     "canvas-confetti": "^1.9.4",
     "chokidar": "^5.0.0",
     "dotenv": "^17.2.3",
+    "epubjs": "^0.3.93",
     "express": "^4.21.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",
@@ -43,6 +44,7 @@
     "pg": "^8.23.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-reader": "^2.0.15",
     "recharts": "^3.10.1",
     "vite": "^6.2.3"
   },

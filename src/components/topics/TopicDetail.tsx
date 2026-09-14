@@ -37,6 +37,7 @@ import { ResourceViewerModal } from "../modals/ResourceViewerModal";
 import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceLinkModal";
 import { ObsidianDocumentViewerModal } from "../modals/ObsidianDocumentViewerModal";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
+import { FileViewer } from "../docs/FileViewer";
 import { getStoredVaultName } from "../../lib/obsidian";
 import { useNavigation } from "../../context/NavigationContext";
 import { FlashcardAnalyticsWidget } from "../flashcards/FlashcardAnalyticsWidget";
@@ -133,6 +134,7 @@ export function TopicDetail() {
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
+  const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [readingNote, setReadingNote] = useState<Note | null>(null);
 
@@ -1436,6 +1438,13 @@ export function TopicDetail() {
         onSelectFile={(filePath) => {
           setShowObsidianBrowserModal(false);
           const fileName = filePath.split("/").pop() || filePath;
+          if (filePath.toLowerCase().endsWith(".epub")) {
+            setActiveEpubFile({
+              fileName,
+              fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+            });
+            return;
+          }
           const previewResource: Resource = {
             id: "preview-" + filePath,
             topicId: topic.id,
@@ -1456,6 +1465,13 @@ export function TopicDetail() {
           setViewingObsidianResource(null);
         }}
       />
+      {activeEpubFile && (
+        <FileViewer
+          fileUrl={activeEpubFile.fileUrl}
+          fileName={activeEpubFile.fileName}
+          onClose={() => setActiveEpubFile(null)}
+        />
+      )}
 
 
       {showNotebookLMModal && (

@@ -23,6 +23,7 @@ import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ExportImportModal } from "../modals/ExportImportModal";
 import { Resource } from "../../types";
+import { FileViewer } from "../docs/FileViewer";
 const ObsidianVaultBrowserModal = React.lazy(() =>
   import("../modals/ObsidianVaultBrowserModal").then((m) => ({
     default: m.ObsidianVaultBrowserModal,
@@ -74,6 +75,7 @@ export function Navbar({
   const [showExportModal, setShowExportModal] = useState(false);
   const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
+  const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
@@ -338,6 +340,13 @@ export function Navbar({
             onSelectFile={(filePath) => {
               setShowObsidianBrowserModal(false);
               const fileName = filePath.split("/").pop() || filePath;
+              if (filePath.toLowerCase().endsWith(".epub")) {
+                setActiveEpubFile({
+                  fileName,
+                  fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+                });
+                return;
+              }
               const previewResource: Resource = {
                 id: "preview-" + filePath,
                 topicId: "",
@@ -359,6 +368,13 @@ export function Navbar({
             resource={viewingObsidianResource}
           />
         </React.Suspense>
+      )}
+      {activeEpubFile && (
+        <FileViewer
+          fileUrl={activeEpubFile.fileUrl}
+          fileName={activeEpubFile.fileName}
+          onClose={() => setActiveEpubFile(null)}
+        />
       )}
       {showNotebookLMModal && (
         <React.Suspense fallback={null}>
