@@ -10,6 +10,7 @@ coverage/
 # Backup Snapshots
 backups/*.json
 backups/*.tmp
+backups/*.sql
 !backups/.gitkeep
 .cache/
 test-results/
