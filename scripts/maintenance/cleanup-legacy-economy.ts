@@ -1,7 +1,7 @@
 import { prisma as defaultPrisma } from "../../src/lib/prisma";
 import {
   executeLegacyEconomyCleanup,
-  TARGET_ROOT_CATEGORY_IDS,
+  IMMUTABLE_LEGACY_ECONOMY_ALLOWLIST,
   type CleanupDbClient,
   type CleanupResultSummary,
 } from "./cleanupLegacyEconomyCore";
@@ -140,7 +140,11 @@ export async function runCleanupCli(
           status: "STARTING",
           mode: parsed.mode,
           database: sanitizedDb,
-          targetRootIds: Array.from(TARGET_ROOT_CATEGORY_IDS),
+          targetSpecs: IMMUTABLE_LEGACY_ECONOMY_ALLOWLIST.map((spec) => ({
+            name: spec.name,
+            slug: spec.slug,
+            canonicalId: spec.canonicalId,
+          })),
         },
         null,
         2
@@ -156,11 +160,14 @@ export async function runCleanupCli(
     console.log(JSON.stringify(result, null, 2));
     exitCode = 0;
   } catch (error) {
-    console.error(
-      "\n❌ [RUNTIME ERROR] Execution failed:",
-      error instanceof Error ? error.message : error
-    );
-    exitCode = 1;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("\n❌ [RUNTIME ERROR] Execution failed:", errorMsg);
+    // Exit code 2 for ambiguity / contract violations, 1 for unexpected runtime errors
+    if (errorMsg.toLowerCase().includes("ambiguous")) {
+      exitCode = 2;
+    } else {
+      exitCode = 1;
+    }
   } finally {
     await prisma.$disconnect();
   }

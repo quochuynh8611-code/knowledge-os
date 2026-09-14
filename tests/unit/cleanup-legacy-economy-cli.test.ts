@@ -96,8 +96,17 @@ describe("cleanup-legacy-economy CLI parser and lifecycle", () => {
         alreadyClean: false,
         database: "localhost:5432/knowledge_os",
         timestamp: "2026-09-14T00:00:00.000Z",
+        matchedRoots: [
+          {
+            id: "cat-root-kinh-te",
+            name: "Kinh Tế",
+            slug: "kinh-te",
+            matchReason: "canonical-id",
+          },
+        ],
+        ambiguousRoots: [],
         targets: {
-          rootCategoryIds: ["cat-root-kinh-te", "cat-root-kinh-te-hoc"],
+          rootCategoryIds: ["cat-root-kinh-te"],
           deletedCategoryIds: [],
           deletedTopicIds: [],
         },
@@ -169,7 +178,25 @@ describe("cleanup-legacy-economy CLI parser and lifecycle", () => {
       errSpy.mockRestore();
     });
 
-    it("returns exitCode 1 on core execution error and ensures disconnect is called", async () => {
+    it("returns exitCode 2 when ambiguity error occurs during execution", async () => {
+      const mockCore = vi.fn().mockRejectedValue(new Error("Ambiguous root categories detected: cat-1"));
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const exitCode = await runCleanupCli(
+        ["--execute", '--confirm="XOA KINH TE VA KINH TE HOC"'],
+        {
+          prisma: mockPrismaDb,
+          executeCleanup: mockCore,
+          databaseUrl: "postgresql://postgres:postgres@localhost:5432/knowledge_os",
+        }
+      );
+
+      expect(exitCode).toBe(2);
+      expect(mockPrismaDb.$disconnect).toHaveBeenCalledTimes(1);
+      errSpy.mockRestore();
+    });
+
+    it("returns exitCode 1 on generic core execution error and ensures disconnect is called", async () => {
       const mockCore = vi.fn().mockRejectedValue(new Error("Connection terminated"));
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
