@@ -22,7 +22,10 @@ interface ActionMessage {
 }
 
 function resolveMessage(topic: Topic): ActionMessage {
-  const { status, progress, totalNotes, timeSpent } = topic.studyProgress;
+  const status = topic.studyProgress?.status ?? 'not_started';
+  const progress = topic.studyProgress?.progress ?? 0;
+  const totalNotes = topic.studyProgress?.totalNotes ?? 0;
+  const timeSpent = topic.studyProgress?.timeSpent ?? 0;
 
   if (status === 'not_started' || progress === 0) {
     return { text: 'Bắt đầu phiên học đầu tiên để kích hoạt tiến trình học tập.' };

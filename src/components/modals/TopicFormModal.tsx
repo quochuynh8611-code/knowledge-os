@@ -35,8 +35,8 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
       setDescription(initialTopic.description);
       setContent(initialTopic.content);
       setSelectedTags(initialTopic.tags || []);
-      setStatus(initialTopic.studyProgress.status);
-      setProgress(initialTopic.studyProgress.progress);
+      setStatus(initialTopic.studyProgress?.status || 'not_started');
+      setProgress(initialTopic.studyProgress?.progress || 0);
     } else {
       setTitle('');
       setSlug('');
@@ -107,7 +107,14 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
         content,
         tags: selectedTags,
         studyProgress: {
-          ...initialTopic.studyProgress,
+          ...(initialTopic.studyProgress || {
+            topicId: initialTopic.id,
+            repetitions: 0,
+            easeFactor: 2.5,
+            interval: 0,
+            totalNotes: 0,
+            timeSpent: 0,
+          }),
           status,
           progress,
         },

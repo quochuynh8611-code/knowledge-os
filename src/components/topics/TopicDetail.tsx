@@ -420,7 +420,7 @@ export function TopicDetail() {
             </span>
             <span className="text-xs text-stone-500 font-mono flex items-center gap-1">
               <Clock className="w-3 h-3 text-stone-400" />
-              Tích lũy: {formatMinutesToHours(topic.studyProgress.timeSpent)}
+              Tích lũy: {formatMinutesToHours(topic.studyProgress?.timeSpent || 0)}
             </span>
           </div>
 
@@ -430,11 +430,11 @@ export function TopicDetail() {
               Trạng thái:
             </span>
             <select
-              value={topic.studyProgress.status}
+              value={topic.studyProgress?.status || "not_started"}
               onChange={(e) =>
                 updateTopicProgress(
                   topic.id,
-                  topic.studyProgress.progress,
+                  topic.studyProgress?.progress || 0,
                   e.target.value as TopicStatus,
                 )
               }
@@ -466,7 +466,7 @@ export function TopicDetail() {
               nghiên cứu
             </span>
             <span className="font-bold font-mono text-amber-900 text-sm">
-              {topic.studyProgress.progress}% hoàn thành
+              {topic.studyProgress?.progress || 0}% hoàn thành
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -479,14 +479,14 @@ export function TopicDetail() {
                     ? "bg-indigo-600"
                     : "bg-stone-600"
                 }`}
-                style={{ width: `${topic.studyProgress.progress}%` }}
+                style={{ width: `${topic.studyProgress?.progress || 0}%` }}
               />
             </div>
             <input
               type="range"
               min={0}
               max={100}
-              value={topic.studyProgress.progress}
+              value={topic.studyProgress?.progress || 0}
               onChange={(e) =>
                 updateTopicProgress(topic.id, Number(e.target.value))
               }

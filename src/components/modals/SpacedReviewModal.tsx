@@ -88,7 +88,7 @@ export function SpacedReviewModal({ isOpen, onClose, initialTopic }: SpacedRevie
                 {currentTopic.categoryName ? ` • ${currentTopic.categoryName}` : ''}
               </span>
               <span className="text-xs text-stone-500 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> Đã học: {currentTopic.studyProgress.timeSpent} phút
+                <Clock className="w-3 h-3" /> Đã học: {currentTopic.studyProgress?.timeSpent || 0} phút
               </span>
             </div>
 

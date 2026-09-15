@@ -490,7 +490,7 @@ export function TopicTree() {
                               >
                                 {topic.title}
                               </h3>
-                              {getStatusBadge(topic.studyProgress.status)}
+                              {getStatusBadge(topic.studyProgress?.status || "not_started")}
                               {isHidden && (
                                 <span className="px-2 py-0.5 bg-stone-200 text-stone-700 rounded-md text-[10px] font-bold flex items-center gap-1">
                                   <EyeOff className="w-3 h-3" /> Đã ẩn
@@ -511,10 +511,10 @@ export function TopicTree() {
                               ))}
                               <span className="text-[11px] text-stone-500 ml-2 font-mono flex items-center gap-1">
                                 <Clock className="w-3 h-3 text-stone-400" />
-                                {formatMinutesToHours(topic.studyProgress.timeSpent)}
+                                {formatMinutesToHours(topic.studyProgress?.timeSpent || 0)}
                               </span>
                               <span className="text-[11px] text-stone-500 font-mono">
-                                • {topic.studyProgress.totalNotes} ghi chú
+                                • {topic.studyProgress?.totalNotes || 0} ghi chú
                               </span>
                             </div>
                           </div>
@@ -524,12 +524,12 @@ export function TopicTree() {
                             <div className="w-24 sm:w-28 space-y-1">
                               <div className="flex justify-between text-[11px]">
                                 <span className="text-stone-500">Tiến độ</span>
-                                <span className="font-bold text-stone-800">{topic.studyProgress.progress}%</span>
+                                <span className="font-bold text-stone-800">{topic.studyProgress?.progress || 0}%</span>
                               </div>
                               <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
                                 <div
                                   className="h-full rounded-full bg-amber-600"
-                                  style={{ width: `${topic.studyProgress.progress}%` }}
+                                  style={{ width: `${topic.studyProgress?.progress || 0}%` }}
                                 />
                               </div>
                             </div>

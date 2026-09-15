@@ -233,9 +233,9 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
         t.type;
       md += `### ${i + 1}. [${domainLabel}] ${t.title}\n`;
       md += `- **Danh mục**: ${t.categoryName}\n`;
-      md += `- **Tiến độ**: ${t.studyProgress.progress}% (${t.studyProgress.status})\n`;
-      md += `- **Thời gian nghiên cứu**: ${t.studyProgress.timeSpent} phút\n`;
-      md += `- **Mô tả**: ${t.description}\n\n`;
+      md += `- **Tiến độ**: ${t.studyProgress?.progress || 0}% (${t.studyProgress?.status || 'not_started'})\n`;
+      md += `- **Thời gian nghiên cứu**: ${t.studyProgress?.timeSpent || 0} phút\n`;
+      md += `- **Mô tả**: ${t.description || ''}\n\n`;
       md += `${t.content}\n\n`;
       md += `---\n\n`;
     });
