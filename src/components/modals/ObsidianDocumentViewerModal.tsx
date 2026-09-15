@@ -357,6 +357,18 @@ export function ObsidianDocumentViewerModal({
     }
   }, [fileData, resource, handleScrollToHeading]);
 
+  // Handle Escape key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !resource) return null;
 
   const sanitizedContent = fileData ? sanitizeVaultMarkdown(fileData.content) : '';
@@ -364,7 +376,7 @@ export function ObsidianDocumentViewerModal({
   const activeDisplayPath = currentPath || resource.filePath;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/70 backdrop-blur-xs">
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/70 backdrop-blur-xs">
       <div className="bg-stone-50 border border-stone-200 rounded-3xl w-full max-w-5xl h-[90vh] shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-3.5 border-b border-stone-200 bg-white">
