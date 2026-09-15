@@ -95,4 +95,12 @@ describe('ResearchRepositoryV2 — Adapter backward compat', () => {
     expect(resetSpy).toHaveBeenCalledOnce();
     expect(result).toBe(true);
   });
+
+  it('28. adapter.deleteCategory delegates to base repo deleteCategory and forwards DeleteCategoryResult', async () => {
+    const expectedResult = { status: 'deleted' as const, id: 'cat-adapter-del-1' };
+    const deleteSpy = vi.spyOn(baseRepo, 'deleteCategory').mockResolvedValue(expectedResult);
+    const result = await adapter.deleteCategory('cat-adapter-del-1');
+    expect(deleteSpy).toHaveBeenCalledWith('cat-adapter-del-1');
+    expect(result).toEqual(expectedResult);
+  });
 });

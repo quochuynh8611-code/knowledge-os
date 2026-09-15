@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { TopicTree } from '../../src/components/topics/TopicTree';
 import { Category, Topic } from '../../src/types';
@@ -53,9 +53,22 @@ describe('BUG FIX: Domain Type Mismatch — "Kinh Tế" Domain Lifecycle', () =>
     expect(kinhTeCat?.type).not.toBe('phat-hoc');
   }, 10000);
 
-  it('Scenario 2: Deleting category "kinh-te" removes category without being blocked by type mismatch', () => {
+  it('Scenario 2: Deleting category "kinh-te" removes category without being blocked by type mismatch', async () => {
     let capturedCategories: Category[] = [];
     let capturedTopics: Topic[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      const method = init?.method || 'GET';
+      if (url.includes('/api/categories') && method === 'DELETE') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true }),
+        } as Response;
+      }
+      return { ok: true, status: 200, json: async () => [] } as Response;
+    });
 
     function TestComponent() {
       const { addCategory, addTopic, deleteCategory, categories, topics } = useData();
@@ -117,7 +130,9 @@ describe('BUG FIX: Domain Type Mismatch — "Kinh Tế" Domain Lifecycle', () =>
     act(() => {
       fireEvent.click(screen.getByText('Delete Kinh Te Category'));
     });
-    expect(capturedCategories.some((c) => c.slug === 'kinh-te')).toBe(false);
+    await waitFor(() => {
+      expect(capturedCategories.some((c) => c.slug === 'kinh-te')).toBe(false);
+    });
   }, 10000);
 
   it('Scenario 3: TopicTree UI renders "Kinh Tế" independently and provides category deletion action', () => {

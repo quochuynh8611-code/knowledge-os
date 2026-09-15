@@ -45,6 +45,11 @@ export interface RepositorySyncResult {
   message?: string;
 }
 
+export type DeleteCategoryResult =
+  | { status: "deleted"; id: string }
+  | { status: "not_found"; id: string }
+  | { status: "queued"; id: string; error?: string };
+
 export interface IDataRepository {
   // 1. Initial Load & Synchronization
   loadInitialData(): Promise<{
@@ -60,7 +65,7 @@ export interface IDataRepository {
 
   // 2. Categories CRUD
   saveCategory(category: Category): Promise<Category>;
-  deleteCategory(categoryId: string): Promise<boolean>;
+  deleteCategory(categoryId: string): Promise<DeleteCategoryResult>;
 
   // 3. Topics CRUD
   saveTopic(topic: Topic): Promise<Topic>;
@@ -253,12 +258,12 @@ export class LocalStorageDataRepository implements IDataRepository {
     return resolvedCategory;
   }
 
-  async deleteCategory(categoryId: string): Promise<boolean> {
+  async deleteCategory(categoryId: string): Promise<DeleteCategoryResult> {
     const data = await this.loadInitialData();
     data.categories = data.categories.filter((c) => c.id !== categoryId);
     data.topics = data.topics.filter((t) => t.categoryId !== categoryId);
     this._persist(data);
-    return true;
+    return { status: "deleted", id: categoryId };
   }
 
   async saveTopic(topic: Topic): Promise<Topic> {
@@ -715,36 +720,57 @@ export class ApiDataRepository implements IDataRepository {
     return resolvedCategory;
   }
 
-  async deleteCategory(categoryId: string): Promise<boolean> {
-    await this.localFallback.deleteCategory(categoryId);
-    const url = this.getUrl(`/categories/${categoryId}`);
-    if (url) {
-      try {
-        const res = await fetch(url, { method: "DELETE" });
-        if (!res.ok) {
-          this.syncQueue.enqueue({
-            id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-            entityType: "category",
-            action: "delete",
-            entityId: categoryId,
-            clientTimestamp: new Date().toISOString(),
-            retryCount: 0,
-            status: "pending",
-          });
-        }
-      } catch {
-        this.syncQueue.enqueue({
-          id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          entityType: "category",
-          action: "delete",
-          entityId: categoryId,
-          clientTimestamp: new Date().toISOString(),
-          retryCount: 0,
-          status: "pending",
-        });
-      }
+  async deleteCategory(categoryId: string): Promise<DeleteCategoryResult> {
+    const url = this.getUrl(`/categories/${encodeURIComponent(categoryId)}`);
+    if (!url) {
+      await this.localFallback.deleteCategory(categoryId);
+      return { status: "deleted", id: categoryId };
     }
-    return true;
+
+    try {
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.ok) {
+        let canonicalId = categoryId;
+        try {
+          const body = await res.json();
+          if (body && typeof body === "object" && typeof body.id === "string" && body.id.trim()) {
+            canonicalId = body.id.trim();
+          }
+        } catch {
+          // Body not JSON or empty; fallback to input categoryId
+        }
+        await this.localFallback.deleteCategory(canonicalId);
+        return { status: "deleted", id: canonicalId };
+      }
+
+      if (res.status === 404) {
+        return { status: "not_found", id: categoryId };
+      }
+
+      const errorMsg = `HTTP ${res.status}: Failed to delete category`;
+      this.syncQueue.enqueue({
+        id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        entityType: "category",
+        action: "delete",
+        entityId: categoryId,
+        clientTimestamp: new Date().toISOString(),
+        retryCount: 0,
+        status: "pending",
+      });
+      return { status: "queued", id: categoryId, error: errorMsg };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Network error";
+      this.syncQueue.enqueue({
+        id: `mut-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        entityType: "category",
+        action: "delete",
+        entityId: categoryId,
+        clientTimestamp: new Date().toISOString(),
+        retryCount: 0,
+        status: "pending",
+      });
+      return { status: "queued", id: categoryId, error: errorMsg };
+    }
   }
 
   async saveTopic(topic: Topic): Promise<Topic> {

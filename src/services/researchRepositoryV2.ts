@@ -15,6 +15,7 @@
 import {
   IDataRepository,
   RepositorySyncResult,
+  DeleteCategoryResult,
 } from './dataRepository';
 import {
   Category,
@@ -35,7 +36,11 @@ import {
 import { resolveTopicIds } from '../lib/researchStorageHelpers';
 
 export class ResearchRepositoryV2 implements IDataRepository {
-  constructor(private readonly base: IDataRepository) {}
+  private base: IDataRepository;
+
+  constructor(baseRepository: IDataRepository) {
+    this.base = baseRepository;
+  }
 
   // ── IDataRepository delegation ────────────────────────────────────────────
 
@@ -57,7 +62,7 @@ export class ResearchRepositoryV2 implements IDataRepository {
     return this.base.saveCategory(category);
   }
 
-  async deleteCategory(categoryId: string): Promise<boolean> {
+  async deleteCategory(categoryId: string): Promise<DeleteCategoryResult> {
     return this.base.deleteCategory(categoryId);
   }
 

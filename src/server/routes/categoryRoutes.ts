@@ -75,14 +75,27 @@ export function createCategoryRouter(prisma: PrismaClient | any): Router {
 
   router.delete("/categories/:id", async (req, res) => {
     try {
-      await prisma.category.delete({
-        where: { id: req.params.id },
+      const identifier = req.params.id;
+      let target = await prisma.category.findUnique({
+        where: { id: identifier },
       });
-      res.json({ success: true, id: req.params.id });
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to delete category";
-      res.status(500).json({ error: msg });
+
+      if (!target) {
+        target = await prisma.category.findUnique({
+          where: { slug: identifier },
+        });
+      }
+
+      if (!target) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      await prisma.category.delete({
+        where: { id: target.id },
+      });
+      res.json({ success: true, id: target.id });
+    } catch {
+      res.status(500).json({ error: "Failed to delete category" });
     }
   });
 

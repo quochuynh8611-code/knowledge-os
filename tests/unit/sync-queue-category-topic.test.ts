@@ -70,16 +70,60 @@ describe("Phase P2.3a — Category & Topic Offline Sync Queue Integration", () =
       expect(queue[0].payload.name).toBe("A Tỳ Đàm (Thắng Pháp)");
     });
 
-    it("1.2. enqueues category delete mutation when fetch fails", async () => {
+    it("1.2. enqueues category delete mutation when fetch fails and returns queued status", async () => {
       globalThis.fetch = vi.fn().mockRejectedValue(new Error("Network offline"));
 
-      await repository.deleteCategory("cat-to-delete-1");
+      const result = await repository.deleteCategory("cat-to-delete-1");
+      expect(result).toEqual({
+        status: "queued",
+        id: "cat-to-delete-1",
+        error: "Network offline",
+      });
 
       const queue = syncQueueService.getQueue();
       expect(queue).toHaveLength(1);
       expect(queue[0].entityType).toBe("category");
       expect(queue[0].action).toBe("delete");
       expect(queue[0].entityId).toBe("cat-to-delete-1");
+    });
+
+    it("1.3. enqueues category delete mutation when server returns 5xx and returns queued status", async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: "Internal Server Error" }),
+      });
+
+      const result = await repository.deleteCategory("cat-to-delete-500");
+      expect(result).toEqual(
+        expect.objectContaining({
+          status: "queued",
+          id: "cat-to-delete-500",
+        })
+      );
+
+      const queue = syncQueueService.getQueue();
+      expect(queue).toHaveLength(1);
+      expect(queue[0].entityType).toBe("category");
+      expect(queue[0].action).toBe("delete");
+      expect(queue[0].entityId).toBe("cat-to-delete-500");
+    });
+
+    it("1.4. does not enqueue category delete mutation when server returns 404 and returns not_found status", async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: "Category not found" }),
+      });
+
+      const result = await repository.deleteCategory("cat-missing-404");
+      expect(result).toEqual({
+        status: "not_found",
+        id: "cat-missing-404",
+      });
+
+      const queue = syncQueueService.getQueue();
+      expect(queue).toHaveLength(0);
     });
   });
 

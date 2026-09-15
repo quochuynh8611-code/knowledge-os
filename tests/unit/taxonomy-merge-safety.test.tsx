@@ -5,7 +5,7 @@ import {
   mergeCategoryData,
   MergeCategoriesResult,
 } from '../../src/lib/taxonomyMigration';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { TopicTree } from '../../src/components/topics/TopicTree';
 import {
@@ -819,7 +819,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       confirmSpy.mockRestore();
     });
 
-    it('4.3. Case 3: Clicking delete on regular custom category prompts standard deletion confirm and does not merge', () => {
+    it('4.3. Case 3: Clicking delete on regular custom category prompts standard deletion confirm and does not merge', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       const TestHarness = () => {
@@ -868,7 +868,9 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       fireEvent.click(deleteBtn);
 
       expect(confirmSpy).toHaveBeenCalledWith('Xóa danh mục "Triết Học Tây Phương"?');
-      expect(screen.queryByTestId('delete-category-cat-custom-triet-hoc')).toBeNull();
+      await waitFor(() => {
+        expect(screen.queryByTestId('delete-category-cat-custom-triet-hoc')).toBeNull();
+      });
       confirmSpy.mockRestore();
     });
 

@@ -120,7 +120,7 @@ interface DataContextType {
   // Actions - Categories
   addCategory: (categoryData: Omit<Category, "id">) => string;
   updateCategory: (id: string, categoryData: Partial<Category>) => void;
-  deleteCategory: (id: string) => void;
+  deleteCategory: (id: string) => Promise<void>;
   mergeCategories: (
     sourceCategoryId: string,
     targetCategoryId: string,
@@ -416,9 +416,39 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    dataRepository.deleteCategory(id).catch(console.error);
+  const deleteCategory = async (id: string): Promise<void> => {
+    try {
+      const result = await dataRepository.deleteCategory(id);
+      if (result.status === "deleted") {
+        const targetCategory = categories.find(
+          (c) => c.id === id || c.slug === id || c.id === result.id
+        );
+        const canonicalClientCategoryId = targetCategory?.id ?? result.id;
+
+        setCategories((prev) =>
+          prev.filter(
+            (c) =>
+              c.id !== canonicalClientCategoryId &&
+              c.id !== id &&
+              c.slug !== id
+          )
+        );
+        setTopics((prev) =>
+          prev.filter(
+            (t) =>
+              t.categoryId !== canonicalClientCategoryId &&
+              t.categoryId !== id &&
+              (targetCategory?.slug ? t.categoryId !== targetCategory.slug : true)
+          )
+        );
+      } else if (result.status === "not_found") {
+        console.warn(`[DataContext] Category ${id} not found; preserving client state.`);
+      } else if (result.status === "queued") {
+        console.error(`[DataContext] Category deletion queued offline/failure (${id}):`, result.error);
+      }
+    } catch (err) {
+      console.error(`[DataContext] Unexpected error deleting category ${id}:`, err);
+    }
   };
 
   const mergeCategories = (
@@ -454,7 +484,10 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
             tags,
             links: [],
           });
-          await dataRepository.deleteCategory(sourceCategoryId);
+          const delRes = await dataRepository.deleteCategory(sourceCategoryId);
+          if (delRes.status !== "deleted") {
+            console.error("Failed to delete merged source category:", delRes);
+          }
         } catch (err) {
           console.error("Failed to sync merge state:", err);
           dataRepository.deleteCategory(sourceCategoryId).catch(console.error);
