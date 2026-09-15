@@ -47,15 +47,14 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
       ).toBeInTheDocument();
     });
 
-    it('1.2. Hiển thị đầy đủ các thẻ Root Domain mặc định (Phật Học & Huyền Học)', () => {
+    it('1.2. Hiển thị thẻ Root Domain mặc định (Đông Y)', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      expect(screen.getAllByText(/Phật Học/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/Huyền Học/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Đông Y/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -67,11 +66,11 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
         </DataProvider>
       );
 
-      const phatHocCard = screen.getByTestId('learning-state-card-cat-root-phat-hoc');
-      fireEvent.click(phatHocCard);
+      const dongYCard = screen.getByTestId('learning-state-card-cat-root-dong-y');
+      fireEvent.click(dongYCard);
 
       expect(screen.getByTestId('current-tab').textContent).toBe('topics');
-      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-phat-hoc');
+      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-dong-y');
     });
 
     it('2.2. Nhấp vào nút "Tất cả tiến độ" chuyển sang tab "progress"', () => {

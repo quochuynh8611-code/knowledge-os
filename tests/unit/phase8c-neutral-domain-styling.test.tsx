@@ -21,6 +21,7 @@ function MultiDomainDashboardHost() {
 describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('knowledge_os_storage_version', '3');
   });
 
   describe('1. Pure Helper: getNeutralDomainStyle Resolver', () => {
@@ -95,9 +96,8 @@ describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
         </DataProvider>
       );
 
-      // All 5 domains (2 default + 3 custom) must be rendered in Dashboard
-      expect(screen.getAllByText('Phật Học').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Huyền Học').length).toBeGreaterThan(0);
+      // All domains (1 default + 3 custom) must be rendered in Dashboard
+      expect(screen.getAllByText('Đông Y').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Khoa Học Tự Nhiên').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Kinh Tế & Tài Chính').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Lịch Sử & Triết Học').length).toBeGreaterThan(0);

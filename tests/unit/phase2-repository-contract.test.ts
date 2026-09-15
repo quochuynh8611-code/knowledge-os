@@ -80,11 +80,11 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
         clientSyncId: syncId,
         version: "2.0.0",
         clientTimestamp: new Date().toISOString(),
-        categories: INITIAL_CATEGORIES.slice(0, 2),
-        topics: INITIAL_TOPICS.slice(0, 2),
-        notes: INITIAL_NOTES.slice(0, 2),
-        resources: INITIAL_RESOURCES.slice(0, 2),
-        tags: INITIAL_TAGS.slice(0, 2),
+        categories: INITIAL_CATEGORIES,
+        topics: INITIAL_TOPICS,
+        notes: INITIAL_NOTES,
+        resources: INITIAL_RESOURCES,
+        tags: INITIAL_TAGS,
       };
 
       // Lần 1: Gọi sync
@@ -100,8 +100,8 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
 
       // Kiểm tra trong storage không bị nhân đôi số lượng bản ghi
       const loaded = await repository.loadInitialData();
-      expect(loaded.topics.length).toBe(2);
-      expect(loaded.notes.length).toBe(2);
+      expect(loaded.topics.length).toBe(INITIAL_TOPICS.length);
+      expect(loaded.notes.length).toBe(INITIAL_NOTES.length);
     });
 
     it("Bắt lỗi khi HydratePayloadSchema thiếu clientSyncId", () => {

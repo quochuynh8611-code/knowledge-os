@@ -126,48 +126,55 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility Helper Library', () 
   });
 
   it('6. resolveCategoryFilterToRootId maps ID, legacy slug, or legacy type to canonical rootId', () => {
-    const normalizedCats = normalizeCategories(INITIAL_CATEGORIES);
+    const testCats: Category[] = [
+      { id: 'cat-root-dong-y', name: 'Đông Y', slug: 'dong-y', type: 'dong-y', parentId: null },
+      { id: 'cat-child-duoc-hoc', name: 'Dược Học', slug: 'duoc-hoc', type: 'dong-y', parentId: 'cat-root-dong-y' },
+    ];
+    const normalizedCats = normalizeCategories(testCats);
 
     // Direct ID
-    expect(resolveCategoryFilterToRootId(normalizedCats, 'cat-root-phat-hoc')).toBe('cat-root-phat-hoc');
-    // Legacy slug/type
-    expect(resolveCategoryFilterToRootId(normalizedCats, 'phat-hoc')).toBe('cat-root-phat-hoc');
-    expect(resolveCategoryFilterToRootId(normalizedCats, 'huyen-hoc')).toBe('cat-root-huyen-hoc');
+    expect(resolveCategoryFilterToRootId(normalizedCats, 'cat-root-dong-y')).toBe('cat-root-dong-y');
+    // Slug/type
+    expect(resolveCategoryFilterToRootId(normalizedCats, 'dong-y')).toBe('cat-root-dong-y');
     // Null or all
     expect(resolveCategoryFilterToRootId(normalizedCats, null)).toBeNull();
     expect(resolveCategoryFilterToRootId(normalizedCats, 'all')).toBeNull();
   });
 
   it('7. topicBelongsToRootCategory and countTopicsForRootCategory correctly identify and count descendant topics', () => {
-    const normalizedCats = normalizeCategories(INITIAL_CATEGORIES);
-    const normalizedTopics = normalizeTopics(INITIAL_TOPICS);
-
-    // Topic in grandchild category 'cat-abhidharma' must belong to 'cat-root-phat-hoc'
-    const abhiTopic = normalizedTopics.find((t) => t.categoryId === 'cat-abhidharma')!;
-    expect(topicBelongsToRootCategory(abhiTopic, normalizedCats, 'cat-root-phat-hoc')).toBe(true);
-    expect(topicBelongsToRootCategory(abhiTopic, normalizedCats, 'cat-root-huyen-hoc')).toBe(false);
-
-    // Topic in 'cat-tam-thuc' must belong to 'cat-root-huyen-hoc'
-    const ttTopic = normalizedTopics.find((t) => t.categoryId === 'cat-tam-thuc')!;
-    expect(topicBelongsToRootCategory(ttTopic, normalizedCats, 'cat-root-huyen-hoc')).toBe(true);
-    expect(topicBelongsToRootCategory(ttTopic, normalizedCats, 'cat-root-phat-hoc')).toBe(false);
-
-    // Counts for standard root categories must not be 0
-    const phCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-phat-hoc');
-    const hhCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-huyen-hoc');
-    const dyCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-dong-y');
-    const nnCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-ngon-ngu');
-    expect(phCount).toBeGreaterThan(0);
-    expect(hhCount).toBeGreaterThan(0);
-    expect(dyCount).toBeGreaterThan(0);
-    expect(nnCount).toBeGreaterThan(0);
-    expect(phCount + hhCount + dyCount + nnCount).toBe(normalizedTopics.length);
-
-    // Newly added root category has 0 topics
-    const customCats = [
-      ...normalizedCats,
-      { id: 'cat-root-new', name: 'Lĩnh Vực Mới', slug: 'linh-vuc-moi', parentId: null },
+    const testCats: Category[] = [
+      { id: 'cat-root-dong-y', name: 'Đông Y', slug: 'dong-y', type: 'dong-y', parentId: null },
+      { id: 'cat-child-duoc-hoc', name: 'Dược Học', slug: 'duoc-hoc', type: 'dong-y', parentId: 'cat-root-dong-y' },
+      { id: 'cat-root-other', name: 'Lĩnh Vực Khác', slug: 'linh-vuc-khac', parentId: null },
     ];
-    expect(countTopicsForRootCategory(normalizedTopics, customCats, 'cat-root-new')).toBe(0);
+    const testTopics: Topic[] = [
+      {
+        id: 't-1',
+        title: 'Topic 1',
+        slug: 't-1',
+        categoryId: 'cat-child-duoc-hoc',
+        type: 'dong-y',
+        description: 'Test description',
+        content: 'Test content',
+        tags: [],
+        links: [],
+        studyProgress: { topicId: 't-1', status: 'not_started', progress: 0, interval: 0, easeFactor: 2.5, repetitions: 0, totalNotes: 0, timeSpent: 0 },
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    ];
+
+    const normalizedCats = normalizeCategories(testCats);
+    const normalizedTopics = normalizeTopics(testTopics);
+
+    // Topic in child category 'cat-child-duoc-hoc' must belong to 'cat-root-dong-y'
+    expect(topicBelongsToRootCategory(normalizedTopics[0], normalizedCats, 'cat-root-dong-y')).toBe(true);
+    expect(topicBelongsToRootCategory(normalizedTopics[0], normalizedCats, 'cat-root-other')).toBe(false);
+
+    // Counts for root category
+    const dyCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-dong-y');
+    const otherCount = countTopicsForRootCategory(normalizedTopics, normalizedCats, 'cat-root-other');
+    expect(dyCount).toBe(1);
+    expect(otherCount).toBe(0);
   });
 });

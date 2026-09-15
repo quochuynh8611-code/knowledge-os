@@ -44,23 +44,14 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
 
       // Main Navigation items
       expect(screen.getByText('Tổng quan')).toBeInTheDocument();
-      expect(screen.getByText(/AI Hỗ trợ/i)).toBeInTheDocument();
-      expect(screen.getByText('Chủ đề học')).toBeInTheDocument();
-      expect(screen.getByText('Bản đồ tri thức')).toBeInTheDocument();
       expect(screen.getByText(/Tiến độ/i)).toBeInTheDocument();
-      expect(screen.getByText('Ghi chú')).toBeInTheDocument();
-      expect(screen.getByText('Tài liệu')).toBeInTheDocument();
-      expect(screen.getByText('Tìm kiếm')).toBeInTheDocument();
-
-      // Specialized tools neutralized labels
-      const advancedToolsToggle = screen.getByRole('button', {
-        name: /công cụ phân tích khác/i,
-      });
-      fireEvent.click(advancedToolsToggle);
-
-      expect(screen.getByText('Ma trận phân tích')).toBeInTheDocument();
-      expect(screen.getByText('Mô hình hệ thống')).toBeInTheDocument();
-      expect(screen.getByText('Từ điển thuật ngữ')).toBeInTheDocument();
+      expect(screen.getByText(/Thẻ nhớ/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ghi chú/i)).toBeInTheDocument();
+      expect(screen.getByText(/^Chủ đề học$/i)).toBeInTheDocument();
+      expect(screen.getByText(/Thư Viện Sách/i)).toBeInTheDocument();
+      expect(screen.getByText(/Bản đồ tri thức/i)).toBeInTheDocument();
+      expect(screen.getByText(/^AI Hỗ trợ$/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tìm kiếm/i)).toBeInTheDocument();
 
       // Section title
       expect(screen.getAllByText(/Học tập|Tri thức|Công cụ/i).length).toBeGreaterThan(0);

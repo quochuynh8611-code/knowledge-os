@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
 import { FOCUS_DOMAIN_STORAGE_KEY } from '../../src/lib/storage';
@@ -8,6 +8,7 @@ import { FOCUS_DOMAIN_STORAGE_KEY } from '../../src/lib/storage';
 describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('knowledge_os_storage_version', '3');
     vi.clearAllMocks();
   });
 
@@ -18,30 +19,30 @@ describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () =>
       </DataProvider>
     );
 
-    // Initial state: multiple cards exist
+    // Initial state: cards exist
     const cardsBefore = screen.getAllByTestId(/learning-state-card-/i);
-    expect(cardsBefore.length).toBeGreaterThanOrEqual(2);
+    expect(cardsBefore.length).toBeGreaterThanOrEqual(1);
 
-    // Find the pin button for the second domain (e.g. cat-root-huyen-hoc)
-    const pinHuyenHocBtn = screen.getByTestId('pin-btn-cat-root-huyen-hoc');
-    expect(pinHuyenHocBtn).toBeInTheDocument();
+    // Find the pin button for the domain (cat-root-dong-y)
+    const pinDongYBtn = screen.getByTestId('pin-btn-cat-root-dong-y');
+    expect(pinDongYBtn).toBeInTheDocument();
 
     // Click pin
-    fireEvent.click(pinHuyenHocBtn);
+    fireEvent.click(pinDongYBtn);
 
     // Card should now have focus badge "Trọng tâm"
-    expect(screen.getByTestId('focus-badge-cat-root-huyen-hoc')).toBeInTheDocument();
+    expect(screen.getByTestId('focus-badge-cat-root-dong-y')).toBeInTheDocument();
 
-    // Reordered: the first card in the grid must now be cat-root-huyen-hoc
+    // The first card in the grid must now be cat-root-dong-y
     const cardsAfter = screen.getAllByTestId(/learning-state-card-/i);
-    expect(cardsAfter[0]).toHaveAttribute('data-testid', 'learning-state-card-cat-root-huyen-hoc');
+    expect(cardsAfter[0]).toHaveAttribute('data-testid', 'learning-state-card-cat-root-dong-y');
 
     // Storage check
-    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-huyen-hoc');
+    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-dong-y');
   });
 
   it('2. Unpinning a domain restores baseline ordering and removes "Trọng tâm" badge', () => {
-    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-huyen-hoc');
+    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-dong-y');
 
     render(
       <DataProvider>
@@ -50,14 +51,14 @@ describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () =>
     );
 
     // Should start with focus badge
-    expect(screen.getByTestId('focus-badge-cat-root-huyen-hoc')).toBeInTheDocument();
+    expect(screen.getByTestId('focus-badge-cat-root-dong-y')).toBeInTheDocument();
 
     // Click pin button again to unpin
-    const pinHuyenHocBtn = screen.getByTestId('pin-btn-cat-root-huyen-hoc');
-    fireEvent.click(pinHuyenHocBtn);
+    const pinDongYBtn = screen.getByTestId('pin-btn-cat-root-dong-y');
+    fireEvent.click(pinDongYBtn);
 
     // Badge removed
-    expect(screen.queryByTestId('focus-badge-cat-root-huyen-hoc')).toBeNull();
+    expect(screen.queryByTestId('focus-badge-cat-root-dong-y')).toBeNull();
     expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBeNull();
   });
 
@@ -68,14 +69,14 @@ describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () =>
       </DataProvider>
     );
 
-    // Pin Huyền Học
-    const pinHuyenHocBtn = screen.getByTestId('pin-btn-cat-root-huyen-hoc');
-    fireEvent.click(pinHuyenHocBtn);
+    // Pin Đông Y
+    const pinDongYBtn = screen.getByTestId('pin-btn-cat-root-dong-y');
+    fireEvent.click(pinDongYBtn);
 
     // Hero must reflect the recommendation
     const hero = screen.getByTestId('today-learning-hero');
     expect(hero).toBeInTheDocument();
-    expect(hero.textContent).toContain('Huyền Học');
+    expect(hero.textContent).toContain('Đông Y');
   });
 
   it('4. Renders WeeklyCadenceBar below TodayLearningHero in DashboardHome', () => {

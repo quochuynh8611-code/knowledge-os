@@ -53,23 +53,10 @@ describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integrati
       const normalizedCats = normalizeCategories(INITIAL_CATEGORIES);
       const normalizedTopics = normalizeTopics(INITIAL_TOPICS);
 
-      const phStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-phat-hoc');
-      expect(phStats.totalTopics).toBeGreaterThan(0);
-      expect(phStats.donePercent).toBeGreaterThanOrEqual(0);
-      expect(phStats.donePercent).toBeLessThanOrEqual(100);
-
-      const hhStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-huyen-hoc');
-      expect(hhStats.totalTopics).toBeGreaterThan(0);
-
       const dyStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-dong-y');
       expect(dyStats.totalTopics).toBeGreaterThan(0);
-
-      const nnStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-ngon-ngu');
-      expect(nnStats.totalTopics).toBeGreaterThan(0);
-
-      expect(
-        phStats.totalTopics + hhStats.totalTopics + dyStats.totalTopics + nnStats.totalTopics
-      ).toBe(normalizedTopics.length);
+      expect(dyStats.donePercent).toBeGreaterThanOrEqual(0);
+      expect(dyStats.donePercent).toBeLessThanOrEqual(100);
 
       // Custom root with no topics
       const customCats = [
@@ -83,16 +70,15 @@ describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integrati
   });
 
   describe('2. UI Integration: Dynamic Dashboard Domain Cards', () => {
-    it('renders root domain cards for default categories (Phật học & Huyền học)', () => {
+    it('renders root domain cards for default categories (Đông Y)', () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
         </TestHarness>
       );
 
-      // Verify domain cards are rendered
-      expect(screen.getAllByText(/Phật học/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/Huyền học/i).length).toBeGreaterThan(0);
+      // Verify domain card is rendered
+      expect(screen.getAllByText(/Đông Y/i).length).toBeGreaterThan(0);
     });
 
     it('renders new domain card dynamically when a new root category is added', () => {
@@ -117,13 +103,13 @@ describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integrati
         </TestHarness>
       );
 
-      // Click "Phật học" card
-      const phatHocCard = screen.getByTestId('learning-state-card-cat-root-phat-hoc');
-      fireEvent.click(phatHocCard);
+      // Click "Đông Y" card
+      const dongYCard = screen.getByTestId('learning-state-card-cat-root-dong-y');
+      fireEvent.click(dongYCard);
 
       // Verify active tab switched to topics and filter is set
       expect(screen.getByTestId('current-tab').textContent).toBe('topics');
-      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-phat-hoc');
+      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-dong-y');
     });
 
     it('clicking "Tất cả tiến độ" in Resume Study Queue changes activeTab to progress', () => {

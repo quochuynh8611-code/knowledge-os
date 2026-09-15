@@ -14,10 +14,10 @@ function TestConsumer({ onState }: { onState: (ctx: ReturnType<typeof useData>) 
     <div>
       <div data-testid="focus-id">{data.focusDomainId || 'none'}</div>
       <button
-        data-testid="set-phat-hoc-btn"
-        onClick={() => data.setFocusDomainId('cat-root-phat-hoc')}
+        data-testid="set-dong-y-btn"
+        onClick={() => data.setFocusDomainId('cat-root-dong-y')}
       >
-        Set Phat Hoc
+        Set Dong Y
       </button>
       <button
         data-testid="set-invalid-btn"
@@ -38,11 +38,12 @@ function TestConsumer({ onState }: { onState: (ctx: ReturnType<typeof useData>) 
 describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('knowledge_os_storage_version', '3');
     vi.clearAllMocks();
   });
 
   it('1. Hydrates valid focusDomainId from storage on initialization', () => {
-    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-phat-hoc');
+    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-dong-y');
 
     render(
       <DataProvider>
@@ -50,7 +51,7 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
       </DataProvider>
     );
 
-    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-phat-hoc');
+    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-dong-y');
   });
 
   it('2. Persists focusDomainId to storage when setFocusDomainId is called', () => {
@@ -63,11 +64,11 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
     expect(screen.getByTestId('focus-id').textContent).toBe('none');
 
     act(() => {
-      screen.getByTestId('set-phat-hoc-btn').click();
+      screen.getByTestId('set-dong-y-btn').click();
     });
 
-    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-phat-hoc');
-    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-phat-hoc');
+    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-dong-y');
+    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-dong-y');
   });
 
   it('3. Toggle-safe: calling setFocusDomainId with the currently active ID unpins it (sets to null)', () => {
@@ -77,16 +78,16 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
       </DataProvider>
     );
 
-    // Set first time -> 'cat-root-phat-hoc'
+    // Set first time -> 'cat-root-dong-y'
     act(() => {
-      screen.getByTestId('set-phat-hoc-btn').click();
+      screen.getByTestId('set-dong-y-btn').click();
     });
-    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-phat-hoc');
-    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-phat-hoc');
+    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-dong-y');
+    expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBe('cat-root-dong-y');
 
     // Click again -> toggle off (null)
     act(() => {
-      screen.getByTestId('set-phat-hoc-btn').click();
+      screen.getByTestId('set-dong-y-btn').click();
     });
     expect(screen.getByTestId('focus-id').textContent).toBe('none');
     expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBeNull();
@@ -107,7 +108,7 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
   });
 
   it('5. resetToDefaultData cleans up both in-memory focusDomainId and persisted storage key', () => {
-    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-phat-hoc');
+    localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-dong-y');
 
     render(
       <DataProvider>
@@ -115,7 +116,7 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
       </DataProvider>
     );
 
-    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-phat-hoc');
+    expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-dong-y');
 
     act(() => {
       screen.getByTestId('reset-btn').click();

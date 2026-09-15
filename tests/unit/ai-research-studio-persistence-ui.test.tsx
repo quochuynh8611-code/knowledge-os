@@ -91,6 +91,7 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('knowledge_os_storage_version', '3');
     const customCategories: Category[] = [
       ...INITIAL_CATEGORIES,
       {

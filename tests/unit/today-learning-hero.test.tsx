@@ -79,7 +79,7 @@ describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
     function FocusTestWrapper() {
       const { setFocusDomainId } = useData();
       React.useEffect(() => {
-        setFocusDomainId('cat-root-phat-hoc');
+        setFocusDomainId('cat-root-dong-y');
       }, [setFocusDomainId]);
 
       return <TodayLearningHero />;
@@ -92,6 +92,6 @@ describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
     );
 
     expect(screen.getByTestId('today-learning-hero')).toBeInTheDocument();
-    expect(screen.getAllByText(/Phật Học/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Đông Y/i).length).toBeGreaterThan(0);
   });
 });

@@ -149,37 +149,20 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     expect(screen.getAllByText(/Khoa Học Xã Hội/i).length).toBeGreaterThan(0);
   });
 
-  it('6. TopicTree filter by "Phật Học" shows topics belonging to its descendant categories (not 0 topics)', () => {
+  it('6. TopicTree filter by "Đông Y" shows topics belonging to its descendant categories', () => {
     render(
       <TestHarness>
         <TopicTree />
       </TestHarness>
     );
 
-    // Find and click "Phật Học" domain button
-    const phDomainBtn = screen.getByRole('button', { name: /Phật Học/i });
-    fireEvent.click(phDomainBtn);
+    // Find and click "Đông Y" domain button
+    const dyDomainBtn = screen.getByRole('button', { name: /Đông Y \(\d+\)/i });
+    fireEvent.click(dyDomainBtn);
 
-    // Topic count for Phật Học must be > 0 and descendant categories should be displayed
-    expect(screen.queryByText(/Phật Học \(0 chủ đề\)/i)).toBeNull();
-    // Tam Tạng or related topics must be visible
-    expect(screen.getAllByText(/Tam Tạng/i).length).toBeGreaterThan(0);
-  }, 15000);
-
-  it('7. TopicTree filter by "Huyền Học" shows topics belonging to its descendant categories (not 0 topics)', () => {
-    render(
-      <TestHarness>
-        <TopicTree />
-      </TestHarness>
-    );
-
-    // Find and click "Huyền Học" domain button
-    const hhDomainBtn = screen.getByRole('button', { name: /Huyền Học/i });
-    fireEvent.click(hhDomainBtn);
-
-    // Topic count for Huyền Học must be > 0
-    expect(screen.queryByText(/Huyền Học \(0 chủ đề\)/i)).toBeNull();
-    // Tam Thức or related topics must be visible
-    expect(screen.getAllByText(/Tam Thức/i).length).toBeGreaterThan(0);
-  }, 15000);
+    // Topic count for Đông Y must be > 0
+    expect(screen.queryByText(/Đông Y \(0 chủ đề\)/i)).toBeNull();
+    // Lý Luận Cơ Bản or related topics must be visible
+    expect(screen.getAllByText(/Lý Luận Cơ Bản/i).length).toBeGreaterThan(0);
+  });
 });

@@ -43,6 +43,7 @@ describe('Phase AI-Studio-Neutralization: Universal Multi-Discipline AI Layer', 
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem('knowledge_os_storage_version', '3');
   });
 
   describe('1. Presentation Neutrality in AIResearchStudio', () => {
