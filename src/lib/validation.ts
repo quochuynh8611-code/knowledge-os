@@ -58,12 +58,12 @@ export const CategorySchema = z.object({
   id: z.string().min(1, "Category ID không được để trống"),
   name: z.string().min(1, "Tên danh mục không được để trống"),
   slug: z.string().min(1, "Slug không được để trống"),
-  type: CategoryTypeEnum.optional(),
-  description: z.string().optional(),
+  type: CategoryTypeEnum.nullable().optional(),
+  description: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
-  icon: z.string().optional(),
-  color: z.string().optional(),
-  order: z.number().int().optional(),
+  icon: z.string().nullable().optional(),
+  color: z.string().nullable().optional(),
+  order: z.number().int().nullable().optional(),
 });
 
 export const CategoryCreateSchema = CategorySchema.omit({ id: true });
@@ -74,15 +74,15 @@ export const CategoryUpdateSchema = CategoryCreateSchema.partial();
 // ==========================================
 
 export const KnowledgeLinkSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().nullable().optional(),
   sourceId: z.string().min(1, "Source Topic ID không được để trống"),
   targetId: z.string().min(1, "Target Topic ID không được để trống"),
-  sourceTitle: z.string().optional(),
-  targetTitle: z.string().optional(),
+  sourceTitle: z.string().nullable().optional(),
+  targetTitle: z.string().nullable().optional(),
   linkType: LinkTypeEnum.default("related"),
   strength: z.number().min(1).max(5).default(3),
-  notes: z.string().optional(),
-  explanation: z.string().optional(),
+  notes: z.string().nullable().optional(),
+  explanation: z.string().nullable().optional(),
 });
 
 // ==========================================
@@ -93,10 +93,10 @@ export const StudyProgressSchema = z.object({
   topicId: z.string().min(1, "Topic ID không được để trống"),
   status: TopicStatusEnum.default("not_started"),
   progress: z.number().min(0).max(100).default(0),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
-  lastStudied: z.string().optional(),
-  nextReview: z.string().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  lastStudied: z.string().nullable().optional(),
+  nextReview: z.string().nullable().optional(),
   interval: z.number().int().min(0).default(0),
   easeFactor: z.number().min(1.3).default(2.5),
   repetitions: z.number().int().min(0).default(0),
@@ -126,15 +126,15 @@ export const TopicSchema = z.object({
     .max(200, "Tiêu đề quá dài"),
   slug: z.string().min(1, "Slug không được để trống"),
   categoryId: z.string().min(1, "Category ID không được để trống"),
-  categorySlug: z.string().optional(),
-  categoryName: z.string().optional(),
+  categorySlug: z.string().nullable().optional(),
+  categoryName: z.string().nullable().optional(),
   type: CategoryTypeEnum,
   parentId: z.string().nullable().optional(),
-  description: z.string().default(""),
-  content: z.string().default(""),
+  description: z.string().nullable().optional().default(""),
+  content: z.string().nullable().optional().default(""),
   tags: z.array(z.string()).default([]),
   links: z.array(KnowledgeLinkSchema).default([]),
-  visibility: TopicVisibilityEnum.optional(),
+  visibility: TopicVisibilityEnum.nullable().optional(),
   createdAt: z
     .string()
     .optional()
@@ -143,7 +143,7 @@ export const TopicSchema = z.object({
     .string()
     .optional()
     .default(() => new Date().toISOString()),
-  studyProgress: StudyProgressSchema.optional(),
+  studyProgress: StudyProgressSchema.nullable().optional(),
 });
 
 export const TopicCreateSchema = z.object({
@@ -172,11 +172,11 @@ export const TopicUpdateSchema = TopicCreateSchema.partial();
 export const NoteSchema = z.object({
   id: z.string().min(1, "Note ID không được để trống"),
   topicId: z.string().min(1, "Topic ID không được để trống"),
-  topicIds: z.array(z.string()).optional(),
-  topicTitle: z.string().optional(),
+  topicIds: z.array(z.string()).nullable().optional(),
+  topicTitle: z.string().nullable().optional(),
   title: z.string().min(1, "Tiêu đề ghi chú không được để trống"),
   content: z.string().min(1, "Nội dung ghi chú không được để trống"),
-  sourcePath: z.string().optional(),
+  sourcePath: z.string().nullable().optional(),
   type: NoteTypeEnum.default("insight"),
   isPrivate: z.boolean().optional().default(false),
   tags: z.array(z.string()).default([]),
@@ -197,7 +197,7 @@ export const NoteCreateSchema = z
     topicTitle: z.string().optional(),
     title: z.string().min(1, "Tiêu đề ghi chú không được để trống"),
     content: z.string().min(1, "Nội dung ghi chú không được để trống"),
-    sourcePath: z.string().optional(),
+    sourcePath: z.string().nullable().optional(),
     type: NoteTypeEnum.optional().default("insight"),
     isPrivate: z.boolean().optional().default(false),
     tags: z.array(z.string()).optional().default([]),
@@ -214,7 +214,7 @@ export const NoteUpdateSchema = z.object({
   topicTitle: z.string().optional(),
   title: z.string().min(1, "Tiêu đề ghi chú không được để trống").optional(),
   content: z.string().min(1, "Nội dung ghi chú không được để trống").optional(),
-  sourcePath: z.string().optional(),
+  sourcePath: z.string().nullable().optional(),
   type: NoteTypeEnum.optional(),
   isPrivate: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
@@ -227,14 +227,14 @@ export const NoteUpdateSchema = z.object({
 export const ResourceSchema = z.object({
   id: z.string().min(1, "Resource ID không được để trống"),
   topicId: z.string().min(1, "Topic ID không được để trống"),
-  topicTitle: z.string().optional(),
+  topicTitle: z.string().nullable().optional(),
   title: z.string().min(1, "Tiêu đề tài liệu không được để trống"),
   type: ResourceTypeEnum.default("book"),
-  author: z.string().optional(),
-  url: z.string().optional(),
-  filePath: z.string().optional(),
-  openTarget: z.string().optional(),
-  notes: z.string().optional(),
+  author: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  filePath: z.string().nullable().optional(),
+  openTarget: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   createdAt: z
     .string()
     .optional()

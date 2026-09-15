@@ -1,5 +1,10 @@
 import { Category, Topic, Note, Resource, Tag, StudyProgress } from "../types";
 import {
+  normalizeCategories,
+  normalizeTopics,
+  normalizeNotes,
+} from "../lib/taxonomyMigration";
+import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
   safeRemoveLocalStorageItem,
@@ -139,11 +144,11 @@ export class LocalStorageDataRepository implements IDataRepository {
       try {
         const parsed = JSON.parse(raw);
         return {
-          categories: parsed.categories || [],
-          topics: parsed.topics || [],
-          notes: parsed.notes || [],
-          resources: parsed.resources || [],
-          tags: parsed.tags || [],
+          categories: normalizeCategories(parsed.categories || []),
+          topics: normalizeTopics(parsed.topics || []),
+          notes: normalizeNotes(parsed.notes || []),
+          resources: Array.isArray(parsed.resources) ? parsed.resources : [],
+          tags: Array.isArray(parsed.tags) ? parsed.tags : [],
         };
       } catch (e) {
         console.warn(
@@ -164,9 +169,9 @@ export class LocalStorageDataRepository implements IDataRepository {
     if (hasAnySubKey) {
       try {
         return {
-          categories: categoriesRaw ? JSON.parse(categoriesRaw) : [],
-          topics: topicsRaw ? JSON.parse(topicsRaw) : [],
-          notes: notesRaw ? JSON.parse(notesRaw) : [],
+          categories: categoriesRaw ? normalizeCategories(JSON.parse(categoriesRaw)) : [],
+          topics: topicsRaw ? normalizeTopics(JSON.parse(topicsRaw)) : [],
+          notes: notesRaw ? normalizeNotes(JSON.parse(notesRaw)) : [],
           resources: resourcesRaw ? JSON.parse(resourcesRaw) : [],
           tags: tagsRaw ? JSON.parse(tagsRaw) : [],
         };
@@ -181,7 +186,16 @@ export class LocalStorageDataRepository implements IDataRepository {
   async syncHydrate(
     payload: ValidatedHydrateInput,
   ): Promise<ValidatedHydrateResponse> {
-    const validated = HydratePayloadSchema.parse(payload);
+    const sanitizedPayload: ValidatedHydrateInput = {
+      ...payload,
+      categories: normalizeCategories((payload.categories || []) as Category[]),
+      topics: normalizeTopics((payload.topics || []) as Topic[]),
+      notes: normalizeNotes((payload.notes || []) as Note[]),
+      resources: Array.isArray(payload.resources) ? payload.resources : [],
+      tags: Array.isArray(payload.tags) ? payload.tags : [],
+      links: Array.isArray(payload.links) ? payload.links : [],
+    };
+    const validated = HydratePayloadSchema.parse(sanitizedPayload);
     const normalizedTopics: Topic[] = validated.topics.map((t) => ({
       ...t,
       createdAt: t.createdAt || new Date().toISOString(),

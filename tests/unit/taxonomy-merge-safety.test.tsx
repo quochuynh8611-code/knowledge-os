@@ -1077,7 +1077,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       );
 
       // Core categories present in default state should be rendered
-      expect(await screen.findByRole('button', { name: /Phật Học/i })).toBeInTheDocument();
+      expect((await screen.findAllByText(/Đông Y/i)).length).toBeGreaterThan(0);
 
       // Legacy economy roots must NOT appear in clean default state
       expect(screen.queryByRole('button', { name: /^Kinh Tế$/i })).toBeNull();

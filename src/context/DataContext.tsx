@@ -12,6 +12,7 @@ import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
   safeRemoveLocalStorageItem,
+  ensureStorageVersionCompatibility,
   FOCUS_DOMAIN_STORAGE_KEY,
 } from "../lib/storage";
 import {
@@ -38,10 +39,12 @@ import { calculateNextReview, getReviewQueue } from "../lib/spaced-repetition";
 import {
   normalizeCategories,
   normalizeTopics,
+  normalizeNotes,
   generateCategorySlug,
   getRootCategories,
-  mergeCategoryData,
+  resolveRootCategory,
   MergeCategoriesResult,
+  mergeCategoryData,
 } from "../lib/taxonomyMigration";
 import {
   LocalStorageDataRepository,
@@ -229,6 +232,9 @@ export function useDomainData(): DomainDataContextType {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 function InnerDataProvider({ children }: { children: ReactNode }) {
+  // 1. Ensure storage version compatibility before reading local cache
+  ensureStorageVersionCompatibility();
+
   // Initialize state from LocalStorage sub-keys (via safe helper) or Seed Data
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
@@ -251,9 +257,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>(() => {
     try {
       const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_notes`);
-      return saved ? JSON.parse(saved) : INITIAL_NOTES;
+      return normalizeNotes(saved ? JSON.parse(saved) : INITIAL_NOTES);
     } catch {
-      return INITIAL_NOTES;
+      return normalizeNotes(INITIAL_NOTES);
     }
   });
 
@@ -306,35 +312,64 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     }
   }, [categories, focusDomainId]);
 
-  // Bootstrap Load & Hydration via DataRepository
+  // Server-canonical state machine guard (prevents auto-syncing stale cache before server hydration completes)
+  const isServerHydratedRef = useRef(false);
+
+  // Bootstrap Load & Hydration via DataRepository (Server is SSOT)
   useEffect(() => {
+    let isMounted = true;
     dataRepository
       .loadInitialData()
       .then((data) => {
-        if (data.topics && data.topics.length > 0) {
-          if (data.categories && data.categories.length > 0)
-            setCategories(normalizeCategories(data.categories));
-          setTopics(normalizeTopics(data.topics));
-          if (data.notes && data.notes.length > 0) setNotes(data.notes);
-          if (data.resources && data.resources.length > 0)
-            setResources(data.resources);
-          if (data.tags && data.tags.length > 0) setTags(data.tags);
+        if (!isMounted) return;
+        const normCats = normalizeCategories(data.categories || []);
+        const normTopics = normalizeTopics(data.topics || []);
+        const normNotes = normalizeNotes(data.notes || []);
+        const normResources = Array.isArray(data.resources) ? data.resources : [];
+        const normTags = Array.isArray(data.tags) ? data.tags : [];
+
+        // Server-canonical replacement
+        if (normCats.length > 0) {
+          setCategories(normCats);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_categories`, JSON.stringify(normCats));
         }
+        if (normTopics.length > 0) {
+          setTopics(normTopics);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_topics`, JSON.stringify(normTopics));
+        }
+        if (normNotes.length > 0) {
+          setNotes(normNotes);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(normNotes));
+        }
+        if (normResources.length > 0) {
+          setResources(normResources);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_resources`, JSON.stringify(normResources));
+        }
+        if (normTags.length > 0) {
+          setTags(normTags);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_tags`, JSON.stringify(normTags));
+        }
+
+        // Enable user-initiated mutations and auto-sync now that canonical data is active
+        isServerHydratedRef.current = true;
       })
       .catch((err) => {
+        if (!isMounted) return;
         console.warn(
           "Repository initial load error, continuing with local state:",
           err,
         );
+        isServerHydratedRef.current = true;
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const isInitialMount = useRef(true);
-
-  // Auto-sync to LocalStorage via repository (repository owns all storage I/O)
+  // Auto-sync to LocalStorage/Server via repository: ONLY runs after server hydration completes
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
+    if (!isServerHydratedRef.current) {
       return;
     }
 

@@ -50,37 +50,66 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           }
         }
 
-        // Categories
-        for (const cat of payload.categories) {
-          const savedCat = await tx.category.upsert({
-            where: { slug: cat.slug },
-            create: {
-              id: cat.id,
-              name: cat.name,
-              slug: cat.slug,
-              type: cat.type,
-              description: cat.description,
-              parentId: cat.parentId,
-              icon: cat.icon,
-              color: cat.color,
-              order: cat.order ?? 0,
-            },
-            update: {
-              name: cat.name,
-              type: cat.type,
-              description: cat.description,
-              icon: cat.icon,
-              color: cat.color,
-              order: cat.order ?? 0,
-            },
-          });
-          categoriesCount++;
-          if (savedCat?.id) {
-            categoryIdMap.set(savedCat.id, savedCat.id);
-            if (savedCat.slug) categoryIdMap.set(savedCat.slug, savedCat.id);
+        // Topic ID resolution map (resolves by id or slug to real database topic id)
+        const topicIdMap = new Map<string, string>();
+        if (typeof tx.topic?.findMany === "function") {
+          const existingDbTopics = (await tx.topic.findMany()) || [];
+          for (const t of existingDbTopics) {
+            if (t.id) topicIdMap.set(t.id, t.id);
+            if (t.slug) topicIdMap.set(t.slug, t.id);
           }
-          if (cat.id && savedCat?.id) categoryIdMap.set(cat.id, savedCat.id);
-          if (cat.slug && savedCat?.id) categoryIdMap.set(cat.slug, savedCat.id);
+        }
+
+        // Categories: routine sync ONLY updates existing categories; forceOverwrite allows explicit creation (restore/import)
+        for (const cat of payload.categories) {
+          const existingId = (cat.id && categoryIdMap.get(cat.id)) || (cat.slug && categoryIdMap.get(cat.slug));
+          if (payload.forceOverwrite) {
+            const savedCat = await tx.category.upsert({
+              where: { slug: cat.slug },
+              create: {
+                id: cat.id,
+                name: cat.name,
+                slug: cat.slug,
+                type: cat.type,
+                description: cat.description,
+                parentId: cat.parentId,
+                icon: cat.icon,
+                color: cat.color,
+                order: cat.order ?? 0,
+              },
+              update: {
+                name: cat.name,
+                type: cat.type,
+                description: cat.description,
+                icon: cat.icon,
+                color: cat.color,
+                order: cat.order ?? 0,
+              },
+            });
+            categoriesCount++;
+            if (savedCat?.id) {
+              categoryIdMap.set(savedCat.id, savedCat.id);
+              if (savedCat.slug) categoryIdMap.set(savedCat.slug, savedCat.id);
+            }
+          } else if (existingId) {
+            const savedCat = await tx.category.update({
+              where: { id: existingId },
+              data: {
+                name: cat.name,
+                type: cat.type,
+                description: cat.description,
+                icon: cat.icon,
+                color: cat.color,
+                order: cat.order ?? 0,
+              },
+            });
+            categoriesCount++;
+            if (savedCat?.id) {
+              categoryIdMap.set(savedCat.id, savedCat.id);
+              if (savedCat.slug) categoryIdMap.set(savedCat.slug, savedCat.id);
+            }
+          }
+          // Unknown categories in routine sync are ignored (never recreated from client cache)
         }
 
         // Tags
@@ -103,11 +132,20 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           tagsCount++;
         }
 
-        // Topics
+        // Topics: routine sync ONLY updates existing topics; forceOverwrite allows explicit creation (restore/import)
         for (const topic of payload.topics) {
           const normTags = normalizeTopicTags(topic.tags || []);
           const resolvedCategoryId =
             categoryIdMap.get(topic.categoryId) || topic.categoryId;
+
+          const existingTopicId =
+            (topic.id && topicIdMap.get(topic.id)) ||
+            (topic.slug && topicIdMap.get(topic.slug));
+
+          if (!payload.forceOverwrite && !existingTopicId) {
+            // Unknown topics in routine sync are ignored (never recreated from client cache)
+            continue;
+          }
 
           // Fail fast with explicit descriptive error if category does not exist
           if (categoryIdMap.size > 0 && !categoryIdMap.has(topic.categoryId)) {
@@ -116,28 +154,45 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             );
           }
 
-          await tx.topic.upsert({
-            where: { slug: topic.slug },
-            create: {
-              id: topic.id,
-              title: topic.title,
-              slug: topic.slug,
-              categoryId: resolvedCategoryId,
-              type: topic.type,
-              parentId: topic.parentId,
-              description: topic.description,
-              content: topic.content,
-              tags: normTags,
-            },
-            update: {
-              title: topic.title,
-              categoryId: resolvedCategoryId,
-              type: topic.type,
-              description: topic.description,
-              content: topic.content,
-              tags: normTags,
-            },
-          });
+          let savedTopicId = topic.id;
+          if (payload.forceOverwrite) {
+            const saved = await tx.topic.upsert({
+              where: { slug: topic.slug },
+              create: {
+                id: topic.id,
+                title: topic.title,
+                slug: topic.slug,
+                categoryId: resolvedCategoryId,
+                type: topic.type,
+                parentId: topic.parentId,
+                description: topic.description,
+                content: topic.content,
+                tags: normTags,
+              },
+              update: {
+                title: topic.title,
+                categoryId: resolvedCategoryId,
+                type: topic.type,
+                description: topic.description,
+                content: topic.content,
+                tags: normTags,
+              },
+            });
+            savedTopicId = saved?.id || topic.id;
+          } else if (existingTopicId) {
+            const saved = await tx.topic.update({
+              where: { id: existingTopicId },
+              data: {
+                title: topic.title,
+                categoryId: resolvedCategoryId,
+                type: topic.type,
+                description: topic.description,
+                content: topic.content,
+                tags: normTags,
+              },
+            });
+            savedTopicId = saved?.id || existingTopicId;
+          }
           topicsCount++;
 
           // Dual-write TopicTag relations

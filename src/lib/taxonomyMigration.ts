@@ -1,7 +1,42 @@
-import { Category, Topic } from '../types';
+import { Category, Topic, Note, StudyProgress } from '../types';
 
 /**
- * Normalizes topics by ensuring `visibility` is populated.
+ * Creates a safe default StudyProgress object for a topic if null or undefined.
+ */
+export function getSafeStudyProgress(topic: Partial<Topic> & { id: string }): StudyProgress {
+  const p = topic.studyProgress;
+  return {
+    topicId: typeof p?.topicId === 'string' && p.topicId.trim() ? p.topicId : topic.id,
+    status: p?.status && ['not_started', 'in_progress', 'completed', 'reviewing'].includes(p.status)
+      ? p.status
+      : 'not_started',
+    progress: typeof p?.progress === 'number' && !Number.isNaN(p.progress)
+      ? Math.min(100, Math.max(0, p.progress))
+      : 0,
+    interval: typeof p?.interval === 'number' && !Number.isNaN(p.interval) && p.interval >= 0
+      ? p.interval
+      : 0,
+    easeFactor: typeof p?.easeFactor === 'number' && !Number.isNaN(p.easeFactor) && p.easeFactor >= 1.3
+      ? p.easeFactor
+      : 2.5,
+    repetitions: typeof p?.repetitions === 'number' && !Number.isNaN(p.repetitions) && p.repetitions >= 0
+      ? p.repetitions
+      : 0,
+    totalNotes: typeof p?.totalNotes === 'number' && !Number.isNaN(p.totalNotes) && p.totalNotes >= 0
+      ? p.totalNotes
+      : 0,
+    timeSpent: typeof p?.timeSpent === 'number' && !Number.isNaN(p.timeSpent) && p.timeSpent >= 0
+      ? p.timeSpent
+      : 0,
+    startDate: typeof p?.startDate === 'string' ? p.startDate : undefined,
+    endDate: typeof p?.endDate === 'string' ? p.endDate : undefined,
+    lastStudied: typeof p?.lastStudied === 'string' ? p.lastStudied : undefined,
+    nextReview: typeof p?.nextReview === 'string' ? p.nextReview : undefined,
+  };
+}
+
+/**
+ * Normalizes topics by ensuring `visibility`, `studyProgress`, `tags`, and `links` are safely populated.
  * Legacy topics without `visibility` default to `'active'`.
  */
 export function normalizeTopics(topics: Topic[]): Topic[] {
@@ -9,6 +44,25 @@ export function normalizeTopics(topics: Topic[]): Topic[] {
   return topics.map((t) => ({
     ...t,
     visibility: t.visibility || 'active',
+    description: t.description || '',
+    content: t.content || '',
+    tags: Array.isArray(t.tags) ? t.tags : [],
+    links: Array.isArray(t.links) ? t.links : [],
+    studyProgress: getSafeStudyProgress(t),
+  }));
+}
+
+/**
+ * Normalizes notes ensuring valid sourcePath, tags array, and boolean isPrivate flag.
+ */
+export function normalizeNotes(notes: Note[]): Note[] {
+  if (!Array.isArray(notes)) return [];
+  return notes.map((n) => ({
+    ...n,
+    sourcePath: typeof n.sourcePath === 'string' && n.sourcePath.trim() ? n.sourcePath : undefined,
+    tags: Array.isArray(n.tags) ? n.tags : [],
+    isPrivate: Boolean(n.isPrivate),
+    type: n.type || 'insight',
   }));
 }
 
