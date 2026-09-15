@@ -132,47 +132,130 @@ export const HTML_ENTITY_MAP: Record<string, string> = {
 const XML_ENTITIES = new Set(["amp", "lt", "gt", "quot", "apos"]);
 
 /**
- * Pure function: Sanitizes undeclared HTML entities in an XHTML / XML string,
- * replacing them with their Unicode equivalents while preserving standard XML entities.
+ * Generates a unique, non-deterministic prefix per invocation to prevent
+ * placeholder collision with arbitrary EPUB text content.
+ */
+function createProtectedBlockPrefix(): string {
+  const randomPart =
+    typeof globalThis.crypto?.randomUUID === "function"
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  return `__KOS_XML_PROTECTED_${randomPart}_`;
+}
+
+/**
+ * Pure function: Sanitizes undeclared HTML entities and bare ampersands in an XHTML / XML string.
+ *
+ * Pipeline:
+ * 1. Protect CDATA blocks (<![CDATA[...]]>) and XML comments (<!--...-->) with unique invocation-scoped placeholders.
+ * 2. Convert named HTML entities to Unicode equivalents, keeping standard XML entities (&amp;, &lt;, &gt;, &quot;, &apos;) and numeric entities (&#...;).
+ * 3. Escape all remaining bare/invalid ampersands to &amp; using negative lookahead (never double-escaping &amp;).
+ * 4. Restore protected CDATA and comment blocks using specific prefix matching.
  */
 export function sanitizeEpubXhtml(input: string): string {
   if (!input || typeof input !== "string") return input;
 
-  return input.replace(/&([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);/g, (match, entityName) => {
-    // 1. Numeric character references (e.g. &#160; or &#x1F600;) are standard in XML
-    if (entityName.startsWith("#")) {
+  const prefix = createProtectedBlockPrefix();
+  const placeholders: string[] = [];
+
+  // Step 1: Protect CDATA sections and comments from being modified
+  const protectedStr = input.replace(
+    /(<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->)/g,
+    (match) => {
+      const token = `${prefix}${placeholders.length}__`;
+      placeholders.push(match);
+      return token;
+    }
+  );
+
+  // Step 2: Normalize known named HTML entities into Unicode, keeping XML entities & numeric references
+  const normalizedEntities = protectedStr.replace(
+    /&([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);/g,
+    (match, entityName) => {
+      // Numeric references: &#123; or &#x7B;
+      if (entityName.startsWith("#")) {
+        return match;
+      }
+
+      // Predefined XML entities: &amp;, &lt;, &gt;, &quot;, &apos;
+      if (XML_ENTITIES.has(entityName)) {
+        return match;
+      }
+
+      // Named HTML entities from mapping
+      if (HTML_ENTITY_MAP[entityName] !== undefined) {
+        return HTML_ENTITY_MAP[entityName];
+      }
+
+      // Unknown named entity: leave to Step 3 to escape safely as &amp;entityName;
       return match;
     }
+  );
 
-    // 2. Predefined XML entities (&amp;, &lt;, &gt;, &quot;, &apos;) are valid in XML
-    if (XML_ENTITIES.has(entityName)) {
-      return match;
-    }
+  // Step 3: Escape any remaining bare or undeclared ampersands that are not valid XML entities
+  // Valid entities after Step 2 are ONLY: &amp;, &lt;, &gt;, &quot;, &apos;, and &#...;
+  const escapedAmpersands = normalizedEntities.replace(
+    /&(?!(?:amp|lt|gt|quot|apos);|#(?:[0-9]+|x[0-9a-fA-F]+);)/g,
+    "&amp;"
+  );
 
-    // 3. Known named HTML entities mapped to Unicode characters
-    if (HTML_ENTITY_MAP[entityName] !== undefined) {
-      return HTML_ENTITY_MAP[entityName];
-    }
+  // Step 4: Escape bare or invalid less-than characters that do not begin valid XML tags
+  const escapedLessThan = escapedAmpersands.replace(
+    /<(?![a-zA-Z_:\/?!])/g,
+    "&lt;"
+  );
 
-    // 4. Unknown entity: keep as-is safely
-    return match;
+  // Step 5: Restore protected CDATA and comment blocks using specific prefix matching
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const restorePattern = new RegExp(`${escapedPrefix}(\\d+)__`, "g");
+  return escapedLessThan.replace(restorePattern, (_, idxStr) => {
+    const idx = Number(idxStr);
+    return placeholders[idx] !== undefined ? placeholders[idx] : "";
   });
 }
 
+export interface EpubArchiveSanitizationResult {
+  buffer: ArrayBuffer;
+  sanitizedEntries: string[];
+  skippedEntries: string[];
+}
+
 /**
- * Asynchronously inspects and sanitizes all XHTML, HTML, XML, OPF, and NCX entries
+ * Asynchronously inspects and sanitizes only XHTML/HTML content entries (.xhtml, .html, .htm)
  * within an in-memory EPUB zip archive before feeding it to epubjs.
+ *
+ * Intentionally skips and preserves raw bytes for:
+ * - Stylesheets (.css)
+ * - Scripts (.js)
+ * - Images (.png, .jpg, .jpeg, .webp, .gif)
+ * - Vector graphics (.svg)
+ * - Package and navigation documents (.opf, .ncx)
+ * - Container manifest (META-INF/container.xml)
+ * - Fonts and media assets
+ *
  * Leaves the original file on disk completely untouched.
  */
-export async function sanitizeEpubArchive(input: ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
+export async function sanitizeEpubArchiveWithReport(
+  input: ArrayBuffer | Uint8Array
+): Promise<EpubArchiveSanitizationResult> {
+  const sanitizedEntries: string[] = [];
+  const skippedEntries: string[] = [];
+
   try {
     const zip = await JSZip.loadAsync(input);
     let hasModifications = false;
 
     const targetFiles: { path: string; file: JSZip.JSZipObject }[] = [];
     zip.forEach((relativePath, file) => {
-      if (!file.dir && /\.(xhtml|html|htm|xml|opf|ncx)$/i.test(relativePath)) {
+      if (file.dir) return;
+
+      // Only target XHTML and HTML document entries
+      if (/\.(xhtml|html|htm)$/i.test(relativePath)) {
         targetFiles.push({ path: relativePath, file });
+        sanitizedEntries.push(relativePath);
+      } else {
+        skippedEntries.push(relativePath);
       }
     });
 
@@ -186,16 +269,28 @@ export async function sanitizeEpubArchive(input: ArrayBuffer | Uint8Array): Prom
     }
 
     if (hasModifications) {
-      return await zip.generateAsync({
+      const buffer = await zip.generateAsync({
         type: "arraybuffer",
         compression: "DEFLATE",
         compressionOptions: { level: 6 },
       });
+      return { buffer, sanitizedEntries, skippedEntries };
     }
 
-    return input instanceof ArrayBuffer ? input : input.buffer;
+    const buffer = input instanceof ArrayBuffer ? input : input.buffer;
+    return { buffer, sanitizedEntries, skippedEntries };
   } catch (error) {
     console.warn("[epubXhtmlSanitizer] Failed to sanitize zip archive, falling back to original:", error);
-    return input instanceof ArrayBuffer ? input : input.buffer;
+    const buffer = input instanceof ArrayBuffer ? input : input.buffer;
+    return { buffer, sanitizedEntries, skippedEntries };
   }
+}
+
+/**
+ * Primary entry point: Asynchronously sanitizes XHTML entries in EPUB zip archive,
+ * returning sanitized ArrayBuffer.
+ */
+export async function sanitizeEpubArchive(input: ArrayBuffer | Uint8Array): Promise<ArrayBuffer> {
+  const result = await sanitizeEpubArchiveWithReport(input);
+  return result.buffer;
 }

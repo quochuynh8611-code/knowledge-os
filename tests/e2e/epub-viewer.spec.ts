@@ -131,7 +131,7 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
   });
 
   test("renders Docs tab and opens EPUB Viewer Modal when clicking an .epub file", async ({ page }) => {
-    await page.goto("/#/docs");
+    await page.goto("/#/library");
 
     // Wait for the document list to render
     const epubDocItem = page.locator('button:has-text("Synthetic Test Book")').first();
@@ -154,7 +154,7 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
   });
 
   test("renders synthetic EPUB containing named XML entities without errors and displays chapter text in iframe", async ({ page }) => {
-    await page.goto("/#/docs");
+    await page.goto("/#/library");
 
     const epubDocItem = page.locator('button:has-text("Synthetic Test Book")').first();
     await expect(epubDocItem).toBeVisible({ timeout: 10000 });
@@ -177,10 +177,14 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
       return iframe.contentDocument.body ? iframe.contentDocument.body.innerText : "";
     });
 
-    // Assert that text is rendered and contains synthetic entity replacement
+    // Assert that text is rendered and contains synthetic entity replacement and bare ampersands
     expect(iframeText.length).toBeGreaterThan(30);
     expect(iframeText).toMatch(/EPUB entity regression × chapter|5 × 10 = 50/i);
+    expect(iframeText).toContain("Âm & dương");
+    expect(iframeText).toContain("A & B");
+    expect(iframeText).toContain("Fish & Chips");
     expect(iframeText).not.toContain("Entity 'times' not defined");
+    expect(iframeText).not.toContain("xmlParseEntityRef");
     expect(iframeText).not.toContain("Invalid URL");
     expect(iframeText).not.toContain("&times;");
 
@@ -198,7 +202,7 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
       localStorage.setItem(key, cfi);
     }, { key: normalizedKey, cfi: testCfi });
 
-    await page.goto("/#/docs");
+    await page.goto("/#/library");
 
     // Click to open EPUB
     const epubDocItem = page.locator('button:has-text("Synthetic Test Book")').first();
@@ -230,7 +234,7 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
       localStorage.setItem(key, cfi);
     }, { key: normalizedKey, cfi: corruptedCfi });
 
-    await page.goto("/#/docs");
+    await page.goto("/#/library");
 
     const epubDocItem = page.locator('button:has-text("Synthetic Test Book")').first();
     await expect(epubDocItem).toBeVisible({ timeout: 10000 });
@@ -245,7 +249,7 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
   });
 
   test("controls font size and toggles single/double page modes in toolbar", async ({ page }) => {
-    await page.goto("/#/docs");
+    await page.goto("/#/library");
 
     const epubDocItem = page.locator('button:has-text("Synthetic Test Book")').first();
     await expect(epubDocItem).toBeVisible({ timeout: 10000 });
@@ -313,18 +317,24 @@ test.describe("EPUB In-App Reader (DocsExplorerView & Obsidian Vault)", () => {
     await expect(epubModal).not.toBeVisible();
   });
 
-  test("does not break regular Markdown documents", async ({ page }) => {
-    await page.goto("/#/docs");
+  test("does not break regular Markdown documents in Obsidian Vault Browser", async ({ page }) => {
+    await page.goto("/");
 
-    const mdDocItem = page.locator('button:has-text("Tài Liệu Đặc Tả Mẫu")').first();
-    await expect(mdDocItem).toBeVisible({ timeout: 10000 });
-    await mdDocItem.click();
+    // Open Obsidian Vault Browser modal from Navbar
+    const obsidianBtn = page.locator('button[title="Duyệt Obsidian Vault"]').or(page.getByText(/Obsidian/i)).first();
+    await expect(obsidianBtn).toBeVisible({ timeout: 10000 });
+    await obsidianBtn.click();
 
-    // Verify Markdown reader renders content in right pane, not opening modal
-    const modalDialog = page.getByRole("dialog");
-    await expect(modalDialog).not.toBeVisible();
+    // Find and click the markdown file in the vault tree
+    const mdFileItem = page.locator('text=note-sample.md').first();
+    await expect(mdFileItem).toBeVisible({ timeout: 10000 });
+    await mdFileItem.click();
 
-    const markdownHeading = page.locator('h2:has-text("Tài Liệu Đặc Tả Mẫu")');
-    await expect(markdownHeading).toBeVisible();
+    // Verify Obsidian Document Viewer modal opens for markdown content
+    const mdModal = page.getByRole("dialog").filter({ hasText: /note-sample\.md|Chi Tiết Tài Liệu Obsidian/i });
+    await expect(mdModal).toBeVisible({ timeout: 10000 });
+
+    await page.keyboard.press("Escape");
+    await expect(mdModal).not.toBeVisible();
   });
 });
