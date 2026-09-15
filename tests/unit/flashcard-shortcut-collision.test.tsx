@@ -365,12 +365,12 @@ describe("BUG F6.0.1 — Final Spec: Scoped Keyboard Shortcut Priority", () => {
     fireEvent.keyDown(window, { key: "2" });
     expect(onNavigateTab).toHaveBeenCalledWith("topics");
 
-    // Nhấn phím 3 -> điều hướng tới abhidharma_matrix
+    // Nhấn phím 3 -> điều hướng tới flashcards
     fireEvent.keyDown(window, { key: "3" });
-    expect(onNavigateTab).toHaveBeenCalledWith("abhidharma_matrix");
+    expect(onNavigateTab).toHaveBeenCalledWith("flashcards");
 
-    // Nhấn phím 4 -> điều hướng tới divination_matrix
+    // Nhấn phím 4 -> điều hướng tới notes
     fireEvent.keyDown(window, { key: "4" });
-    expect(onNavigateTab).toHaveBeenCalledWith("divination_matrix");
+    expect(onNavigateTab).toHaveBeenCalledWith("notes");
   });
 });

@@ -81,11 +81,11 @@ export function useKeyboardShortcuts({
         const tabMap: Record<string, string> = {
           "1": "dashboard",
           "2": "topics",
-          "3": "abhidharma_matrix",
-          "4": "divination_matrix",
-          "5": "graph",
-          "6": "progress",
-          "7": "notes",
+          "3": "flashcards",
+          "4": "notes",
+          "5": "resources",
+          "6": "graph",
+          "7": "library",
         };
         const targetTab = tabMap[e.key];
         if (targetTab && onNavigateTab) {

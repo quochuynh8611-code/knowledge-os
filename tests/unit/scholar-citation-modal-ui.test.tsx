@@ -2,7 +2,6 @@ import React, { act } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ScholarCitationModal } from '../../src/components/modals/ScholarCitationModal';
-import { MultilingualLexicon } from '../../src/components/lexicon/MultilingualLexicon';
 import {
   canonicalLexiconFixture,
   classicalSystemNodeFixture,
@@ -137,19 +136,5 @@ describe('Phase D: Scholar Citation Modal UI Component', () => {
       fireEvent.click(screen.getByTitle(/Đóng/i));
     });
     expect(mockOnClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('8. Opens citation modal from MultilingualLexicon entry card action', () => {
-    render(<MultilingualLexicon />);
-
-    // Find the first "Xuất trích dẫn" button in lexicon
-    const citeBtns = screen.getAllByText(/Xuất trích dẫn/i);
-    expect(citeBtns.length).toBeGreaterThan(0);
-
-    act(() => {
-      fireEvent.click(citeBtns[0]);
-    });
-
-    expect(screen.getByText(/Trích Dẫn Học Thuật/i)).toBeInTheDocument();
   });
 });

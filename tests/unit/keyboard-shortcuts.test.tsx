@@ -47,7 +47,7 @@ describe("Keyboard Shortcuts & ShortcutsModal (Phase 1B)", () => {
       expect(handleNavigate).toHaveBeenCalledWith("dashboard");
 
       fireEvent.keyDown(window, { key: "3" });
-      expect(handleNavigate).toHaveBeenCalledWith("abhidharma_matrix");
+      expect(handleNavigate).toHaveBeenCalledWith("flashcards");
     });
 
     it("Không kích hoạt phím số đơn lẻ khi đang nhập liệu trong ô input", () => {
@@ -84,7 +84,7 @@ describe("Keyboard Shortcuts & ShortcutsModal (Phase 1B)", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/Phím Tắt Hệ Thống/i)).toBeInTheDocument();
       expect(screen.getByText(/Thanh Lệnh Toàn Năng/i)).toBeInTheDocument();
-      expect(screen.getByText(/Ma Trận Phân Tích/i)).toBeInTheDocument();
+      expect(screen.getByText(/Thẻ Nhớ/i)).toBeInTheDocument();
 
       // Close on button click
       const closeBtn = screen.getByLabelText(/Đóng bảng phím tắt/i);

@@ -9,16 +9,12 @@ import {
   Library,
   Search,
   Sparkles,
-  Compass,
   Clock,
   Brain,
-  BookA,
   BookOpen,
   Plus,
   X,
   Folder,
-  ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
 import {
@@ -27,7 +23,6 @@ import {
   resolveCategoryFilterToRootId,
 } from '../../lib/taxonomyMigration';
 import { getNeutralDomainStyle } from '../../lib/domainStyling';
-import { getScholarSuiteCounts } from '../../lib/scholarSuite/selectors';
 
 export function Sidebar() {
   const {
@@ -46,9 +41,6 @@ export function Sidebar() {
 
   const [isAddingDomain, setIsAddingDomain] = useState(false);
   const [newDomainName, setNewDomainName] = useState('');
-  const [isAdvancedToolsOpen, setIsAdvancedToolsOpen] = useState(false);
-
-  const scholarCounts = useMemo(() => getScholarSuiteCounts(), []);
 
   const rootCategories = useMemo(() => {
     return getRootCategories(categories);
@@ -159,28 +151,10 @@ export function Sidebar() {
     { id: 'search', label: 'Tìm kiếm', icon: Search },
   ];
 
-  // Tầng 3: CÔNG CỤ & TIỆN ÍCH (Tools & Scholar Suite)
-  // Công cụ trực tiếp
-  const primaryToolsNavItems: NavItemConfig[] = [
+  // Tầng 3: CÔNG CỤ & TIỆN ÍCH
+  const toolsNavItems: NavItemConfig[] = [
     { id: 'ai_studio', label: 'AI Hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
-  ];
-
-  // Công cụ phân tích khác (collapsible secondary group)
-  const secondaryToolsNavItems: NavItemConfig[] = [
-    {
-      id: 'abhidharma_matrix',
-      label: 'Ma trận phân tích',
-      icon: Brain,
-      badge: `${scholarCounts.totalCittas} Tâm`,
-    },
-    {
-      id: 'divination_matrix',
-      label: 'Mô hình hệ thống',
-      icon: Compass,
-      badge: `${scholarCounts.totalHexagrams} Quẻ`,
-    },
-    { id: 'lexicon', label: 'Từ điển thuật ngữ', icon: BookA },
-    { id: 'docs', label: 'Tài liệu kiến trúc', icon: BookOpen },
+    { id: 'library', label: 'Thư Viện Sách', icon: BookOpen },
   ];
 
   const renderNavButton = (item: NavItemConfig) => {
@@ -254,37 +228,7 @@ export function Sidebar() {
           </span>
         </div>
         <div className="space-y-0.5 mt-0.5">
-          {primaryToolsNavItems.map(renderNavButton)}
-
-          {/* Secondary Collapsible Tools Trigger */}
-          <button
-            type="button"
-            id="btn-toggle-advanced-tools"
-            aria-expanded={isAdvancedToolsOpen}
-            aria-controls="advanced-tools-panel"
-            aria-label={isAdvancedToolsOpen ? 'Công cụ phân tích khác (đang mở)' : 'Công cụ phân tích khác (đang đóng)'}
-            onClick={() => setIsAdvancedToolsOpen(!isAdvancedToolsOpen)}
-            className="w-full flex items-center justify-between px-3 py-1.5 mt-1 text-[11px] font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-200/50 rounded-xl transition"
-          >
-            <div className="flex items-center gap-2">
-              {isAdvancedToolsOpen ? (
-                <ChevronDown className="w-3.5 h-3.5 text-stone-500" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 text-stone-500" />
-              )}
-              <span>Công cụ phân tích khác</span>
-            </div>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-200/80 text-stone-600 font-semibold">
-              {secondaryToolsNavItems.length}
-            </span>
-          </button>
-
-          {/* Secondary Collapsible Tools Panel */}
-          {isAdvancedToolsOpen && (
-            <div id="advanced-tools-panel" className="pl-2 space-y-0.5 mt-0.5 border-l border-stone-200/80 ml-2.5">
-              {secondaryToolsNavItems.map(renderNavButton)}
-            </div>
-          )}
+          {toolsNavItems.map(renderNavButton)}
         </div>
       </div>
 

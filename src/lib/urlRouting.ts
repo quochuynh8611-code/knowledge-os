@@ -13,10 +13,7 @@ export type ActiveTab =
   | "resources"
   | "search"
   | "ai_studio"
-  | "abhidharma_matrix"
-  | "divination_matrix"
-  | "lexicon"
-  | "docs"
+  | "library"
   | "flashcards";
 
 export const VALID_TABS: readonly ActiveTab[] = [
@@ -28,10 +25,7 @@ export const VALID_TABS: readonly ActiveTab[] = [
   "resources",
   "search",
   "ai_studio",
-  "abhidharma_matrix",
-  "divination_matrix",
-  "lexicon",
-  "docs",
+  "library",
   "flashcards",
 ] as const;
 
@@ -72,7 +66,9 @@ export function parseLocationHash(hash: string): NavigationRouteState {
     return fallback;
   }
 
-  const primaryTab = segments[0] as ActiveTab;
+  const rawTab = segments[0];
+  const primaryTab: ActiveTab =
+    rawTab === "docs" ? "library" : (rawTab as ActiveTab);
   if (!VALID_TABS.includes(primaryTab)) {
     return fallback;
   }

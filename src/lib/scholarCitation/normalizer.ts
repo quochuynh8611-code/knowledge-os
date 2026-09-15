@@ -1,7 +1,6 @@
 import type { LexiconEntry, SystemNode, MatrixRelation } from '../../types/scholarSuite';
 import type { ScholarCitationViewModel, CitationSufficiency } from '../../types/scholarCitation';
 import type { TerminologyEntry } from '../../types/terminology';
-import { SYSTEM_NODE_REGISTRY } from '../../data/scholarSuite/systemRegistry';
 import { generateCitationKey, CitationEntityType } from './key';
 
 export interface NormalizeTerminologyOptions {
@@ -155,8 +154,8 @@ export function normalizeMatrixRelation(
   const primarySource = relation.sources?.[0];
 
   // Resolve row and column system nodes
-  const resolvedRow = rowNode || SYSTEM_NODE_REGISTRY.find((n) => n.id === relation.rowNodeId);
-  const resolvedCol = colNode || SYSTEM_NODE_REGISTRY.find((n) => n.id === relation.colNodeId);
+  const resolvedRow = rowNode;
+  const resolvedCol = colNode;
 
   const rowTitle = resolvedRow ? resolvedRow.title : relation.rowNodeId;
   const colTitle = resolvedCol ? resolvedCol.title : relation.colNodeId;

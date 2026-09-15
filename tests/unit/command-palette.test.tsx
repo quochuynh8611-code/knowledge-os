@@ -36,11 +36,11 @@ describe("Command Palette & useCommandPalette Hook (Phase 1B)", () => {
       const { result } = renderHook(() => useCommandPalette());
 
       act(() => {
-        result.current.setQuery("Abhidharma");
+        result.current.setQuery("Thư viện");
       });
 
       expect(result.current.filteredItems.length).toBeGreaterThanOrEqual(1);
-      expect(result.current.filteredItems[0].title).toContain("Ma trận phân tích");
+      expect(result.current.filteredItems[0].title).toContain("Thư Viện Sách");
     });
 
     it("Thực thi hành động và tự động đóng Command Palette", () => {

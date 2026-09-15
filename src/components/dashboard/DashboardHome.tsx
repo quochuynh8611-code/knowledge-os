@@ -14,9 +14,7 @@ import {
   sortDomainLearningStates,
 } from '../../lib/learningStateSelectors';
 import {
-  Compass,
   Share2,
-  BookA,
   BookOpen,
   Sparkles,
   Brain,
@@ -265,71 +263,38 @@ export function DashboardHome() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
           <button
             onClick={() => setActiveTab('ai_studio')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
           >
             <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400 mb-1.5" />
             <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
               AI Hỗ trợ
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Hỏi đáp đa môn</div>
+            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trợ lý học tập & nghiên cứu thông minh</div>
           </button>
 
           <button
-            onClick={() => setActiveTab('abhidharma_matrix')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
-          >
-            <Brain className="w-4 h-4 text-indigo-700 dark:text-indigo-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Ma trận Tâm
-            </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">89/121 Tâm & Sở hữu</div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('divination_matrix')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
-          >
-            <Compass className="w-4 h-4 text-amber-700 dark:text-amber-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Mô hình Dịch
-            </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">64 Quẻ & Kỳ Môn</div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('lexicon')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
-          >
-            <BookA className="w-4 h-4 text-emerald-700 dark:text-emerald-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Thuật ngữ
-            </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Từ điển đa ngữ</div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('docs')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            onClick={() => setActiveTab('library')}
+            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
           >
             <BookOpen className="w-4 h-4 text-sky-700 dark:text-sky-400 mb-1.5" />
             <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Tài liệu
+              Thư Viện Sách
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Kiến trúc Markdown</div>
+            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trình đọc sách điện tử EPUB</div>
           </button>
 
           <button
             onClick={() => setActiveTab('graph')}
-            className="p-3 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
           >
             <Share2 className="w-4 h-4 text-purple-700 dark:text-purple-400 mb-1.5" />
             <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
               Bản đồ tri thức
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Mạng lưới liên kết</div>
+            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Mạng lưới liên kết đa chiều</div>
           </button>
         </div>
       </section>

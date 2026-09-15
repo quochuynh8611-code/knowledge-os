@@ -45,11 +45,11 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
       items: [
         { keys: ["1"], description: "Về Trang Tổng Quan (Dashboard)" },
         { keys: ["2"], description: "Về Cây Phân Cấp Chủ Đề (Topics)" },
-        { keys: ["3"], description: "Về Ma Trận Phân Tích (Analysis Matrix)" },
-        { keys: ["4"], description: "Về Mô Hình Hệ Thống (System Models)" },
-        { keys: ["5"], description: "Về Bản Đồ Tri Thức (Knowledge Graph)" },
-        { keys: ["6"], description: "Về Tiến Độ & Ôn Tập (SM-2)" },
-        { keys: ["7"], description: "Về Ghi Chú & Liên Kết (Notes)" },
+        { keys: ["3"], description: "Về Thẻ Nhớ (Flashcards)" },
+        { keys: ["4"], description: "Về Ghi Chú & Liên Kết (Notes)" },
+        { keys: ["5"], description: "Về Tài Liệu (Resources)" },
+        { keys: ["6"], description: "Về Bản Đồ Tri Thức (Knowledge Graph)" },
+        { keys: ["7"], description: "Về Thư Viện Sách (Library)" },
       ],
     },
   ];

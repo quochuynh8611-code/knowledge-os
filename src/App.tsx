@@ -53,21 +53,6 @@ const AIResearchStudio = React.lazy(() =>
     default: m.AIResearchStudio,
   }))
 );
-const AbhidharmaMatrix = React.lazy(() =>
-  import("./components/matrix/AbhidharmaMatrix").then((m) => ({
-    default: m.AbhidharmaMatrix,
-  }))
-);
-const DivinationMatrix = React.lazy(() =>
-  import("./components/matrix/DivinationMatrix").then((m) => ({
-    default: m.DivinationMatrix,
-  }))
-);
-const MultilingualLexicon = React.lazy(() =>
-  import("./components/lexicon/MultilingualLexicon").then((m) => ({
-    default: m.MultilingualLexicon,
-  }))
-);
 const DocsExplorerView = React.lazy(() =>
   import("./components/docs/DocsExplorerView").then((m) => ({
     default: m.DocsExplorerView,
@@ -247,28 +232,10 @@ function AppContent() {
             </React.Suspense>
           </div>
         );
-      case "abhidharma_matrix":
+      case "library":
         return (
           <React.Suspense fallback={<TabLoadingFallback />}>
-            <AbhidharmaMatrix />
-          </React.Suspense>
-        );
-      case "divination_matrix":
-        return (
-          <React.Suspense fallback={<TabLoadingFallback />}>
-            <DivinationMatrix />
-          </React.Suspense>
-        );
-      case "lexicon":
-        return (
-          <React.Suspense fallback={<TabLoadingFallback />}>
-            <MultilingualLexicon />
-          </React.Suspense>
-        );
-      case "docs":
-        return (
-          <React.Suspense fallback={<TabLoadingFallback />}>
-            <DocsExplorerView />
+            <DocsExplorerView mode="epub-only" />
           </React.Suspense>
         );
       case "flashcards":
