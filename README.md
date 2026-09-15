@@ -1,10 +1,13 @@
 # Knowledge OS
 
-Multi-domain knowledge management system with SRS flashcards, research dashboard, AI insights, and Google NotebookLM Research Hub.
+Local-first, multi-domain learning and knowledge management system with spaced repetition flashcards, customizable topic taxonomy, research notes, AI research integration, and EPUB reading library.
 
-> **Version**: `v0.15.0`  
 > **Status**: Production-Ready (macOS Local-First / Web & Persistent DB)  
-> **Quality**: 100% Tests Passing (297 Test Suites, 1,912 Tests) • 0 TypeScript Errors
+> **Quality**: 100% Tests Passing • 0 TypeScript Errors
+
+---
+
+> _Screenshots will be added after the commercial UI baseline is finalized._
 
 ---
 
@@ -33,42 +36,38 @@ The application will be accessible at **http://localhost:3000** (or your designa
 
 ## 🌟 Key Capabilities & Modules
 
-### 1. 🧠 Intelligent Spaced Repetition (SRS Flashcards)
-- **Multi-Modal Card Creation (F6.10)**: Fast selection popover, Cloze deletion parser (`{{c1::answer}}`), batch creation from notes, and duplicate prevention.
-- **Enhanced Review Studio (F6.11)**: Ergonomic keyboard navigation (`Space`, `1..4`, `Ctrl+E` quick edit, `Ctrl+H` history), real-time session progress, priority filters (`due`, `new`, `low_retention`), and celebration summary with RFC 4180 CSV export.
-- **Adaptive Algorithm Tuning & A/B Testing (F6.12)**: Ebbinghaus forgetting curve modeling ($R(t) = e^{-t/S}$), empirical retention tracking, response latency difficulty adjustment, Exam Countdown compressor, and deterministic 50/50 card A/B testing with Z-test p-value significance.
+### 1. 🧭 Dynamic Root Categories & Topic Tree
+- **User-Defined Taxonomy**: Create, edit, and organize research categories dynamically based on your specialized fields.
+- **Hierarchical Topic Tree**: Nest sub-topics, track study status (`not_started`, `in_progress`, `completed`), and manage topic-level metadata.
+- **Next Action Recommendation**: Actionable learning strip guiding daily study sessions for prioritized topics.
 
-### 2. 📊 Cross-Domain Research Dashboard (F7.0)
-- **Topic KPI Aggregator**: Holistic metrics (Notes, Flashcards, Resources, Retention Rate, Streak Days, Study Time).
-- **Interactive Retention Trend Chart**: Responsive SVG visualization with 80% target benchmark and 7d/30d/90d/all-time filters.
-- **Unified Research Timeline**: Cross-domain chronological event stream grouped into relative time buckets (`Hôm nay`, `Hôm qua`, `Tuần này`, `Tháng này`, `Cũ hơn`).
-- **In-Memory BM25 Search**: Sub-millisecond full-text search with Vietnamese diacritic & Pāli/Sanskrit IAST accent normalization (`normalizeScholarText`).
-- **Academic Export Engine**: Self-contained Markdown report with YAML frontmatter, UTF-8 BOM, and native Print-to-PDF support.
+### 2. 📝 Structured Markdown Notes & Knowledge Linking
+- **Bi-directional Knowledge Linking**: Cross-reference topics, concepts, and external references.
+- **Tagging & Filtering**: Multi-tag taxonomy with instant full-text filtering.
+- **Local Reference Resolution**: Direct link preview and Obsidian vault file opening support.
 
-### 3. 📉 AI-Powered Insights & Predictive Analytics (F7.1)
-- **Retention Probability Forecast**: Forecasts recall probability at 1d, 3d, 7d, 14d, and 30d with statistical 80% ($Z = 1.282$) and 95% ($Z = 1.960$) confidence intervals.
-- **Optimal Review Pinpointing**: Accurately computes the exact date when memory retention drops below 80%.
-- **Multi-Criteria Study Recommendations**: Ranks topics based on Urgency (40%), Weak Retention (35%), Exam Importance (15%), and Time-Budget Fit (10%) with explainable rationales and time filters (15m, 30m, 60m).
-- **24×7 Circadian Heatmap**: Visualizes study volume and retention quality across weekdays and hours with "Peak Focus Hour" detection.
-- **Smart Notifications & Rate Limiting**: Browser Web Notification API integration with anti-spam limits (max 3/24h, min 2h gap) and 1h/1d/3d snooze options.
+### 3. 🧠 Intelligent Spaced Repetition (SRS Flashcards)
+- **Multi-Modal Card Creation**: Standard and cloze-deletion cards created directly or extracted from study notes.
+- **SM-2 Spaced Repetition**: Adaptive review scheduling based on recall quality, response interval, and ease factor.
+- **Ergonomic Review Studio**: Keyboard shortcuts (`Space`, `1..4`), session progress tracking, and retention metrics.
 
-### 4. 🔬 Google NotebookLM Research Hub v2.1 & Antigravity 2.0 (F8.0)
-- **Versioned Source Packaging**: Multi-version source packages (`v1`, `v2`) with complete historical provenance and visual badges. Older artifacts retain their version binding without auto-archiving.
-- **Dedicated Review Drawer (`ArtifactReviewDrawer`)**: Deep-inspection 3-tab review drawer for raw Markdown, structured citation markers (`[1]`, `[2]`), and transactional import audit logs.
-- **Independent Ingestion**: Decoupled Note import and Flashcard generation with SHA-256 deduplication idempotency guards (`contentHash`).
-- **Antigravity 2.0 CLI Pipeline**: Generates headless execution commands (`agy -p`) and task prompts across 5 artifact archetypes (Study Guide, Audio Overview, Briefing Doc, FAQ, Source Pack).
-- **Unified Design System & 100% Dark Mode**: Harmonized `stone` color palette, fluid micro-animations, and full dark theme support across all modal dialogs and review drawers.
+### 4. 📚 Thư Viện Sách (EPUB Reader)
+- **Local-First Book Reading**: Dedicated library interface for structured ebook reading.
+- **Multiple Book Sources**:
+  - `docs/books`: Place standard `.epub` files into the local directory and click **Làm mới danh sách** to load books.
+  - **Obsidian Vault**: Directly select and read EPUB files discovered within your connected local Obsidian vault.
+- **In-Memory Sanitization**: Robust runtime XML/XHTML sanitizer handling unescaped entities and bare ampersands safely in-memory without mutating source files.
+- **Persistent Reading State**: Automatic CFI position bookmarking per book, font size preferences, and responsive reading layout.
+- *Note*: Books are read directly from local files; direct server-side file upload is not implemented.
 
----
+### 5. 🔬 AI Research Studio & Google NotebookLM Integration
+- **Source Packaging**: Assemble markdown notes and research sources into versioned study packages.
+- **Task Prompt Generation**: Automated study prompts formatted for NotebookLM and AI research assistants.
+- **Artifact Review Drawer**: Inspect and audit research artifacts before incorporating them into your topic notes.
 
-## 🧭 Canonical Knowledge Domains
-
-Knowledge OS is architected to organize and cross-reference structured research across four foundational traditions:
-
-1. **☸️ Phật Học (Buddhism & Philosophy)**: Tipiṭaka (Sutta, Vinaya, Abhidhamma), Theravāda Abhidhamma (Citta, Cetasika, Rūpa, Nibbāna), Samatha & Vipassanā meditation, Madhyamaka & Yogācāra philosophy.
-2. **☯️ Huyền Học Phương Đông (Eastern Metaphysics)**: Tam Thức (Kỳ Môn Độn Giáp, Thái Ất, Lục Nhâm), Kinh Dịch 64 Quẻ, Phong Thủy (Loan Đầu, Lý Khí), Tử Vi Đẩu Số & Bát Tự.
-3. **🌿 Đông Y Học (Traditional Eastern Medicine)**: Âm Dương, Ngũ Hành, Tạng Tượng, Bát Cương Biện Chứng, Kinh Lạc và Dược học cổ truyền.
-4. **📖 Ngôn Ngữ Học Cổ Điển (Classical Linguistics)**: Ngữ pháp Pāli, Sanskrit, Hán-Việt cổ, và Từ điển đối chiếu thuật ngữ liên ngôn ngữ (Multilingual Lexicon).
+### 6. 📊 Progress Dashboard & In-Memory Search
+- **KPI Metrics**: Topic completion, active retention rates, study time, and streak tracking.
+- **In-Memory BM25 Search**: Sub-millisecond full-text search with Vietnamese diacritic and accent normalization.
 
 ---
 
@@ -77,11 +76,11 @@ Knowledge OS is architected to organize and cross-reference structured research 
 | Layer | Technology | Purpose |
 | :--- | :--- | :--- |
 | **Frontend** | React 19, TypeScript, Tailwind CSS | High-performance, accessible UI with 100% Dark Mode |
-| **Icons & Charts** | Lucide Icons, Pure React SVG | Zero heavy charting bundle bloat |
-| **State & Storage** | Local-First, LocalStorage, PostgreSQL / Prisma ORM | Relational durability, transactional imports & versioning |
+| **State & Storage** | Local-First, LocalStorage, PostgreSQL / Prisma ORM | Relational durability, server-canonical startup reconciliation |
+| **EPUB Engine** | React Reader, EPUB.js, JSZip | In-memory XHTML sanitization & local file reading |
 | **Search Engine** | Pure TS In-Memory Okapi BM25 | Relevance ranking with multilingual normalizers |
-| **Testing** | Vitest, React Testing Library, Playwright | 297 test suites, 1,912 tests passing |
-| **API / Backend** | Express, Node.js, Prisma Client | REST endpoints for Research Sessions, Artifacts, Obsidian Bridge |
+| **Testing** | Vitest, React Testing Library, Playwright | Comprehensive unit, integration, and E2E coverage |
+| **API / Backend** | Express, Node.js, Prisma Client | REST endpoints for Categories, Topics, Notes, Flashcards, Sync |
 
 ---
 
@@ -91,53 +90,74 @@ Knowledge OS is architected to organize and cross-reference structured research 
 knowledge-os/
 ├── docs/
 │   ├── PROJECT_STATUS.md        # Comprehensive project status & phase roadmap
-│   ├── adr/                     # Architectural Decision Records (ADR-001 to ADR-070)
+│   ├── adr/                     # Architectural Decision Records (ADR-001+)
 │   ├── specs/                   # BDD Gherkin functional specifications
-│   ├── implementation-plans/    # Detailed phase execution plans
-│   └── runbooks/                # Operations & backup runbooks
+│   ├── releases/                # Version and commercial baseline release notes
+│   └── runbooks/                # Operations, maintenance & backup runbooks
 ├── prisma/
-│   └── schema.prisma            # PostgreSQL schema with Research Hub models
+│   └── schema.prisma            # PostgreSQL schema
+├── scripts/
+│   └── maintenance/             # Guarded backup, dry-run, and reset utilities
 ├── src/
 │   ├── components/
-│   │   ├── flashcards/          # Flashcard review studio, cards, hotkeys
-│   │   ├── integrations/        # NotebookLM Studio, Artifact Review Drawer, Antigravity Handoff
-│   │   ├── research/            # Topic dashboard, timeline, search, insights, heatmap
-│   │   ├── modals/              # Creation, edit, and configuration dialogs
-│   │   └── ui/                  # Accessible, theme-aware primitive components
+│   │   ├── dashboard/           # Overview KPI cards & learning hero
+│   │   ├── docs/                # EPUB Book Library & reader components
+│   │   ├── flashcards/          # Flashcard review studio & cards
+│   │   ├── layout/              # Sidebar navigation & header
+│   │   └── topics/              # Topic tree, detail, and next action strip
+│   ├── context/                 # DataContext with canonical startup hydration
 │   ├── lib/
-│   │   ├── researchHubValidation.ts      # Zod schemas for sessions, artifacts, citations
-│   │   ├── notebooklm.ts                 # Source packaging and task prompt generation
-│   │   ├── antigravityPipeline.ts        # CLI command builders and handoff tracking
-│   │   ├── retentionPredictionEngine.ts  # Exponential decay & CI models
-│   │   ├── studyRecommendationEngine.ts  # Multi-criteria utility scoring
-│   │   ├── studyPatternEngine.ts         # 24x7 matrix & peak hour analysis
-│   │   ├── smartNotificationService.ts   # Rate limiting & Web Notifications API
-│   │   ├── researchSearchEngine.ts       # BM25 full-text search
-│   │   └── srsAlgorithmTuning.ts         # SM-2 & Adaptive scheduling algorithms
-│   ├── types/
-│   │   └── researchHub.ts       # DTOs, Enums, and payload contracts
+│   │   ├── epubXhtmlSanitizer.ts # In-memory XML entity & character sanitizer
+│   │   ├── storage.ts           # Schema versioning & storage resilience
+│   │   └── validation.ts        # Zod runtime data validation schemas
 │   └── server/
-│       ├── routes/              # /api/research-sessions, /api/artifacts, /api/obsidian
-│       └── services/            # researchSessionService, artifactIngestionService
+│       └── routes/              # Express API & sync routes
 └── tests/
-    ├── unit/                    # Fast isolated mathematical, service, & component tests
-    └── integration/             # Multi-component workflow verification tests
+    ├── unit/                    # Unit & component test suites
+    ├── integration/             # Integration workflows
+    └── e2e/                     # End-to-end browser specifications
 ```
 
 ---
 
-## 📜 Release History
+## 🛡️ Commercial Baseline Maintenance & Reset
 
-- [v0.15.0 — Phase F8.0: Google NotebookLM Research Hub v2.1 & Unified Design System](docs/adr/ADR-070-notebooklm-research-hub-v2.1.md)
-- [v0.14.0 — Phase F7.1: AI-Powered Insights & Predictive Analytics](.github/RELEASE_NOTES_F7.1.md)
-- [v0.13.0 — Phase F7.0: Research Dashboard (Multi-Domain Knowledge Hub)](.github/RELEASE_NOTES_F7.0.md)
-- [v0.12.0 — Phase F6.12: SRS Algorithm Tuning & A/B Testing](.github/RELEASE_NOTES_F6.12.md)
-- [v0.11.0 — Phase F6.11: Review Mode Enhancements](.github/RELEASE_NOTES_F6.11.md)
-- [v0.10.0 — Phase F6.10: Note-to-Flashcard Integration](.github/RELEASE_NOTES_F6.10.md)
+> [!CAUTION]
+> Database reset scripts permanently remove data. They are designed strictly for maintainers and local operators preparing a clean commercial baseline.
+
+To perform a clean commercial reset:
+
+1. **Create a fresh local backup**:
+   ```bash
+   npx tsx --env-file=.env scripts/maintenance/commercial-reset-backup.ts
+   ```
+2. **Run a non-destructive dry-run audit**:
+   ```bash
+   npx tsx --env-file=.env scripts/maintenance/commercial-reset-db.ts --dry-run
+   ```
+3. **Execute with explicit confirmation (Maintainer only)**:
+   ```bash
+   npx tsx --env-file=.env scripts/maintenance/commercial-reset-db.ts --execute --confirm="XOA TOAN BO DATA CA NHAN"
+   ```
+4. **Verify post-reset invariants**:
+   ```bash
+   npx tsx --env-file=.env scripts/maintenance/commercial-reset-audit.ts
+   ```
+
+---
+
+## 🔧 Troubleshooting
+
+### 1. EPUB Book XML Parsing Errors
+- **Symptom**: `xmlParseEntityRef: no name` or entity parsing errors when opening certain EPUB files.
+- **Resolution**: Knowledge OS includes an automatic in-memory XHTML sanitizer that safely converts named entities, bare ampersands (`&`), and unescaped characters before parsing. The original file on disk is never modified. If an EPUB has damaged ZIP compression, the reader will display a clear error message.
+
+### 2. Stale Client State / Category Synchronization
+- **Symptom**: Previously removed categories appearing after reloading or browser session restoration.
+- **Resolution**: The system uses server-canonical startup reconciliation and storage version invalidation. Unknown categories in local storage that do not exist on the server are automatically reconciled without requiring a destructive `localStorage.clear()`.
 
 ---
 
 ## 📄 License
 
 MIT License. Designed and maintained for researchers, scholars, and lifelong learners.
-
