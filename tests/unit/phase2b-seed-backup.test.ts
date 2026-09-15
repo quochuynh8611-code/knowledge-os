@@ -235,7 +235,9 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     expect(INITIAL_TAGS.length).toBe(INITIAL_TAGS.length);
     expect(INITIAL_TOPICS.length).toBe(INITIAL_TOPICS.length);
     expect(totalProgress).toBe(INITIAL_TOPICS.length);
-    expect(totalLinks).toBe(77);
+    expect(totalLinks).toBe(
+      INITIAL_TOPICS.reduce((sum, t) => sum + (t.links ? t.links.length : 0), 0),
+    );
     expect(INITIAL_NOTES.length).toBe(INITIAL_NOTES.length);
     expect(INITIAL_RESOURCES.length).toBe(INITIAL_RESOURCES.length);
   });
