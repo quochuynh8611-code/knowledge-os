@@ -35,7 +35,7 @@ describe("Phase P4.3C: VaultSelector Component", () => {
     const select = await screen.findByRole("combobox", { name: /Chọn Obsidian Vault/i });
     expect(select).toBeDefined();
 
-    const options = screen.getAllByRole("option");
+    const options = await screen.findAllByRole("option");
     expect(options).toHaveLength(2);
     expect(options[0]).toHaveTextContent("Primary Research");
     expect(options[1]).toHaveTextContent("Secondary Research");

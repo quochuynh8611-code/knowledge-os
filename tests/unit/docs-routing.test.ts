@@ -5,25 +5,25 @@ import {
   VALID_TABS,
 } from "../../src/lib/urlRouting";
 
-describe("Phase P12.3: Docs URL Routing & Deep-Linking Contract", () => {
-  it("1. includes 'docs' tab in VALID_TABS", () => {
-    expect(VALID_TABS).toContain("docs");
+describe("Commercial Reset: Library (EPUB) URL Routing & Deep-Linking Contract", () => {
+  it("1. includes 'library' tab in VALID_TABS", () => {
+    expect(VALID_TABS).toContain("library");
   });
 
-  it("2. parses '#/docs' hash into activeTab='docs'", () => {
-    const result = parseLocationHash("#/docs");
-    expect(result.activeTab).toBe("docs");
+  it("2. parses '#/library' hash into activeTab='library'", () => {
+    const result = parseLocationHash("#/library");
+    expect(result.activeTab).toBe("library");
     expect(result.selectedTopicId).toBeNull();
   });
 
-  it("3. builds location hash correctly for activeTab='docs'", () => {
+  it("3. builds location hash correctly for activeTab='library'", () => {
     const hash = buildLocationHash({
-      activeTab: "docs",
+      activeTab: "library",
       selectedTopicId: null,
       searchQuery: "",
       selectedCategoryFilter: null,
       selectedTagFilter: null,
     });
-    expect(hash).toBe("#/docs");
+    expect(hash).toBe("#/library");
   });
 });
