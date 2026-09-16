@@ -9,11 +9,8 @@ import {
   ExternalLink,
   Plus,
   Search,
-  Filter,
   Trash2,
   Eye,
-  Calendar,
-  Sparkles,
   Quote,
   FileDown,
 } from 'lucide-react';
@@ -23,6 +20,7 @@ import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget } from '../../lib/resourceOpenResolver';
+import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
 export function ResourcesManager() {
   const { resources, topics, deleteResource, openTopicDetail } = useData();
@@ -52,50 +50,53 @@ export function ResourcesManager() {
 
   const getTypeIcon = (type: ResourceType) => {
     switch (type) {
-      case 'pdf': return <FileText className="w-4 h-4 text-rose-700" />;
-      case 'video': return <Video className="w-4 h-4 text-indigo-700" />;
-      case 'book': return <BookOpen className="w-4 h-4 text-amber-700" />;
-      default: return <ExternalLink className="w-4 h-4 text-emerald-700" />;
+      case 'pdf': return FileText;
+      case 'video': return Video;
+      case 'book': return BookOpen;
+      default: return ExternalLink;
+    }
+  };
+
+  const getTypeStatusVariant = (type: ResourceType): 'danger' | 'purple' | 'accent' | 'success' => {
+    switch (type) {
+      case 'pdf': return 'danger';
+      case 'video': return 'purple';
+      case 'book': return 'accent';
+      default: return 'success';
     }
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-800 mb-1">
-            <Library className="w-3.5 h-3.5" />
-            <span>Thư Viện &amp; Nguồn Tư Liệu</span>
-          </div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-serif-title">
-            Quản Lý Tài Liệu &amp; Giáo Trình
-          </h1>
-          <p className="text-xs text-stone-600 mt-0.5">
-            Lưu trữ giáo trình Abhidharmakośa, Tam Tạng Pali/Hán Tạng, kỳ môn thư tịch, video bài giảng &amp; PDF
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
-        >
-          <Plus className="w-4 h-4" /> Thêm Tài Liệu Mới
-        </button>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
+      {/* Page Header */}
+      <PageHeader
+        title="Quản Lý Tài Liệu & Giáo Trình"
+        subtitle="Lưu trữ giáo trình Abhidharmakośa, Tam Tạng Pali/Hán Tạng, kỳ môn thư tịch, video bài giảng & PDF"
+        categoryLabel="Thư Viện & Nguồn Tư Liệu"
+        categoryIcon={Library}
+        actions={
+          <ToolbarButton
+            variant="primary"
+            icon={Plus}
+            onClick={() => setShowAddModal(true)}
+          >
+            Thêm Tài Liệu Mới
+          </ToolbarButton>
+        }
+      />
 
       {/* Toolbar & Filters */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+      <SurfaceCard variant="subtle" className="space-y-3.5">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Search */}
           <div className="relative">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo tên sách, tác giả, tài liệu..."
-              className="w-full pl-9 pr-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-indigo-600"
+              className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 transition shadow-2xs"
             />
           </div>
 
@@ -104,7 +105,7 @@ export function ResourcesManager() {
             <select
               value={topicFilter}
               onChange={(e) => setTopicFilter(e.target.value)}
-              className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-medium text-stone-800"
+              className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40"
             >
               <option value="all">Tất cả chủ đề liên kết</option>
               {topics.map((t) => (
@@ -116,22 +117,23 @@ export function ResourcesManager() {
           </div>
 
           {/* Count indicator & Batch Export Button */}
-          <div className="flex flex-wrap items-center justify-end gap-2.5 text-xs text-stone-500 font-mono">
+          <div className="flex flex-wrap items-center justify-end gap-2 text-xs text-stone-500 dark:text-stone-400 font-mono">
             <span>Hiển thị {filteredResources.length} / {resources.length} tài liệu</span>
             <button
               disabled={filteredResources.length === 0}
               onClick={() => setShowBatchModal(true)}
-              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200"
+              className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/80 disabled:opacity-40 disabled:cursor-not-allowed text-amber-950 dark:text-amber-300 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition border border-amber-200 dark:border-amber-800 cursor-pointer shadow-2xs"
               title="Xuất danh mục trích dẫn danh sách đang lọc"
             >
-              <FileDown className="w-3.5 h-3.5 text-amber-700" /> Xuất danh mục ({filteredResources.length})
+              <FileDown className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span>Xuất danh mục ({filteredResources.length})</span>
             </button>
           </div>
         </div>
 
         {/* Type Filter Chips */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-stone-100 text-xs">
-          <span className="text-stone-500 font-semibold mr-1">Định dạng:</span>
+        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-stone-200/60 dark:border-stone-800 text-xs">
+          <span className="text-stone-500 dark:text-stone-400 font-semibold mr-1">Định dạng:</span>
           {[
             { id: 'all', label: 'Tất cả' },
             { id: 'pdf', label: 'Tài liệu PDF' },
@@ -142,107 +144,112 @@ export function ResourcesManager() {
             <button
               key={item.id}
               onClick={() => setTypeFilter(item.id as any)}
-              className={`px-3 py-1 rounded-xl font-semibold transition ${
+              className={`px-3 py-1 rounded-xl font-semibold transition cursor-pointer text-xs ${
                 typeFilter === item.id
-                  ? 'bg-stone-800 text-white shadow-2xs'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-amber-800 text-amber-50 shadow-2xs'
+                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'
               }`}
             >
               {item.label}
             </button>
           ))}
         </div>
-      </div>
+      </SurfaceCard>
 
       {/* Resources Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredResources.map((res) => (
-          <div
-            key={res.id}
-            className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs hover:border-indigo-400 transition flex flex-col justify-between space-y-3"
-          >
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-stone-500 border-b border-stone-100 pb-2">
-                <span className="font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 text-indigo-900 rounded flex items-center gap-1">
-                  {getTypeIcon(res.type)}
-                  {res.type.toUpperCase()}
-                </span>
-                <span>{formatTimeAgo(res.createdAt)}</span>
-              </div>
+        {filteredResources.map((res) => {
+          const Icon = getTypeIcon(res.type);
+          const statusVariant = getTypeStatusVariant(res.type);
 
-              <h3 className="font-bold text-stone-900 text-sm line-clamp-2 leading-snug">
-                {res.title}
-              </h3>
+          return (
+            <SurfaceCard
+              key={res.id}
+              variant="interactive"
+              className="flex flex-col justify-between space-y-3 group"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800/80 pb-2">
+                  <StatusPill variant={statusVariant} icon={Icon}>
+                    {res.type.toUpperCase()}
+                  </StatusPill>
+                  <span className="font-mono">{formatTimeAgo(res.createdAt)}</span>
+                </div>
 
-              {res.author && (
-                <p className="text-xs text-stone-600">
-                  Tác giả / Dịch giả: <strong className="text-stone-800">{res.author}</strong>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm line-clamp-2 leading-snug group-hover:text-amber-800 dark:group-hover:text-amber-400 transition">
+                  {res.title}
+                </h3>
+
+                {res.author && (
+                  <p className="text-xs text-stone-600 dark:text-stone-400">
+                    Tác giả / Dịch giả: <strong className="text-stone-800 dark:text-stone-200">{res.author}</strong>
+                  </p>
+                )}
+
+                <p
+                  onClick={() => openTopicDetail(res.topicId)}
+                  className="text-[11px] text-amber-800 dark:text-amber-400 hover:underline cursor-pointer font-medium"
+                >
+                  Chủ đề: {res.topicTitle}
                 </p>
-              )}
 
-              <p
-                onClick={() => openTopicDetail(res.topicId)}
-                className="text-[11px] text-amber-800 hover:underline cursor-pointer font-medium"
-              >
-                Chủ đề: {res.topicTitle}
-              </p>
-
-              {res.notes && (
-                <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-xl border border-stone-100 line-clamp-3">
-                  {res.notes}
-                </p>
-              )}
-            </div>
-
-            <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => setViewingResource(res)}
-                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-indigo-50 text-indigo-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition"
-                >
-                  <Eye className="w-3.5 h-3.5 text-indigo-700" /> Xem trước
-                </button>
-                <button
-                  onClick={() => setCitingResource(res)}
-                  className="px-2.5 py-1.5 bg-stone-100 hover:bg-amber-50 text-amber-950 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition"
-                  title="Trích dẫn tài liệu"
-                >
-                  <Quote className="w-3.5 h-3.5 text-amber-700" /> Trích dẫn
-                </button>
+                {res.notes && (
+                  <p className="text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/50 p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 line-clamp-3 leading-relaxed">
+                    {res.notes}
+                  </p>
+                )}
               </div>
 
-              <div className="flex items-center gap-1">
-                {(() => {
-                  const resolution = resolveResourceOpenTarget(res);
-                  if (!resolution.canOpenDirectly || !resolution.targetUrl) return null;
-                  return (
-                    <a
-                      href={resolution.targetUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 text-stone-400 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition"
-                      title={resolution.label}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  );
-                })()}
-                <button
-                  onClick={() => {
-                    if (window.confirm('Xóa tài liệu này khỏi hệ thống?')) deleteResource(res.id);
-                  }}
-                  className="p-1.5 text-stone-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition"
-                  title="Xóa tài liệu"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+              <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setViewingResource(res)}
+                    className="px-2.5 py-1 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700 shadow-2xs"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" /> Xem trước
+                  </button>
+                  <button
+                    onClick={() => setCitingResource(res)}
+                    className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-300 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer border border-amber-200 dark:border-amber-800 shadow-2xs"
+                    title="Trích dẫn tài liệu"
+                  >
+                    <Quote className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Trích dẫn
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {(() => {
+                    const resolution = resolveResourceOpenTarget(res);
+                    if (!resolution.canOpenDirectly || !resolution.targetUrl) return null;
+                    return (
+                      <a
+                        href={resolution.targetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition"
+                        title={resolution.label}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    );
+                  })()}
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Xóa tài liệu này khỏi hệ thống?')) deleteResource(res.id);
+                    }}
+                    className="p-1.5 text-stone-400 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition cursor-pointer"
+                    title="Xóa tài liệu"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            </SurfaceCard>
+          );
+        })}
 
         {filteredResources.length === 0 && (
-          <div className="col-span-3 text-center py-12 bg-white border border-stone-200 rounded-2xl p-6 text-stone-400 text-xs">
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 text-stone-400 text-xs">
             Chưa có tài liệu nào phù hợp với bộ lọc hiện tại.
           </div>
         )}

@@ -5,11 +5,7 @@ import {
   BookOpen,
   FileText,
   Library,
-  Sparkles,
-  Compass,
   ArrowRight,
-  Filter,
-  Tag as TagIcon,
   Bookmark,
   Pin,
   X,
@@ -30,6 +26,7 @@ import {
   isSavedViewInputValid,
   SavedSearchView,
 } from "../../lib/savedViewStorage";
+import { PageHeader, SurfaceCard, StatusPill, SectionHeader, ToolbarButton } from "../workbench";
 
 export function AdvancedSearch() {
   const {
@@ -166,38 +163,31 @@ export function AdvancedSearch() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="border-b border-stone-200 dark:border-stone-800 pb-5">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-1">
-          <Search className="w-3.5 h-3.5" />
-          <span>Công Cụ Tra Cứu Toàn Diện</span>
-        </div>
-        <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight font-serif-title">
-          Tra Cứu &amp; Khám Phá Tri Thức
-        </h1>
-        <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
-          Tìm kiếm xuyên suốt tất cả chủ đề luận tạng, ghi chép cá nhân, thuật
-          ngữ và tài liệu nghiên cứu
-        </p>
-      </div>
+    <div className="p-4 md:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-200">
+      {/* Page Header */}
+      <PageHeader
+        title="Tra Cứu & Khám Phá Tri Thức"
+        subtitle="Tìm kiếm xuyên suốt tất cả chủ đề luận tạng, ghi chép cá nhân, thuật ngữ và tài liệu nghiên cứu"
+        categoryLabel="Công Cụ Tra Cứu Toàn Diện"
+        categoryIcon={Search}
+      />
 
-      {/* Main Search Input */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs space-y-4">
+      {/* Main Search Input & Actions */}
+      <SurfaceCard variant="subtle" className="space-y-4">
         <div className="relative">
-          <Search className="w-5 h-5 text-stone-400 absolute left-4 top-1/2 -translate-y-1/2" />
+          <Search className="w-5 h-5 text-stone-400 dark:text-stone-500 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Nhập thuật ngữ: Vi Diệu Pháp, Tâm Vương, Cửu Cung, Quẻ Càn, Bát Nhã, Tứ Niệm Xứ..."
-            className="w-full pl-12 pr-4 py-3 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:bg-white dark:focus:bg-stone-800 focus:ring-2 focus:ring-amber-700 font-medium text-stone-900 dark:text-stone-100"
+            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 font-medium text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition shadow-2xs"
           />
         </div>
 
         {/* View mode buttons & Saved Views actions */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-stone-500 dark:text-stone-400 font-medium mr-1">
               Hiển thị:
             </span>
@@ -213,9 +203,9 @@ export function AdvancedSearch() {
               <button
                 key={f.id}
                 onClick={() => setActiveFilter(f.id as any)}
-                className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+                className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer text-xs ${
                   activeFilter === f.id
-                    ? "bg-amber-800 text-white shadow-2xs"
+                    ? "bg-amber-800 text-amber-50 shadow-2xs"
                     : "bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300"
                 }`}
               >
@@ -237,7 +227,7 @@ export function AdvancedSearch() {
                   );
                 }
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition cursor-pointer shadow-2xs"
             >
               <Bookmark className="w-3.5 h-3.5" />
               <span>Lưu góc nhìn</span>
@@ -274,7 +264,7 @@ export function AdvancedSearch() {
               <button
                 type="submit"
                 disabled={!newViewName.trim()}
-                className="px-3 py-1.5 bg-amber-800 text-white font-semibold rounded-lg hover:bg-amber-900 transition disabled:opacity-50 cursor-pointer"
+                className="px-3 py-1.5 bg-amber-800 text-white font-semibold rounded-lg hover:bg-amber-900 transition disabled:opacity-50 cursor-pointer shadow-2xs"
               >
                 Xác nhận lưu
               </button>
@@ -291,7 +281,7 @@ export function AdvancedSearch() {
 
         {/* Saved Views Chip List */}
         {savedViews.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-stone-100 dark:border-stone-800 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-stone-200/60 dark:border-stone-800 text-xs">
             <span className="text-stone-500 dark:text-stone-400 font-medium mr-1 flex items-center gap-1">
               <Bookmark className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
               Góc nhìn đã lưu:
@@ -303,7 +293,7 @@ export function AdvancedSearch() {
                 className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium cursor-pointer transition select-none ${
                   sv.pinned
                     ? "bg-amber-100/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200"
-                    : "bg-stone-100 dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700"
+                    : "bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700"
                 }`}
               >
                 <button
@@ -333,7 +323,7 @@ export function AdvancedSearch() {
             ))}
           </div>
         )}
-      </div>
+      </SurfaceCard>
 
       {/* Deep Multidimensional Filters */}
       <SearchFilters
@@ -350,45 +340,43 @@ export function AdvancedSearch() {
         {(activeFilter === "all" || activeFilter === "topics") &&
           matchedTopics.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-                <BookOpen className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-                <span>Chủ đề khớp tìm kiếm ({matchedTopics.length})</span>
-              </div>
+              <SectionHeader
+                title="Chủ đề khớp tìm kiếm"
+                count={matchedTopics.length}
+                icon={BookOpen}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {matchedTopics.map((topic) => (
-                  <div
+                  <SurfaceCard
                     key={topic.id}
+                    variant="interactive"
                     onClick={() => openTopicDetail(topic.id)}
-                    className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs hover:border-amber-400 dark:hover:border-amber-600 hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition cursor-pointer space-y-3 flex flex-col justify-between"
+                    className="cursor-pointer space-y-3 flex flex-col justify-between group"
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[10px]">
-                        <span
-                          className={`font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                            topic.type === "phat-hoc"
-                              ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300"
-                              : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-300"
-                          }`}
+                        <StatusPill
+                          variant={topic.type === "phat-hoc" ? "accent" : "purple"}
                         >
                           {topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học"}{" "}
                           • {topic.categoryName}
-                        </span>
+                        </StatusPill>
                         <span className="text-stone-400 dark:text-stone-500 font-mono">
                           {topic.studyProgress?.progress}%
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm leading-snug">
+                      <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm leading-snug group-hover:text-amber-800 dark:group-hover:text-amber-400 transition font-serif-title">
                         {highlightMatch(topic.title)}
                       </h3>
 
-                      <p className="text-xs text-stone-600 dark:text-stone-400 line-clamp-2">
+                      <p className="text-xs text-stone-600 dark:text-stone-400 line-clamp-2 leading-relaxed">
                         {highlightMatch(topic.description)}
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
-                      <div className="flex items-center gap-2">
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
+                      <div className="flex items-center gap-2 font-mono">
                         <span>
                           {topic.studyProgress?.totalNotes || 0} notes
                         </span>
@@ -399,9 +387,9 @@ export function AdvancedSearch() {
                           )}
                         </span>
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                      <ArrowRight className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" />
                     </div>
-                  </div>
+                  </SurfaceCard>
                 ))}
               </div>
             </div>
@@ -411,35 +399,38 @@ export function AdvancedSearch() {
         {(activeFilter === "all" || activeFilter === "notes") &&
           matchedNotes.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
-                <FileText className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <span>Ghi chú cá nhân ({matchedNotes.length})</span>
-              </div>
+              <SectionHeader
+                title="Ghi chú cá nhân"
+                count={matchedNotes.length}
+                icon={FileText}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {matchedNotes.map((note) => (
-                  <div
+                  <SurfaceCard
                     key={note.id}
+                    variant="interactive"
                     onClick={() => openTopicDetail(note.topicId)}
-                    className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-stone-50/50 dark:hover:bg-stone-800/40 transition cursor-pointer space-y-2 flex flex-col justify-between"
+                    className="cursor-pointer space-y-2 flex flex-col justify-between group"
                   >
                     <div>
-                      <div className="flex items-center justify-between text-[10px] text-stone-500 mb-1">
-                        <span className="font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded">
+                      <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-1 border-b border-stone-100 dark:border-stone-800/80 pb-1.5">
+                        <StatusPill variant="success">
                           {note.type}
-                        </span>
-                        <span>{formatTimeAgo(note.createdAt)}</span>
+                        </StatusPill>
+                        <span className="font-mono">{formatTimeAgo(note.createdAt)}</span>
                       </div>
-                      <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                      <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm group-hover:text-amber-800 dark:group-hover:text-amber-400 transition font-serif-title">
                         {highlightMatch(note.title)}
                       </h3>
-                      <p className="text-xs text-stone-600 dark:text-stone-400 mt-1 line-clamp-3">
+                      <p className="text-xs text-stone-600 dark:text-stone-300 mt-1 line-clamp-3 leading-relaxed">
                         {highlightMatch(toReadablePlainTextPreview(note.content, 220))}
                       </p>
                     </div>
-                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800 text-[11px] text-amber-800 dark:text-amber-400 font-medium">
-                      Chủ đề: {note.topicTitle} →
+                    <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80 text-[11px] text-amber-800 dark:text-amber-400 font-medium flex items-center justify-between">
+                      <span>Chủ đề: {note.topicTitle}</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </div>
-                  </div>
+                  </SurfaceCard>
                 ))}
               </div>
             </div>
@@ -449,24 +440,26 @@ export function AdvancedSearch() {
         {(activeFilter === "all" || activeFilter === "resources") &&
           matchedResources.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300">
-                <Library className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
-                <span>Tài liệu tham khảo ({matchedResources.length})</span>
-              </div>
+              <SectionHeader
+                title="Tài liệu tham khảo"
+                count={matchedResources.length}
+                icon={Library}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {matchedResources.map((res) => (
-                  <div
+                  <SurfaceCard
                     key={res.id}
+                    variant="interactive"
                     onClick={() => openTopicDetail(res.topicId)}
-                    className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-5 shadow-2xs hover:border-indigo-400 dark:hover:border-indigo-600 transition cursor-pointer space-y-2"
+                    className="cursor-pointer space-y-2 group"
                   >
-                    <div className="flex items-center justify-between text-[10px] text-stone-500">
-                      <span className="font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 rounded">
+                    <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800/80 pb-1.5">
+                      <StatusPill variant="purple">
                         {res.type.toUpperCase()}
-                      </span>
-                      <span>{formatTimeAgo(res.createdAt)}</span>
+                      </StatusPill>
+                      <span className="font-mono">{formatTimeAgo(res.createdAt)}</span>
                     </div>
-                    <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                    <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm group-hover:text-amber-800 dark:group-hover:text-amber-400 transition font-serif-title">
                       {highlightMatch(res.title)}
                     </h3>
                     {res.author && (
@@ -475,11 +468,11 @@ export function AdvancedSearch() {
                       </p>
                     )}
                     {res.notes && (
-                      <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-2">
+                      <p className="text-xs text-stone-500 dark:text-stone-300 line-clamp-2 leading-relaxed">
                         {highlightMatch(res.notes)}
                       </p>
                     )}
-                  </div>
+                  </SurfaceCard>
                 ))}
               </div>
             </div>

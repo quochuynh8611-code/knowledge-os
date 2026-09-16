@@ -4,12 +4,6 @@ import {
   Search,
   RotateCcw,
   FileText,
-  ShieldCheck,
-  Tag,
-  Clock,
-  Layers,
-  ChevronRight,
-  ExternalLink,
   Copy,
   Check,
   Book,
@@ -18,6 +12,7 @@ import {
 } from "lucide-react";
 import { FileViewer } from "./FileViewer";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
+import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 
 export interface DocItem {
   id: string;
@@ -159,62 +154,55 @@ export function DocsExplorerView({
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-5">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-stone-900 to-amber-950 text-white p-6 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="w-5 h-5 text-amber-300" />
-            <span className="text-xs uppercase font-mono tracking-widest text-amber-300 font-bold">
-              {isEpubOnly ? "Nguồn: Obsidian Vault & Kho lưu trữ EPUB" : "Architecture & Specifications Explorer"}
-            </span>
-          </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight">
-            {isEpubOnly ? "Thư Viện Sách" : "Tài Liệu Kiến Trúc & Đặc Tả Hệ Thống"}
-          </h1>
-          <p className="text-xs text-stone-300 max-w-2xl mt-1">
-            {isEpubOnly
-              ? "Đọc và quản lý sách EPUB trong kho tài liệu của bạn."
-              : "Tra cứu trực tiếp quyết định kiến trúc (ADRs), đặc tả kỹ thuật (Specs), kịch bản kiểm thử (Gherkin) và sổ tay vận hành hệ thống."}
-          </p>
-        </div>
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-in fade-in duration-200">
+      {/* Page Header */}
+      <PageHeader
+        title={isEpubOnly ? "Thư Viện Sách" : "Tài Liệu Kiến Trúc & Đặc Tả Hệ Thống"}
+        subtitle={
+          isEpubOnly
+            ? "Đọc và quản lý sách EPUB trong kho tài liệu của bạn."
+            : "Tra cứu trực tiếp quyết định kiến trúc (ADRs), đặc tả kỹ thuật (Specs), kịch bản kiểm thử (Gherkin) và sổ tay vận hành hệ thống."
+        }
+        categoryLabel={isEpubOnly ? "Nguồn: Obsidian Vault & Kho lưu trữ EPUB" : "Architecture & Specifications Explorer"}
+        categoryIcon={BookOpen}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            {isEpubOnly && (
+              <ToolbarButton
+                variant="primary"
+                icon={FolderOpen}
+                onClick={() => setIsVaultModalOpen(true)}
+                aria-label="Chọn sách từ Vault"
+              >
+                Chọn sách từ Vault
+              </ToolbarButton>
+            )}
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {isEpubOnly && (
-            <button
-              onClick={() => setIsVaultModalOpen(true)}
-              aria-label="Chọn sách từ Vault"
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-stone-950 rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
+            <ToolbarButton
+              variant="secondary"
+              icon={RotateCcw}
+              onClick={handleRefresh}
+              aria-label="Làm mới"
             >
-              <FolderOpen className="w-3.5 h-3.5" />
-              <span>Chọn sách từ Vault</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleRefresh}
-            aria-label="Làm mới"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-800/80 hover:bg-stone-700 text-stone-200 rounded-xl text-xs font-semibold border border-stone-700/80 transition cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Làm mới</span>
-          </button>
-        </div>
-      </div>
+              Làm mới
+            </ToolbarButton>
+          </div>
+        }
+      />
 
       {/* Split-Pane Content Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[600px]">
         {/* Left Pane: Directory & Search */}
-        <div className="lg:col-span-4 bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs flex flex-col space-y-3.5">
+        <SurfaceCard variant="default" className="lg:col-span-4 flex flex-col space-y-3.5">
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={isEpubOnly ? "Tìm kiếm sách EPUB trong thư viện..." : "Tìm kiếm tài liệu (ADR-061, Spec, P12.2...)"}
-              className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-700 focus:outline-hidden"
+              className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 transition shadow-2xs"
             />
           </div>
 
@@ -223,61 +211,30 @@ export function DocsExplorerView({
             <div
               role="group"
               aria-label="Bộ lọc danh mục tài liệu"
-              className="flex flex-wrap gap-1 bg-stone-100 p-1 rounded-xl"
+              className="flex flex-wrap gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-xl"
             >
-              <button
-                onClick={() => setSelectedCategory("all")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  selectedCategory === "all"
-                    ? "bg-stone-800 text-white shadow-xs"
-                    : "text-stone-600 hover:text-stone-900"
-                }`}
-              >
-                Tất Cả ({docs.length})
-              </button>
-              <button
-                onClick={() => setSelectedCategory("adr")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  selectedCategory === "adr"
-                    ? "bg-amber-800 text-white shadow-xs"
-                    : "text-stone-600 hover:text-amber-900"
-                }`}
-              >
-                ADRs
-              </button>
-              <button
-                onClick={() => setSelectedCategory("specs")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  selectedCategory === "specs"
-                    ? "bg-indigo-800 text-white shadow-xs"
-                    : "text-stone-600 hover:text-indigo-900"
-                }`}
-              >
-                Specs
-              </button>
-              <button
-                onClick={() => setSelectedCategory("gherkin")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  selectedCategory === "gherkin"
-                    ? "bg-teal-800 text-white shadow-xs"
-                    : "text-stone-600 hover:text-teal-900"
-                }`}
-              >
-                Gherkin
-              </button>
-              <button
-                onClick={() => setSelectedCategory("books")}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  selectedCategory === "books"
-                    ? "bg-amber-900 text-white shadow-xs"
-                    : "text-stone-600 hover:text-amber-900"
-                }`}
-              >
-                Sách EPUB
-              </button>
+              {[
+                { id: "all", label: `Tất Cả (${docs.length})` },
+                { id: "adr", label: "ADRs" },
+                { id: "specs", label: "Specs" },
+                { id: "gherkin", label: "Gherkin" },
+                { id: "books", label: "Sách EPUB" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedCategory(tab.id)}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                    selectedCategory === tab.id
+                      ? "bg-amber-800 text-amber-50 shadow-2xs"
+                      : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
           ) : (
-            <div className="flex items-center justify-between text-xs font-semibold text-stone-700 px-1">
+            <div className="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 px-1">
               <span>Danh sách sách ({filteredDocs.length})</span>
             </div>
           )}
@@ -285,21 +242,21 @@ export function DocsExplorerView({
           {/* Documents List */}
           <div className="flex-1 overflow-y-auto max-h-[500px] space-y-2 pr-1">
             {isLoadingList ? (
-              <div className="p-8 text-center text-xs text-stone-400 animate-pulse">
+              <div className="p-8 text-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
                 {isEpubOnly ? "Đang nạp danh sách sách EPUB..." : "Đang nạp danh mục tài liệu..."}
               </div>
             ) : filteredDocs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-stone-500 space-y-3 bg-stone-50/50 rounded-xl border border-dashed border-stone-200">
-                <Book className="w-8 h-8 text-stone-300 mx-auto" />
-                <p className="font-medium text-stone-600">
+              <div className="p-8 text-center text-xs text-stone-500 dark:text-stone-400 space-y-3 bg-stone-50/50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
+                <Book className="w-8 h-8 text-stone-300 dark:text-stone-600 mx-auto" />
+                <p className="font-medium text-stone-600 dark:text-stone-300">
                   {isEpubOnly ? "Chưa có sách EPUB nào trong danh mục." : "Không tìm thấy tài liệu phù hợp"}
                 </p>
                 {isEpubOnly && (
                   <button
                     onClick={() => setIsVaultModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg text-[11px] font-semibold transition cursor-pointer border border-stone-300"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg text-[11px] font-semibold transition cursor-pointer border border-stone-300 dark:border-stone-600"
                   >
-                    <FolderOpen className="w-3 h-3 text-amber-700" />
+                    <FolderOpen className="w-3 h-3 text-amber-700 dark:text-amber-400" />
                     <span>Duyệt sách từ Vault</span>
                   </button>
                 )}
@@ -315,14 +272,14 @@ export function DocsExplorerView({
                     onClick={() => handleDocClick(doc)}
                     className={`w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 cursor-pointer ${
                       isSelected
-                        ? "bg-amber-50/80 border-amber-300 ring-1 ring-amber-400/40"
-                        : "bg-stone-50/60 border-stone-200/80 hover:bg-stone-100/80"
+                        ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-1 ring-amber-400/40"
+                        : "bg-stone-50/60 dark:bg-stone-800/50 border-stone-200/80 dark:border-stone-700/80 hover:bg-stone-100/80 dark:hover:bg-stone-800"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 shrink-0" />}
-                        <span className="text-xs font-bold text-stone-900 line-clamp-2">
+                        {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />}
+                        <span className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-2">
                           {doc.title}
                         </span>
                       </div>
@@ -330,12 +287,12 @@ export function DocsExplorerView({
                         <span
                           className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono shrink-0 ${
                             doc.status === "ACCEPTED"
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                               : doc.status === "PROPOSED"
-                              ? "bg-amber-100 text-amber-800 border border-amber-200"
+                              ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                               : doc.status === "EPUB"
-                              ? "bg-amber-100 text-amber-900 border border-amber-300 font-semibold"
-                              : "bg-stone-100 text-stone-700 border border-stone-200"
+                              ? "bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
+                              : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
                           }`}
                         >
                           {doc.status}
@@ -343,52 +300,52 @@ export function DocsExplorerView({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 text-[10px] text-stone-500 font-mono">
-                      <span>{doc.relativePath}</span>
+                    <div className="flex items-center gap-2 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
+                      <span className="truncate">{doc.relativePath}</span>
                       <span>•</span>
-                      <span>{Math.round(doc.sizeBytes / 1024)} KB</span>
+                      <span className="shrink-0">{Math.round(doc.sizeBytes / 1024)} KB</span>
                     </div>
                   </button>
                 );
               })
             )}
           </div>
-        </div>
+        </SurfaceCard>
 
         {/* Right Pane: Markdown Reader or EPUB Library Overview */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-stone-200 shadow-2xs flex flex-col min-h-[500px]">
+        <SurfaceCard variant="default" className="lg:col-span-8 flex flex-col min-h-[500px]">
           {isLoadingContent ? (
-            <div className="flex-1 flex items-center justify-center text-xs text-stone-400 animate-pulse">
+            <div className="flex-1 flex items-center justify-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
               Đang nạp nội dung...
             </div>
           ) : selectedDoc ? (
             <div className="space-y-4">
               {/* Document Header Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-200 gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800 gap-2">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[11px] text-stone-500 font-mono">
-                    <span className="uppercase font-bold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded">
+                  <div className="flex items-center gap-2 text-[11px] text-stone-500 dark:text-stone-400 font-mono">
+                    <span className="uppercase font-bold text-amber-900 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 px-1.5 py-0.5 rounded">
                       {selectedDoc.category}
                     </span>
                     <span>{selectedDoc.relativePath}</span>
                   </div>
-                  <h2 className="text-lg font-bold text-stone-900">
+                  <h2 className="text-lg font-bold text-stone-900 dark:text-stone-100">
                     {selectedDoc.title}
                   </h2>
                 </div>
 
                 <button
                   onClick={handleCopyContent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 rounded-xl border border-stone-300 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl border border-stone-200 dark:border-stone-700 transition cursor-pointer shadow-2xs"
                 >
                   {copied ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700">Đã sao chép</span>
+                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-emerald-700 dark:text-emerald-400">Đã sao chép</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5 text-stone-600" />
+                      <Copy className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
                       <span>Sao chép Markdown</span>
                     </>
                   )}
@@ -396,24 +353,24 @@ export function DocsExplorerView({
               </div>
 
               {/* Raw / Formatted Markdown Reader Content */}
-              <div className="prose prose-stone max-w-none text-xs text-stone-800 leading-relaxed font-sans whitespace-pre-wrap bg-stone-50 p-4 rounded-xl border border-stone-200/80 overflow-x-auto">
+              <div className="prose prose-stone dark:prose-invert max-w-none text-xs text-stone-800 dark:text-stone-200 leading-relaxed font-sans whitespace-pre-wrap bg-stone-50 dark:bg-stone-850 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700/80 overflow-x-auto">
                 {selectedDoc.content}
               </div>
             </div>
           ) : isEpubOnly ? (
             /* EPUB Library Overview / Empty State */
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 md:p-10 space-y-5 my-auto">
-              <div className="w-16 h-16 bg-amber-50 text-amber-800 rounded-2xl flex items-center justify-center border border-amber-200/60 shadow-2xs">
+              <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200/60 dark:border-amber-800/60 shadow-2xs">
                 <BookOpen className="w-8 h-8" />
               </div>
 
               <div className="max-w-lg space-y-2">
-                <h3 className="text-lg font-bold text-stone-900">
+                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
                   {filteredDocs.length === 0
                     ? "Thư viện chưa có sách EPUB"
                     : "Chọn một cuốn sách để bắt đầu đọc"}
                 </h3>
-                <p className="text-xs text-stone-600 leading-relaxed">
+                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                   {filteredDocs.length === 0
                     ? "Thêm file EPUB đầu tiên để bắt đầu đọc sách điện tử chất lượng cao trong không gian nghiên cứu."
                     : "Nhấp vào bất kỳ cuốn sách nào từ danh sách bên trái hoặc chọn trực tiếp từ Obsidian Vault để mở giao diện đọc toàn màn hình."}
@@ -431,7 +388,7 @@ export function DocsExplorerView({
 
                 <button
                   onClick={handleRefresh}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-semibold border border-stone-300 transition cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-300 dark:border-stone-700 transition cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Làm mới</span>
@@ -439,20 +396,20 @@ export function DocsExplorerView({
               </div>
 
               {/* Helpful storage guidance */}
-              <div className="w-full max-w-lg bg-stone-50 border border-stone-200 rounded-xl p-4 text-left space-y-2 text-[11px] text-stone-600">
-                <div className="flex items-center gap-1.5 font-semibold text-stone-800">
-                  <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <div className="w-full max-w-lg bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-700 rounded-xl p-4 text-left space-y-2 text-[11px] text-stone-600 dark:text-stone-400">
+                <div className="flex items-center gap-1.5 font-semibold text-stone-800 dark:text-stone-200">
+                  <Info className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
                   <span>Hướng dẫn vị trí lưu trữ sách EPUB:</span>
                 </div>
-                <ul className="list-disc list-inside space-y-1 text-stone-500 pl-1">
+                <ul className="list-disc list-inside space-y-1 text-stone-500 dark:text-stone-400 pl-1">
                   <li>
-                    Thư mục <code className="bg-stone-200/80 px-1 py-0.5 rounded font-mono text-stone-800">docs/books</code> trong thư mục dự án.
+                    Thư mục <code className="bg-stone-200/80 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-stone-800 dark:text-stone-200">docs/books</code> trong thư mục dự án.
                   </li>
                   <li>
                     Hoặc bất kỳ thư mục tài liệu nào trong <strong>Obsidian Vault</strong> đã liên kết.
                   </li>
                 </ul>
-                <p className="text-[10px] text-stone-400 italic pt-1 border-t border-stone-200/60">
+                <p className="text-[10px] text-stone-400 dark:text-stone-500 italic pt-1 border-t border-stone-200/60 dark:border-stone-700/60">
                   Sau khi thêm tệp .epub mới, hãy nhấn nút <strong>Làm mới</strong> hoặc chọn trực tiếp qua nút <strong>Chọn sách từ Vault</strong>.
                 </p>
               </div>
@@ -460,28 +417,28 @@ export function DocsExplorerView({
           ) : (
             /* Default Documentation Overview State for mode="full" */
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
-              <div className="w-14 h-14 bg-amber-50 text-amber-800 rounded-2xl flex items-center justify-center border border-amber-200/60 shadow-2xs">
+              <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200/60 dark:border-amber-800/60 shadow-2xs">
                 <BookOpen className="w-7 h-7" />
               </div>
               <div className="max-w-md space-y-2">
-                <h3 className="text-base font-bold text-stone-900">
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
                   Trung Tâm Tra Cứu Tài Liệu Kiến Trúc
                 </h3>
-                <p className="text-xs text-stone-500 leading-relaxed">
+                <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
                   Vui lòng chọn một tài liệu (ADR, Kịch bản Gherkin, hoặc Đặc tả kỹ thuật) từ danh mục bên trái để đọc chi tiết toàn văn.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-[11px] text-stone-600">
-                <span className="px-2.5 py-1 rounded-lg bg-stone-100 border border-stone-200 font-mono">
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2 text-[11px] text-stone-600 dark:text-stone-400">
+                <span className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 font-mono">
                   {docs.length} Tài liệu trên đĩa
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-mono">
+                <span className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-mono">
                   Tự động đồng bộ thời gian thực
                 </span>
               </div>
             </div>
           )}
-        </div>
+        </SurfaceCard>
       </div>
 
       {/* EPUB Viewer Modal Overlay */}

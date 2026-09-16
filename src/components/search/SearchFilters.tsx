@@ -6,7 +6,6 @@ import {
   Tag as TagIcon,
   X,
   Check,
-  Bookmark,
   Folder,
 } from "lucide-react";
 import { Category, Tag, CategoryType, TopicStatus } from "../../types";
@@ -15,6 +14,7 @@ import {
   getDescendantCategoryIds,
   resolveCategoryFilterToRootId,
 } from "../../lib/taxonomyMigration";
+import { SurfaceCard } from "../workbench";
 
 export interface SearchFiltersState {
   domain: "all" | CategoryType;
@@ -68,16 +68,17 @@ export function SearchFilters({
   });
 
   return (
-    <div
-      className={`bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-3xl p-5 shadow-2xs space-y-4 ${className}`}
+    <SurfaceCard
+      variant="subtle"
+      className={`space-y-4 ${className}`}
     >
       {/* Header Toolbar */}
-      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
-          <Filter className="w-3.5 h-3.5" />
+      <div className="flex items-center justify-between border-b border-stone-200/60 dark:border-stone-800 pb-3">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-400">
+          <Filter className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
           <span>Bộ Lọc Chuyên Sâu</span>
           {totalResultsCount !== undefined && (
-            <span className="font-normal lowercase text-stone-500 dark:text-stone-400">
+            <span className="font-normal lowercase text-stone-500 dark:text-stone-400 font-mono">
               ({totalResultsCount} kết quả)
             </span>
           )}
@@ -87,7 +88,7 @@ export function SearchFilters({
           <button
             type="button"
             onClick={handleResetFilters}
-            className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition"
+            className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 transition cursor-pointer"
           >
             <X className="w-3 h-3" />
             <span>Xóa tất cả bộ lọc</span>
@@ -98,7 +99,7 @@ export function SearchFilters({
       {/* 1. Domain Selector */}
       <div className="space-y-1.5">
         <label className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider flex items-center gap-1.5">
-          <Filter className="w-3.5 h-3.5 text-amber-700" />
+          <Filter className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
           <span>Lĩnh Vực (Domain):</span>
         </label>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -107,10 +108,10 @@ export function SearchFilters({
             onClick={() =>
               onFilterChange({ ...filters, domain: "all", categoryId: null })
             }
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${
               filters.domain === "all"
                 ? "bg-stone-900 text-white dark:bg-white dark:text-stone-900 font-bold shadow-2xs"
-                : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200"
+                : "bg-white dark:bg-stone-800 border border-stone-200/90 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-750"
             }`}
           >
             Tất cả
@@ -129,7 +130,7 @@ export function SearchFilters({
                     categoryId: null,
                   })
                 }
-                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                   isSelected
                     ? root.slug === "phat-hoc"
                       ? "bg-amber-800 text-white font-bold shadow-2xs"
@@ -137,10 +138,10 @@ export function SearchFilters({
                       ? "bg-indigo-800 text-white font-bold shadow-2xs"
                       : "bg-stone-900 text-white font-bold shadow-2xs"
                     : root.slug === "phat-hoc"
-                    ? "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 hover:bg-amber-100"
+                    ? "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100"
                     : root.slug === "huyen-hoc"
-                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-300 hover:bg-indigo-100"
-                    : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200"
+                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100"
+                    : "bg-white dark:bg-stone-800 border border-stone-200/90 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100"
                 }`}
               >
                 {root.slug === "phat-hoc" ? (
@@ -172,7 +173,7 @@ export function SearchFilters({
                 categoryId: e.target.value === "all" ? null : e.target.value,
               })
             }
-            className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-900 dark:text-stone-100 focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+            className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-900 dark:text-stone-100 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40"
           >
             <option value="all">
               Tất cả danh mục ({filteredCategories.length})
@@ -208,7 +209,7 @@ export function SearchFilters({
                 status: e.target.value as any,
               })
             }
-            className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-900 dark:text-stone-100 focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+            className="w-full px-3 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-900 dark:text-stone-100 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40"
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="not_started">Chưa bắt đầu</option>
@@ -238,10 +239,10 @@ export function SearchFilters({
                       tag: isSelected ? null : t.name,
                     })
                   }
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 font-mono ${
                     isSelected
                       ? "bg-amber-800 text-white font-bold shadow-2xs"
-                      : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200"
+                      : "bg-white dark:bg-stone-800 border border-stone-200/90 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100"
                   }`}
                 >
                   <span>#{t.name}</span>
@@ -252,6 +253,6 @@ export function SearchFilters({
           </div>
         </div>
       )}
-    </div>
+    </SurfaceCard>
   );
 }
