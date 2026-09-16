@@ -365,25 +365,25 @@ export function KnowledgeGraph() {
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-5">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-1">
             <Share2 className="w-3.5 h-3.5" />
             <span>Đồ Thị Tri Thức Đa Chiều</span>
           </div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-serif-title">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100 tracking-tight font-serif-title">
             Knowledge Graph (Biểu đồ tri thức)
           </h1>
-          <p className="text-xs text-stone-600 mt-0.5">
+          <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
             Trực quan hóa mạng lưới liên kết giữa Vi Diệu Pháp, Thiền định, Kỳ Môn, Thái Ất, Kinh Dịch &amp; Ghi chú
           </p>
         </div>
 
         {/* Legend pills */}
-        <div className="flex flex-wrap items-center gap-3 bg-white p-2 px-3.5 border border-stone-200 rounded-xl text-xs font-medium shadow-2xs">
-          <span className="text-stone-400 text-[11px]">Chú thích:</span>
+        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-stone-900 p-2 px-3.5 border border-stone-200 dark:border-stone-800 rounded-xl text-xs font-medium shadow-2xs">
+          <span className="text-stone-400 dark:text-stone-500 text-[11px]">Chú thích:</span>
           {rootCategories.map((cat) => (
-            <span key={cat.id} className="flex items-center gap-1.5 text-stone-700">
+            <span key={cat.id} className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300">
               <span
                 className="w-2.5 h-2.5 rounded-full inline-block"
                 style={{ backgroundColor: cat.color || '#D97706' }}
@@ -391,28 +391,30 @@ export function KnowledgeGraph() {
               {cat.name}
             </span>
           ))}
-          <span className="flex items-center gap-1.5 text-stone-700">
+          <span className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-600 inline-block" /> Ghi Chú
           </span>
-          <span className="flex items-center gap-1.5 text-stone-700">
+          <span className="flex items-center gap-1.5 text-stone-700 dark:text-stone-300">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-600 inline-block" /> Tài Liệu
           </span>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-stone-500 font-bold uppercase tracking-wider flex items-center gap-1">
+          <span className="text-xs text-stone-500 dark:text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1">
             <Filter className="w-3.5 h-3.5" /> Bộ Lọc:
           </span>
 
           {/* Domain selector */}
-          <div className="flex flex-wrap bg-stone-100 p-0.5 rounded-xl text-xs font-medium gap-0.5">
+          <div className="flex flex-wrap bg-stone-100 dark:bg-stone-800 p-0.5 rounded-xl text-xs font-medium gap-0.5">
             <button
               onClick={() => setDomainFilter('all')}
               className={`px-3 py-1 rounded-lg transition ${
-                domainFilter === 'all' ? 'bg-white text-stone-900 font-bold shadow-2xs' : 'text-stone-600'
+                domainFilter === 'all'
+                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 font-bold shadow-2xs'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
               Tất cả
@@ -427,7 +429,7 @@ export function KnowledgeGraph() {
                     className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
                       isSelected
                         ? 'bg-amber-700 text-white font-bold shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
+                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                     }`}
                   >
                     <span>{cat.name}</span>
@@ -441,7 +443,7 @@ export function KnowledgeGraph() {
                   className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
                     domainFilter === 'phat-hoc'
                       ? 'bg-amber-700 text-white font-bold shadow-2xs'
-                      : 'text-stone-600 hover:text-amber-900'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-amber-900 dark:hover:text-amber-400'
                   }`}
                 >
                   <Sparkles className="w-3 h-3" /> Phật Học
@@ -451,7 +453,7 @@ export function KnowledgeGraph() {
                   className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
                     domainFilter === 'huyen-hoc'
                       ? 'bg-indigo-700 text-white font-bold shadow-2xs'
-                      : 'text-stone-600 hover:text-indigo-900'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-indigo-900 dark:hover:text-indigo-400'
                   }`}
                 >
                   <Compass className="w-3 h-3" /> Huyền Học
@@ -464,7 +466,7 @@ export function KnowledgeGraph() {
           <select
             value={selectedTag}
             onChange={(e) => setSelectedTag(e.target.value)}
-            className="px-3 py-1 bg-stone-100 border border-stone-200 rounded-xl text-xs font-medium text-stone-800"
+            className="px-3 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-hidden focus:ring-2 focus:ring-amber-700/50"
           >
             <option value="all">Tất cả thẻ phân loại (Tags)</option>
             {tags.map((t) => (
@@ -479,7 +481,7 @@ export function KnowledgeGraph() {
             aria-label="semantic-edge-filter"
             value={semanticEdgeFilter}
             onChange={(e) => setSemanticEdgeFilter(e.target.value as any)}
-            className="px-3 py-1 bg-stone-100 border border-stone-200 rounded-xl text-xs font-medium text-stone-800"
+            className="px-3 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-hidden focus:ring-2 focus:ring-amber-700/50"
           >
             <option value="all">Tất cả liên kết (Semantic Edges)</option>
             <option value="prerequisite">Tiên quyết (prerequisite)</option>
@@ -491,7 +493,7 @@ export function KnowledgeGraph() {
 
         {/* Node Type Toggles */}
         <div className="flex items-center gap-3 text-xs">
-          <label className="flex items-center gap-1 text-stone-600 cursor-pointer">
+          <label className="flex items-center gap-1 text-stone-600 dark:text-stone-400 cursor-pointer">
             <input
               type="checkbox"
               checked={nodeTypeFilter.note}
@@ -500,7 +502,7 @@ export function KnowledgeGraph() {
             />
             <span>Ghi chú ({notes.length})</span>
           </label>
-          <label className="flex items-center gap-1 text-stone-600 cursor-pointer">
+          <label className="flex items-center gap-1 text-stone-600 dark:text-stone-400 cursor-pointer">
             <input
               type="checkbox"
               checked={nodeTypeFilter.resource}
@@ -513,9 +515,9 @@ export function KnowledgeGraph() {
       </div>
 
       {/* Main Interactive Graph Visualizer Stage */}
-      <div className="relative bg-stone-900 rounded-3xl border border-stone-800 overflow-hidden shadow-2xl h-[620px] select-none">
+      <div className="relative bg-stone-900 dark:bg-stone-950 rounded-3xl border border-stone-800 dark:border-stone-800/80 overflow-hidden shadow-2xl h-[620px] select-none">
         {/* Instruction overlay */}
-        <div className="absolute top-4 left-4 z-10 bg-stone-800/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] text-stone-300 border border-stone-700/80 pointer-events-none flex items-center gap-2">
+        <div className="absolute top-4 left-4 z-10 bg-stone-800/80 dark:bg-stone-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl text-[11px] text-stone-300 dark:text-stone-300 border border-stone-700/80 pointer-events-none flex items-center gap-2">
           <Info className="w-3.5 h-3.5 text-amber-400" />
           <span>
             {isFocusMode
@@ -525,24 +527,24 @@ export function KnowledgeGraph() {
         </div>
 
         {/* Zoom & Canvas Controls */}
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-stone-800/80 backdrop-blur-md p-1 rounded-xl border border-stone-700">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 bg-stone-800/80 dark:bg-stone-900/80 backdrop-blur-md p-1 rounded-xl border border-stone-700 dark:border-stone-800">
           <button
             onClick={handleZoomIn}
-            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 rounded-lg transition"
+            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 dark:hover:bg-stone-800 rounded-lg transition"
             title="Phóng to"
           >
             <ZoomIn className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
-            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 rounded-lg transition"
+            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 dark:hover:bg-stone-800 rounded-lg transition"
             title="Thu nhỏ"
           >
             <ZoomOut className="w-4 h-4" />
           </button>
           <button
             onClick={handleResetZoom}
-            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 rounded-lg transition"
+            className="p-2 text-stone-300 hover:text-white hover:bg-stone-700 dark:hover:bg-stone-800 rounded-lg transition"
             title="Căn giữa màn hình"
           >
             <Maximize2 className="w-4 h-4" />
@@ -703,7 +705,7 @@ export function KnowledgeGraph() {
 
         {/* Selected Node Details Side Drawer */}
         {selectedNode && (
-          <div className="absolute bottom-4 right-4 z-20 w-80 bg-stone-900/95 border border-stone-700 text-stone-100 p-4 rounded-2xl shadow-2xl backdrop-blur-md space-y-3">
+          <div className="absolute bottom-4 right-4 z-20 w-80 bg-stone-900/95 dark:bg-stone-950/95 border border-stone-700 dark:border-stone-800 text-stone-100 p-4 rounded-2xl shadow-2xl backdrop-blur-md space-y-3">
             <div className="flex items-center justify-between border-b border-stone-800 pb-2">
               <span
                 className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded"
@@ -744,7 +746,7 @@ export function KnowledgeGraph() {
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
                     isFocusMode
                       ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                      : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
                   }`}
                 >
                   <Layers className="w-3 h-3" />
@@ -753,7 +755,7 @@ export function KnowledgeGraph() {
               </div>
 
               {isFocusMode && (
-                <div className="flex items-center justify-between bg-stone-800/80 p-2 rounded-xl text-xs">
+                <div className="flex items-center justify-between bg-stone-800/80 dark:bg-stone-900/80 p-2 rounded-xl text-xs border border-stone-700/60">
                   <label htmlFor="traversal-depth-select" className="text-stone-300">
                     Độ sâu duyệt:
                   </label>
@@ -762,7 +764,7 @@ export function KnowledgeGraph() {
                     aria-label="Độ sâu duyệt"
                     value={traversalDepth}
                     onChange={(e) => setTraversalDepth(Number(e.target.value))}
-                    className="px-2 py-0.5 bg-stone-900 border border-stone-700 text-stone-200 rounded-lg text-xs font-medium"
+                    className="px-2 py-0.5 bg-stone-900 border border-stone-700 text-stone-200 rounded-lg text-xs font-medium focus:outline-hidden focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="1">1-hop (Trực tiếp)</option>
                     <option value="2">2-hop (Mở rộng)</option>
