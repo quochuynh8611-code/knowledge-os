@@ -51,11 +51,13 @@ import {
   ResearchSearchModal,
   ExportReportModal,
 } from "../research";
-// Phase 17B: new toolbar sub-components
+// Phase 17B: toolbar sub-components
 import { ResearchToolsDropdown } from "./ResearchToolsDropdown";
 import { StudyCTA } from "./StudyCTA";
 import { NextActionStrip } from "./NextActionStrip";
-
+import { SurfaceCard } from "../workbench/SurfaceCard";
+import { StatusPill } from "../workbench/StatusPill";
+import { ToolbarButton } from "../workbench/ToolbarButton";
 
 const NotebookLMStudioModal = React.lazy(() =>
   import("../integrations/NotebookLMStudioModal").then((m) => ({
@@ -84,7 +86,6 @@ import {
   formatMinutesToHours,
   formatTimeAgo,
 } from "../../lib/spaced-repetition";
-
 
 export function TopicDetail() {
   const {
@@ -268,7 +269,7 @@ export function TopicDetail() {
         <p>Không tìm thấy chủ đề.</p>
         <button
           onClick={() => setSelectedTopicId(null)}
-          className="mt-3 px-4 py-2 bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold"
+          className="mt-3 px-4 py-2 bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold cursor-pointer"
         >
           Quay lại danh sách
         </button>
@@ -346,9 +347,9 @@ export function TopicDetail() {
           onHomeClick={() => setSelectedTopicId(null)}
         />
 
-        {/* Phase 17B: Simplified toolbar — 4 surface actions */}
+        {/* Simplified toolbar — 4 surface actions */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Smart Study CTA (Phase 17B) */}
+          {/* Smart Study CTA */}
           <StudyCTA
             topicId={topic.id}
             topicTitle={topic.title}
@@ -363,7 +364,7 @@ export function TopicDetail() {
           <button
             data-testid="review-btn"
             onClick={() => setShowReviewModal(true)}
-            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
           >
             <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Ôn tập SM-2
           </button>
@@ -394,7 +395,7 @@ export function TopicDetail() {
           <button
             data-testid="edit-topic-btn"
             onClick={() => setShowEditTopicModal(true)}
-            className="p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition"
+            className="p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl transition cursor-pointer"
             title="Chỉnh sửa chủ đề"
           >
             <Edit2 className="w-4 h-4" />
@@ -403,30 +404,30 @@ export function TopicDetail() {
       </div>
 
       {/* Main Topic Header & Description Banner */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
+      <SurfaceCard variant="default" className="p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
               className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
                 topic.type === "phat-hoc"
-                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
                   : topic.type === "huyen-hoc"
-                  ? "bg-indigo-100 text-indigo-900 border border-indigo-300"
-                  : "bg-stone-100 text-stone-900 border border-stone-300"
+                  ? "bg-indigo-100 text-indigo-900 border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
+                  : "bg-stone-100 text-stone-900 border border-stone-300 dark:bg-stone-800 dark:text-stone-200 dark:border-stone-700"
               }`}
             >
               {domainName}
               {topic.categoryName ? ` • ${topic.categoryName}` : ""}
             </span>
-            <span className="text-xs text-stone-500 font-mono flex items-center gap-1">
-              <Clock className="w-3 h-3 text-stone-400" />
+            <span className="text-xs text-stone-500 dark:text-stone-400 font-mono flex items-center gap-1">
+              <Clock className="w-3 h-3 text-stone-400 dark:text-stone-500" />
               Tích lũy: {formatMinutesToHours(topic.studyProgress?.timeSpent || 0)}
             </span>
           </div>
 
           {/* Status badge & selector */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-500 font-medium">
+            <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">
               Trạng thái:
             </span>
             <select
@@ -438,7 +439,7 @@ export function TopicDetail() {
                   e.target.value as TopicStatus,
                 )
               }
-              className="text-xs px-2.5 py-1 bg-stone-100 border border-stone-300 rounded-lg font-semibold text-stone-800"
+              className="text-xs px-2.5 py-1 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-lg font-semibold text-stone-800 dark:text-stone-200 cursor-pointer focus:outline-hidden"
             >
               <option value="not_started">Chưa học</option>
               <option value="in_progress">Đang học</option>
@@ -449,35 +450,35 @@ export function TopicDetail() {
         </div>
 
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-stone-900 tracking-tight font-serif-title">
+          <h1 className="text-2xl lg:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight font-serif-title">
             {topic.title}
           </h1>
-          <p className="text-xs sm:text-sm text-stone-700 mt-2 leading-relaxed bg-stone-50 p-3.5 rounded-xl border border-stone-200">
-            <span className="font-semibold text-stone-900">Mô tả:</span>{" "}
+          <p className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 mt-2 leading-relaxed bg-stone-50 dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200 dark:border-stone-800">
+            <span className="font-semibold text-stone-900 dark:text-stone-100">Mô tả:</span>{" "}
             {topic.description}
           </p>
         </div>
 
-        {/* Progress Bar & Slider (Matching Page 5: Tiến độ [████████░░] 80%) */}
-        <div className="pt-2 border-t border-stone-100 space-y-2">
+        {/* Progress Bar & Slider */}
+        <div className="pt-2 border-t border-stone-100 dark:border-stone-800 space-y-2">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold text-stone-700 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-amber-700" /> Tiến độ
+            <span className="font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Tiến độ
               nghiên cứu
             </span>
-            <span className="font-bold font-mono text-amber-900 text-sm">
+            <span className="font-bold font-mono text-amber-900 dark:text-amber-300 text-sm">
               {topic.studyProgress?.progress || 0}% hoàn thành
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex-1 bg-stone-100 rounded-full h-2.5 overflow-hidden">
+            <div className="flex-1 bg-stone-100 dark:bg-stone-800 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${
                   topic.type === "phat-hoc"
-                    ? "bg-amber-600"
+                    ? "bg-amber-600 dark:bg-amber-500"
                     : topic.type === "huyen-hoc"
-                    ? "bg-indigo-600"
-                    : "bg-stone-600"
+                    ? "bg-indigo-600 dark:bg-indigo-500"
+                    : "bg-stone-600 dark:bg-stone-400"
                 }`}
                 style={{ width: `${topic.studyProgress?.progress || 0}%` }}
               />
@@ -494,19 +495,19 @@ export function TopicDetail() {
               title="Kéo thanh trượt để cập nhật tiến độ"
             />
           </div>
-          {/* Phase 17B: Next-Action guidance strip */}
+          {/* Next-Action guidance strip */}
           <NextActionStrip topic={topic} />
         </div>
-      </div>
+      </SurfaceCard>
 
       {/* Navigation Tabs for Topic Detail */}
-      <div className="flex border-b border-stone-200 gap-2">
+      <div className="flex border-b border-stone-200 dark:border-stone-800 gap-1.5 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab("content")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "content"
-              ? "border-amber-700 text-amber-900"
-              : "border-transparent text-stone-600 hover:text-stone-900"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
           <BookOpen className="w-4 h-4" /> Nội Dung (Markdown)
@@ -515,7 +516,7 @@ export function TopicDetail() {
         <button
           data-testid="tab-btn-notes"
           onClick={() => setActiveTab("notes")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "notes"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -526,10 +527,10 @@ export function TopicDetail() {
 
         <button
           onClick={() => setActiveTab("links")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "links"
-              ? "border-amber-700 text-amber-900"
-              : "border-transparent text-stone-600 hover:text-stone-900"
+              ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
+              : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
           <Share2 className="w-4 h-4" /> Liên Kết Tri Thức ({topic.links?.length ?? 0})
@@ -537,27 +538,25 @@ export function TopicDetail() {
 
         <button
           onClick={() => setActiveTab("resources")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "resources"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
-          <Library className="w-4 h-4" /> Tài Liệu Đính Kèm (
-          {topicResources.length})
+          <Library className="w-4 h-4" /> Tài Liệu ({topicResources.length})
         </button>
 
         <button
           data-testid="tab-btn-flashcards"
           onClick={() => setActiveTab("flashcards")}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "flashcards"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
           }`}
         >
-          <Brain className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Thẻ Nhớ (
-          {flashcardStats?.totalCards ?? flashcardStats?.total ?? 0})
+          <Brain className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Thẻ Nhớ ({flashcardStats?.dueToday ?? 0} đến hạn)
         </button>
 
         <button
@@ -568,7 +567,7 @@ export function TopicDetail() {
               navigation.openCardBrowser(topic.id);
             }
           }}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "card_browser"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -585,7 +584,7 @@ export function TopicDetail() {
               navigation.openStudyLauncher(topic.id);
             }
           }}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "study_launcher"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -602,7 +601,7 @@ export function TopicDetail() {
               navigation.openFlashcardAnalytics(topic.id);
             }
           }}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "analytics"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -619,7 +618,7 @@ export function TopicDetail() {
               navigation.openDuplicateDetection(topic.id);
             }
           }}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "duplicates"
               ? "border-amber-700 text-amber-900 dark:border-amber-500 dark:text-amber-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -633,7 +632,7 @@ export function TopicDetail() {
           onClick={() => {
             setActiveTab("research");
           }}
-          className={`py-3 px-4 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+          className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
             activeTab === "research"
               ? "border-indigo-700 text-indigo-900 dark:border-indigo-500 dark:text-indigo-300"
               : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
@@ -645,22 +644,22 @@ export function TopicDetail() {
 
       {/* Tab 1: Nội dung (Markdown Reader & Wiki Link Parser) */}
       {activeTab === "content" && (
-        <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-700" /> Hệ thống luận giải
+        <SurfaceCard variant="default" className="p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-amber-700 dark:text-amber-400" /> Hệ thống luận giải
               &amp; Giáo lý
             </h3>
             <button
               onClick={() => setShowEditTopicModal(true)}
-              className="text-xs text-stone-600 hover:text-amber-800 font-medium flex items-center gap-1"
+              className="text-xs text-stone-600 hover:text-amber-800 dark:text-stone-400 dark:hover:text-amber-300 font-medium flex items-center gap-1 cursor-pointer"
             >
               <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa nội dung
             </button>
           </div>
 
           {/* Render Markdown with Wiki Link styling */}
-          <div className="text-stone-800 text-sm leading-relaxed font-sans">
+          <div className="text-stone-800 dark:text-stone-200 text-sm leading-relaxed font-sans">
             <MarkdownReadabilityRenderer
               content={topic.content}
               topics={topics}
@@ -669,20 +668,20 @@ export function TopicDetail() {
           </div>
 
           {/* Tags */}
-          <div className="pt-4 border-t border-stone-100 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-stone-500 font-medium mr-1 flex items-center gap-1">
-              <TagIcon className="w-3.5 h-3.5 text-stone-400" /> Thẻ chủ đề:
+          <div className="pt-4 border-t border-stone-100 dark:border-stone-800 flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-stone-500 dark:text-stone-400 font-medium mr-1 flex items-center gap-1">
+              <TagIcon className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" /> Thẻ chủ đề:
             </span>
             {(topic.tags ?? []).map((tg) => (
               <span
                 key={tg}
-                className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-lg text-xs font-medium"
+                className="px-2.5 py-1 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-mono"
               >
                 #{tg}
               </span>
             ))}
           </div>
-        </div>
+        </SurfaceCard>
       )}
 
       {/* Tab 2: Ghi chú (Notes matching Page 5 wireframe) */}
@@ -698,7 +697,7 @@ export function TopicDetail() {
                 setEditingNote(null);
                 setShowNoteModal(true);
               }}
-              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-700 dark:hover:bg-emerald-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Thêm ghi chú mới
             </button>
@@ -722,9 +721,10 @@ export function TopicDetail() {
               };
 
               return (
-                <div
+                <SurfaceCard
                   key={note.id}
-                  className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-4 shadow-2xs space-y-2.5 flex flex-col justify-between transition"
+                  variant="default"
+                  className="p-4 space-y-2.5 flex flex-col justify-between"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800 pb-1.5">
@@ -797,7 +797,7 @@ export function TopicDetail() {
                       </button>
                     </div>
                   </div>
-                </div>
+                </SurfaceCard>
               );
             })}
 
@@ -823,21 +823,21 @@ export function TopicDetail() {
 
       {/* Tab 3: Liên kết tri thức (Knowledge Links) */}
       {activeTab === "links" && (
-        <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+        <SurfaceCard variant="default" className="p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
             <div>
-              <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <Share2 className="w-4 h-4 text-amber-700" /> Sơ đồ mối quan hệ
+              <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-amber-700 dark:text-amber-400" /> Sơ đồ mối quan hệ
                 tri thức
               </h3>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 Các chủ đề liên quan, tiền đề (prerequisite) và tương hợp học
                 thuật
               </p>
             </div>
             <button
               onClick={() => setShowAddLink(!showAddLink)}
-              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition"
+              className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" /> Thêm Liên Kết
             </button>
@@ -847,18 +847,18 @@ export function TopicDetail() {
           {showAddLink && (
             <form
               onSubmit={handleAddLinkSubmit}
-              className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3"
+              className="p-4 bg-stone-50 dark:bg-stone-900/70 rounded-xl border border-stone-200 dark:border-stone-800 space-y-3"
             >
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase mb-1">
                     Liên kết tới chủ đề *
                   </label>
                   <select
                     value={targetTopicId}
                     onChange={(e) => setTargetTopicId(e.target.value)}
                     required
-                    className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs"
+                    className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 rounded-lg text-xs"
                   >
                     <option value="">-- Chọn chủ đề --</option>
                     {topics
@@ -878,13 +878,13 @@ export function TopicDetail() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase mb-1">
                     Loại quan hệ
                   </label>
                   <select
                     value={linkType}
                     onChange={(e) => setLinkType(e.target.value as any)}
-                    className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs"
+                    className="w-full px-3 py-1.5 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 rounded-lg text-xs"
                   >
                     <option value="related">Tương quan (Related)</option>
                     <option value="prerequisite">
@@ -900,7 +900,7 @@ export function TopicDetail() {
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                  <label className="block text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase mb-1">
                     Độ gắn kết (1-5 sao)
                   </label>
                   <input
@@ -918,13 +918,13 @@ export function TopicDetail() {
                 <button
                   type="button"
                   onClick={() => setShowAddLink(false)}
-                  className="px-3 py-1 text-xs text-stone-600"
+                  className="px-3 py-1 text-xs text-stone-600 dark:text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1 bg-amber-700 text-white rounded-lg text-xs font-semibold"
+                  className="px-4 py-1 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-semibold cursor-pointer"
                 >
                   Xác nhận liên kết
                 </button>
@@ -939,32 +939,32 @@ export function TopicDetail() {
               return (
                 <div
                   key={link.id}
-                  className="p-3.5 rounded-xl border border-stone-200/80 bg-stone-50/50 hover:bg-stone-100 flex items-center justify-between gap-3 transition"
+                  className="p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-800/80 flex items-center justify-between gap-3 transition"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-900 rounded">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-300 rounded">
                         {link.linkType}
                       </span>
-                      <span className="text-amber-800 text-[10px] font-bold">
+                      <span className="text-amber-800 dark:text-amber-400 text-[10px] font-bold">
                         {"★".repeat(link.strength)}
                       </span>
                     </div>
                     <h4
                       onClick={() => openTopicDetail(link.targetTopic!.id)}
-                      className="text-xs font-bold text-stone-900 hover:text-amber-800 cursor-pointer flex items-center gap-1"
+                      className="text-xs font-bold text-stone-900 dark:text-stone-100 hover:text-amber-800 dark:hover:text-amber-400 cursor-pointer flex items-center gap-1"
                     >
                       {link.targetTopic.title}{" "}
                       <ChevronRight className="w-3 h-3" />
                     </h4>
                     {link.notes && (
-                      <p className="text-[11px] text-stone-500">{link.notes}</p>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">{link.notes}</p>
                     )}
                   </div>
 
                   <button
                     onClick={() => removeKnowledgeLink(link.id)}
-                    className="text-stone-400 hover:text-rose-700 p-1"
+                    className="text-stone-400 hover:text-rose-700 p-1 cursor-pointer"
                     title="Xóa liên kết"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -974,38 +974,38 @@ export function TopicDetail() {
             })}
 
             {linkedTopics.length === 0 && (
-              <div className="col-span-2 text-center py-6 text-stone-400 text-xs">
+              <div className="col-span-2 text-center py-6 text-stone-400 dark:text-stone-500 text-xs">
                 Chưa có liên kết tri thức nào được thiết lập. Hãy tạo liên kết
                 giữa các chủ đề liên quan để biểu đồ tri thức phong phú hơn!
               </div>
             )}
           </div>
-        </div>
+        </SurfaceCard>
       )}
 
       {/* Tab 4: Tài liệu đính kèm (Resources) */}
       {activeTab === "resources" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-stone-900">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
               Tài liệu &amp; Nguồn tham khảo ({topicResources.length})
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setShowObsidianBrowserModal(true)}
-                className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+                className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
               >
-                <FolderTree className="w-4 h-4 text-purple-700" /> Browse Vault
+                <FolderTree className="w-4 h-4 text-purple-700 dark:text-purple-400" /> Browse Vault
               </button>
               <button
                 onClick={() => setShowObsidianLinkModal(true)}
-                className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
                 <FileText className="w-4 h-4" /> Liên kết ghi chú Obsidian
               </button>
               <button
                 onClick={() => setShowResourceModal(true)}
-                className="px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                className="px-3.5 py-1.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Thêm tài liệu
               </button>
@@ -1014,33 +1014,34 @@ export function TopicDetail() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {topicResources.map((res) => (
-              <div
+              <SurfaceCard
                 key={res.id}
-                className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between hover:border-indigo-300 transition"
+                variant="default"
+                className="p-4 space-y-3 flex flex-col justify-between hover:border-indigo-300 dark:hover:border-indigo-800 transition"
               >
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px] text-stone-500">
-                    <span className="font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 text-indigo-800 rounded">
+                  <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400">
+                    <span className="font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 rounded">
                       {res.type.toUpperCase()}
                     </span>
                     <span>{formatTimeAgo(res.createdAt)}</span>
                   </div>
-                  <h4 className="font-bold text-stone-900 text-sm line-clamp-2">
+                  <h4 className="font-bold text-stone-900 dark:text-stone-100 text-sm line-clamp-2">
                     {res.title}
                   </h4>
                   {res.author && (
-                    <p className="text-xs text-stone-600">
+                    <p className="text-xs text-stone-600 dark:text-stone-400">
                       Tác giả: <span className="font-medium">{res.author}</span>
                     </p>
                   )}
                   {res.notes && (
-                    <p className="text-xs text-stone-500 bg-stone-50 p-2 rounded-lg border border-stone-100">
+                    <p className="text-xs text-stone-500 dark:text-stone-400 bg-stone-50 dark:bg-stone-900/60 p-2 rounded-lg border border-stone-100 dark:border-stone-800">
                       {res.notes}
                     </p>
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between">
                   <button
                     onClick={() => {
                       if (res.type === "md") {
@@ -1049,7 +1050,7 @@ export function TopicDetail() {
                         setViewingResource(res);
                       }
                     }}
-                    className="px-3 py-1 bg-stone-100 hover:bg-indigo-50 text-indigo-900 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                    className="px-3 py-1 bg-stone-100 dark:bg-stone-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-900 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                   >
                     Xem tài liệu
                   </button>
@@ -1063,7 +1064,7 @@ export function TopicDetail() {
                           href={resolution.targetUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1 text-stone-400 hover:text-stone-700"
+                          className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
                           title={resolution.label}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -1075,13 +1076,13 @@ export function TopicDetail() {
                         if (window.confirm("Xóa tài liệu này?"))
                           deleteResource(res.id);
                       }}
-                      className="p-1 text-stone-400 hover:text-rose-700"
+                      className="p-1 text-stone-400 hover:text-rose-700 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </SurfaceCard>
             ))}
 
             {topicResources.length === 0 && (
@@ -1104,17 +1105,18 @@ export function TopicDetail() {
       {activeTab === "flashcards" && (
         <div className="space-y-6">
           {/* Topic Flashcard Summary Hub */}
-          <div
+          <SurfaceCard
+            variant="default"
             data-testid="topic-flashcard-summary"
-            className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-2xs space-y-6"
+            className="p-6 space-y-6"
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 dark:border-stone-800 pb-5">
               <div>
-                <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-amber-700" />
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-amber-700 dark:text-amber-400" />
                   Không gian ôn tập thẻ nhớ: {topic.title}
                 </h3>
-                <p className="text-xs text-stone-500 mt-1">
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                   Ôn tập các khái niệm, định nghĩa và kinh văn thuộc chủ đề này theo thuật toán ngắt quãng SRS.
                 </p>
               </div>
@@ -1136,7 +1138,7 @@ export function TopicDetail() {
                 <button
                   data-testid="btn-topic-create-card"
                   onClick={() => setShowCreateFlashcardModal(true)}
-                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tạo thẻ mới</span>
@@ -1145,7 +1147,7 @@ export function TopicDetail() {
                 <button
                   data-testid="btn-topic-import-csv"
                   onClick={() => setShowImportFlashcardModal(true)}
-                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Nhập CSV / TSV</span>
@@ -1159,7 +1161,7 @@ export function TopicDetail() {
                       navigation.openCardBrowser(topic.id);
                     }
                   }}
-                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Duyệt danh sách thẻ</span>
@@ -1173,7 +1175,7 @@ export function TopicDetail() {
                       navigation.openStudyLauncher(topic.id);
                     }
                   }}
-                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                  className="px-3 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <span>Trung tâm học tập</span>
@@ -1183,61 +1185,61 @@ export function TopicDetail() {
 
             {/* Metric counters */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl">
-                <div className="text-[11px] font-medium text-amber-800 uppercase tracking-wider">
+              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl">
+                <div className="text-[11px] font-medium text-amber-800 dark:text-amber-400 uppercase tracking-wider">
                   Đến hạn hôm nay
                 </div>
                 <div
                   data-testid="stat-due-count"
-                  className="text-2xl font-bold text-amber-950 mt-1 font-mono"
+                  className="text-2xl font-bold text-amber-950 dark:text-amber-200 mt-1 font-mono"
                 >
                   {flashcardStats?.dueToday ?? 0}
                 </div>
               </div>
 
-              <div className="p-3.5 bg-blue-50/70 border border-blue-200/80 rounded-xl">
-                <div className="text-[11px] font-medium text-blue-800 uppercase tracking-wider">
+              <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 rounded-xl">
+                <div className="text-[11px] font-medium text-blue-800 dark:text-blue-400 uppercase tracking-wider">
                   Thẻ mới (New)
                 </div>
                 <div
                   data-testid="stat-new-count"
-                  className="text-2xl font-bold text-blue-950 mt-1 font-mono"
+                  className="text-2xl font-bold text-blue-950 dark:text-blue-200 mt-1 font-mono"
                 >
                   {flashcardStats?.newCards ?? 0}
                 </div>
               </div>
 
-              <div className="p-3.5 bg-orange-50/70 border border-orange-200/80 rounded-xl">
-                <div className="text-[11px] font-medium text-orange-800 uppercase tracking-wider">
+              <div className="p-3.5 bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/60 rounded-xl">
+                <div className="text-[11px] font-medium text-orange-800 dark:text-orange-400 uppercase tracking-wider">
                   Đang học (Learning)
                 </div>
                 <div
                   data-testid="stat-learning-count"
-                  className="text-2xl font-bold text-orange-950 mt-1 font-mono"
+                  className="text-2xl font-bold text-orange-950 dark:text-orange-200 mt-1 font-mono"
                 >
                   {flashcardStats?.learningCards ?? 0}
                 </div>
               </div>
 
-              <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-xl">
-                <div className="text-[11px] font-medium text-emerald-800 uppercase tracking-wider">
+              <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
+                <div className="text-[11px] font-medium text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
                   Đang ôn (Review)
                 </div>
                 <div
                   data-testid="stat-review-count"
-                  className="text-2xl font-bold text-emerald-950 mt-1 font-mono"
+                  className="text-2xl font-bold text-emerald-950 dark:text-emerald-200 mt-1 font-mono"
                 >
                   {flashcardStats?.reviewCards ?? 0}
                 </div>
               </div>
 
-              <div className="p-3.5 bg-stone-50/70 border border-stone-200/80 rounded-xl col-span-2 sm:col-span-1">
-                <div className="text-[11px] font-medium text-stone-700 uppercase tracking-wider">
+              <div className="p-3.5 bg-stone-50/70 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-800 rounded-xl col-span-2 sm:col-span-1">
+                <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300 uppercase tracking-wider">
                   Tỷ lệ ghi nhớ
                 </div>
                 <div
                   data-testid="stat-retention-rate"
-                  className="text-2xl font-bold text-stone-900 mt-1 font-mono"
+                  className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono"
                 >
                   {flashcardStats?.retentionRate !== undefined ? `${flashcardStats.retentionRate}%` : "0%"}
                 </div>
@@ -1248,7 +1250,7 @@ export function TopicDetail() {
             <div className="pt-2">
               <FlashcardAnalyticsWidget topicId={topic.id} />
             </div>
-          </div>
+          </SurfaceCard>
         </div>
       )}
 
