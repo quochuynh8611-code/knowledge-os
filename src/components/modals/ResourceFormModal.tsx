@@ -160,22 +160,32 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={initialResource ? 'Chỉnh sửa tài liệu' : 'Thêm tài liệu nghiên cứu'}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 flex items-center justify-center font-bold border border-indigo-200 dark:border-indigo-800">
               <Link className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 font-serif-title">
                 {initialResource ? 'Chỉnh Sửa Tài Liệu' : 'Thêm Tài Liệu Nghiên Cứu'}
               </h2>
-              <p className="text-xs text-stone-600">Sách, Bài báo, PDF, Video, Audio</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Sách, Bài báo, PDF, Video, Audio</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Đóng"
+            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -183,13 +193,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Chủ đề liên kết *
             </label>
             <select
               value={topicId}
               onChange={(e) => setTopicId(e.target.value)}
-              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+              className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               {topics.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -201,7 +211,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
           {/* Type Selector */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Định dạng tài liệu
             </label>
             <div className="grid grid-cols-5 gap-1.5">
@@ -220,11 +230,11 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                     onClick={() => setType(item.type as ResourceType)}
                     className={`py-2 px-1 rounded-xl border text-xs font-medium flex flex-col items-center gap-1 transition ${
                       type === item.type
-                        ? 'bg-indigo-100 border-indigo-400 text-indigo-950 font-bold'
-                        : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                        ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-400 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 font-bold'
+                        : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-indigo-600" />
+                    <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -234,7 +244,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
           {/* Source Mode Switcher */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Nguồn tài liệu *
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -247,11 +257,11 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                 }}
                 className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                   sourceMode === 'web'
-                    ? 'bg-indigo-100 border-indigo-400 text-indigo-950 shadow-2xs font-bold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-400 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 shadow-2xs font-bold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <Globe className="w-3.5 h-3.5 text-indigo-600" />
+                <Globe className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Đường dẫn Web</span>
               </button>
 
@@ -263,18 +273,18 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                 }}
                 className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
                   sourceMode === 'local'
-                    ? 'bg-indigo-100 border-indigo-400 text-indigo-950 shadow-2xs font-bold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-indigo-100 dark:bg-indigo-950/80 border-indigo-400 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 shadow-2xs font-bold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                <FileText className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Tệp trên máy</span>
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Tiêu đề tài liệu *
             </label>
             <input
@@ -283,13 +293,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Thắng Pháp Tập Yếu Luận hoặc Bát Môn Trận Đồ PDF..."
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
                 Tác giả / Dịch giả
               </label>
               <input
@@ -297,12 +307,12 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
                 placeholder="VD: HT. Thích Minh Châu..."
-                className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm"
+                className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
                 {sourceMode === 'web' ? 'Liên kết tham chiếu (URL Web) *' : 'Đường dẫn tệp cục bộ (filePath) *'}
               </label>
               {sourceMode === 'web' ? (
@@ -312,7 +322,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+                  className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               ) : (
                 <div className="space-y-1.5">
@@ -327,9 +337,9 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl border border-stone-300 flex items-center gap-1.5 transition shrink-0"
+                      className="px-3 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-700 flex items-center gap-1.5 transition shrink-0"
                     >
-                      <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
+                      <FolderOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>Duyệt tệp trên máy</span>
                     </button>
                     <input
@@ -340,13 +350,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                         setFormError(null);
                       }}
                       placeholder="Đường dẫn tệp (/Users/.../KinhDien.pdf hoặc D:\...)..."
-                      className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600 font-mono text-xs"
+                      className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
                     />
                   </div>
 
                   {isPathOutsideRoot && (
-                    <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 rounded-xl text-xs flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-semibold">Cảnh báo sao lưu: </span>
                         <span>
@@ -356,7 +366,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                     </div>
                   )}
 
-                  <p className="text-[11px] text-stone-500 leading-tight">
+                  <p className="text-[11px] text-stone-400 dark:text-stone-500 leading-tight">
                     * Trình duyệt bảo mật không đọc được đường dẫn tuyệt đối (C:\ hoặc /Users/...). Đã tự động điền tên tệp; bạn có thể chỉnh sửa hoặc thêm tiền tố thư mục nếu cần.
                   </p>
                 </div>
@@ -366,24 +376,24 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
           {/* Open Target Custom Override Field */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5 flex items-center justify-between">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5 flex items-center justify-between">
               <span>Đích mở nội dung (openTarget - tùy chọn)</span>
-              <span className="text-[10px] lowercase text-stone-500 font-normal">ưu tiên khi bấm "Mở tài liệu"</span>
+              <span className="text-[10px] lowercase text-stone-400 dark:text-stone-500 font-normal">ưu tiên khi bấm "Mở tài liệu"</span>
             </label>
             <input
               type="text"
               value={openTarget}
               onChange={(e) => setOpenTarget(e.target.value)}
               placeholder="VD: drive.google.com/... hoặc obsidian://... (để trống sẽ tự động dùng liên kết trên)"
-              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-indigo-600"
+              className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-            <p className="text-[11px] text-stone-500 mt-1 leading-tight">
+            <p className="text-[11px] text-stone-400 dark:text-stone-500 mt-1 leading-tight">
               * Đích mở trực tiếp khi bấm nút "Mở Tài Liệu". Nếu để trống, hệ thống sẽ tự động fallback sang Liên kết tham chiếu hoặc Tệp cục bộ.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Ghi chú thêm về tài liệu
             </label>
             <textarea
@@ -391,23 +401,23 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Tóm lược trọng điểm hoặc chương tham khảo quan trọng..."
-              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm"
+              className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           {formError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs rounded-xl flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>{formError}</span>
             </div>
           )}
 
           {/* Footer */}
-          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200 dark:border-stone-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-600 hover:bg-stone-200 text-sm font-medium rounded-xl"
+              className="px-4 py-2 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 text-sm font-medium rounded-xl transition"
             >
               Hủy bỏ
             </button>

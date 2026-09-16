@@ -157,12 +157,12 @@ export function VaultSelector({ onVaultSwitched, className = "" }: VaultSelector
 
         <div
           title="Chọn Obsidian Vault (Alt + V)"
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-stone-200 hover:border-purple-300 focus-within:border-purple-400 rounded-lg shadow-xs transition text-xs text-stone-700"
+          className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:border-purple-300 dark:hover:border-purple-500/50 focus-within:border-purple-400 rounded-xl shadow-xs transition text-xs text-stone-700 dark:text-stone-300"
         >
           {isSwitching ? (
-            <Loader2 className="w-3.5 h-3.5 text-purple-600 animate-spin shrink-0" />
+            <Loader2 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 animate-spin shrink-0" />
           ) : (
-            <Folder className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <Folder className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           )}
 
           <select
@@ -174,20 +174,20 @@ export function VaultSelector({ onVaultSwitched, className = "" }: VaultSelector
             disabled={isLoading || isSwitching || vaults.length === 0}
             value={activeVaultId}
             onChange={handleSelectVault}
-            className="bg-transparent font-medium text-stone-800 outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 pr-1 text-xs"
+            className="bg-transparent font-medium text-stone-800 dark:text-stone-200 outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 pr-1 text-xs"
           >
             {hasRecentSection ? (
               <>
-                <optgroup label="Gần đây (Recent)">
+                <optgroup label="Gần đây (Recent)" className="dark:bg-stone-800 dark:text-stone-300">
                   {recentVaults.map((vault) => (
-                    <option key={`recent-${vault.vaultId}`} value={vault.vaultId}>
+                    <option key={`recent-${vault.vaultId}`} value={vault.vaultId} className="dark:bg-stone-800 dark:text-stone-200">
                       {getVaultIcon(vault.vaultId, vault.label)} {vault.label}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="Tất cả Vaults">
+                <optgroup label="Tất cả Vaults" className="dark:bg-stone-800 dark:text-stone-300">
                   {otherVaults.map((vault) => (
-                    <option key={`all-${vault.vaultId}`} value={vault.vaultId}>
+                    <option key={`all-${vault.vaultId}`} value={vault.vaultId} className="dark:bg-stone-800 dark:text-stone-200">
                       {getVaultIcon(vault.vaultId, vault.label)} {vault.label}
                     </option>
                   ))}
@@ -195,7 +195,7 @@ export function VaultSelector({ onVaultSwitched, className = "" }: VaultSelector
               </>
             ) : (
               vaults.map((vault) => (
-                <option key={vault.vaultId} value={vault.vaultId}>
+                <option key={vault.vaultId} value={vault.vaultId} className="dark:bg-stone-800 dark:text-stone-200">
                   {getVaultIcon(vault.vaultId, vault.label)} {vault.label}
                 </option>
               ))
@@ -203,7 +203,6 @@ export function VaultSelector({ onVaultSwitched, className = "" }: VaultSelector
           </select>
         </div>
       </div>
-
     </div>
   );
 }

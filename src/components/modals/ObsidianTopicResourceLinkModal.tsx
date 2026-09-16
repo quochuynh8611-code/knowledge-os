@@ -69,17 +69,27 @@ export function ObsidianTopicResourceLinkModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-white border border-stone-200 rounded-2xl w-full max-w-lg shadow-xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Liên kết ghi chú Obsidian"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-lg shadow-xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 bg-stone-50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80">
           <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-700" />
-            <h2 className="text-sm font-bold text-stone-900">Liên kết ghi chú Obsidian</h2>
+            <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+              <FileText className="w-4 h-4" />
+            </div>
+            <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 font-serif-title">
+              Liên kết ghi chú Obsidian
+            </h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-stone-400 hover:text-stone-700 rounded-lg"
+            aria-label="Đóng"
+            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
             type="button"
           >
             <X className="w-4 h-4" />
@@ -91,7 +101,7 @@ export function ObsidianTopicResourceLinkModal({
           <div>
             <label
               htmlFor="obsidian-relative-path"
-              className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1"
+              className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1"
             >
               Đường dẫn tương đối trong Vault
             </label>
@@ -104,26 +114,26 @@ export function ObsidianTopicResourceLinkModal({
                 if (errorMessage) setErrorMessage(null);
               }}
               placeholder="Ví dụ: Phat-Hoc/Bat-Chanh-Dao.md"
-              className="w-full px-3 py-2 border border-stone-300 rounded-xl text-xs focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
               autoFocus
             />
-            <p className="mt-1 text-[11px] text-stone-500">
+            <p className="mt-1 text-[11px] text-stone-400 dark:text-stone-500">
               Đường dẫn bắt đầu từ gốc của Vault <strong>{vaultName || 'Obsidian'}</strong>, bao gồm đuôi .md hoặc .markdown.
             </p>
           </div>
 
           {errorMessage && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-800 text-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl flex items-start gap-2 text-rose-800 dark:text-rose-200 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
               <div className="leading-relaxed">{errorMessage}</div>
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs text-stone-600 hover:text-stone-900 font-medium"
+              className="px-3.5 py-1.5 text-xs text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 font-medium rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 transition"
             >
               Hủy
             </button>

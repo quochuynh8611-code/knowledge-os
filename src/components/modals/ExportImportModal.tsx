@@ -406,25 +406,30 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="export-import-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-xs"
+    >
+      <div className="bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-100 dark:bg-stone-800/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-stone-200 text-stone-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 flex items-center justify-center font-bold">
               <Database className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-stone-900">Quản Lý &amp; Sao Lưu Dữ Liệu</h2>
+                <h2 id="export-import-title" className="text-lg font-semibold text-stone-900 dark:text-stone-100">Quản Lý &amp; Sao Lưu Dữ Liệu</h2>
                 {dbHealth && !isOfflineCapability && (
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                       dbHealth.status === 'healthy'
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                         : dbHealth.status === 'degraded'
-                        ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                        : 'bg-rose-100 text-rose-800 border border-rose-200'
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                        : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                     }`}
                   >
                     <Activity className="w-2.5 h-2.5" />
@@ -433,18 +438,18 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                   </span>
                 )}
               </div>
-              <p className="text-xs text-stone-600">Disaster Recovery, Snapshot Semver 2.x, Báo cáo &amp; Khôi phục</p>
+              <p className="text-xs text-stone-600 dark:text-stone-400">Disaster Recovery, Snapshot Semver 2.x, Báo cáo &amp; Khôi phục</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-stone-500 hover:text-stone-800 rounded-lg">
+          <button onClick={onClose} aria-label="Đóng" className="p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-lg cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Offline Capability Notice Banner */}
         {isOfflineCapability && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800/80 px-6 py-2 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>
               Kho lưu trữ cục bộ (LocalStorage): Tính năng sao lưu máy chủ &amp; kiểm tra trạng thái không được hỗ trợ ở chế độ offline.
             </span>
@@ -453,8 +458,8 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
         {/* Connection Error Banner */}
         {connectionError && !isOfflineCapability && (
-          <div className="bg-rose-50 border-b border-rose-200 px-6 py-2 text-xs text-rose-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="bg-rose-50 dark:bg-rose-950/50 border-b border-rose-200 dark:border-rose-800/80 px-6 py-2 text-xs text-rose-800 dark:text-rose-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
             <span>
               {connectionError}
             </span>
@@ -462,14 +467,14 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
         )}
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-stone-200 px-6 bg-stone-100/50">
+        <div className="flex border-b border-stone-200 dark:border-stone-800 px-6 bg-stone-100/50 dark:bg-stone-800/40 overflow-x-auto">
           <button
             data-testid="tab-export"
             onClick={() => setActiveTab('export')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'export'
-                ? 'border-amber-700 text-amber-900'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
+                ? 'border-amber-700 dark:border-amber-500 text-amber-900 dark:text-amber-300'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
             <Download className="w-3.5 h-3.5" /> Xuất JSON
@@ -477,10 +482,10 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           <button
             data-testid="tab-markdown"
             onClick={() => setActiveTab('markdown')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'markdown'
-                ? 'border-amber-700 text-amber-900'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
+                ? 'border-amber-700 dark:border-amber-500 text-amber-900 dark:text-amber-300'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
             <FileText className="w-3.5 h-3.5" /> Báo cáo Markdown
@@ -488,10 +493,10 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           <button
             data-testid="tab-file-library"
             onClick={() => setActiveTab('manifest')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'manifest'
-                ? 'border-indigo-700 text-indigo-900'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
+                ? 'border-indigo-700 dark:border-indigo-400 text-indigo-900 dark:text-indigo-300'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
             <Library className="w-3.5 h-3.5" /> Kiểm toán tệp &amp; Manifest
@@ -499,10 +504,10 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           <button
             data-testid="tab-import"
             onClick={() => setActiveTab('import')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'import'
-                ? 'border-amber-700 text-amber-900'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
+                ? 'border-amber-700 dark:border-amber-500 text-amber-900 dark:text-amber-300'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
             <Upload className="w-3.5 h-3.5" /> Nhập Dữ Liệu
@@ -510,10 +515,10 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           <button
             data-testid="tab-reset"
             onClick={() => setActiveTab('reset')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
+            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'reset'
-                ? 'border-rose-600 text-rose-700'
-                : 'border-transparent text-stone-600 hover:text-stone-900'
+                ? 'border-rose-600 dark:border-rose-500 text-rose-700 dark:text-rose-400'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
             <RefreshCw className="w-3.5 h-3.5" /> Đặt Lại Dữ Liệu Mẫu
@@ -524,13 +529,13 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
         <div className="p-6 overflow-y-auto flex-1">
           {activeTab === 'export' && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-stone-600 dark:text-stone-400">
                 Xuất toàn bộ hệ thống gồm {topics.length} chủ đề, {notes.length} ghi chú, tài liệu và tiến độ học tập thành file JSON tiêu chuẩn Semver 2.x có mã băm SHA-256 để lưu trữ an toàn.
               </p>
 
               {/* Safety Disambiguation Note */}
-              <div className="p-3.5 bg-amber-50/90 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-xs text-amber-900 dark:text-amber-300 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Lưu ý phân định bản sao lưu: </span>
                   <span>
@@ -542,13 +547,13 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleDownloadServerSnapshot}
-                  className="flex-1 py-3 px-4 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition"
+                  className="flex-1 py-3 px-4 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Tải Xuống Bản Sao Lưu Máy Chủ (.json)
                 </button>
                 <button
                   onClick={handleCopyJSON}
-                  className="py-3 px-4 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition"
+                  className="py-3 px-4 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                   {copied ? 'Đã sao chép!' : 'Sao chép JSON'}
@@ -559,12 +564,12 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
           {activeTab === 'markdown' && (
             <div className="space-y-4">
-              <p className="text-sm text-stone-600">
+              <p className="text-sm text-stone-600 dark:text-stone-400">
                 Tổng hợp toàn bộ tài liệu, giáo án phân tích Abhidharma, Tam Thức, Kinh Dịch và ghi chú thành một tài liệu Markdown hoàn chỉnh tương thích Obsidian và Notion.
               </p>
               <button
                 onClick={handleDownloadMarkdown}
-                className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition"
+                className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
               >
                 <FileText className="w-4 h-4" /> Xuất Báo Cáo Markdown Toàn Bộ (.md)
               </button>
@@ -575,46 +580,46 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
             <div className="space-y-5">
               {/* Header & Disambiguation Card */}
               <div>
-                <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                  <Library className="w-4 h-4 text-indigo-700" />
+                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <Library className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
                   Bảng Kê Kiểm Toán Thư Viện Tệp (File Library Manifest)
                 </h3>
-                <p className="text-xs text-stone-600 mt-1">
+                <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
                   Kiểm toán danh mục đường dẫn các tệp PDF, âm thanh, video và tài liệu nghiên cứu vật lý trên máy tính.
                 </p>
               </div>
 
               {/* 3 Pillars Architecture Clarification */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-                <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl space-y-1">
-                  <div className="font-semibold text-amber-900 flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-amber-700" /> 1. App Snapshot
+                <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-xl space-y-1">
+                  <div className="font-semibold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> 1. App Snapshot
                   </div>
-                  <p className="text-[11px] text-amber-800">
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300/80">
                     Chứa toàn bộ ghi chú, chủ đề, tiến độ SM-2 (Logic state).
                   </p>
                 </div>
-                <div className="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl space-y-1">
-                  <div className="font-semibold text-indigo-900 flex items-center gap-1.5">
-                    <Library className="w-3.5 h-3.5 text-indigo-700" /> 2. File Manifest
+                <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl space-y-1">
+                  <div className="font-semibold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                    <Library className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" /> 2. File Manifest
                   </div>
-                  <p className="text-[11px] text-indigo-800">
+                  <p className="text-[11px] text-indigo-800 dark:text-indigo-300/80">
                     Bảng kê danh mục đường dẫn tệp vật lý để kiểm toán sao lưu.
                   </p>
                 </div>
-                <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-xl space-y-1">
-                  <div className="font-semibold text-emerald-900 flex items-center gap-1.5">
-                    <HardDrive className="w-3.5 h-3.5 text-emerald-700" /> 3. Thư Mục File Thật
+                <div className="p-3 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl space-y-1">
+                  <div className="font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" /> 3. Thư Mục File Thật
                   </div>
-                  <p className="text-[11px] text-emerald-800">
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300/80">
                     Thư mục chứa các tệp PDF, Audio gốc trên ổ cứng máy tính.
                   </p>
                 </div>
               </div>
 
               {/* Prominent Warning Callout */}
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-900">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-xl flex items-start gap-2.5 text-xs text-rose-900 dark:text-rose-300">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Lưu ý an toàn sao lưu: </span>
                   <span>
@@ -624,31 +629,31 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
               </div>
 
               {/* Recommended Folder Structure Guidance */}
-              <div className="p-4 bg-stone-100/80 border border-stone-200 rounded-xl space-y-2.5">
-                <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <FolderOpen className="w-3.5 h-3.5 text-indigo-700" />
+              <div className="p-4 bg-stone-100/80 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-800 rounded-xl space-y-2.5">
+                <h4 className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" />
                   Cấu trúc thư mục đề xuất trên máy (Knowledge-Library)
                 </h4>
-                <p className="text-[11px] text-stone-600">
+                <p className="text-[11px] text-stone-600 dark:text-stone-400">
                   Để thuận tiện cho việc kiểm toán và sao lưu toàn diện, bạn nên tổ chức các tệp theo cấu trúc chuẩn:
                 </p>
-                <div className="bg-white p-3 rounded-lg border border-stone-200 font-mono text-[11px] text-stone-800 space-y-1">
-                  <div className="font-bold text-indigo-900">Knowledge-Library/</div>
-                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-rose-700">PDF/</span> (Sách, giáo trình, bài báo học thuật, luận văn PDF)</div>
-                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-amber-700">Notes/</span> (Bản dịch thô, trích yếu, tệp Markdown ghi chép ngoài)</div>
-                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-sky-700">Attachments/</span> (Biểu đồ, hình ảnh minh họa, tệp âm thanh/video bài giảng)</div>
-                  <div className="pl-4 text-stone-700">├── <span className="font-semibold text-stone-600">Inbox/</span> (Tài liệu mới thu thập chờ phân loại và gắn vào topic)</div>
-                  <div className="pl-4 text-stone-700">└── <span className="font-semibold text-emerald-700">Exports/</span> (Nơi lưu trữ các tệp Snapshot JSON và File Manifest JSON)</div>
+                <div className="bg-white dark:bg-stone-900 p-3 rounded-lg border border-stone-200 dark:border-stone-800 font-mono text-[11px] text-stone-800 dark:text-stone-200 space-y-1">
+                  <div className="font-bold text-indigo-900 dark:text-indigo-300">Knowledge-Library/</div>
+                  <div className="pl-4 text-stone-700 dark:text-stone-300">├── <span className="font-semibold text-rose-700 dark:text-rose-400">PDF/</span> (Sách, giáo trình, bài báo học thuật, luận văn PDF)</div>
+                  <div className="pl-4 text-stone-700 dark:text-stone-300">├── <span className="font-semibold text-amber-700 dark:text-amber-400">Notes/</span> (Bản dịch thô, trích yếu, tệp Markdown ghi chép ngoài)</div>
+                  <div className="pl-4 text-stone-700 dark:text-stone-300">├── <span className="font-semibold text-sky-700 dark:text-sky-400">Attachments/</span> (Biểu đồ, hình ảnh minh họa, tệp âm thanh/video bài giảng)</div>
+                  <div className="pl-4 text-stone-700 dark:text-stone-300">├── <span className="font-semibold text-stone-600 dark:text-stone-400">Inbox/</span> (Tài liệu mới thu thập chờ phân loại và gắn vào topic)</div>
+                  <div className="pl-4 text-stone-700 dark:text-stone-300">└── <span className="font-semibold text-emerald-700 dark:text-emerald-400">Exports/</span> (Nơi lưu trữ các tệp Snapshot JSON và File Manifest JSON)</div>
                 </div>
               </div>
 
               {/* Canonical Library Root Config Form */}
-              <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3">
-                <label className="block text-xs font-semibold text-stone-800 flex items-center justify-between">
+              <div className="p-4 bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-800 rounded-xl space-y-3">
+                <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center justify-between">
                   <span className="flex items-center gap-1.5">
-                    <FolderOpen className="w-3.5 h-3.5 text-stone-600" /> Thư Mục Thư Viện Gốc Chuẩn (Canonical Library Root)
+                    <FolderOpen className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" /> Thư Mục Thư Viện Gốc Chuẩn (Canonical Library Root)
                   </span>
-                  <span className="text-[10px] text-stone-500 font-normal">Tùy chọn</span>
+                  <span className="text-[10px] text-stone-500 dark:text-stone-400 font-normal">Tùy chọn</span>
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -656,7 +661,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                     value={libraryRootPath}
                     onChange={(e) => handleLibraryRootChange(e.target.value)}
                     placeholder="/Users/username/Knowledge-Library hoặc D:\Knowledge-Library"
-                    className="flex-1 px-3 py-2 bg-stone-50 border border-stone-300 rounded-lg text-xs font-mono focus:bg-white focus:ring-2 focus:ring-indigo-600"
+                    className="flex-1 px-3 py-2 bg-stone-50 dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-lg text-xs font-mono text-stone-900 dark:text-stone-100 focus:bg-white dark:focus:bg-stone-950 focus:ring-2 focus:ring-indigo-600"
                   />
                   <button
                     type="button"
@@ -666,50 +671,50 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                       setSaveFeedback('Đã lưu cấu hình thư viện!');
                       setTimeout(() => setSaveFeedback(null), 2500);
                     }}
-                    className="px-3 py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-medium transition shrink-0"
+                    className="px-3 py-2 bg-stone-800 dark:bg-stone-700 hover:bg-stone-900 dark:hover:bg-stone-600 text-white rounded-lg text-xs font-medium transition shrink-0 cursor-pointer"
                   >
                     Lưu cấu hình
                   </button>
                 </div>
 
                 {saveFeedback && (
-                  <div className="p-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-lg flex items-center gap-1.5">
+                  <div className="p-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs rounded-lg flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>{saveFeedback}</span>
                   </div>
                 )}
 
-                <p className="text-[11px] text-stone-500">
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
                   Dùng để phát hiện các tệp nằm rải rác ngoài thư mục chính để gom gọn khi sao lưu.
                 </p>
               </div>
 
               {/* Audit Summary Metrics Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
-                <div className="p-2.5 bg-stone-100 rounded-xl border border-stone-200">
-                  <div className="text-lg font-bold text-stone-900">{auditResult.summary.totalWithLocalPath}</div>
-                  <div className="text-[10px] text-stone-600 font-medium">Có đường dẫn</div>
+                <div className="p-2.5 bg-stone-100 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-800">
+                  <div className="text-lg font-bold text-stone-900 dark:text-stone-100">{auditResult.summary.totalWithLocalPath}</div>
+                  <div className="text-[10px] text-stone-600 dark:text-stone-400 font-medium">Có đường dẫn</div>
                 </div>
-                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
-                  <div className="text-lg font-bold text-emerald-800">{auditResult.summary.existingCount}</div>
-                  <div className="text-[10px] text-emerald-700 font-medium">Đã xác minh</div>
+                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                  <div className="text-lg font-bold text-emerald-800 dark:text-emerald-300">{auditResult.summary.existingCount}</div>
+                  <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">Đã xác minh</div>
                 </div>
-                <div className="p-2.5 bg-indigo-50 rounded-xl border border-indigo-200">
-                  <div className="text-lg font-bold text-indigo-800">{auditResult.summary.unverifiedCount}</div>
-                  <div className="text-[10px] text-indigo-700 font-medium">Chưa xác minh</div>
+                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/60">
+                  <div className="text-lg font-bold text-indigo-800 dark:text-indigo-300">{auditResult.summary.unverifiedCount}</div>
+                  <div className="text-[10px] text-indigo-700 dark:text-indigo-400 font-medium">Chưa xác minh</div>
                 </div>
-                <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200">
-                  <div className="text-lg font-bold text-rose-800">{auditResult.summary.missingCount}</div>
-                  <div className="text-[10px] text-rose-700 font-medium">Thất lạc</div>
+                <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800/60">
+                  <div className="text-lg font-bold text-rose-800 dark:text-rose-300">{auditResult.summary.missingCount}</div>
+                  <div className="text-[10px] text-rose-700 dark:text-rose-400 font-medium">Thất lạc</div>
                 </div>
-                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
-                  <div className="text-lg font-bold text-amber-800">{auditResult.summary.outsideLibraryCount}</div>
-                  <div className="text-[10px] text-amber-700 font-medium">Ngoài thư viện</div>
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800/60">
+                  <div className="text-lg font-bold text-amber-800 dark:text-amber-300">{auditResult.summary.outsideLibraryCount}</div>
+                  <div className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Ngoài thư viện</div>
                 </div>
               </div>
 
               {/* Browser Security Notice */}
-              <div className="p-3 bg-stone-100/70 border border-stone-200 rounded-xl flex items-center gap-2 text-[11px] text-stone-600">
+              <div className="p-3 bg-stone-100/70 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-800 rounded-xl flex items-center gap-2 text-[11px] text-stone-600 dark:text-stone-400">
                 <AlertCircle className="w-3.5 h-3.5 text-stone-500 shrink-0" />
                 <span>
                   Trình duyệt chạy trong sandbox bảo mật nên hiển thị "Chưa xác minh" dựa trên chuỗi đường dẫn và không tự ý quét ổ đĩa thật.
@@ -721,13 +726,13 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                 <button
                   data-testid="btn-export-file-manifest"
                   onClick={handleDownloadManifest}
-                  className="flex-1 py-2.5 px-4 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-xs transition"
+                  className="flex-1 py-2.5 px-4 bg-indigo-700 hover:bg-indigo-800 text-white rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
                 >
                   <Download className="w-4 h-4" /> Tải Xuống Bảng Kê Manifest (.json)
                 </button>
                 <button
                   onClick={handleCopyManifestJSON}
-                  className="py-2.5 px-4 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition"
+                  className="py-2.5 px-4 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
                 >
                   {manifestCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                   {manifestCopied ? 'Đã sao chép!' : 'Sao chép Manifest JSON'}
@@ -735,22 +740,22 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
               </div>
 
               {/* 3-Pillar Backup Checklist Component */}
-              <div className="p-4 bg-stone-100/70 border border-stone-200 rounded-xl space-y-3">
-                <h4 className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-emerald-700" />
+              <div className="p-4 bg-stone-100/70 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-800 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
                   Quy trình sao lưu toàn diện 3 thành phần (Checklist Sao Lưu)
                 </h4>
-                <div className="space-y-2 text-xs text-stone-700">
+                <div className="space-y-2 text-xs text-stone-700 dark:text-stone-300">
                   <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
+                    <span className="w-4 h-4 rounded-full bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">1</span>
                     <span><strong>Bước 1:</strong> Xuất bản sao lưu App Snapshot JSON từ tab "Xuất JSON".</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-indigo-200 text-indigo-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
+                    <span className="w-4 h-4 rounded-full bg-indigo-200 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">2</span>
                     <span><strong>Bước 2:</strong> Xuất Bảng Kê File Library Manifest JSON từ nút trên.</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-emerald-200 text-emerald-900 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
+                    <span className="w-4 h-4 rounded-full bg-emerald-200 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
                     <span><strong>Bước 3:</strong> Sao chép toàn bộ thư mục tệp vật lý (PDF/Media) sang ổ cứng sao lưu ngoài hoặc đám mây.</span>
                   </div>
                 </div>
@@ -761,8 +766,8 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           {activeTab === 'import' && (
             <div className="space-y-5">
               {/* Snapshot File Upload Section */}
-              <div className="p-4 bg-white border border-stone-200 rounded-xl space-y-3">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700">
+              <div className="p-4 bg-white dark:bg-stone-800/70 border border-stone-200 dark:border-stone-800 rounded-xl space-y-3">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
                   1. Nạp Tệp Bản Sao Lưu Snapshot (.json)
                 </label>
                 <input
@@ -770,23 +775,23 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                   accept=".json"
                   data-testid="snapshot-file-input"
                   onChange={handleSnapshotFileChange}
-                  className="block w-full text-xs text-stone-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100 cursor-pointer"
+                  className="block w-full text-xs text-stone-500 dark:text-stone-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 dark:file:bg-amber-950/60 file:text-amber-800 dark:file:text-amber-300 hover:file:bg-amber-100 dark:hover:file:bg-amber-900/60 cursor-pointer"
                 />
 
                 {parseError && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs rounded-xl flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                     <span>{parseError}</span>
                   </div>
                 )}
 
                 {parsedSnapshot && (
                   <div className="space-y-3 pt-2">
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-start gap-2">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold">Bản sao lưu hợp lệ (v{parsedSnapshot.version})</p>
-                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
                           Bao gồm: {parsedSnapshot.counts.categories} danh mục, {parsedSnapshot.counts.topics} chủ đề, {parsedSnapshot.counts.notes} ghi chú, {parsedSnapshot.counts.resources} tài liệu, {parsedSnapshot.counts.tags} thẻ.
                         </p>
                       </div>
@@ -794,15 +799,15 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
                     {/* Mode Selection */}
                     <div className="space-y-2">
-                      <label className="block text-xs font-semibold text-stone-700">
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
                         2. Chọn Chế Độ Khôi Phục:
                       </label>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <label
                           className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition ${
                             restoreMode === 'merge'
-                              ? 'bg-amber-50 border-amber-600 text-amber-900 font-medium'
-                              : 'bg-stone-50 border-stone-200 text-stone-700'
+                              ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-600 text-amber-900 dark:text-amber-300 font-medium'
+                              : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
                           }`}
                         >
                           <input
@@ -818,8 +823,8 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                         <label
                           className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition ${
                             restoreMode === 'replace'
-                              ? 'bg-rose-50 border-rose-600 text-rose-900 font-medium'
-                              : 'bg-stone-50 border-stone-200 text-stone-700'
+                              ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-600 text-rose-900 dark:text-rose-300 font-medium'
+                              : 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
                           }`}
                         >
                           <input
@@ -837,34 +842,34 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
                     {/* Restore Drill In-Memory Simulation Card */}
                     {drillResult && drillResult.drillSuccess && (
-                      <div className="p-3.5 bg-indigo-50/90 border border-indigo-200 rounded-xl space-y-2 text-xs">
+                      <div className="p-3.5 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl space-y-2 text-xs">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-indigo-900 flex items-center gap-1.5">
-                            <FlaskConical className="w-4 h-4 text-indigo-700" />
+                          <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                            <FlaskConical className="w-4 h-4 text-indigo-700 dark:text-indigo-400" />
                             Diễn Tập Khôi Phục (Restore Drill - In-Memory Dry Run)
                           </span>
-                          <span className="px-2 py-0.5 bg-indigo-200/80 text-indigo-900 rounded font-semibold text-[10px]">
+                          <span className="px-2 py-0.5 bg-indigo-200/80 dark:bg-indigo-900/80 text-indigo-900 dark:text-indigo-200 rounded font-semibold text-[10px]">
                             Mô phỏng an toàn
                           </span>
                         </div>
-                        <p className="text-[11px] text-indigo-800">
+                        <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
                           Kết quả dự kiến sau khi {restoreMode === 'replace' ? 'thay thế toàn bộ' : 'gộp dữ liệu'} (hoàn toàn không ghi đè dữ liệu thật):
                         </p>
                         <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-[11px]">
-                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
-                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.topics.length}</div>
-                            <div className="text-[9px] text-stone-500 font-sans">Chủ đề ({drillResult.simulatedImpact.topicsDelta >= 0 ? `+${drillResult.simulatedImpact.topicsDelta}` : drillResult.simulatedImpact.topicsDelta})</div>
+                          <div className="p-1.5 bg-white/80 dark:bg-stone-900/80 rounded border border-indigo-100 dark:border-indigo-900/60">
+                            <div className="font-bold text-indigo-950 dark:text-indigo-200">{drillResult.simulatedResultState.topics.length}</div>
+                            <div className="text-[9px] text-stone-500 dark:text-stone-400 font-sans">Chủ đề ({drillResult.simulatedImpact.topicsDelta >= 0 ? `+${drillResult.simulatedImpact.topicsDelta}` : drillResult.simulatedImpact.topicsDelta})</div>
                           </div>
-                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
-                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.notes.length}</div>
-                            <div className="text-[9px] text-stone-500 font-sans">Ghi chú ({drillResult.simulatedImpact.notesDelta >= 0 ? `+${drillResult.simulatedImpact.notesDelta}` : drillResult.simulatedImpact.notesDelta})</div>
+                          <div className="p-1.5 bg-white/80 dark:bg-stone-900/80 rounded border border-indigo-100 dark:border-indigo-900/60">
+                            <div className="font-bold text-indigo-950 dark:text-indigo-200">{drillResult.simulatedResultState.notes.length}</div>
+                            <div className="text-[9px] text-stone-500 dark:text-stone-400 font-sans">Ghi chú ({drillResult.simulatedImpact.notesDelta >= 0 ? `+${drillResult.simulatedImpact.notesDelta}` : drillResult.simulatedImpact.notesDelta})</div>
                           </div>
-                          <div className="p-1.5 bg-white/80 rounded border border-indigo-100">
-                            <div className="font-bold text-indigo-950">{drillResult.simulatedResultState.resources.length}</div>
-                            <div className="text-[9px] text-stone-500 font-sans">Tài liệu ({drillResult.simulatedImpact.resourcesDelta >= 0 ? `+${drillResult.simulatedImpact.resourcesDelta}` : drillResult.simulatedImpact.resourcesDelta})</div>
+                          <div className="p-1.5 bg-white/80 dark:bg-stone-900/80 rounded border border-indigo-100 dark:border-indigo-900/60">
+                            <div className="font-bold text-indigo-950 dark:text-indigo-200">{drillResult.simulatedResultState.resources.length}</div>
+                            <div className="text-[9px] text-stone-500 dark:text-stone-400 font-sans">Tài liệu ({drillResult.simulatedImpact.resourcesDelta >= 0 ? `+${drillResult.simulatedImpact.resourcesDelta}` : drillResult.simulatedImpact.resourcesDelta})</div>
                           </div>
                         </div>
-                        <div className="text-[10px] text-indigo-700 italic">
+                        <div className="text-[10px] text-indigo-700 dark:text-indigo-400 italic">
                           * Diễn tập chạy trong bộ nhớ đệm (RAM), chưa thực hiện bất kỳ thay đổi nào vào cơ sở dữ liệu thật.
                         </div>
                       </div>
@@ -872,12 +877,12 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
                     {/* Confirmation Gate for Replace Mode */}
                     {restoreMode === 'replace' && (
-                      <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl space-y-2 text-xs">
-                        <div className="flex items-center gap-2 text-rose-800 font-semibold">
-                          <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                      <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 rounded-xl space-y-2 text-xs">
+                        <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-semibold">
+                          <ShieldAlert className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                           <span>Cảnh Báo Xóa Dữ Liệu (Confirmation Gate)</span>
                         </div>
-                        <p className="text-rose-700">
+                        <p className="text-rose-700 dark:text-rose-300">
                           Chế độ thay thế sẽ xóa trắng toàn bộ dữ liệu hiện tại trên máy chủ. Để tiếp tục, vui lòng nhập chính xác cụm từ: <span className="font-mono font-bold">XÁC NHẬN THAY THẾ</span>
                         </p>
                         <input
@@ -885,7 +890,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                           value={confirmReplaceText}
                           onChange={(e) => setConfirmReplaceText(e.target.value)}
                           placeholder="XÁC NHẬN THAY THẾ"
-                          className="w-full p-2 bg-white border border-rose-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-rose-600 focus:border-rose-600"
+                          className="w-full p-2 bg-white dark:bg-stone-900 border border-rose-300 dark:border-rose-700 rounded-lg text-xs font-mono text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-rose-600 focus:border-rose-600"
                         />
                       </div>
                     )}
@@ -894,10 +899,10 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                     <button
                       onClick={handleRestoreSubmit}
                       disabled={isSubmitting || !!parseError || isReplaceActionDisabled}
-                      className={`w-full py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 ${
+                      className={`w-full py-2.5 rounded-xl text-sm font-medium transition flex items-center justify-center gap-2 cursor-pointer ${
                         restoreMode === 'replace'
-                          ? 'bg-rose-600 hover:bg-rose-700 text-white disabled:bg-stone-300 disabled:text-stone-500 disabled:cursor-not-allowed'
-                          : 'bg-amber-700 hover:bg-amber-800 text-white disabled:bg-stone-300 disabled:text-stone-500 disabled:cursor-not-allowed'
+                          ? 'bg-rose-600 hover:bg-rose-700 text-white disabled:bg-stone-300 dark:disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed'
+                          : 'bg-amber-700 hover:bg-amber-800 text-white disabled:bg-stone-300 dark:disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed'
                       }`}
                     >
                       <Upload className="w-4 h-4" />
@@ -913,29 +918,29 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
               {/* Status Banners */}
               {restoreStatus === 'completed' && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>Khôi phục dữ liệu thành công! Trạng thái đã được nạp lại.</span>
                 </div>
               )}
 
               {restoreStatus === 'rehydrate_failed' && (
-                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>Lỗi nạp dữ liệu cục bộ (Rehydration Failed). Dữ liệu máy chủ đã lưu nhưng state cục bộ chưa làm tươi. Vui lòng tải lại.</span>
                 </div>
               )}
 
               {restoreStatus === 'error' && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>Không thể hoàn tất khôi phục dữ liệu! Vui lòng thử lại.</span>
                 </div>
               )}
 
               {/* Legacy Textarea Import Form (Fallback) */}
-              <form onSubmit={handleLegacyImportSubmit} className="space-y-3 pt-2 border-t border-stone-200">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600">
+              <form onSubmit={handleLegacyImportSubmit} className="space-y-3 pt-2 border-t border-stone-200 dark:border-stone-800">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
                   Hoặc Dán Nội Dung JSON Trực Tiếp:
                 </label>
                 <textarea
@@ -943,23 +948,23 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                   placeholder='{ "categories": [...], "topics": [...], "notes": [...] }'
-                  className="w-full p-3 font-mono text-xs bg-white border border-stone-300 rounded-xl focus:ring-2 focus:ring-amber-700"
+                  className="w-full p-3 font-mono text-xs bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 rounded-xl focus:ring-2 focus:ring-amber-700"
                 />
 
                 {legacyImportStatus === 'success' && (
-                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs rounded-xl flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Nhập dữ liệu thành công!
                   </div>
                 )}
                 {legacyImportStatus === 'error' && (
-                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl flex items-center gap-2">
+                  <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs rounded-xl flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-rose-600" /> Định dạng JSON không hợp lệ! Vui lòng kiểm tra lại cấu trúc.
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  className="w-full py-2 bg-stone-800 hover:bg-stone-900 text-white rounded-xl text-xs font-medium transition flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-stone-800 dark:bg-stone-700 hover:bg-stone-900 dark:hover:bg-stone-600 text-white rounded-xl text-xs font-medium transition flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Upload className="w-3.5 h-3.5" /> Nạp Dữ Liệu Thủ Công (Legacy JSON)
                 </button>
@@ -970,18 +975,18 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
           {activeTab === 'reset' && (
             <div className="space-y-4 py-2">
               <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 flex items-center justify-center mx-auto mb-3">
                   <RefreshCw className="w-6 h-6" />
                 </div>
-                <h3 className="font-semibold text-stone-900 text-base">Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu?</h3>
-                <p className="text-xs text-stone-600 max-w-lg mx-auto mt-1.5 leading-relaxed">
+                <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-base">Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu?</h3>
+                <p className="text-xs text-stone-600 dark:text-stone-400 max-w-lg mx-auto mt-1.5 leading-relaxed">
                   Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt, sau đó nạp lại bộ dữ liệu mẫu ban đầu: Phật Học, Huyền Học, Đông Y và Học Ngôn Ngữ.
                 </p>
               </div>
 
               {/* Warning Notice */}
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-900">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Lưu ý quan trọng: </span>
                   <span>dữ liệu nghiên cứu cá nhân hóa, chủ đề, ghi chú, tài liệu và thẻ của bạn sẽ bị xóa. Thao tác này không thể hoàn tác nếu bạn chưa tạo bản sao lưu.</span>
@@ -992,13 +997,13 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
               <button
                 type="button"
                 onClick={handleDownloadServerSnapshot}
-                className="w-full py-2.5 px-4 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition"
+                className="w-full py-2.5 px-4 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" /> Tải xuống bản sao lưu JSON trước khi đặt lại
               </button>
 
               {/* Acknowledgement Checkbox */}
-              <label className="flex items-start gap-2.5 text-left text-xs text-stone-700 bg-white p-3 rounded-xl border border-stone-200 cursor-pointer select-none">
+              <label className="flex items-start gap-2.5 text-left text-xs text-stone-700 dark:text-stone-300 bg-white dark:bg-stone-800/60 p-3 rounded-xl border border-stone-200 dark:border-stone-800 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   data-testid="reset-ack-checkbox"
@@ -1014,7 +1019,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                 data-testid="btn-confirm-reset"
                 onClick={handleResetConfirm}
                 disabled={!isResetAcknowledged}
-                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold transition disabled:bg-stone-300 disabled:text-stone-500 disabled:cursor-not-allowed"
+                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-semibold transition disabled:bg-stone-300 dark:disabled:bg-stone-800 disabled:text-stone-500 disabled:cursor-not-allowed cursor-pointer"
               >
                 Xác nhận đặt lại dữ liệu mẫu
               </button>

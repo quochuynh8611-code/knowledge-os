@@ -103,24 +103,31 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={initialNote ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú chuyên sâu'}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold border border-emerald-200 dark:border-emerald-800">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 font-serif-title">
                 {initialNote ? 'Chỉnh Sửa Ghi Chú' : 'Thêm Ghi Chú Chuyên Sâu'}
               </h2>
-              <p className="text-xs text-stone-600">Hỗ trợ liên kết Wiki [[Tên chủ đề]]</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Hỗ trợ liên kết Wiki [[Tên chủ đề]]</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 rounded-lg transition"
+            aria-label="Đóng"
+            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -129,13 +136,13 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
         {/* Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Chủ đề liên kết *
             </label>
             <select
               value={topicId}
               onChange={(e) => setTopicId(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               {topics.map((t) => {
                 const domainLabel =
@@ -153,7 +160,7 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
 
           {/* Note Type Selector */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Phân loại ghi chú
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -162,50 +169,50 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
                 onClick={() => setType('study')}
                 className={`py-2 px-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   type === 'study'
-                    ? 'bg-blue-100 border-blue-400 text-blue-900 font-semibold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-blue-100 dark:bg-blue-950/80 border-blue-400 dark:border-blue-700 text-blue-900 dark:text-blue-200 font-semibold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5 text-blue-600" /> Học tập
+                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Học tập
               </button>
               <button
                 type="button"
                 onClick={() => setType('insight')}
                 className={`py-2 px-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   type === 'insight'
-                    ? 'bg-amber-100 border-amber-400 text-amber-900 font-semibold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-400 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-semibold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <Lightbulb className="w-3.5 h-3.5 text-amber-600" /> Chiêm nghiệm
+                <Lightbulb className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> Chiêm nghiệm
               </button>
               <button
                 type="button"
                 onClick={() => setType('question')}
                 className={`py-2 px-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   type === 'question'
-                    ? 'bg-rose-100 border-rose-400 text-rose-900 font-semibold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-rose-100 dark:bg-rose-950/80 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200 font-semibold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <HelpCircle className="w-3.5 h-3.5 text-rose-600" /> Thắc mắc
+                <HelpCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /> Thắc mắc
               </button>
               <button
                 type="button"
                 onClick={() => setType('summary')}
                 className={`py-2 px-2.5 rounded-xl border text-xs font-medium flex items-center justify-center gap-1.5 transition ${
                   type === 'summary'
-                    ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-semibold'
-                    : 'bg-white border-stone-300 text-stone-600 hover:bg-stone-50'
+                    ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-semibold'
+                    : 'bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800'
                 }`}
               >
-                <Bookmark className="w-3.5 h-3.5 text-emerald-600" /> Tóm lược
+                <Bookmark className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Tóm lược
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Tiêu đề ghi chú *
             </label>
             <input
@@ -214,23 +221,23 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="VD: Nhận định về sự sinh diệt của Danh Sắc trong tâm..."
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-700">
+              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
                 Nội dung ghi chú *
               </label>
-              <div className="flex items-center gap-1 text-[11px] text-stone-500">
+              <div className="flex items-center gap-1 text-[11px] text-stone-500 dark:text-stone-400">
                 <span>Chèn liên kết nhanh:</span>
                 {topics.slice(0, 2).map((top) => (
                   <button
                     key={top.id}
                     type="button"
                     onClick={() => handleInsertWikiLink(top.title)}
-                    className="px-1.5 py-0.5 bg-stone-200 hover:bg-stone-300 rounded text-stone-800 font-mono text-[10px]"
+                    className="px-1.5 py-0.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded text-stone-700 dark:text-stone-300 font-mono text-[10px] border border-stone-200 dark:border-stone-700"
                   >
                     +[[{top.title.slice(0, 10)}...]]
                   </button>
@@ -243,29 +250,29 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Nhập nội dung suy ngẫm, dẫn chứng hoặc liên kết đến [[Tên chủ đề khác]]..."
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm font-sans focus:outline-hidden focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm font-sans focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
           {/* Optional Source Path (Markdown / Obsidian File Reference) */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 flex items-center justify-between">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Folder className="w-3.5 h-3.5 text-stone-600" /> Đường dẫn tệp Markdown nguồn (sourcePath)
+                <Folder className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" /> Đường dẫn tệp Markdown nguồn (sourcePath)
               </span>
-              <span className="text-[10px] text-stone-500 font-normal">Tùy chọn</span>
+              <span className="text-[10px] text-stone-400 dark:text-stone-500 font-normal">Tùy chọn</span>
             </label>
             <input
               type="text"
               value={sourcePath}
               onChange={(e) => setSourcePath(e.target.value)}
               placeholder="Đường dẫn tệp Markdown nguồn (/Users/.../Notes/study.md hoặc D:\...)..."
-              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-xs font-mono focus:ring-2 focus:ring-emerald-600"
+              className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
 
             {isPathOutsideRoot && (
-              <div className="p-2.5 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 rounded-xl text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">Cảnh báo sao lưu: </span>
                   <span>
@@ -275,14 +282,14 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               </div>
             )}
 
-            <p className="text-[11px] text-stone-500">
+            <p className="text-[11px] text-stone-400 dark:text-stone-500">
               * Dùng để liên kết ghi chú này với tệp .md trong thư mục Knowledge-Library/Notes/ hoặc Obsidian Vault cục bộ.
             </p>
           </div>
 
           {/* Tags */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Thẻ ghi chú (Tags)
             </label>
             <div className="flex gap-2 mb-2">
@@ -297,12 +304,12 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
                   }
                 }}
                 placeholder="Nhập thẻ rồi nhấn Enter..."
-                className="flex-1 px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:ring-2 focus:ring-emerald-600"
+                className="flex-1 px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-3.5 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl"
+                className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-700 transition"
               >
                 + Thêm
               </button>
@@ -311,14 +318,15 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-200 text-stone-800 text-xs rounded-lg font-medium"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-800 dark:text-stone-200 text-xs rounded-lg font-medium"
                 >
-                  <TagIcon className="w-3 h-3 text-stone-500" />
+                  <TagIcon className="w-3 h-3 text-stone-400 dark:text-stone-500" />
                   {tag}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
-                    className="text-stone-500 hover:text-stone-900 font-bold ml-1"
+                    aria-label={`Xóa thẻ ${tag}`}
+                    className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 font-bold ml-1"
                   >
                     ×
                   </button>
@@ -328,11 +336,11 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200 dark:border-stone-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-600 hover:bg-stone-200 text-sm font-medium rounded-xl transition"
+              className="px-4 py-2 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 text-sm font-medium rounded-xl transition"
             >
               Hủy bỏ
             </button>

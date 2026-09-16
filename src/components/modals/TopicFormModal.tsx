@@ -141,24 +141,31 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
   const currentRoot = currentCategory ? resolveRootCategory(categories, currentCategory.id) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div className="bg-stone-50 border border-stone-200 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={initialTopic ? 'Chỉnh sửa chủ đề nghiên cứu' : 'Tạo chủ đề nghiên cứu mới'}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/80">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold border border-amber-200 dark:border-amber-800">
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-stone-900">
+              <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 font-serif-title">
                 {initialTopic ? 'Chỉnh Sửa Chủ Đề Nghiên Cứu' : 'Tạo Chủ Đề Nghiên Cứu Mới'}
               </h2>
-              <p className="text-xs text-stone-600">Phân loại theo lĩnh vực và danh mục khảo cứu động</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Phân loại theo lĩnh vực và danh mục khảo cứu động</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-stone-500 hover:text-stone-800 hover:bg-stone-200/60 rounded-lg transition"
+            aria-label="Đóng"
+            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -167,7 +174,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label htmlFor="topic-title-input" className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label htmlFor="topic-title-input" className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Tiêu đề chủ đề *
             </label>
             <input
@@ -177,20 +184,20 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="VD: Bộ Pháp Tụ (Dhammasangani) hoặc Kỳ Môn Độn Giáp..."
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700 focus:border-amber-700 transition"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-600 transition"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="category-select" className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              <label htmlFor="category-select" className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
                 Danh mục phân cấp *
               </label>
               <select
                 id="category-select"
                 value={categoryId}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+                className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
                 {rootCategories.map((root) => {
                   const children = getChildCategories(categories, root.id);
@@ -209,16 +216,16 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
                 Lĩnh vực khảo cứu
               </label>
-              <div className="flex items-center gap-2 px-3.5 py-2.5 bg-stone-100 border border-stone-200 rounded-xl text-xs font-medium text-stone-800">
-                <FolderTree className="w-4 h-4 text-amber-700 shrink-0" />
+              <div className="flex items-center gap-2 px-3.5 py-2.5 bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-medium text-stone-800 dark:text-stone-200">
+                <FolderTree className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                 <span className="truncate">
                   {currentRoot ? currentRoot.name : 'Chưa phân loại'}
                 </span>
                 {currentCategory && currentCategory.id !== currentRoot?.id && (
-                  <span className="text-[11px] text-stone-500 truncate">
+                  <span className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
                     / {currentCategory.name}
                   </span>
                 )}
@@ -227,7 +234,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Mô tả ngắn gọn
             </label>
             <textarea
@@ -235,12 +242,12 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Tóm tắt trọng tâm nội dung và ý nghĩa nghiên cứu của chủ đề..."
-              className="w-full px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+              className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Nội dung chính (Hỗ trợ Markdown &amp; Wiki links [[Chủ đề]])
             </label>
             <textarea
@@ -248,13 +255,13 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="## 1. Giới thiệu..."
-              className="w-full px-3.5 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+              className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
           {/* Tags */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
               Thẻ phân loại (Tags)
             </label>
             <div className="flex gap-2 mb-2">
@@ -269,12 +276,12 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
                   }
                 }}
                 placeholder="Nhập thẻ rồi nhấn Enter..."
-                className="flex-1 px-3.5 py-2 bg-white border border-stone-300 rounded-xl text-stone-900 text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700"
+                className="flex-1 px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <button
                 type="button"
                 onClick={() => handleAddTag()}
-                className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 text-xs font-semibold rounded-xl transition"
+                className="px-4 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-700 transition"
               >
                 + Thêm
               </button>
@@ -285,14 +292,15 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               {selectedTags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-lg font-medium"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs rounded-lg font-medium"
                 >
-                  <TagIcon className="w-3 h-3 text-amber-600" />
+                  <TagIcon className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                   {tag}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
-                    className="text-amber-700 hover:text-amber-950 font-bold ml-1"
+                    aria-label={`Xóa thẻ ${tag}`}
+                    className="text-amber-700 dark:text-amber-400 hover:text-amber-950 dark:hover:text-amber-100 font-bold ml-1"
                   >
                     ×
                   </button>
@@ -302,13 +310,13 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
 
             {/* Suggested Tags */}
             <div className="flex flex-wrap gap-1 items-center">
-              <span className="text-[11px] text-stone-600 mr-1">Gợi ý:</span>
+              <span className="text-[11px] text-stone-500 dark:text-stone-400 mr-1">Gợi ý:</span>
               {existingTags.slice(0, 6).map((tg) => (
                 <button
                   key={tg.id}
                   type="button"
                   onClick={() => handleAddTag(tg.name)}
-                  className="text-[11px] px-2 py-0.5 bg-stone-100 hover:bg-stone-200 border border-stone-200 rounded-md text-stone-700"
+                  className="text-[11px] px-2 py-0.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 rounded-md text-stone-700 dark:text-stone-300"
                 >
                   +{tg.name}
                 </button>
@@ -318,15 +326,15 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
 
           {/* Progress & Status (When editing) */}
           {initialTopic && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-stone-100 rounded-xl border border-stone-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3.5 bg-stone-100 dark:bg-stone-800/60 rounded-xl border border-stone-200 dark:border-stone-700">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-700 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1">
                   Trạng thái học tập
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TopicStatus)}
-                  className="w-full px-3 py-1.5 bg-white border border-stone-300 rounded-lg text-xs"
+                  className="w-full px-3 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-xs text-stone-900 dark:text-stone-100"
                 >
                   <option value="not_started">Chưa bắt đầu (Not started)</option>
                   <option value="in_progress">Đang nghiên cứu (In progress)</option>
@@ -336,10 +344,10 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-700">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-stone-600 dark:text-stone-400">
                     Tiến độ hoàn thành
                   </label>
-                  <span className="text-xs font-bold text-amber-800">{progress}%</span>
+                  <span className="text-xs font-bold text-amber-800 dark:text-amber-400">{progress}%</span>
                 </div>
                 <input
                   type="range"
@@ -354,11 +362,11 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
           )}
 
           {/* Footer Buttons */}
-          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200">
+          <div className="flex justify-end gap-2.5 pt-4 border-t border-stone-200 dark:border-stone-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-stone-600 hover:bg-stone-200 text-sm font-medium rounded-xl transition"
+              className="px-4 py-2 text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 text-sm font-medium rounded-xl transition"
             >
               Hủy bỏ
             </button>
