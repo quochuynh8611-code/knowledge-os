@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: knowledge-os-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - knowledge_os_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - knowledge_os_net
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: knowledge-os-app:latest
+    container_name: knowledge-os-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3002}:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OBSIDIAN_VAULT_ROOT: ${OBSIDIAN_VAULT_ROOT:-}
+      OBSIDIAN_VAULTS_CONFIG: ${OBSIDIAN_VAULTS_CONFIG:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - knowledge_os_net
+
+  db-schema:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: knowledge-os-app:latest
+    container_name: knowledge-os-db-schema
+    profiles: ["tools"]
+    restart: "no"
+    command: npx prisma db push
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - knowledge_os_net
+
+volumes:
+  knowledge_os_postgres_data:
+    name: knowledge_os_postgres_data
+
+networks:
+  knowledge_os_net:
+    name: knowledge_os_net
+    driver: bridge
