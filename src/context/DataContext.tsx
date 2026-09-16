@@ -419,7 +419,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   const deleteCategory = async (id: string): Promise<void> => {
     try {
       const result = await dataRepository.deleteCategory(id);
-      if (result.status === "deleted") {
+      if (result.status === "deleted" || result.status === "not_found") {
         const targetCategory = categories.find(
           (c) => c.id === id || c.slug === id || c.id === result.id
         );
@@ -441,8 +441,6 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
               (targetCategory?.slug ? t.categoryId !== targetCategory.slug : true)
           )
         );
-      } else if (result.status === "not_found") {
-        console.warn(`[DataContext] Category ${id} not found; preserving client state.`);
       } else if (result.status === "queued") {
         console.error(`[DataContext] Category deletion queued offline/failure (${id}):`, result.error);
       }

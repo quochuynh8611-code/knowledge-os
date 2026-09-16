@@ -18,7 +18,6 @@ import {
   Share2,
   TrendingUp,
   FileText,
-  Library,
   Search,
   Sparkles,
   Brain,
@@ -98,7 +97,7 @@ function TabLoadingFallback() {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px] text-stone-400 dark:text-stone-500 animate-pulse">
       <div className="w-8 h-8 rounded-full border-2 border-amber-600/30 border-t-amber-600 animate-spin mb-3" />
-      <span className="text-xs font-semibold tracking-wide text-stone-500 dark:text-stone-400">
+      <span className="text-xs font-semibold tracking-wide text-stone-500 dark:text-stone-400 font-sans">
         Đang nạp không gian nghiên cứu...
       </span>
     </div>
@@ -106,11 +105,28 @@ function TabLoadingFallback() {
 }
 
 function AppContent() {
-  const { activeTab, setActiveTab, selectedTopicId, openTopicDetail,
-    subView, sessionType, openFlashcardReview, openCardBrowser, openStudyLauncher, openFlashcardAnalytics, openDuplicateDetection,
-    activeTimerTopicId, timerSeconds, isTimerRunning,
-    pauseStudyTimer, resumeStudyTimer, stopAndSaveStudyTimer,
-    logStudyTime, topics, addNote, updateTopicProgress,
+  const {
+    activeTab,
+    setActiveTab,
+    selectedTopicId,
+    openTopicDetail,
+    subView,
+    sessionType,
+    openFlashcardReview,
+    openCardBrowser,
+    openStudyLauncher,
+    openFlashcardAnalytics,
+    openDuplicateDetection,
+    activeTimerTopicId,
+    timerSeconds,
+    isTimerRunning,
+    pauseStudyTimer,
+    resumeStudyTimer,
+    stopAndSaveStudyTimer,
+    logStudyTime,
+    topics,
+    addNote,
+    updateTopicProgress,
   } = useData();
   const { toggleTheme } = useTheme();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
@@ -174,7 +190,7 @@ function AppContent() {
         action: () => setActiveTab("flashcards"),
       },
     ],
-    []
+    [setActiveTab]
   );
 
   // Command Palette hook
@@ -294,14 +310,14 @@ function AppContent() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => openStudyLauncher(selectedTopicId)}
-                    className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     <span>Khởi tạo học</span>
                   </button>
                   <button
                     onClick={() => openFlashcardReview(selectedTopicId)}
-                    className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                   >
                     <Brain className="w-3.5 h-3.5" />
                     <span>Chuyển sang Ôn tập</span>
@@ -328,28 +344,28 @@ function AppContent() {
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => openDuplicateDetection(selectedTopicId)}
-                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
               >
                 <Copy className="w-3.5 h-3.5" />
                 <span>Trùng lặp</span>
               </button>
               <button
                 onClick={() => openFlashcardAnalytics(selectedTopicId)}
-                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
               >
                 <TrendingUp className="w-3.5 h-3.5" />
                 <span>Phân tích</span>
               </button>
               <button
                 onClick={() => openStudyLauncher(selectedTopicId)}
-                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
               >
                 <Zap className="w-3.5 h-3.5" />
                 <span>Khởi tạo học</span>
               </button>
               <button
                 onClick={() => openCardBrowser(selectedTopicId)}
-                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
               >
                 <Search className="w-3.5 h-3.5" />
                 <span>Duyệt danh sách thẻ</span>
@@ -377,7 +393,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col font-sans selection:bg-amber-200 selection:text-amber-950">
-      {/* Top Navigation */}
+      {/* Top Command Bar */}
       <Navbar
         onOpenCommandPalette={palette.openPalette}
         onOpenShortcutsModal={() => setShowShortcutsModal(true)}
@@ -399,7 +415,7 @@ function AppContent() {
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-100/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 flex items-center justify-around py-2 px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-100/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200/80 dark:border-stone-800 flex items-center justify-around py-2 px-1">
         <button
           onClick={() => setActiveTab("dashboard")}
           className={`flex flex-col items-center gap-1 text-xs font-semibold py-1.5 px-2.5 rounded-xl transition ${
@@ -495,7 +511,7 @@ function AppContent() {
         </React.Suspense>
       )}
 
-      {/* Global Phase 17: Active Learning Session Bar */}
+      {/* Global Active Learning Session Bar */}
       {activeTimerTopicId && (
         <ActiveLearningSessionBar
           topicId={activeTimerTopicId}
@@ -509,7 +525,7 @@ function AppContent() {
         />
       )}
 
-      {/* Global Phase 17: Session Wrapup Modal */}
+      {/* Global Session Wrapup Modal */}
       {showWrapupModal && (() => {
         const activeTopic = topics.find((t) => t.id === activeTimerTopicId);
         if (!activeTopic) return null;
@@ -547,7 +563,6 @@ function AppContent() {
     </div>
   );
 }
-
 
 export function App() {
   return (
