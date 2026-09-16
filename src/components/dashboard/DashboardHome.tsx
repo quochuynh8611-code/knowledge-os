@@ -8,6 +8,9 @@ import { WeeklyCadenceBar } from './WeeklyCadenceBar';
 import { LearningStateCard } from './LearningStateCard';
 import { ResumeStudyQueue } from './ResumeStudyQueue';
 import { FlashcardAnalyticsWidget } from '../flashcards/FlashcardAnalyticsWidget';
+import { PageHeader } from '../workbench/PageHeader';
+import { SectionHeader } from '../workbench/SectionHeader';
+import { ToolbarButton } from '../workbench/ToolbarButton';
 import {
   getDomainLearningStates,
   getWeeklyLearningCadence,
@@ -17,15 +20,16 @@ import {
   Share2,
   BookOpen,
   Sparkles,
-  Brain,
   FileText,
   Library,
   Clock,
   Folder,
   Plus,
   X,
-  ArrowUpRight,
   Boxes,
+  Compass,
+  GraduationCap,
+  Play,
 } from 'lucide-react';
 
 export function DashboardHome() {
@@ -97,7 +101,41 @@ export function DashboardHome() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-7">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 sm:space-y-7 animate-in fade-in duration-200">
+      {/* 0. Workbench Page Header */}
+      <PageHeader
+        title="Tổng Quan Nghiên Cứu"
+        subtitle="Bàn điều khiển tổng hợp nhịp độ học tập, bài học đề xuất và trạng thái tích lũy đa lĩnh vực."
+        categoryLabel="Research Hub & Learning Overview"
+        categoryIcon={Compass}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <ToolbarButton
+              variant="primary"
+              size="sm"
+              icon={GraduationCap}
+              onClick={() => setShowReviewModal(true)}
+              title="Mở phiên ôn tập ngắt quãng"
+            >
+              Ôn tập thẻ
+            </ToolbarButton>
+            <ToolbarButton
+              variant="outline"
+              size="sm"
+              icon={Play}
+              onClick={() => {
+                const firstTopic = topics[0];
+                if (firstTopic) handleStartStudy(firstTopic.id);
+                else setActiveTab('topics');
+              }}
+              title="Bắt đầu tính giờ phiên học mới"
+            >
+              Bấm giờ học
+            </ToolbarButton>
+          </div>
+        }
+      />
+
       {/* Khối 1: Today Recommendation & Action Hero */}
       <TodayLearningHero
         onStartStudy={handleStartStudy}
@@ -107,62 +145,58 @@ export function DashboardHome() {
       {/* Khối 2: Weekly Learning Cadence & Momentum Horizon */}
       <WeeklyCadenceBar cadence={weeklyCadence} />
 
-      {/* Khối 2.5: Flashcard & Retention Progress Analytics (Phase F5) */}
+      {/* Khối 2.5: Flashcard & Retention Progress Analytics */}
       <section>
         <FlashcardAnalyticsWidget />
       </section>
 
       {/* Khối 3: Multi-Disciplinary Learning State Hub */}
       <section className="space-y-3.5 sm:space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 font-serif-title flex items-center gap-2">
-              <Folder className="w-4 h-4 text-amber-800 dark:text-amber-400" />
-              <span>Lĩnh vực học tập</span>
-            </h2>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Trạng thái học thực tế, bài học tiếp theo và thời gian tích lũy đa lĩnh vực
-            </p>
-          </div>
-
-          {/* Add Domain CTA Button / Inline Form */}
-          {isAddingDomain ? (
-            <form onSubmit={handleCreateDomain} className="flex items-center gap-1.5 flex-wrap">
-              <input
-                type="text"
-                value={newDomainName}
-                onChange={(e) => setNewDomainName(e.target.value)}
-                placeholder="Tên lĩnh vực mới..."
-                autoFocus
-                className="px-3 py-1.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-amber-700"
-              />
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+        <SectionHeader
+          title="Lĩnh vực học tập"
+          icon={Folder}
+          count={`${domainLearningStates.length} môn`}
+          subtitle="Trạng thái học thực tế, bài học tiếp theo và thời gian tích lũy đa lĩnh vực"
+          actions={
+            isAddingDomain ? (
+              <form onSubmit={handleCreateDomain} className="flex items-center gap-1.5 flex-wrap">
+                <input
+                  type="text"
+                  value={newDomainName}
+                  onChange={(e) => setNewDomainName(e.target.value)}
+                  placeholder="Tên lĩnh vực mới..."
+                  autoFocus
+                  className="px-3 py-1.5 text-xs bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-amber-700 text-stone-900 dark:text-stone-100"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                >
+                  Lưu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddingDomain(false);
+                    setNewDomainName('');
+                  }}
+                  className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-300 rounded-xl cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </form>
+            ) : (
+              <ToolbarButton
+                variant="outline"
+                size="sm"
+                icon={Plus}
+                onClick={() => setIsAddingDomain(true)}
               >
-                Lưu
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAddingDomain(false);
-                  setNewDomainName('');
-                }}
-                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-xl cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </form>
-          ) : (
-            <button
-              onClick={() => setIsAddingDomain(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-amber-50 dark:hover:bg-amber-950/60 text-stone-700 dark:text-stone-300 hover:text-amber-900 dark:hover:text-amber-300 border border-stone-200/80 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer self-start sm:self-auto"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-              <span>Thêm lĩnh vực</span>
-            </button>
-          )}
-        </div>
+                Thêm lĩnh vực
+              </ToolbarButton>
+            )
+          }
+        />
 
         {/* Dynamic Multi-Disciplinary Learning State Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
@@ -211,13 +245,13 @@ export function DashboardHome() {
                 <div
                   key={note.id}
                   onClick={() => openTopicDetail(note.topicId)}
-                  className="p-2 rounded-xl border border-stone-200/60 dark:border-stone-800/70 bg-white dark:bg-stone-800/50 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:border-amber-200 dark:hover:border-amber-800 transition cursor-pointer"
+                  className="p-2.5 rounded-xl border border-stone-200/70 dark:border-stone-800/80 bg-white dark:bg-stone-800/60 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:border-amber-300 dark:hover:border-amber-700 transition cursor-pointer shadow-2xs"
                 >
                   <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-0.5">
                     <span className="font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
                       <FileText className="w-3 h-3" /> Note
                     </span>
-                    <span>{formatTimeAgo(note.createdAt)}</span>
+                    <span className="font-mono">{formatTimeAgo(note.createdAt)}</span>
                   </div>
                   <h4 className="text-xs font-semibold text-stone-900 dark:text-stone-100 line-clamp-1">{note.title}</h4>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-1">
@@ -230,13 +264,13 @@ export function DashboardHome() {
                 <div
                   key={res.id}
                   onClick={() => openTopicDetail(res.topicId)}
-                  className="p-2 rounded-xl border border-stone-200/60 dark:border-stone-800/70 bg-white dark:bg-stone-800/50 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 hover:border-indigo-200 dark:hover:border-indigo-800 transition cursor-pointer"
+                  className="p-2.5 rounded-xl border border-stone-200/70 dark:border-stone-800/80 bg-white dark:bg-stone-800/60 hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 hover:border-indigo-300 dark:hover:border-indigo-700 transition cursor-pointer shadow-2xs"
                 >
                   <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-0.5">
                     <span className="font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-400 flex items-center gap-1">
                       <Library className="w-3 h-3" /> {res.type.toUpperCase()}
                     </span>
-                    <span>{formatTimeAgo(res.createdAt)}</span>
+                    <span className="font-mono">{formatTimeAgo(res.createdAt)}</span>
                   </div>
                   <h4 className="text-xs font-semibold text-stone-900 dark:text-stone-100 line-clamp-1">{res.title}</h4>
                   <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 line-clamp-1">
@@ -250,51 +284,60 @@ export function DashboardHome() {
       </section>
 
       {/* Khối 5: Utility Section - Bộ công cụ & Tiện ích chuyên sâu ở chân trang */}
-      <section className="bg-stone-50/80 dark:bg-stone-900/50 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4">
+      <section className="bg-stone-50/60 dark:bg-stone-900/40 border border-stone-200/70 dark:border-stone-800/70 rounded-2xl p-4 sm:p-4.5 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Boxes className="w-4 h-4 text-stone-600 dark:text-stone-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-              Công cụ & Tiện ích chuyên sâu
+            <Boxes className="w-4 h-4 text-stone-500 dark:text-stone-400" />
+            <h3 className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+              Công cụ & Tiện ích mở rộng
             </h3>
           </div>
-          <span className="text-[11px] text-stone-400 dark:text-stone-500 hidden sm:inline">
-            Hỗ trợ nghiên cứu & phân tích
+          <span className="text-[11px] font-mono text-stone-400 dark:text-stone-500 hidden sm:inline">
+            Không gian nghiên cứu chuyên sâu
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <button
+            type="button"
             onClick={() => setActiveTab('ai_studio')}
-            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            className="p-3 bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 rounded-xl text-left transition duration-150 group cursor-pointer shadow-2xs"
           >
-            <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              AI Hỗ trợ
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
+                AI Research Studio
+              </span>
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trợ lý học tập & nghiên cứu thông minh</div>
+            <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trợ lý tổng hợp tri thức & trích dẫn đa nguồn</p>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('library')}
-            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            className="p-3 bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 rounded-xl text-left transition duration-150 group cursor-pointer shadow-2xs"
           >
-            <BookOpen className="w-4 h-4 text-sky-700 dark:text-sky-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Thư Viện Sách
+            <div className="flex items-center gap-2 mb-1">
+              <BookOpen className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400" />
+              <span className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
+                Thư Viện Sách
+              </span>
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trình đọc sách điện tử EPUB</div>
+            <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trình đọc tài liệu & sách điện tử EPUB</p>
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('graph')}
-            className="p-3.5 bg-white dark:bg-stone-800/80 hover:bg-amber-50/70 dark:hover:bg-amber-950/60 border border-stone-200/70 dark:border-stone-700/70 hover:border-amber-300 dark:hover:border-amber-700 rounded-xl text-left transition group cursor-pointer"
+            className="p-3 bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 rounded-xl text-left transition duration-150 group cursor-pointer shadow-2xs"
           >
-            <Share2 className="w-4 h-4 text-purple-700 dark:text-purple-400 mb-1.5" />
-            <div className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
-              Bản đồ tri thức
+            <div className="flex items-center gap-2 mb-1">
+              <Share2 className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400" />
+              <span className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
+                Bản đồ tri thức
+              </span>
             </div>
-            <div className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Mạng lưới liên kết đa chiều</div>
+            <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Mạng lưới liên kết & đồ thị quan hệ chủ đề</p>
           </button>
         </div>
       </section>

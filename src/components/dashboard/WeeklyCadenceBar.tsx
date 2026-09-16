@@ -23,7 +23,7 @@ export function WeeklyCadenceBar({
     <section
       data-testid="weekly-cadence-bar"
       aria-label="Nhịp học tuần này"
-      className={`bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 ${className}`}
+      className={`bg-white dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-800 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 ${className}`}
     >
       {/* 1. Left Headline & Momentum Context */}
       <div className="flex items-center gap-2.5 min-w-0">
@@ -98,13 +98,13 @@ function DayPill({ item }: { item: DayCadenceItem }) {
       data-today={isToday ? 'true' : 'false'}
       data-future={isFuture ? 'true' : 'false'}
       title={`${dayLabel} (${dayNumber}): ${hasActivity ? `${activeTopicCount} chủ đề đã học` : isFuture ? 'Tương lai' : 'Nghỉ ngơi'}`}
-      className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-1.5 sm:px-2 rounded-xl border transition-all text-center min-w-[34px] sm:min-w-[40px] ${pillStyle} ${todayEmphasis}`}
+      className={`flex flex-col items-center justify-center py-1 sm:py-1.5 px-1.5 sm:px-2 rounded-xl border transition-all text-center min-w-[34px] sm:min-w-[40px] select-none ${pillStyle} ${todayEmphasis}`}
     >
       <span className="text-[10px] sm:text-[11px] font-semibold leading-tight">
         {dayLabel}
       </span>
       <div className="flex items-center gap-0.5 mt-0.5">
-        <span className="text-[10px] sm:text-[11px] font-mono leading-none">
+        <span className="text-[10px] sm:text-[11px] font-mono leading-none tabular-nums">
           {dayNumber}
         </span>
         {hasActivity && (

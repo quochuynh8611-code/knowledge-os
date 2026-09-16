@@ -2,13 +2,13 @@ import React from 'react';
 import { Topic } from '../../types';
 import { getResumeQueue } from '../../lib/learningStateSelectors';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
+import { StatusPill } from '../workbench/StatusPill';
 import {
   Play,
   TrendingUp,
   Clock,
   ChevronRight,
   Sparkles,
-  BookOpen,
 } from 'lucide-react';
 
 export interface ResumeStudyQueueProps {
@@ -29,16 +29,16 @@ export function ResumeStudyQueue({
   return (
     <section
       data-testid="resume-study-queue"
-      className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5 sm:space-y-4"
+      className="bg-white dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-800 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3.5 sm:space-y-4"
     >
-      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
+      <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800/80 pb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-amber-700 dark:text-amber-400" />
-          <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+          <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm font-sans">
             Tiếp tục bài học dở dang
           </h2>
           {queue.length > 0 && (
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 tabular-nums">
               {queue.length} bài
             </span>
           )}
@@ -55,7 +55,7 @@ export function ResumeStudyQueue({
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {queue.map((topic) => {
           const progress = topic.studyProgress?.progress || 0;
           const timeLabel = topic.studyProgress?.lastStudied
@@ -65,15 +65,15 @@ export function ResumeStudyQueue({
           return (
             <div
               key={topic.id}
-              className="p-3.5 rounded-xl border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-stone-50/70 dark:hover:bg-stone-800/60 transition space-y-2 group"
+              className="p-3.5 rounded-xl border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-stone-50/70 dark:hover:bg-stone-800/60 transition-all duration-150 space-y-2 group"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     {topic.categoryName && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300">
+                      <StatusPill size="xs" variant="neutral">
                         {topic.categoryName}
-                      </span>
+                      </StatusPill>
                     )}
                     <span
                       onClick={() => onOpenTopicDetail(topic.id)}
@@ -92,7 +92,7 @@ export function ResumeStudyQueue({
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => onStartStudy(topic.id)}
-                    className="px-2.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-amber-800 dark:hover:bg-amber-400 text-white dark:text-stone-900 rounded-lg text-xs font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                    className="px-2.5 py-1.5 bg-stone-900 dark:bg-stone-100 hover:bg-amber-800 dark:hover:bg-amber-400 text-white dark:text-stone-900 rounded-xl text-xs font-semibold flex items-center gap-1 transition shadow-2xs cursor-pointer"
                     title="Bắt đầu phiên tính giờ học cho chủ đề này"
                   >
                     <Play className="w-3 h-3 fill-current" />
@@ -100,7 +100,7 @@ export function ResumeStudyQueue({
                   </button>
                   <button
                     onClick={() => onOpenTopicDetail(topic.id)}
-                    className="px-2.5 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-medium transition cursor-pointer"
+                    className="px-2.5 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-medium transition cursor-pointer border border-stone-200/80 dark:border-stone-700"
                   >
                     Chi tiết
                   </button>
@@ -114,7 +114,7 @@ export function ResumeStudyQueue({
                     <Clock className="w-3 h-3 text-stone-400" />
                     <span>Đã học: {timeLabel}</span>
                   </span>
-                  <span className="font-bold text-stone-800 dark:text-stone-200 font-mono">
+                  <span className="font-bold text-stone-800 dark:text-stone-200 font-mono tabular-nums">
                     {progress}%
                   </span>
                 </div>

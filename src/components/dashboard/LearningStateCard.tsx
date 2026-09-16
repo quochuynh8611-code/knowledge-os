@@ -2,13 +2,12 @@ import React from 'react';
 import { DomainLearningState } from '../../lib/learningStateSelectors';
 import { getNeutralDomainStyle } from '../../lib/domainStyling';
 import { formatMinutesToHours, formatTimeAgo } from '../../lib/spaced-repetition';
+import { StatusPill } from '../workbench/StatusPill';
 import {
   Clock,
   Play,
   ArrowUpRight,
   CheckCircle2,
-  BookOpen,
-  Sparkles,
   Pin,
 } from 'lucide-react';
 
@@ -43,23 +42,17 @@ export function LearningStateCard({
   const style = getNeutralDomainStyle(rootCategory);
   const Icon = style.icon;
 
-  const statusBadgeStyle = {
-    active: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
-    maintenance: 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
-    dormant: 'bg-stone-100 text-stone-600 border-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:border-stone-700',
-  }[status];
-
-  const statusDotColor = {
-    active: 'bg-emerald-500 animate-pulse',
-    maintenance: 'bg-amber-500',
-    dormant: 'bg-stone-400',
+  const statusPillVariant = {
+    active: 'success' as const,
+    maintenance: 'warning' as const,
+    dormant: 'neutral' as const,
   }[status];
 
   const cardContainerStyle = isFocus
-    ? 'bg-white dark:bg-stone-900 border-amber-400/90 dark:border-amber-600/90 ring-1 ring-amber-400/30 shadow-xs'
+    ? 'bg-white dark:bg-stone-900/95 border-amber-400/90 dark:border-amber-600/90 ring-1 ring-amber-400/30 shadow-xs'
     : {
-        active: 'bg-white dark:bg-stone-900 border-stone-200/90 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-2xs',
-        maintenance: 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs',
+        active: 'bg-white dark:bg-stone-900/90 border-stone-200/90 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-2xs',
+        maintenance: 'bg-white dark:bg-stone-900/90 border-stone-200/80 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 shadow-2xs',
         dormant: 'bg-stone-50/60 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 opacity-85 hover:opacity-100 hover:border-stone-300 dark:hover:border-stone-700',
       }[status];
 
@@ -67,7 +60,7 @@ export function LearningStateCard({
     <div
       data-testid={`learning-state-card-${rootCategory.id}`}
       onClick={() => onSelectDomain(rootCategory.id)}
-      className={`border rounded-2xl p-4 sm:p-5 hover:shadow-md transition flex flex-col justify-between group cursor-pointer ${cardContainerStyle}`}
+      className={`border rounded-2xl p-4 sm:p-5 hover:shadow-xs transition-all duration-150 flex flex-col justify-between group cursor-pointer ${cardContainerStyle}`}
     >
       {/* 1. Header: Icon + Title + Status Badges + Pin Button */}
       <div>
@@ -76,31 +69,34 @@ export function LearningStateCard({
             onClick={() => onSelectDomain(rootCategory.id)}
             className="flex items-center gap-2.5 cursor-pointer min-w-0"
           >
-            <div className={`w-8 h-8 rounded-lg ${style.iconBg} flex items-center justify-center font-bold shrink-0`}>
+            <div className={`w-8 h-8 rounded-xl ${style.iconBg} flex items-center justify-center font-bold shrink-0 shadow-2xs`}>
               <Icon className="w-4 h-4" />
             </div>
-            <span className="font-bold text-stone-900 dark:text-stone-100 text-sm truncate group-hover:text-amber-900 dark:group-hover:text-amber-300 transition">
+            <span className="font-serif-title font-bold text-stone-900 dark:text-stone-100 text-base truncate group-hover:text-amber-900 dark:group-hover:text-amber-300 transition">
               {rootCategory.name}
             </span>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
             {isFocus && (
-              <span
+              <StatusPill
                 data-testid={`focus-badge-${rootCategory.id}`}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                variant="accent"
+                size="xs"
+                dot
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400" />
-                <span>Trọng tâm</span>
-              </span>
+                Trọng tâm
+              </StatusPill>
             )}
 
-            <span
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadgeStyle}`}
+            <StatusPill
+              variant={statusPillVariant}
+              size="xs"
+              dot
+              pulse={status === 'active'}
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${statusDotColor}`} />
-              <span>{statusLabel}</span>
-            </span>
+              {statusLabel}
+            </StatusPill>
 
             {onToggleFocus && (
               <button
@@ -129,9 +125,9 @@ export function LearningStateCard({
           <div className="flex items-baseline justify-between text-xs">
             <span className="flex items-center gap-1 text-stone-500 dark:text-stone-400 font-medium">
               <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-              <span>{formatMinutesToHours(totalTimeSpentMinutes)}</span>
+              <span className="font-mono">{formatMinutesToHours(totalTimeSpentMinutes)}</span>
             </span>
-            <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold text-[11px]">
+            <span className="font-mono text-stone-700 dark:text-stone-300 font-semibold text-[11px] tabular-nums">
               {completedTopics}/{totalTopics} bài ({donePercent}%)
             </span>
           </div>
@@ -158,7 +154,7 @@ export function LearningStateCard({
                 {nextStepTopic.studyProgress?.status === 'in_progress' ? 'Đang học dở' : 'Bài tiếp theo'}
               </span>
               {nextStepTopic.studyProgress?.progress ? (
-                <span className="font-mono text-emerald-800 dark:text-emerald-300">
+                <span className="font-mono text-emerald-800 dark:text-emerald-300 tabular-nums">
                   {nextStepTopic.studyProgress.progress}%
                 </span>
               ) : null}
@@ -202,7 +198,7 @@ export function LearningStateCard({
 
       {/* 4. Footer: Recency + Explore action */}
       <div className="pt-2.5 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
-        <span>
+        <span className="font-mono">
           {lastStudiedAt ? `Học ${formatTimeAgo(lastStudiedAt)}` : 'Chưa có phiên học'}
         </span>
         <button
