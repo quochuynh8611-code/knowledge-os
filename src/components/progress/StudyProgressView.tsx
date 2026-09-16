@@ -315,18 +315,18 @@ export function StudyProgressView() {
   };
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-7">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 pb-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-800 mb-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-0.5">
             <TrendingUp className="w-3.5 h-3.5" />
             <span>Hệ Thống Theo Dõi Học Tập &amp; Trí Nhớ</span>
           </div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-serif-title">
+          <h1 className="text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
             Tiến Độ Học Tập &amp; Spaced Repetition (SM-2)
           </h1>
-          <p className="text-xs text-stone-600 mt-0.5">
+          <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
             Quản lý nhịp độ ôn tập ngắt quãng và phân tích khả năng ghi nhớ dự phóng theo mô hình SM-2
           </p>
         </div>
@@ -335,18 +335,18 @@ export function StudyProgressView() {
         {reviewQueue.length > 0 && (
           <button
             onClick={() => handleStartReview()}
-            className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition animate-pulse"
+            className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
           >
-            <Brain className="w-4 h-4" /> Bắt đầu ôn tập ({reviewQueue.length} thẻ đến hạn)
+            <Brain className="w-3.5 h-3.5" /> Bắt đầu ôn tập ({reviewQueue.length} mục)
           </button>
         )}
       </div>
 
       {/* Thống kê KPI Dự Phóng (Memory & Retention Analytics Summary Box) */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-          <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-            <BarChart2 className="w-4 h-4 text-amber-700" />
+      <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 md:p-5 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+          <div className="flex items-center gap-1.5 text-stone-900 dark:text-stone-100 font-bold text-xs uppercase tracking-wider">
+            <BarChart2 className="w-4 h-4 text-amber-700 dark:text-amber-400" />
             <span>Phân tích trí nhớ &amp; Thống kê nghiên cứu</span>
           </div>
           <span className="text-[11px] text-stone-400 font-medium">
@@ -354,11 +354,11 @@ export function StudyProgressView() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* KPI 1: Estimated Retention Rate */}
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Tỷ lệ ghi nhớ dự phóng</span>
-            <span className="text-xl font-bold font-mono text-amber-900">
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 block">Tỷ lệ ghi nhớ dự phóng</span>
+            <span className="text-xl font-bold font-mono text-amber-900 dark:text-amber-300">
               {Number.isFinite(retentionMetrics.estimatedRetentionRate)
                 ? retentionMetrics.estimatedRetentionRate
                 : 0}%
@@ -369,31 +369,31 @@ export function StudyProgressView() {
           </div>
 
           {/* KPI 2: Mastery Distribution */}
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Mức độ thuần thục</span>
-            <span className="text-xl font-bold font-mono text-emerald-800">
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 block">Mức độ thuần thục</span>
+            <span className="text-xl font-bold font-mono text-emerald-800 dark:text-emerald-300">
               {retentionMetrics.masteredCount} / {topics.length} thuần thục
             </span>
-            <span className="text-[10px] text-stone-500 block mt-0.5">
-              {retentionMetrics.consolidatingCount} đang củng cố • {retentionMetrics.learningCount} đang học
+            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mt-0.5">
+              {retentionMetrics.consolidatingCount} đang củng cố • {retentionMetrics.learningCount} mới học
             </span>
           </div>
 
           {/* KPI 3: Total Study Time */}
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Tổng thời gian học</span>
-            <span className="text-xl font-bold font-mono text-stone-900">
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 block">Tổng thời gian học</span>
+            <span className="text-xl font-bold font-mono text-stone-900 dark:text-stone-100">
               {stats.totalTimeSpentMinutes} phút
             </span>
-            <span className="text-[10px] text-stone-500 block mt-0.5">
+            <span className="text-[10px] text-stone-500 dark:text-stone-400 block mt-0.5">
               {formatMinutesToHours(stats.totalTimeSpentMinutes)} ({retentionMetrics.totalStudiedTopics} topics)
             </span>
           </div>
 
           {/* KPI 4: Due Reviews Today */}
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200">
-            <span className="text-xs text-stone-500 block">Hàng đợi hôm nay</span>
-            <span className="text-xl font-bold font-mono text-rose-800">
+          <div className="p-3 bg-stone-50 dark:bg-stone-800/60 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 block">Hàng đợi hôm nay</span>
+            <span className="text-xl font-bold font-mono text-rose-800 dark:text-rose-300">
               {reviewForecast[0]?.totalCount ?? stats.dueReviewsCount} mục cần ôn
             </span>
             <span className="text-[10px] text-stone-400 block mt-0.5">
@@ -404,17 +404,17 @@ export function StudyProgressView() {
       </div>
 
       {/* 7-Day Review Queue Forecast Bar Chart */}
-      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-2 gap-2">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-amber-700" />
-            <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
+      <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 md:p-5 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2 gap-2">
+          <div className="flex items-center gap-1.5">
+            <CalendarDays className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+            <h3 className="font-bold text-xs text-stone-900 dark:text-stone-100 uppercase tracking-wider">
               Dự báo hàng đợi ôn tập 7 ngày
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs">
             {activeForecastDomains.map((dom) => (
-              <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800">
+              <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800 dark:text-stone-200">
                 <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: dom.color }} /> {dom.name}
               </span>
             ))}
@@ -422,25 +422,25 @@ export function StudyProgressView() {
         </div>
 
         {/* Forecast Days Summary Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1 pb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1 pb-1">
           {reviewForecast.map((f, idx) => (
             <div
               key={`forecast-badge-${idx}`}
               className={`p-2 rounded-xl border text-center transition ${
                 idx === 0
-                  ? 'bg-amber-50/80 border-amber-300'
-                  : 'bg-stone-50 border-stone-200/80'
+                  ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800'
+                  : 'bg-stone-50 dark:bg-stone-800/40 border-stone-200/80 dark:border-stone-700/80'
               }`}
             >
-              <span className="text-[11px] font-semibold text-stone-600 block">
+              <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 block">
                 {f.dayLabel}
               </span>
               <span
                 className={`text-sm font-bold font-mono ${
                   f.totalCount > 0
                     ? idx === 0
-                      ? 'text-rose-700'
-                      : 'text-amber-900'
+                      ? 'text-rose-700 dark:text-rose-400'
+                      : 'text-amber-900 dark:text-amber-300'
                     : 'text-stone-400'
                 }`}
               >
@@ -450,13 +450,13 @@ export function StudyProgressView() {
           ))}
         </div>
 
-        <div className="h-52 w-full">
+        <div className="h-48 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartForecastData}>
               <XAxis dataKey="dayLabel" tick={{ fontSize: 11, fill: '#78716C' }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#78716C' }} unit=" mục" />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
+                contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px', border: '1px solid #44403C' }}
               />
               {activeForecastDomains.map((dom) => (
                 <Bar
@@ -473,28 +473,28 @@ export function StudyProgressView() {
       </div>
 
       {/* Interactive Charts: Weekly Study Trends & Category Balance */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Weekly Bar Chart */}
-        <div className="lg:col-span-2 bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-            <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider">
+        <div className="lg:col-span-2 bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 md:p-5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-2">
+            <h3 className="font-bold text-xs text-stone-900 dark:text-stone-100 uppercase tracking-wider">
               Thời gian nghiên cứu tuần này (Phút)
             </h3>
             <div className="flex flex-wrap items-center gap-3 text-xs">
               {weeklyDomains.map((dom) => (
-                <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800">
+                <span key={dom.domain} className="flex items-center gap-1 font-medium text-stone-800 dark:text-stone-200">
                   <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: dom.color }} /> {dom.name}
                 </span>
               ))}
             </div>
           </div>
-          <div className="h-56 w-full">
+          <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weeklyStudyData}>
                 <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#78716C' }} />
                 <YAxis tick={{ fontSize: 11, fill: '#78716C' }} unit="p" />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
+                  contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px', border: '1px solid #44403C' }}
                 />
                 {weeklyDomains.map((dom) => (
                   <Bar
@@ -511,19 +511,19 @@ export function StudyProgressView() {
         </div>
 
         {/* Category Knowledge Distribution */}
-        <div className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs space-y-3 flex flex-col justify-between">
-          <h3 className="font-bold text-xs text-stone-900 uppercase tracking-wider border-b border-stone-100 pb-2">
+        <div className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 md:p-5 shadow-2xs space-y-3 flex flex-col justify-between">
+          <h3 className="font-bold text-xs text-stone-900 dark:text-stone-100 uppercase tracking-wider border-b border-stone-100 dark:border-stone-800 pb-2">
             Cân bằng lĩnh vực
           </h3>
-          <div className="h-44 w-full">
+          <div className="h-40 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={categoryPieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={35}
-                  outerRadius={65}
+                  innerRadius={32}
+                  outerRadius={60}
                   paddingAngle={4}
                   dataKey="value"
                 >
@@ -532,7 +532,7 @@ export function StudyProgressView() {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px' }}
+                  contentStyle={{ backgroundColor: '#1C1917', color: '#FFF', borderRadius: '12px', fontSize: '11px', border: '1px solid #44403C' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -541,7 +541,7 @@ export function StudyProgressView() {
             {categoryPieData.map((item) => (
               <div key={item.name} className="flex justify-between">
                 <span className="font-medium" style={{ color: item.color }}>{item.name}</span>
-                <span className="font-bold font-mono">{item.value} {item.name.includes('Ghi Chú') ? 'mục' : 'topics'}</span>
+                <span className="font-bold font-mono text-stone-800 dark:text-stone-200">{item.value} {item.name.includes('Ghi Chú') ? 'mục' : 'topics'}</span>
               </div>
             ))}
           </div>
@@ -549,22 +549,22 @@ export function StudyProgressView() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 border border-stone-200/90 rounded-2xl shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-stone-900 p-3.5 border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-2xs">
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-stone-500 font-semibold mr-1">Bộ lọc tiến độ:</span>
           {[
             { id: 'all', label: 'Tất cả' },
             { id: 'in_progress', label: 'Đang học' },
-            { id: 'reviewing', label: 'Cần ôn tập (Reviewing)' },
+            { id: 'reviewing', label: 'Cần ôn tập' },
             { id: 'completed', label: 'Đã hoàn thành' },
           ].map((f) => (
             <button
               key={f.id}
               onClick={() => setStatusFilter(f.id as any)}
-              className={`px-3 py-1.5 rounded-xl font-semibold transition ${
+              className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
                 statusFilter === f.id
-                  ? 'bg-amber-700 text-white'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-amber-800 text-white shadow-2xs'
+                  : 'bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300'
               }`}
             >
               {f.label}
@@ -578,7 +578,7 @@ export function StudyProgressView() {
       </div>
 
       {/* Topic Progress Cards */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filteredTopics.map((topic) => {
           if (!topic) return null;
           const progressData = getSafeStudyProgress(topic);
@@ -589,12 +589,12 @@ export function StudyProgressView() {
           return (
             <div
               key={topic.id}
-              className="bg-white border border-stone-200/90 rounded-2xl p-5 shadow-2xs hover:border-amber-400 transition space-y-3"
+              className="bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl p-4 md:p-5 shadow-2xs hover:border-amber-400 dark:hover:border-amber-800/80 transition space-y-3"
             >
               {/* Header row */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded ${presentation.badgeClass}`}
                     >
@@ -602,35 +602,35 @@ export function StudyProgressView() {
                     </span>
                     <h3
                       onClick={() => openTopicDetail(topic.id)}
-                      className="font-bold text-stone-900 text-sm hover:text-amber-800 cursor-pointer"
+                      className="font-bold text-stone-900 dark:text-stone-100 text-sm hover:text-amber-800 dark:hover:text-amber-400 cursor-pointer"
                     >
                       {topic.title}
                     </h3>
                   </div>
-                  <p className="text-xs text-stone-500 line-clamp-1">{topic.description}</p>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 line-clamp-1">{topic.description}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleStartStudy(topic.id)}
-                    className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-semibold flex items-center gap-1 transition"
+                    className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" /> Bấm giờ học
+                    <Play className="w-3.5 h-3.5 fill-current text-stone-500" /> Bấm giờ học
                   </button>
                   <button
                     onClick={() => handleStartReview(topic)}
-                    className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1 transition"
+                    className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
                   >
-                    <Brain className="w-3.5 h-3.5 text-amber-700" /> Ôn tập
+                    <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Ôn tập
                   </button>
                 </div>
               </div>
 
               {/* Progress and Stats Row */}
-              <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 space-y-2">
+              <div className="p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-200/80 dark:border-stone-700 space-y-2">
                 <div className="flex flex-wrap items-center justify-between text-xs gap-2">
-                  <div className="flex items-center gap-3 font-mono text-stone-700">
-                    <span className="font-bold text-amber-900">
+                  <div className="flex items-center gap-3 font-mono text-stone-700 dark:text-stone-300 flex-wrap">
+                    <span className="font-bold text-amber-900 dark:text-amber-300">
                       {progressData.progress}% hoàn thành
                     </span>
                     <span>•</span>
@@ -643,11 +643,11 @@ export function StudyProgressView() {
 
                   <div className="text-xs font-medium">
                     {isOverdue ? (
-                      <span className="text-rose-700 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                      <span className="text-rose-700 dark:text-rose-300 font-bold bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900/60">
                         ⚠️ Next review: Hôm nay / Quá hạn
                       </span>
                     ) : reviewDate ? (
-                      <span className="text-stone-600">
+                      <span className="text-stone-600 dark:text-stone-400">
                         Next review: {reviewDate.toLocaleDateString('vi-VN')}
                       </span>
                     ) : (
@@ -658,7 +658,7 @@ export function StudyProgressView() {
 
                 {/* Progress Bar with direct drag slider */}
                 <div className="flex items-center gap-3">
-                  <div className="flex-1 bg-stone-200 rounded-full h-2 overflow-hidden">
+                  <div className="flex-1 bg-stone-200 dark:bg-stone-700 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${presentation.progressBarClass}`}
                       style={{ width: `${progressData.progress}%` }}
@@ -670,7 +670,7 @@ export function StudyProgressView() {
                     max={100}
                     value={progressData.progress}
                     onChange={(e) => updateTopicProgress(topic.id, Number(e.target.value))}
-                    className="w-24 accent-amber-700 cursor-pointer"
+                    className="w-24 accent-amber-800 cursor-pointer"
                   />
                 </div>
               </div>
@@ -679,7 +679,7 @@ export function StudyProgressView() {
         })}
 
         {filteredTopics.length === 0 && (
-          <div className="text-center py-12 bg-white border border-stone-200 rounded-2xl p-6 text-stone-400 text-xs">
+          <div className="text-center py-12 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-6 text-stone-400 text-xs">
             Không tìm thấy chủ đề nào theo bộ lọc tiến độ này.
           </div>
         )}

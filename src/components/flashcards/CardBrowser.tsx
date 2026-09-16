@@ -272,7 +272,7 @@ export function CardBrowser({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-600 rounded-md"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-md cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -280,7 +280,7 @@ export function CardBrowser({
           </div>
 
           {/* Quick Refresh & Close if provided */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={loadCards}
               disabled={loading}
@@ -302,15 +302,15 @@ export function CardBrowser({
         </div>
 
         {/* Facet Filters & Sort */}
-        <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs">
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
           {/* SRS State Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-stone-500">SRS:</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">SRS:</span>
             <select
               data-testid="select-filter-state"
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value as any)}
-              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium"
+              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium cursor-pointer"
             >
               <option value="all">Tất cả giai đoạn</option>
               <option value="new">Thẻ mới (New)</option>
@@ -322,12 +322,12 @@ export function CardBrowser({
 
           {/* Lifecycle Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-stone-500">Vòng đời:</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Vòng đời:</span>
             <select
               data-testid="select-filter-lifecycle"
               value={selectedLifecycle}
               onChange={(e) => setSelectedLifecycle(e.target.value as any)}
-              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium"
+              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium cursor-pointer"
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="active">Đang hoạt động (Active)</option>
@@ -338,12 +338,12 @@ export function CardBrowser({
 
           {/* Due Status Filter */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-medium text-stone-500">Hạn ôn:</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500">Hạn ôn:</span>
             <select
               data-testid="select-filter-due"
               value={selectedDueStatus}
               onChange={(e) => setSelectedDueStatus(e.target.value as any)}
-              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium"
+              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium cursor-pointer"
             >
               <option value="all">Tất cả lịch</option>
               <option value="due">Đến hạn hôm nay</option>
@@ -361,7 +361,7 @@ export function CardBrowser({
               type="checkbox"
               checked={weakOnly}
               onChange={(e) => setWeakOnly(e.target.checked)}
-              className="rounded text-amber-700 focus:ring-amber-500 w-3.5 h-3.5"
+              className="rounded text-amber-800 focus:ring-amber-700 w-3.5 h-3.5"
             />
             <span className="font-semibold text-[11px]">Thẻ yếu (Lapses ≥ 3 hoặc Ease ≤ 2.0)</span>
           </label>
@@ -373,7 +373,7 @@ export function CardBrowser({
               data-testid="select-card-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium"
+              className="px-2.5 py-1.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-800 dark:text-stone-200 font-medium cursor-pointer"
             >
               <option value="dueAt_asc">Hạn ôn (gần nhất trước)</option>
               <option value="dueAt_desc">Hạn ôn (xa nhất trước)</option>
@@ -391,10 +391,10 @@ export function CardBrowser({
       {selectedCardIds.size > 0 && (
         <div
           data-testid="bulk-action-bar"
-          className="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 rounded-2xl p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-1"
+          className="bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-800 rounded-2xl p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-1"
         >
           <div className="flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 flex items-center justify-center font-bold text-xs font-mono">
+            <span className="w-5 h-5 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 flex items-center justify-center font-bold text-[11px] font-mono">
               <span data-testid="bulk-selected-count">{selectedCardIds.size}</span>
             </span>
             <span className="text-xs font-semibold text-amber-950 dark:text-amber-200">
@@ -406,7 +406,7 @@ export function CardBrowser({
             <button
               data-testid="btn-bulk-suspend"
               onClick={() => triggerBulkConfirm("suspended")}
-              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-amber-300/80 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             >
               <PauseCircle className="w-3.5 h-3.5 text-amber-700" />
               <span>Tạm hoãn</span>
@@ -415,7 +415,7 @@ export function CardBrowser({
             <button
               data-testid="btn-bulk-restore"
               onClick={() => triggerBulkConfirm("active")}
-              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-amber-300 dark:border-amber-700 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-amber-300/80 dark:border-amber-700 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             >
               <PlayCircle className="w-3.5 h-3.5 text-emerald-600" />
               <span>Kích hoạt lại</span>
@@ -424,7 +424,7 @@ export function CardBrowser({
             <button
               data-testid="btn-bulk-archive"
               onClick={() => triggerBulkConfirm("archived")}
-              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-rose-300 dark:border-rose-700 text-rose-800 dark:text-rose-300 hover:bg-rose-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              className="px-3 py-1.5 bg-white dark:bg-stone-900 border border-rose-300/80 dark:border-rose-700 text-rose-800 dark:text-rose-300 hover:bg-rose-50 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             >
               <Archive className="w-3.5 h-3.5 text-rose-600" />
               <span>Lưu trữ</span>
@@ -447,23 +447,23 @@ export function CardBrowser({
           <table className="w-full text-left text-xs">
             <thead className="bg-stone-50/80 dark:bg-stone-800/60 border-b border-stone-200/80 dark:border-stone-700/80 text-[11px] font-bold text-stone-600 dark:text-stone-300 select-none">
               <tr>
-                <th className="p-3.5 pl-4 w-10 text-center">
+                <th className="p-3 pl-4 w-10 text-center">
                   <input
                     data-testid="checkbox-select-all"
                     type="checkbox"
                     checked={isAllVisibleSelected}
                     onChange={handleSelectAllVisible}
-                    className="rounded text-amber-700 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
+                    className="rounded text-amber-800 focus:ring-amber-700 w-3.5 h-3.5 cursor-pointer"
                   />
                 </th>
-                <th className="p-3.5 font-semibold">Mặt trước (Câu hỏi / Prompt)</th>
-                <th className="p-3.5 font-semibold">Mặt sau (Đáp án)</th>
-                {!topicId && <th className="p-3.5 font-semibold">Chủ đề</th>}
-                <th className="p-3.5 font-semibold text-center">SRS State</th>
-                <th className="p-3.5 font-semibold text-center">Lịch đến hạn</th>
-                <th className="p-3.5 font-semibold text-center">Ease / Lapses</th>
-                <th className="p-3.5 font-semibold text-center">Vòng đời</th>
-                <th className="p-3.5 pr-4 font-semibold text-right">Thao tác</th>
+                <th className="p-3 font-semibold">Mặt trước (Câu hỏi / Prompt)</th>
+                <th className="p-3 font-semibold">Mặt sau (Đáp án)</th>
+                {!topicId && <th className="p-3 font-semibold">Chủ đề</th>}
+                <th className="p-3 font-semibold text-center">SRS State</th>
+                <th className="p-3 font-semibold text-center">Lịch đến hạn</th>
+                <th className="p-3 font-semibold text-center">Ease / Lapses</th>
+                <th className="p-3 font-semibold text-center">Vòng đời</th>
+                <th className="p-3 pr-4 font-semibold text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
@@ -493,18 +493,18 @@ export function CardBrowser({
                       }`}
                     >
                       {/* Row Checkbox */}
-                      <td className="p-3.5 pl-4 text-center">
+                      <td className="p-3 pl-4 text-center">
                         <input
                           data-testid={`checkbox-select-card-${card.id}`}
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelectCard(card.id)}
-                          className="rounded text-amber-700 focus:ring-amber-500 w-3.5 h-3.5 cursor-pointer"
+                          className="rounded text-amber-800 focus:ring-amber-700 w-3.5 h-3.5 cursor-pointer"
                         />
                       </td>
 
                       {/* Front Content */}
-                      <td className="p-3.5 max-w-[220px]">
+                      <td className="p-3 max-w-[220px]">
                         <div className="font-medium text-stone-900 dark:text-stone-100 truncate" title={card.front}>
                           {card.front}
                         </div>
@@ -514,7 +514,7 @@ export function CardBrowser({
                       </td>
 
                       {/* Back Content */}
-                      <td className="p-3.5 max-w-[200px]">
+                      <td className="p-3 max-w-[200px]">
                         <div className="text-stone-600 dark:text-stone-300 truncate" title={card.back}>
                           {card.back}
                         </div>
@@ -522,24 +522,24 @@ export function CardBrowser({
 
                       {/* Topic (Global Mode Only) */}
                       {!topicId && (
-                        <td className="p-3.5 max-w-[140px]">
-                          <span className="px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[10px] truncate block" title={topicTitle}>
+                        <td className="p-3 max-w-[140px]">
+                          <span className="px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[10px] truncate block font-medium" title={topicTitle}>
                             {topicTitle}
                           </span>
                         </td>
                       )}
 
                       {/* SRS State Badge */}
-                      <td className="p-3.5 text-center">
+                      <td className="p-3 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-mono ${
                             schedule?.state === "new"
-                              ? "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300"
+                              ? "bg-blue-50 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60"
                               : schedule?.state === "learning"
-                              ? "bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-300"
+                              ? "bg-amber-50 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-900/60"
                               : schedule?.state === "review"
-                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                              : "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300"
+                              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/60"
+                              : "bg-purple-50 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-900/60"
                           }`}
                         >
                           {schedule?.state || "new"}
@@ -547,14 +547,14 @@ export function CardBrowser({
                       </td>
 
                       {/* Due Date */}
-                      <td className="p-3.5 text-center font-mono text-[11px] text-stone-600 dark:text-stone-300">
+                      <td className="p-3 text-center font-mono text-[11px] text-stone-600 dark:text-stone-300">
                         {schedule?.dueAt
                           ? new Date(schedule.dueAt).toLocaleDateString("vi-VN")
                           : "—"}
                       </td>
 
                       {/* Ease & Lapses */}
-                      <td className="p-3.5 text-center font-mono text-[11px]">
+                      <td className="p-3 text-center font-mono text-[11px]">
                         <span className="text-stone-700 dark:text-stone-200">
                           {schedule?.easeFactor?.toFixed(1) ?? "2.5"}
                         </span>
@@ -565,14 +565,14 @@ export function CardBrowser({
                       </td>
 
                       {/* Lifecycle Status Badge */}
-                      <td className="p-3.5 text-center">
+                      <td className="p-3 text-center">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
                             card.lifecycleStatus === "active"
-                              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-900/60"
                               : card.lifecycleStatus === "suspended"
-                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
-                              : "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-400"
+                              ? "bg-amber-50 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-200/80 dark:border-amber-900/60"
+                              : "bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-400 border-stone-200 dark:border-stone-700"
                           }`}
                         >
                           {card.lifecycleStatus === "active"
@@ -584,8 +584,8 @@ export function CardBrowser({
                       </td>
 
                       {/* Action Buttons */}
-                      <td className="p-3.5 pr-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="p-3 pr-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           {/* History Button */}
                           <button
                             data-testid={`btn-view-history-${card.id}`}
@@ -651,7 +651,7 @@ export function CardBrowser({
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className="bg-transparent font-bold text-stone-800 dark:text-stone-200 border-b border-stone-300 dark:border-stone-700 pb-0.5 focus:outline-hidden"
+                className="bg-transparent font-bold text-stone-800 dark:text-stone-200 border-b border-stone-300 dark:border-stone-700 pb-0.5 focus:outline-hidden cursor-pointer"
               >
                 <option value={10}>10</option>
                 <option value={15}>15</option>

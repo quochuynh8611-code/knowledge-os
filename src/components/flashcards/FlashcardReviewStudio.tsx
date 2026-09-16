@@ -533,8 +533,8 @@ export function FlashcardReviewStudio({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center p-12 min-h-[400px] text-stone-400 animate-pulse">
-        <div className="w-10 h-10 rounded-full border-3 border-amber-600/30 border-t-amber-600 animate-spin mb-3" />
-        <span className="text-sm font-semibold text-stone-500 dark:text-stone-400">
+        <div className="w-10 h-10 rounded-full border-2 border-stone-300 dark:border-stone-700 border-t-amber-600 dark:border-t-amber-500 animate-spin mb-3" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
           Đang nạp hàng đợi thẻ cần ôn...
         </span>
       </div>
@@ -547,30 +547,30 @@ export function FlashcardReviewStudio({
       <>
         <div
           data-testid="empty-queue-state"
-          className="flex flex-col items-center justify-center p-8 md:p-12 text-center max-w-lg mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-sm space-y-6"
+          className="flex flex-col items-center justify-center p-8 md:p-12 text-center max-w-lg mx-auto bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-xs space-y-6"
         >
-          <div className="w-16 h-16 rounded-3xl bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 flex items-center justify-center">
-            <Sparkles className="w-8 h-8" />
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center">
+            <Sparkles className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
+            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 tracking-tight">
               {topicTitle
-                ? "🎉 Không có thẻ cần ôn cho chủ đề này!"
-                : "🎉 Không có thẻ cần ôn hôm nay!"}
+                ? "Không có thẻ cần ôn cho chủ đề này"
+                : "Không có thẻ cần ôn hôm nay"}
             </h3>
-            <p className="text-sm text-stone-500 dark:text-stone-400 mt-2">
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1.5 leading-relaxed">
               {topicTitle
-                ? `Toàn bộ thẻ thuộc chủ đề "${topicTitle}" đã được ôn tập đúng hạn. Hãy tiếp tục đọc thêm tài liệu hoặc tạo thêm thẻ mới.`
-                : "Bạn đã hoàn thành mọi mục tiêu ôn tập ngắt quãng. Hãy tiếp tục đọc thêm tài liệu hoặc tạo thêm thẻ mới."}
+                ? `Toàn bộ thẻ thuộc chủ đề "${topicTitle}" đã được ôn tập đúng hạn. Bạn có thể đọc thêm tài liệu hoặc tạo thêm thẻ mới.`
+                : "Bạn đã hoàn thành mọi mục tiêu ôn tập ngắt quãng. Hãy tiếp tục đào sâu tài liệu hoặc tạo thêm thẻ mới."}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 w-full">
+          <div className="flex flex-wrap items-center justify-center gap-2.5 w-full pt-1">
             <button
               type="button"
               data-testid="btn-create-card-empty"
               onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium text-sm transition shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-800 hover:bg-amber-900 text-white font-medium text-xs transition shadow-2xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Tạo thẻ mới</span>
@@ -579,9 +579,9 @@ export function FlashcardReviewStudio({
               type="button"
               data-testid="btn-import-csv-empty"
               onClick={() => setIsImportModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-medium text-sm transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 font-medium text-xs transition cursor-pointer"
             >
-              <Upload className="w-4 h-4" />
+              <Upload className="w-4 h-4 text-stone-400" />
               <span>Nhập CSV / TSV</span>
             </button>
             {onClose && (
@@ -589,9 +589,9 @@ export function FlashcardReviewStudio({
                 type="button"
                 data-testid="btn-close-empty"
                 onClick={onClose}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-medium text-sm transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-750 text-stone-700 dark:text-stone-300 font-medium text-xs transition cursor-pointer"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4 text-stone-400" />
                 <span>{topicTitle ? "Quay lại chủ đề" : "Quay lại Dashboard"}</span>
               </button>
             )}
@@ -634,15 +634,15 @@ export function FlashcardReviewStudio({
       <>
         <div
           data-testid="session-completed-view"
-          className="flex flex-col items-center justify-center p-6 sm:p-10 text-center max-w-xl mx-auto bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-xl space-y-6 animate-in fade-in zoom-in-95 duration-200"
+          className="flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-xl mx-auto bg-white dark:bg-stone-900 border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-sm space-y-5 animate-in fade-in zoom-in-95 duration-200"
         >
           {/* Header Trophy & Sparkles */}
           <div className="relative">
-            <div className="w-18 h-18 rounded-3xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shadow-lg shadow-emerald-500/10 ring-4 ring-emerald-500/10">
-              <Trophy className="w-9 h-9" />
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shadow-xs">
+              <Trophy className="w-7 h-7" />
             </div>
-            <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-400 text-amber-950 flex items-center justify-center shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 fill-amber-950" />
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-amber-500 text-stone-950 flex items-center justify-center shadow-2xs">
+              <Sparkles className="w-3 h-3 fill-stone-950" />
             </span>
           </div>
 
@@ -805,20 +805,20 @@ export function FlashcardReviewStudio({
   const currentCard = displayCards[currentIndex];
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-4">
       {/* Inactivity Toast Warning */}
       {inactivityWarning && (
         <div
           data-testid="inactivity-warning"
-          className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 flex items-center justify-between text-amber-900 dark:text-amber-200 shadow-md animate-in fade-in"
+          className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 flex items-center justify-between text-amber-900 dark:text-amber-200 shadow-xs animate-in fade-in"
         >
-          <div className="flex items-center gap-2.5 text-sm">
+          <div className="flex items-center gap-2 text-xs">
             <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <span>Bạn còn ở đó không? Phiên học tạm dừng ghi nhận thời gian.</span>
           </div>
           <button
             onClick={() => setInactivityWarning(false)}
-            className="px-3 py-1 text-xs font-bold rounded-lg bg-amber-600 hover:bg-amber-700 text-white transition"
+            className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-700 hover:bg-amber-800 text-white transition cursor-pointer"
           >
             Tiếp tục
           </button>
@@ -826,28 +826,28 @@ export function FlashcardReviewStudio({
       )}
 
       {/* Header bar: Progress & Actions */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold">
-            <Brain className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1 py-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="w-7 h-7 rounded-lg bg-amber-100/80 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 flex items-center justify-center font-bold">
+            <Brain className="w-3.5 h-3.5" />
           </div>
           <span
             data-testid="queue-progress"
-            className="text-sm font-bold text-stone-800 dark:text-stone-200 tracking-wide"
+            className="text-xs font-bold font-mono text-stone-800 dark:text-stone-200 tracking-wide"
           >
             {currentIndex + 1} / {cards.length}
           </span>
           {/* Session Type Badge */}
           <div
             data-testid="badge-session-type"
-            className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
               effectiveSessionType === "cram"
-                ? "bg-purple-100 dark:bg-purple-950/80 border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300"
+                ? "bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300"
                 : effectiveSessionType === "new"
-                ? "bg-emerald-100 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300"
+                ? "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                 : effectiveSessionType === "weak"
-                ? "bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-300"
-                : "bg-amber-100 dark:bg-amber-950/80 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-300"
+                ? "bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                : "bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300"
             }`}
           >
             {effectiveSessionType === "cram" && <span>Cram Mode (Ôn cấp tốc)</span>}
@@ -858,22 +858,22 @@ export function FlashcardReviewStudio({
           {topicTitle && (
             <div
               data-testid="review-topic-context"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300/60 dark:border-amber-800 text-amber-900 dark:text-amber-300 text-xs font-semibold max-w-[200px] sm:max-w-[260px] truncate"
+              className="flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-[11px] font-semibold max-w-[180px] sm:max-w-[240px] truncate"
               title={`Chủ đề: ${topicTitle}`}
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0" />
+              <BookOpen className="w-3 h-3 shrink-0 text-stone-400" />
               <span className="truncate">{topicTitle}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             type="button"
             data-testid="btn-create-card"
             onClick={() => setIsCreateModalOpen(true)}
             title="Tạo thẻ mới"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/80 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-semibold transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-semibold transition cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Tạo thẻ</span>
@@ -883,9 +883,9 @@ export function FlashcardReviewStudio({
             data-testid="btn-import-csv"
             onClick={() => setIsImportModalOpen(true)}
             title="Nhập CSV/TSV"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold transition cursor-pointer"
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3.5 h-3.5 text-stone-400" />
             <span className="hidden sm:inline">Nhập CSV</span>
           </button>
           <button
@@ -893,10 +893,10 @@ export function FlashcardReviewStudio({
             data-testid="btn-toggle-retention-curve"
             onClick={() => setShowRetentionCurve((prev) => !prev)}
             title="Biểu đồ đường cong quên lãng"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
               showRetentionCurve
-                ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                : "bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                ? "bg-emerald-700 text-white border-emerald-700 shadow-2xs"
+                : "bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200"
             }`}
           >
             <Activity className="w-3.5 h-3.5" />
@@ -907,7 +907,7 @@ export function FlashcardReviewStudio({
             data-testid="btn-open-ab-testing"
             onClick={() => setIsAbTestModalOpen(true)}
             title="A/B Testing: SM-2 vs Adaptive SRS"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/80 hover:bg-purple-100 dark:hover:bg-purple-900 border border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300 text-xs font-semibold transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs font-semibold transition cursor-pointer"
           >
             <GitCompare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">A/B Testing</span>
@@ -917,9 +917,9 @@ export function FlashcardReviewStudio({
             data-testid="btn-open-export-csv"
             onClick={() => setIsExportModalOpen(true)}
             title="Xuất CSV (Phiên hiện tại & Toàn bộ lịch sử)"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition cursor-pointer"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-semibold transition cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-stone-400" />
             <span className="hidden sm:inline">Xuất CSV</span>
           </button>
           {onClose && (
@@ -928,16 +928,16 @@ export function FlashcardReviewStudio({
               data-testid="btn-close-review"
               onClick={onClose}
               title={topicTitle ? "Quay lại chủ đề" : "Thoát phiên ôn"}
-              className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           )}
           <div
             data-testid="session-timer"
-            className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 text-xs font-mono font-semibold"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 border border-stone-200/80 dark:border-stone-700 text-stone-700 dark:text-stone-300 text-xs font-mono font-semibold"
           >
-            <Clock className="w-3.5 h-3.5 text-stone-400" />
+            <Clock className="w-3 h-3 text-stone-400" />
             <span>{formatTimer(sessionSeconds)}</span>
           </div>
         </div>
@@ -979,58 +979,58 @@ export function FlashcardReviewStudio({
       {/* Rating Action Bar */}
       <div className="pt-2">
         {isFlipped ? (
-          <div className="grid grid-cols-4 gap-2.5 md:gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {/* 1: Again */}
             <button
               data-testid="rating-btn-1"
               onClick={() => handleRate(1)}
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 text-rose-700 dark:text-rose-300 transition shadow-xs group"
+              className="flex flex-col items-center justify-center p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-900/80 text-rose-800 dark:text-rose-200 transition shadow-2xs group cursor-pointer"
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-rose-500 dark:text-rose-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
                 Lặp lại [1]
               </span>
-              <span className="text-sm font-bold mt-0.5">&lt; 1 ngày</span>
+              <span className="text-xs font-bold mt-0.5">&lt; 1 ngày</span>
             </button>
 
             {/* 2: Hard */}
             <button
               data-testid="rating-btn-2"
               onClick={() => handleRate(2)}
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-900/80 text-amber-700 dark:text-amber-300 transition shadow-xs group"
+              className="flex flex-col items-center justify-center p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-900/80 text-amber-800 dark:text-amber-200 transition shadow-2xs group cursor-pointer"
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Khó [2]
               </span>
-              <span className="text-sm font-bold mt-0.5">1 ngày</span>
+              <span className="text-xs font-bold mt-0.5">1 ngày</span>
             </button>
 
             {/* 3: Good */}
             <button
               data-testid="rating-btn-3"
               onClick={() => handleRate(3)}
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-900/80 text-emerald-700 dark:text-emerald-300 transition shadow-xs group ring-1 ring-emerald-500/20"
+              className="flex flex-col items-center justify-center p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 transition shadow-2xs group ring-1 ring-emerald-500/20 cursor-pointer"
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Chuẩn [3]
               </span>
-              <span className="text-sm font-bold mt-0.5">Khoảng cách</span>
+              <span className="text-xs font-bold mt-0.5">Khoảng cách</span>
             </button>
 
             {/* 4: Easy */}
             <button
               data-testid="rating-btn-4"
               onClick={() => handleRate(4)}
-              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-900/80 text-sky-700 dark:text-sky-300 transition shadow-xs group"
+              className="flex flex-col items-center justify-center p-3 rounded-xl bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200 dark:border-sky-900/80 text-sky-800 dark:text-sky-200 transition shadow-2xs group cursor-pointer"
             >
-              <span className="text-xs font-semibold uppercase tracking-wider text-sky-500 dark:text-sky-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                 Dễ [4]
               </span>
-              <span className="text-sm font-bold mt-0.5">&gt; 4 ngày</span>
+              <span className="text-xs font-bold mt-0.5">&gt; 4 ngày</span>
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-center p-4 rounded-2xl bg-stone-100/70 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-800 text-stone-400 dark:text-stone-500 text-xs">
-            <span>Nhấn phím <strong className="text-stone-700 dark:text-stone-300 font-mono px-1.5 py-0.5 bg-white dark:bg-stone-700 rounded border border-stone-300 dark:border-stone-600">Space</strong> hoặc click vào thẻ để xem đáp án trước khi chấm điểm</span>
+          <div className="flex items-center justify-center p-3.5 rounded-xl bg-stone-100/80 dark:bg-stone-800/40 border border-stone-200/70 dark:border-stone-800 text-stone-500 dark:text-stone-400 text-xs">
+            <span>Nhấn phím <strong className="text-stone-800 dark:text-stone-200 font-mono px-1.5 py-0.5 bg-white dark:bg-stone-700 rounded border border-stone-300 dark:border-stone-600">Space</strong> hoặc nhấp vào thẻ để xem đáp án trước khi chấm điểm</span>
           </div>
         )}
       </div>
