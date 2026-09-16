@@ -1,8 +1,67 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    /* Surfaces */
+    --wb-canvas: #fafaf9;          /* stone-50 */
+    --wb-surface-subtle: #f5f5f4;  /* stone-100 */
+    --wb-surface-card: #ffffff;    /* white */
+    --wb-surface-elevated: #ffffff;
+    --wb-surface-active: #fef3c7;  /* amber-100 */
+
+    /* Borders */
+    --wb-border-subtle: #e7e5e4;   /* stone-200 */
+    --wb-border-strong: #d6d3d1;   /* stone-300 */
+    --wb-border-focus: #b45309;    /* amber-700 */
+
+    /* Text & Foreground */
+    --wb-text-primary: #1c1917;    /* stone-900 */
+    --wb-text-secondary: #57534e;  /* stone-600 */
+    --wb-text-muted: #78716c;      /* stone-500 */
+    --wb-text-accent: #92400e;     /* amber-800 */
+
+    /* Academic Accent */
+    --wb-accent: #b45309;          /* amber-700 */
+    --wb-accent-hover: #92400e;    /* amber-800 */
+    --wb-accent-surface: #fef3c7;  /* amber-100 */
+
+    /* Semantic Status */
+    --wb-status-success: #059669;  /* emerald-600 */
+    --wb-status-warning: #d97706;  /* amber-600 */
+    --wb-status-danger: #e11d48;   /* rose-600 */
+    --wb-status-info: #0284c7;     /* sky-600 */
+    --wb-status-purple: #7c3aed;   /* violet-600 (Obsidian) */
+  }
+
+  .dark {
+    /* Surfaces */
+    --wb-canvas: #0c0a09;          /* stone-950 */
+    --wb-surface-subtle: #1c1917;  /* stone-900 */
+    --wb-surface-card: #1c1917;    /* stone-900/90 */
+    --wb-surface-elevated: #292524;/* stone-800 */
+    --wb-surface-active: #451a03;  /* amber-950 */
+
+    /* Borders */
+    --wb-border-subtle: #292524;   /* stone-800 */
+    --wb-border-strong: #44403c;   /* stone-700 */
+    --wb-border-focus: #f59e0b;    /* amber-500 */
+
+    /* Text & Foreground */
+    --wb-text-primary: #f5f5f4;    /* stone-100 */
+    --wb-text-secondary: #d6d3d1;  /* stone-300 */
+    --wb-text-muted: #a8a29e;      /* stone-400 */
+    --wb-text-accent: #fbbf24;     /* amber-400 */
+
+    /* Academic Accent */
+    --wb-accent: #f59e0b;          /* amber-500 */
+    --wb-accent-hover: #fbbf24;    /* amber-400 */
+    --wb-accent-surface: rgba(120, 53, 15, 0.4);
+  }
+
   body {
     font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+    background-color: var(--wb-canvas);
+    color: var(--wb-text-primary);
   }
 
   h1, h2, h3, .font-serif-title {
@@ -16,16 +75,16 @@
 
 /* Custom subtle scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(168, 162, 158, 0.4);
+  background: rgba(168, 162, 158, 0.35);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(168, 162, 158, 0.7);
+  background: rgba(168, 162, 158, 0.65);
 }

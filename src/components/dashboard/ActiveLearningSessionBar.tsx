@@ -9,12 +9,11 @@
  * - Four explicit semantics: running / paused / resume / complete
  * - Collapses to a minimal pill on mobile (<640px)
  * - Renders nothing when topicId is empty (no active session)
- *
- * Phase 17 spec: docs/specs/phase-17-focus-learning-session-and-next-action.md
+ * - Uses Workbench V2 design tokens & surfaces
  */
 
 import React, { useState } from 'react';
-import { Play, Pause, CheckCircle2, Timer, ChevronRight, Minimize2 } from 'lucide-react';
+import { Play, Pause, CheckCircle2, Timer, ChevronRight, Minimize2, Maximize2 } from 'lucide-react';
 
 export interface ActiveLearningSessionBarProps {
   /** Topic ID — if empty the bar renders nothing (no active session) */
@@ -62,13 +61,14 @@ export function ActiveLearningSessionBar({
         <button
           onClick={() => setIsMinimized(false)}
           title="Mở rộng thanh phiên học"
-          className="flex items-center gap-2 px-3 py-2 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 rounded-2xl shadow-lg text-xs font-semibold hover:bg-stone-800 dark:hover:bg-stone-200 transition"
+          className="flex items-center gap-2 px-3 py-2 bg-stone-900/95 dark:bg-stone-100/95 text-white dark:text-stone-900 rounded-2xl shadow-xl border border-stone-700/80 dark:border-stone-300 text-xs font-semibold hover:bg-stone-800 dark:hover:bg-stone-200 transition backdrop-blur-md cursor-pointer"
         >
-          <Timer className="w-3.5 h-3.5 text-amber-400 dark:text-amber-700" />
-          <span className="font-mono">{formatTime(timerSeconds)}</span>
+          <Timer className="w-3.5 h-3.5 text-amber-400 dark:text-amber-600 animate-pulse" />
+          <span className="font-mono tabular-nums">{formatTime(timerSeconds)}</span>
           {isPaused && (
-            <span className="text-amber-400 dark:text-amber-700 text-[10px] font-bold">⏸</span>
+            <span className="text-amber-400 dark:text-amber-600 text-[10px] font-bold">⏸</span>
           )}
+          <Maximize2 className="w-3 h-3 opacity-70" />
         </button>
       </div>
     );
@@ -81,18 +81,18 @@ export function ActiveLearningSessionBar({
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-xl"
     >
       <div
-        className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-2xl shadow-xl border transition-all duration-300 ${
+        className={`flex items-center gap-2 sm:gap-3 px-3.5 sm:px-4 py-2.5 rounded-2xl shadow-xl border transition-all duration-300 backdrop-blur-md ${
           isPaused
-            ? 'bg-stone-800/95 dark:bg-stone-200/95 border-stone-600 dark:border-stone-400'
-            : 'bg-stone-900/95 dark:bg-stone-100/95 border-stone-700 dark:border-stone-300'
-        } backdrop-blur-sm`}
+            ? 'bg-stone-900/95 dark:bg-stone-100/95 border-amber-600/50 dark:border-amber-400/60 ring-1 ring-amber-500/20'
+            : 'bg-stone-900/95 dark:bg-stone-100/95 border-stone-750 dark:border-stone-300'
+        }`}
       >
         {/* Timer icon + status indicator */}
-        <div className="shrink-0">
+        <div className="shrink-0 p-1 rounded-lg bg-white/10 dark:bg-stone-900/10">
           <Timer
             className={`w-4 h-4 ${
               isTimerRunning
-                ? 'text-amber-400 dark:text-amber-700 animate-pulse'
+                ? 'text-amber-400 dark:text-amber-600 animate-pulse'
                 : 'text-stone-400 dark:text-stone-500'
             }`}
           />
@@ -102,15 +102,15 @@ export function ActiveLearningSessionBar({
         <button
           onClick={() => onNavigateToTopic(topicId)}
           title="Đi đến chủ đề đang học"
-          className="min-w-0 flex-1 text-left"
+          className="min-w-0 flex-1 text-left cursor-pointer group"
         >
           <div className="flex items-center gap-1">
-            <span className="text-[11px] text-stone-400 dark:text-stone-500 shrink-0">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-amber-400/90 dark:text-amber-700 shrink-0">
               {isPaused ? 'Đang tạm dừng' : 'Đang học'}
             </span>
-            <ChevronRight className="w-3 h-3 text-stone-500 dark:text-stone-400 shrink-0" />
+            <ChevronRight className="w-3 h-3 text-stone-500 dark:text-stone-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
           </div>
-          <p className="text-xs font-semibold text-white dark:text-stone-900 truncate leading-tight">
+          <p className="text-xs font-bold text-white dark:text-stone-900 truncate leading-tight group-hover:text-amber-300 dark:group-hover:text-amber-800 transition">
             {topicTitle}
           </p>
         </button>
@@ -126,7 +126,7 @@ export function ActiveLearningSessionBar({
             onClick={onPause}
             aria-label="Tạm dừng"
             title="Tạm dừng phiên học"
-            className="shrink-0 p-1.5 rounded-xl text-stone-300 dark:text-stone-600 hover:bg-stone-700 dark:hover:bg-stone-200 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
+            className="shrink-0 p-1.5 rounded-xl text-stone-300 dark:text-stone-600 hover:bg-white/15 dark:hover:bg-black/10 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
           >
             <Pause className="w-4 h-4" />
           </button>
@@ -135,7 +135,7 @@ export function ActiveLearningSessionBar({
             onClick={onResume}
             aria-label="Tiếp tục"
             title="Tiếp tục phiên học"
-            className="shrink-0 p-1.5 rounded-xl text-amber-300 dark:text-amber-700 hover:bg-stone-700 dark:hover:bg-stone-200 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
+            className="shrink-0 p-1.5 rounded-xl text-amber-300 dark:text-amber-700 hover:bg-white/15 dark:hover:bg-black/10 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
           >
             <Play className="w-4 h-4 fill-current" />
           </button>
@@ -146,7 +146,7 @@ export function ActiveLearningSessionBar({
           onClick={onOpenWrapup}
           aria-label="Hoàn tất"
           title="Hoàn tất phiên học và ghi nhận kết quả"
-          className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-sm cursor-pointer"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition shadow-xs cursor-pointer border border-emerald-500/50"
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Hoàn tất</span>
@@ -156,7 +156,7 @@ export function ActiveLearningSessionBar({
         <button
           onClick={() => setIsMinimized(true)}
           title="Thu gọn thanh phiên học"
-          className="shrink-0 p-1.5 rounded-xl text-stone-500 dark:text-stone-400 hover:bg-stone-700 dark:hover:bg-stone-200 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
+          className="shrink-0 p-1.5 rounded-xl text-stone-400 dark:text-stone-500 hover:bg-white/10 dark:hover:bg-black/10 hover:text-white dark:hover:text-stone-900 transition cursor-pointer"
         >
           <Minimize2 className="w-3.5 h-3.5" />
         </button>

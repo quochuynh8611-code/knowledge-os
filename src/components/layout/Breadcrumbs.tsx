@@ -29,7 +29,7 @@ export function Breadcrumbs({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={`flex items-center text-xs text-stone-500 dark:text-stone-400 overflow-x-auto no-scrollbar py-1 ${className}`}
+      className={`flex items-center text-xs text-stone-500 dark:text-stone-400 overflow-x-auto no-scrollbar py-0.5 ${className}`}
     >
       <ol className="flex items-center gap-1.5 flex-nowrap shrink-0">
         {/* Home Item */}
@@ -38,7 +38,7 @@ export function Breadcrumbs({
             <button
               type="button"
               onClick={onHomeClick}
-              className={`flex items-center gap-1 hover:text-amber-800 dark:hover:text-amber-400 transition font-medium ${
+              className={`flex items-center gap-1 hover:text-amber-800 dark:hover:text-amber-400 transition font-medium cursor-pointer ${
                 items.length === 0
                   ? "text-amber-900 dark:text-amber-300 font-bold"
                   : ""
@@ -49,7 +49,7 @@ export function Breadcrumbs({
               <span className="hidden sm:inline">Tổng quan</span>
             </button>
             <ChevronRight
-              className="w-3 h-3 text-stone-400 dark:text-stone-600 mx-1 shrink-0"
+              className="w-3 h-3 text-stone-300 dark:text-stone-600 mx-0.5 shrink-0"
               aria-hidden="true"
             />
           </li>
@@ -77,7 +77,7 @@ export function Breadcrumbs({
                 <button
                   type="button"
                   onClick={item.onClick}
-                  className="flex items-center gap-1.5 hover:text-amber-800 dark:hover:text-amber-400 transition max-w-[140px] sm:max-w-[200px] truncate font-medium"
+                  className="flex items-center gap-1.5 hover:text-amber-800 dark:hover:text-amber-400 transition max-w-[140px] sm:max-w-[200px] truncate font-medium cursor-pointer"
                   title={item.label}
                 >
                   {Icon && (
@@ -89,7 +89,7 @@ export function Breadcrumbs({
 
               {!isLast && (
                 <ChevronRight
-                  className="w-3 h-3 text-stone-400 dark:text-stone-600 mx-1 shrink-0"
+                  className="w-3 h-3 text-stone-300 dark:text-stone-600 mx-0.5 shrink-0"
                   aria-hidden="true"
                 />
               )}
