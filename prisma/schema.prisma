@@ -60,6 +60,8 @@ model Topic {
   researchSessions       ResearchSession[]
   groundedArtifacts      GroundedArtifact[]
   researchTimelineEvents ResearchTimelineEvent[]
+  // Phase 18A: Unified Research Reader relations
+  excerpts               ResearchExcerpt[]
 }
 
 model Note {
@@ -80,6 +82,8 @@ model Note {
   flashcards       Flashcard[]
   // NotebookLM Research Hub v2.1 optional relation
   artifactImports  ArtifactImport[]
+  // Phase 18A: Unified Research Reader relations
+  excerpts         ResearchExcerpt[]
 }
 
 model Resource {
@@ -95,6 +99,8 @@ model Resource {
   createdAt  DateTime    @default(now())
   // Native Flashcard optional relation
   flashcards Flashcard[]
+  // Phase 18A: Optional Archived Document relation
+  archivedDocument ArchivedDocument?
 }
 
 model KnowledgeLink {
@@ -366,3 +372,61 @@ model ResearchTimelineEvent {
   @@index([eventType])
 }
 
+// ─── Phase 18A: Unified Research Reader & Local Archive Models ────────────────
+
+model ArchivedDocument {
+  id             String            @id @default(uuid())
+  resourceId     String?           @unique
+  resource       Resource?         @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+  fileName       String
+  fileSize       Int
+  mimeType       String            // 'application/pdf' | 'application/epub+zip' | 'text/markdown'
+  fileFormat     String            // 'pdf' | 'epub' | 'md'
+  contentHash    String            // SHA-256 hash
+  storageRelPath String            // e.g. 'pdf/aa/file.pdf'
+  lastPosition   Json?             // { cfi?: string, pageNumber?: number, headingId?: string, percentage?: number }
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  excerpts       ResearchExcerpt[]
+
+  @@index([contentHash])
+  @@index([fileFormat])
+}
+
+model ResearchExcerpt {
+  id                 String             @id @default(uuid())
+  archivedDocumentId String
+  archivedDocument   ArchivedDocument   @relation(fields: [archivedDocumentId], references: [id], onDelete: Cascade)
+  topicId            String?
+  topic              Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  targetNoteId       String?
+  targetNote         Note?              @relation(fields: [targetNoteId], references: [id], onDelete: SetNull)
+  selectedText       String
+  contextPrefix      String?
+  contextSuffix      String?
+  positionSelector   Json               // { cfi?: string, pageNumber?: number, headingId?: string, charRange?: [number, number] }
+  highlightColor     String             @default("#F59E0B") // Amber-500
+  citationSnapshot   Json?
+  userNote           String?
+  status             String             @default("active") // 'active' | 'inbox' | 'archived'
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  inboxItem          ResearchInboxItem?
+
+  @@index([archivedDocumentId])
+  @@index([topicId])
+  @@index([targetNoteId])
+  @@index([status])
+}
+
+model ResearchInboxItem {
+  id          String          @id @default(uuid())
+  excerptId   String          @unique
+  excerpt     ResearchExcerpt @relation(fields: [excerptId], references: [id], onDelete: Cascade)
+  isProcessed Boolean         @default(false)
+  priority    Int             @default(0) // 0: Normal, 1: High
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([isProcessed])
+}

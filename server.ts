@@ -15,6 +15,7 @@ import { createSyncRouter } from "./src/server/routes/syncRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
+import { createArchiveRouter } from "./src/server/routes/archiveRoutes";
 import { createResearchSessionRouter } from "./src/server/routes/researchSessionRoutes";
 import { createArtifactRouter } from "./src/server/routes/artifactRoutes";
 import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
@@ -37,6 +38,12 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: "15mb" }));
+  app.use(
+    express.raw({
+      type: ["application/pdf", "application/epub+zip", "text/markdown", "application/octet-stream"],
+      limit: "50mb",
+    })
+  );
 
   // Rate limiters for sensitive endpoints (Phase 4 Security Guardrails)
   const geminiRateLimiter = createRateLimiter({
@@ -102,6 +109,11 @@ async function startServer() {
   // ARCHITECTURE DOCUMENTATION & SPECS ROUTES
   // ==========================================
   app.use("/api", createDocsRouter());
+
+  // ==========================================
+  // PHASE 18A: LOCAL ARCHIVE STORAGE ROUTES
+  // ==========================================
+  app.use("/api", createArchiveRouter({ prisma }));
 
   // ==========================================
   // READ-ONLY OBSIDIAN VAULT BRIDGE & VAULT PROFILE MANAGER (PHASE P4.1 - P4.3B)

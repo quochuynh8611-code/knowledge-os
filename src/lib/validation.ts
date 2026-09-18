@@ -1073,3 +1073,150 @@ export type ValidatedFlashcardReviewInput = z.infer<typeof FlashcardReviewInputS
 export type ValidatedFlashcardReviewResponse = z.infer<typeof FlashcardReviewResponseSchema>;
 export type ValidatedFlashcardSuspendDuplicate = z.infer<typeof FlashcardSuspendDuplicateSchema>;
 
+// ==========================================
+// 19. PHASE 18A: ARCHIVE & EXCERPT SCHEMAS
+// ==========================================
+
+export const MAX_ARCHIVE_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+export const ArchivedDocumentFormatEnum = z.enum(["pdf", "epub", "md"]);
+
+export const ArchiveUploadQuerySchema = z.object({
+  originalName: z
+    .string()
+    .trim()
+    .min(1, "originalName không được để trống")
+    .max(255, "Tên file quá dài")
+    .refine((name) => !name.includes("..") && !name.includes("/") && !name.includes("\\"), {
+      message: "Tên file không hợp lệ hoặc chứa ký tự path traversal",
+    }),
+  fileFormat: ArchivedDocumentFormatEnum,
+  resourceId: z.string().optional(),
+});
+
+export const ReadingPositionDataSchema = z.object({
+  cfi: z.string().optional(),
+  pageNumber: z.number().int().min(1).optional(),
+  headingId: z.string().optional(),
+  percentage: z.number().min(0).max(100).optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const PositionSelectorSchema = z.object({
+  cfi: z.string().optional(),
+  pageNumber: z.number().int().min(1).optional(),
+  headingId: z.string().optional(),
+  charRange: z.tuple([z.number(), z.number()]).optional(),
+});
+
+export const CitationSnapshotSchema = z.object({
+  title: z.string().min(1),
+  author: z.string().optional(),
+  locator: z.string().optional(),
+  formatted: z.string().optional(),
+  apa: z.string().optional(),
+  mla: z.string().optional(),
+  chicago: z.string().optional(),
+  bibtex: z.string().optional(),
+});
+
+export const ArchivedDocumentSchema = z.object({
+  id: z.string().min(1),
+  resourceId: z.string().nullable().optional(),
+  fileName: z.string().min(1),
+  fileSize: z.number().int().min(0),
+  mimeType: z.string().min(1),
+  fileFormat: ArchivedDocumentFormatEnum,
+  contentHash: z.string().length(64),
+  storageRelPath: z.string().min(1),
+  lastPosition: ReadingPositionDataSchema.nullable().optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const ArchivedDocumentCreateSchema = z.object({
+  resourceId: z.string().optional(),
+  fileName: z
+    .string()
+    .trim()
+    .min(1, "fileName không được để trống")
+    .max(255, "Tên file quá dài")
+    .refine((name) => !name.includes("..") && !name.includes("/") && !name.includes("\\"), {
+      message: "Tên file không hợp lệ hoặc chứa ký tự path traversal",
+    }),
+  fileSize: z
+    .number()
+    .int()
+    .min(1, "Dung lượng file phải lớn hơn 0 bytes")
+    .max(MAX_ARCHIVE_FILE_SIZE, "Dung lượng file vượt quá giới hạn 50MB"),
+  mimeType: z.string().trim().min(1, "mimeType không được để trống"),
+  fileFormat: ArchivedDocumentFormatEnum,
+  contentHash: z.string().length(64, "contentHash phải là chuỗi SHA-256 (64 ký tự hex)"),
+  storageRelPath: z.string().trim().min(1, "storageRelPath không được để trống"),
+  lastPosition: ReadingPositionDataSchema.optional(),
+});
+
+export const ArchivedDocumentUpdateSchema = z.object({
+  fileName: z.string().trim().min(1).optional(),
+  lastPosition: ReadingPositionDataSchema.optional(),
+});
+
+export const ResearchExcerptStatusEnum = z.enum(["active", "inbox", "archived"]);
+
+export const ResearchExcerptSchema = z.object({
+  id: z.string().min(1),
+  archivedDocumentId: z.string().min(1),
+  topicId: z.string().nullable().optional(),
+  targetNoteId: z.string().nullable().optional(),
+  selectedText: z.string().min(1),
+  contextPrefix: z.string().nullable().optional(),
+  contextSuffix: z.string().nullable().optional(),
+  positionSelector: PositionSelectorSchema,
+  highlightColor: z.string().default("#F59E0B"),
+  citationSnapshot: CitationSnapshotSchema.nullable().optional(),
+  userNote: z.string().nullable().optional(),
+  status: ResearchExcerptStatusEnum.default("active"),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const ResearchExcerptCreateSchema = z.object({
+  archivedDocumentId: z.string().min(1, "archivedDocumentId không được để trống"),
+  topicId: z.string().optional(),
+  targetNoteId: z.string().optional(),
+  selectedText: z.string().trim().min(1, "selectedText không được để trống"),
+  contextPrefix: z.string().optional(),
+  contextSuffix: z.string().optional(),
+  positionSelector: PositionSelectorSchema,
+  highlightColor: z.string().optional().default("#F59E0B"),
+  citationSnapshot: CitationSnapshotSchema.optional(),
+  userNote: z.string().optional(),
+  status: ResearchExcerptStatusEnum.optional().default("active"),
+});
+
+export const ResearchExcerptUpdateSchema = z.object({
+  highlightColor: z.string().optional(),
+  userNote: z.string().optional(),
+  status: ResearchExcerptStatusEnum.optional(),
+  targetNoteId: z.string().optional(),
+});
+
+export const ResearchInboxItemSchema = z.object({
+  id: z.string().min(1),
+  excerptId: z.string().min(1),
+  isProcessed: z.boolean().default(false),
+  priority: z.number().int().default(0),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const ResearchInboxItemUpdateSchema = z.object({
+  isProcessed: z.boolean().optional(),
+  priority: z.number().int().min(0).max(5).optional(),
+});
+
+export type ValidatedArchivedDocument = z.infer<typeof ArchivedDocumentSchema>;
+export type ValidatedArchivedDocumentCreate = z.infer<typeof ArchivedDocumentCreateSchema>;
+export type ValidatedResearchExcerpt = z.infer<typeof ResearchExcerptSchema>;
+export type ValidatedResearchExcerptCreate = z.infer<typeof ResearchExcerptCreateSchema>;
+export type ValidatedResearchInboxItem = z.infer<typeof ResearchInboxItemSchema>;

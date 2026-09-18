@@ -14,3 +14,7 @@ backups/**
 .cache/
 test-results/
 playwright-report/
+
+# Local Archive Storage
+data/archive/**
+!data/archive/.gitkeep

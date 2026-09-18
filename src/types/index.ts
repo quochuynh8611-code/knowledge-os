@@ -127,3 +127,75 @@ export interface StudySessionLog {
 
 export * from './flashcard';
 
+// ─── Phase 18A: Unified Research Reader & Local Archive Types ─────────────────
+
+export type ArchivedDocumentFormat = 'pdf' | 'epub' | 'md';
+
+export interface ReadingPositionData {
+  cfi?: string;
+  pageNumber?: number;
+  headingId?: string;
+  percentage?: number;
+  updatedAt?: string;
+}
+
+export interface ArchivedDocument {
+  id: string;
+  resourceId?: string | null;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  fileFormat: ArchivedDocumentFormat;
+  contentHash: string;
+  storageRelPath: string;
+  lastPosition?: ReadingPositionData | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PositionSelector {
+  cfi?: string;
+  pageNumber?: number;
+  headingId?: string;
+  charRange?: [number, number];
+}
+
+export interface CitationSnapshot {
+  title: string;
+  author?: string;
+  locator?: string;
+  formatted?: string;
+  apa?: string;
+  mla?: string;
+  chicago?: string;
+  bibtex?: string;
+}
+
+export type ExcerptStatus = 'active' | 'inbox' | 'archived';
+
+export interface ResearchExcerpt {
+  id: string;
+  archivedDocumentId: string;
+  topicId?: string | null;
+  targetNoteId?: string | null;
+  selectedText: string;
+  contextPrefix?: string | null;
+  contextSuffix?: string | null;
+  positionSelector: PositionSelector;
+  highlightColor: string;
+  citationSnapshot?: CitationSnapshot | null;
+  userNote?: string | null;
+  status: ExcerptStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResearchInboxItem {
+  id: string;
+  excerptId: string;
+  excerpt?: ResearchExcerpt;
+  isProcessed: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+}
