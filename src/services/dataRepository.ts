@@ -74,6 +74,7 @@ export interface IDataRepository {
   // 4. Notes CRUD
   saveNote(note: Note): Promise<Note>;
   deleteNote(noteId: string): Promise<boolean>;
+  appendExcerptToNote?(noteId: string, excerptBlockquote: string): Promise<Note>;
 
   // 5. Resources CRUD
   saveResource(resource: Resource): Promise<Resource>;
@@ -302,6 +303,28 @@ export class LocalStorageDataRepository implements IDataRepository {
     data.notes = data.notes.filter((n) => n.id !== noteId);
     this._persist(data);
     return true;
+  }
+
+  async appendExcerptToNote(noteId: string, excerptBlockquote: string): Promise<Note> {
+    const data = await this.loadInitialData();
+    const note = data.notes.find((n) => n.id === noteId);
+    if (!note) {
+      throw new Error(`Note with id "${noteId}" not found`);
+    }
+
+    const existingContent = note.content || '';
+    const newContent = existingContent.trim()
+      ? `${existingContent.trim()}\n\n${excerptBlockquote.trim()}`
+      : excerptBlockquote.trim();
+
+    const updatedNote: Note = {
+      ...note,
+      content: newContent,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.saveNote(updatedNote);
+    return updatedNote;
   }
 
   async saveResource(resource: Resource): Promise<Resource> {
@@ -911,6 +934,12 @@ export class ApiDataRepository implements IDataRepository {
       }
     }
     return true;
+  }
+
+  async appendExcerptToNote(noteId: string, excerptBlockquote: string): Promise<Note> {
+    const updatedNote = await this.localFallback.appendExcerptToNote(noteId, excerptBlockquote);
+    await this.saveNote(updatedNote);
+    return updatedNote;
   }
 
   async saveResource(resource: Resource): Promise<Resource> {
