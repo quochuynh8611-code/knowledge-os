@@ -27,6 +27,8 @@ import {
   ResourceType,
   StudyProgress,
   TopicVisibility,
+  ResearchExcerpt,
+  ResearchInboxItem,
 } from "../types";
 import {
   INITIAL_CATEGORIES,
@@ -100,6 +102,13 @@ interface DataContextType {
   isTimerRunning: boolean;
   timerMode: "stopwatch" | "pomodoro";
   pomodoroTimeRemaining: number;
+
+  // Research Inbox State (Phase 18A Wave 4)
+  researchInboxItems: ResearchInboxItem[];
+  addExcerptToInbox: (excerpt: ResearchExcerpt) => Promise<ResearchInboxItem>;
+  dismissInboxItem: (id: string) => Promise<void>;
+  processInboxItem: (id: string) => Promise<void>;
+  unprocessedInboxCount: number;
 
   // Actions - Navigation
   setActiveTab: (tab: ActiveTab) => void;
@@ -280,6 +289,58 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       return INITIAL_TAGS;
     }
   });
+
+  // Research Inbox State (Phase 18A Wave 4)
+  const [researchInboxItems, setResearchInboxItems] = useState<ResearchInboxItem[]>(() => {
+    try {
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_research_inbox`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const unprocessedInboxCount = useMemo(() => {
+    return researchInboxItems.filter((item) => !item.isProcessed).length;
+  }, [researchInboxItems]);
+
+  const addExcerptToInbox = useCallback(async (excerpt: ResearchExcerpt) => {
+    const newItem: ResearchInboxItem = {
+      id: `inbox-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      excerptId: excerpt.id,
+      excerpt,
+      isProcessed: false,
+      priority: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setResearchInboxItems((prev) => {
+      const updated = [newItem, ...prev];
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+      return updated;
+    });
+    return newItem;
+  }, []);
+
+  const dismissInboxItem = useCallback(async (id: string) => {
+    setResearchInboxItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, isProcessed: true, updatedAt: new Date().toISOString() } : item
+      );
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const processInboxItem = useCallback(async (id: string) => {
+    setResearchInboxItems((prev) => {
+      const updated = prev.map((item) =>
+        item.id === id ? { ...item, isProcessed: true, updatedAt: new Date().toISOString() } : item
+      );
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   // Focus Domain State (Phase 14B)
   const [focusDomainId, setFocusDomainIdState] = useState<string | null>(() => {
@@ -1098,12 +1159,17 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       logStudyTime,
       stats,
       reviewQueue,
+      researchInboxItems,
+      addExcerptToInbox,
+      dismissInboxItem,
+      processInboxItem,
+      unprocessedInboxCount,
       exportAllDataJSON,
       importAllDataJSON,
       resetToDefaultData,
       reloadAllData,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, unprocessedInboxCount],
   );
 
   return (
