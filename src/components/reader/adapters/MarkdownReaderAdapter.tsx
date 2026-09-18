@@ -6,12 +6,18 @@ import {
 } from '../../../lib/markdownReadability';
 import { TocItem } from '../ReaderTocDrawer';
 
+export interface MarkdownReaderSelectionDetails {
+  text: string;
+  position: { top: number; left: number };
+}
+
 export interface MarkdownReaderAdapterProps {
   content?: string;
   documentId: string;
   initialHeadingId?: string;
   onTocGenerated?: (items: TocItem[]) => void;
   onPositionChange?: (headingId: string) => void;
+  onTextSelection?: (selection: MarkdownReaderSelectionDetails) => void;
   className?: string;
 }
 
@@ -52,6 +58,7 @@ export function MarkdownReaderAdapter({
   initialHeadingId,
   onTocGenerated,
   onPositionChange,
+  onTextSelection,
   className = '',
 }: MarkdownReaderAdapterProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -59,6 +66,32 @@ export function MarkdownReaderAdapter({
 
   // Extract TOC items
   const tocItems = useMemo(() => extractMarkdownToc(content), [content]);
+
+  // Handle text selection in viewport
+  const handleMouseUp = () => {
+    if (!onTextSelection) return;
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    const text = selection.toString().trim();
+    if (!text) return;
+
+    try {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      onTextSelection({
+        text,
+        position: {
+          top: rect.top,
+          left: rect.left + rect.width / 2,
+        },
+      });
+    } catch {
+      onTextSelection({
+        text,
+        position: { top: 200, left: 300 },
+      });
+    }
+  };
 
   // Notify parent of generated TOC items
   useEffect(() => {
@@ -95,6 +128,8 @@ export function MarkdownReaderAdapter({
   return (
     <div
       ref={containerRef}
+      onMouseUp={handleMouseUp}
+      data-testid="markdown-selectable-area"
       className={`markdown-reader-viewport overflow-y-auto px-6 py-8 sm:px-12 sm:py-10 max-w-4xl mx-auto w-full prose prose-stone dark:prose-invert leading-relaxed ${className}`}
     >
       <MarkdownReadabilityRenderer content={sanitizedContent} />

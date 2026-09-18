@@ -9,8 +9,10 @@ import {
   Book,
   FolderOpen,
   Info,
+  Eye,
 } from "lucide-react";
 import { FileViewer } from "./FileViewer";
+import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 
@@ -44,6 +46,13 @@ export function DocsExplorerView({
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    content?: string;
+  } | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
 
   const fetchDocsList = useCallback(async () => {
@@ -334,22 +343,40 @@ export function DocsExplorerView({
                   </h2>
                 </div>
 
-                <button
-                  onClick={handleCopyContent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl border border-stone-200 dark:border-stone-700 transition cursor-pointer shadow-2xs"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span className="text-emerald-700 dark:text-emerald-400">Đã sao chép</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
-                      <span>Sao chép Markdown</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setActiveReaderDoc({
+                        documentId: selectedDoc.relativePath,
+                        title: selectedDoc.title,
+                        format: 'md',
+                        content: selectedDoc.content,
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 rounded-xl border border-amber-300/80 dark:border-amber-700/80 transition cursor-pointer shadow-2xs"
+                    title="Mở giao diện đọc toàn màn hình với công cụ trích dẫn và mục lục"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
+                    <span>Đọc trong Unified Reader</span>
+                  </button>
+
+                  <button
+                    onClick={handleCopyContent}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-xl border border-stone-200 dark:border-stone-700 transition cursor-pointer shadow-2xs"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-700 dark:text-emerald-400">Đã sao chép</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
+                        <span>Sao chép Markdown</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Raw / Formatted Markdown Reader Content */}
@@ -456,6 +483,18 @@ export function DocsExplorerView({
           isOpen={isVaultModalOpen}
           onClose={() => setIsVaultModalOpen(false)}
           onSelectFile={handleVaultFileSelect}
+        />
+      )}
+
+      {/* Phase 18A Unified Research Reader */}
+      {activeReaderDoc && (
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          onClose={() => setActiveReaderDoc(null)}
         />
       )}
     </div>

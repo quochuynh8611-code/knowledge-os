@@ -67,7 +67,7 @@ import {
 } from "./NavigationContext";
 import { ResearchRepositoryV2 } from "../services/researchRepositoryV2";
 
-export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation };
+export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation, dataRepository };
 export type { TimerMode, StudyTimerContextType, ActiveTab, NavigationContextType };
 
 const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
@@ -238,7 +238,7 @@ export function useDomainData(): DomainDataContextType {
   return context;
 }
 
-const DataContext = createContext<DataContextType | undefined>(undefined);
+export const DataContext = createContext<DataContextType | undefined>(undefined);
 
 function InnerDataProvider({ children }: { children: ReactNode }) {
   // 1. Ensure storage version compatibility before reading local cache

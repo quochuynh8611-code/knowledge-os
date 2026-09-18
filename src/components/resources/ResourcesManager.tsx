@@ -18,6 +18,7 @@ import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
+import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget } from '../../lib/resourceOpenResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
@@ -30,6 +31,13 @@ export function ResourcesManager() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    content?: string;
+  } | null>(null);
   const [citingResource, setCitingResource] = useState<Resource | null>(null);
   const [showBatchModal, setShowBatchModal] = useState(false);
 
@@ -203,7 +211,19 @@ export function ResourcesManager() {
               <div className="pt-2 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setViewingResource(res)}
+                    onClick={() => {
+                      const fileTarget = resolveResourceOpenTarget(res);
+                      if (res.type === 'pdf' || res.type === 'book' || res.type === 'md' || (res.filePath && (res.filePath.endsWith('.pdf') || res.filePath.endsWith('.epub') || res.filePath.endsWith('.md')))) {
+                        setActiveReaderDoc({
+                          documentId: res.id,
+                          title: res.title,
+                          format: res.type === 'pdf' ? 'pdf' : res.type === 'book' || res.filePath?.endsWith('.epub') ? 'epub' : 'md',
+                          fileUrl: fileTarget.targetUrl || res.url || res.filePath,
+                        });
+                      } else {
+                        setViewingResource(res);
+                      }
+                    }}
                     className="px-2.5 py-1 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700 shadow-2xs"
                   >
                     <Eye className="w-3.5 h-3.5 text-indigo-700 dark:text-indigo-400" /> Xem trước
@@ -260,6 +280,18 @@ export function ResourcesManager() {
       <ResourceViewerModal resource={viewingResource} onClose={() => setViewingResource(null)} />
       <CitationModal isOpen={!!citingResource} onClose={() => setCitingResource(null)} resource={citingResource} />
       <BatchCitationModal isOpen={showBatchModal} onClose={() => setShowBatchModal(false)} resources={filteredResources} />
+
+      {/* Phase 18A Unified Research Reader */}
+      {activeReaderDoc && (
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          onClose={() => setActiveReaderDoc(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
 import { MarkdownReaderAdapter } from './adapters/MarkdownReaderAdapter';
 import { EpubReaderAdapter } from './adapters/EpubReaderAdapter';
 import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
+import { UnifiedSelectionToolbar, SelectionToolbarAction } from './UnifiedSelectionToolbar';
+import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
+import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
+import { DataContext, dataRepository } from '../../context/DataContext';
+import { ResearchExcerpt, Note } from '../../types';
 
 export interface UnifiedResearchReaderProps {
   documentId: string;
@@ -65,16 +70,123 @@ export function UnifiedResearchReader({
     handlePositionChanged(item.id);
   };
 
+  // Selection Toolbar & Note Modal State
+  const [activeSelection, setActiveSelection] = useState<{
+    text: string;
+    position: { top: number; left: number };
+    page?: number;
+  } | null>(null);
+  const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const dataContext = React.useContext(DataContext) as {
+    notes?: Note[];
+    addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
+  } | undefined;
+  const notes = dataContext?.notes || [];
+  const addExcerptToInbox = dataContext?.addExcerptToInbox;
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 2500);
+  };
+
+  const handleTextSelection = useCallback((selection: { text: string; position: { top: number; left: number }; page?: number }) => {
+    setActiveSelection(selection);
+  }, []);
+
+  const handleToolbarAction = async (action: SelectionToolbarAction, payload: { text: string }) => {
+    const selectedText = payload.text || activeSelection?.text || '';
+    if (!selectedText) return;
+
+    const citationSnapshot = generateExcerptCitationSnapshot(
+      { documentId, title, format: normalizedFormat, sourceUrl: fileUrl },
+      { page: activeSelection?.page, heading: activeTocId }
+    );
+
+    const now = new Date().toISOString();
+    const excerpt: ResearchExcerpt = {
+      id: `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      archivedDocumentId: documentId,
+      selectedText,
+      positionSelector: {
+        headingId: activeTocId,
+        pageNumber: activeSelection?.page,
+        cfi: currentPosition,
+      },
+      highlightColor: '#fef08a',
+      citationSnapshot,
+      status: 'inbox',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (action === 'copy') {
+      showToast('Đã sao chép đoạn trích vào clipboard');
+      setActiveSelection(null);
+    } else if (action === 'highlight') {
+      showToast('Đã đánh dấu đoạn trích nghiên cứu');
+      setActiveSelection(null);
+    } else if (action === 'citation') {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(citationSnapshot.formatted || citationSnapshot.apa || '');
+        }
+        showToast('Đã sao chép trích dẫn học thuật');
+      } catch {
+        showToast('Trích dẫn đã được tạo');
+      }
+      setActiveSelection(null);
+    } else if (action === 'send_to_note') {
+      setIsTargetNoteModalOpen(true);
+    } else if (action === 'add_to_inbox') {
+      try {
+        if (addExcerptToInbox) {
+          await addExcerptToInbox(excerpt);
+          showToast('Đã thêm trích đoạn vào Research Inbox');
+        }
+      } catch (err) {
+        console.error('Failed to add excerpt to inbox:', err);
+        showToast('Không thể thêm vào Research Inbox');
+      }
+      setActiveSelection(null);
+    }
+  };
+
+  const handleSelectTargetNote = async (targetNoteId: string) => {
+    if (!activeSelection?.text) return;
+
+    const blockquote = formatExcerptBlockquote(
+      activeSelection.text,
+      { title, format: normalizedFormat, sourceUrl: fileUrl, documentId },
+      { page: activeSelection.page, heading: activeTocId, cfi: currentPosition }
+    );
+
+    try {
+      if (dataRepository.appendExcerptToNote) {
+        await dataRepository.appendExcerptToNote(targetNoteId, blockquote);
+      }
+      showToast('Đã lưu trích đoạn vào ghi chú thành công');
+    } catch (err) {
+      console.error('Failed to append excerpt to note:', err);
+      showToast('Lỗi khi lưu vào ghi chú');
+    }
+    setActiveSelection(null);
+    setIsTargetNoteModalOpen(false);
+  };
+
   // Keyboard navigation & ESC handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isTocOpen) {
+      if (e.key === 'Escape' && !isTocOpen && !isTargetNoteModalOpen) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isTocOpen, onClose]);
+  }, [isTocOpen, isTargetNoteModalOpen, onClose]);
 
   // EPUB extra controls in header
   const epubExtraControls = normalizedFormat === 'epub' && (
@@ -153,6 +265,14 @@ export function UnifiedResearchReader({
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-150 ${className}`}
     >
       <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-6xl h-[92vh] shadow-2xl flex flex-col overflow-hidden relative">
+        {/* Toast Feedback */}
+        {toastMessage && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+            <CheckCircle className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+
         {/* Reader Header */}
         <ReaderHeader
           title={title}
@@ -183,6 +303,7 @@ export function UnifiedResearchReader({
                 initialHeadingId={targetHeadingId}
                 onTocGenerated={(items) => setTocItems(items)}
                 onPositionChange={handlePositionChanged}
+                onTextSelection={handleTextSelection}
               />
             </div>
           ) : normalizedFormat === 'pdf' ? (
@@ -190,6 +311,7 @@ export function UnifiedResearchReader({
               fileUrl={fileUrl}
               documentId={documentId}
               title={title}
+              onTextSelection={handleTextSelection}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
@@ -215,6 +337,28 @@ export function UnifiedResearchReader({
             activeId={activeTocId}
             onSelectTocItem={handleSelectTocItem}
           />
+
+          {/* Selection Toolbar */}
+          {activeSelection && (
+            <UnifiedSelectionToolbar
+              isOpen={Boolean(activeSelection)}
+              position={activeSelection.position}
+              selectedText={activeSelection.text}
+              onAction={handleToolbarAction}
+              onClose={() => setActiveSelection(null)}
+            />
+          )}
+
+          {/* Target Note Selector Modal */}
+          {isTargetNoteModalOpen && (
+            <TargetNoteSelectorModal
+              isOpen={isTargetNoteModalOpen}
+              notes={notes}
+              selectedExcerptText={activeSelection?.text}
+              onSelectNote={handleSelectTargetNote}
+              onClose={() => setIsTargetNoteModalOpen(false)}
+            />
+          )}
         </div>
       </div>
     </div>

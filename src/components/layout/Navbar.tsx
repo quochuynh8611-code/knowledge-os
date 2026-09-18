@@ -12,6 +12,7 @@ import {
   FileText,
   Keyboard,
   ChevronDown,
+  Inbox,
 } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { SyncStatusBadge } from "../ui/SyncStatusBadge";
@@ -23,6 +24,10 @@ import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ExportImportModal } from "../modals/ExportImportModal";
 import { Resource } from "../../types";
 import { FileViewer } from "../docs/FileViewer";
+import { ResearchInboxDrawer } from "../research/ResearchInboxDrawer";
+import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
+import { dataRepository } from "../../context/DataContext";
+import { formatExcerptBlockquote } from "../../lib/excerptCitationService";
 
 const ObsidianVaultBrowserModal = React.lazy(() =>
   import("../modals/ObsidianVaultBrowserModal").then((m) => ({
@@ -66,13 +71,27 @@ export function Navbar({
     timerSeconds,
     activeTimerTopicId,
     topics,
+    notes = [],
     reviewQueue,
+    researchInboxItems = [],
+    unprocessedInboxCount = 0,
+    dismissInboxItem,
+    processInboxItem,
   } = useData();
 
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showInboxDrawer, setShowInboxDrawer] = useState(false);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    content?: string;
+    initialPosition?: string;
+  } | null>(null);
   const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
@@ -237,6 +256,23 @@ export function Navbar({
             {/* Dark / Light Theme Toggle */}
             <ThemeToggle />
 
+            {/* Research Inbox Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setShowInboxDrawer(true)}
+              aria-label="Mở Research Inbox"
+              className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200/80 dark:border-stone-700 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+              title="Research Inbox - Các đoạn trích nghiên cứu cần xem lại hoặc xử lý"
+            >
+              <Inbox className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span className="hidden sm:inline">Inbox</span>
+              {unprocessedInboxCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 text-[10px] font-bold bg-amber-500 text-stone-950 rounded-full min-w-[18px] text-center tabular-nums">
+                  {unprocessedInboxCount > 99 ? '99+' : unprocessedInboxCount}
+                </span>
+              )}
+            </button>
+
             {/* Shortcuts Modal Trigger */}
             {onOpenShortcutsModal && (
               <button
@@ -400,6 +436,60 @@ export function Navbar({
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
       />
+
+      {/* Phase 18A Research Inbox Drawer */}
+      <ResearchInboxDrawer
+        isOpen={showInboxDrawer}
+        items={researchInboxItems}
+        onView={(item) => {
+          setShowInboxDrawer(false);
+          if (item.excerpt) {
+            setActiveReaderDoc({
+              documentId: item.excerpt.archivedDocumentId || item.excerpt.id,
+              title: item.excerpt.citationSnapshot?.title || 'Tài liệu trích dẫn',
+              format: 'md',
+              content: item.excerpt.selectedText,
+              initialPosition: item.excerpt.positionSelector?.headingId || item.excerpt.positionSelector?.cfi,
+            });
+          }
+        }}
+        onDismiss={(id) => dismissInboxItem(id)}
+        onSendToNote={async (item) => {
+          if (notes.length > 0 && item.excerpt) {
+            const blockquote = formatExcerptBlockquote(
+              item.excerpt.selectedText,
+              {
+                title: item.excerpt.citationSnapshot?.title,
+                author: item.excerpt.citationSnapshot?.author,
+                documentId: item.excerpt.archivedDocumentId,
+              },
+              {
+                page: item.excerpt.positionSelector?.pageNumber,
+                heading: item.excerpt.positionSelector?.headingId,
+                cfi: item.excerpt.positionSelector?.cfi,
+              }
+            );
+            if (dataRepository.appendExcerptToNote) {
+              await dataRepository.appendExcerptToNote(notes[0].id, blockquote);
+            }
+            await processInboxItem(item.id);
+          }
+        }}
+        onClose={() => setShowInboxDrawer(false)}
+      />
+
+      {/* Phase 18A Unified Research Reader */}
+      {activeReaderDoc && (
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          initialPosition={activeReaderDoc.initialPosition}
+          onClose={() => setActiveReaderDoc(null)}
+        />
+      )}
     </>
   );
 }
