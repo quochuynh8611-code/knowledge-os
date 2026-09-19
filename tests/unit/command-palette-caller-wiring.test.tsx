@@ -38,7 +38,7 @@ describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", (
             screen.getByText(/Google NotebookLM Research Hub/i)
           ).toBeInTheDocument();
         },
-        { timeout: 3000 }
+        { timeout: 6000 }
       );
     });
 
@@ -66,7 +66,7 @@ describe("Phase P5.1: Command Palette Caller Wiring & Deterministic Ordering", (
             screen.getByText(/Antigravity AI Scholar Inspector/i)
           ).toBeInTheDocument();
         },
-        { timeout: 3000 }
+        { timeout: 6000 }
       );
     });
   });

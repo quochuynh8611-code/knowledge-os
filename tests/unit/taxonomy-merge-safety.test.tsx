@@ -6,7 +6,7 @@ import {
   MergeCategoriesResult,
 } from '../../src/lib/taxonomyMigration';
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
-import { DataProvider, useData } from '../../src/context/DataContext';
+import { DataProvider, useData, dataRepository } from '../../src/context/DataContext';
 import { TopicTree } from '../../src/components/topics/TopicTree';
 import {
   INITIAL_CATEGORIES,
@@ -821,6 +821,10 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
 
     it('4.3. Case 3: Clicking delete on regular custom category prompts standard deletion confirm and does not merge', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const deleteRepoSpy = vi.spyOn(dataRepository, 'deleteCategory').mockResolvedValue({
+        status: 'deleted',
+        id: 'cat-custom-triet-hoc',
+      });
 
       const TestHarness = () => {
         const { importAllDataJSON } = useData();
