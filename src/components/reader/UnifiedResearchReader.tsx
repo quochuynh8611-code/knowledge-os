@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
+import { ReaderSidebar, ReaderSidebarTab } from './ReaderSidebar';
 import { MarkdownReaderAdapter } from './adapters/MarkdownReaderAdapter';
 import { EpubReaderAdapter } from './adapters/EpubReaderAdapter';
 import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
@@ -10,7 +11,7 @@ import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
-import { ResearchExcerpt, Note } from '../../types';
+import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
 import { copyTextToClipboard } from '../../lib/clipboard';
 
 export interface UnifiedResearchReaderProps {
@@ -38,6 +39,8 @@ export function UnifiedResearchReader({
 }: UnifiedResearchReaderProps) {
   const normalizedFormat = (format || 'md').toLowerCase();
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [sidebarTab, setSidebarTab] = useState<ReaderSidebarTab>('outline');
   const [tocItems, setTocItems] = useState<TocItem[]>([]);
   const [activeTocId, setActiveTocId] = useState<string | undefined>(undefined);
   const [targetHeadingId, setTargetHeadingId] = useState<string | undefined>(initialPosition);
@@ -82,9 +85,11 @@ export function UnifiedResearchReader({
 
   const dataContext = React.useContext(DataContext) as {
     notes?: Note[];
+    researchInboxItems?: ResearchInboxItem[];
     addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
   } | undefined;
   const notes = dataContext?.notes || [];
+  const inboxItems = dataContext?.researchInboxItems || [];
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
 
   const showToast = (msg: string) => {
@@ -279,87 +284,107 @@ export function UnifiedResearchReader({
           format={normalizedFormat}
           isTocOpen={isTocOpen}
           onToggleToc={() => setIsTocOpen((prev) => !prev)}
+          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           onClose={onClose}
           extraControls={epubExtraControls}
         />
 
-        {/* Reader Viewport Area */}
-        <div className="flex-1 relative overflow-hidden flex flex-col bg-stone-50 dark:bg-stone-950 p-2 sm:p-4">
-          {normalizedFormat === 'epub' ? (
-            <EpubReaderAdapter
-              fileUrl={fileUrl}
-              documentId={documentId}
-              initialLocation={currentPosition}
-              onLocationChanged={handlePositionChanged}
-              onTocGenerated={(items) => setTocItems(items)}
-              fontSize={fontSize}
-              pageMode={pageMode}
-            />
-          ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
-            <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
-              <MarkdownReaderAdapter
-                content={content}
+        {/* Reader Workspace: Viewport Area & Multi-Tab Sidebar */}
+        <div className="flex-1 relative overflow-hidden flex flex-row bg-stone-50 dark:bg-stone-950">
+          <div className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4">
+            {normalizedFormat === 'epub' ? (
+              <EpubReaderAdapter
                 fileUrl={fileUrl}
                 documentId={documentId}
-                initialHeadingId={targetHeadingId}
+                initialLocation={currentPosition}
+                onLocationChanged={handlePositionChanged}
                 onTocGenerated={(items) => setTocItems(items)}
-                onPositionChange={handlePositionChanged}
+                fontSize={fontSize}
+                pageMode={pageMode}
+              />
+            ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
+              <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
+                <MarkdownReaderAdapter
+                  content={content}
+                  fileUrl={fileUrl}
+                  documentId={documentId}
+                  initialHeadingId={targetHeadingId}
+                  onTocGenerated={(items) => setTocItems(items)}
+                  onPositionChange={handlePositionChanged}
+                  onTextSelection={handleTextSelection}
+                />
+              </div>
+            ) : normalizedFormat === 'pdf' ? (
+              <PdfReaderAdapter
+                fileUrl={fileUrl}
+                documentId={documentId}
+                title={title}
                 onTextSelection={handleTextSelection}
               />
-            </div>
-          ) : normalizedFormat === 'pdf' ? (
-            <PdfReaderAdapter
-              fileUrl={fileUrl}
-              documentId={documentId}
-              title={title}
-              onTextSelection={handleTextSelection}
-            />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
-              <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="w-6 h-6" />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
+                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                    Định dạng tài liệu chưa được hỗ trợ
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
+                    Trình đọc hiện hỗ trợ định dạng Markdown (.md), EPUB (.epub) và PDF (.pdf).
+                  </p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                  Định dạng tài liệu chưa được hỗ trợ
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
-                  Trình đọc hiện hỗ trợ định dạng Markdown (.md), EPUB (.epub) và PDF (.pdf).
-                </p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Table of Contents Drawer */}
-          <ReaderTocDrawer
-            isOpen={isTocOpen}
-            onClose={() => setIsTocOpen(false)}
-            toc={tocItems}
-            activeId={activeTocId}
+            {/* Table of Contents Drawer */}
+            <ReaderTocDrawer
+              isOpen={isTocOpen}
+              onClose={() => setIsTocOpen(false)}
+              toc={tocItems}
+              activeId={activeTocId}
+              onSelectTocItem={handleSelectTocItem}
+            />
+
+            {/* Selection Toolbar */}
+            {activeSelection && (
+              <UnifiedSelectionToolbar
+                isOpen={Boolean(activeSelection)}
+                position={activeSelection.position}
+                selectedText={activeSelection.text}
+                onAction={handleToolbarAction}
+                onClose={() => setActiveSelection(null)}
+              />
+            )}
+
+            {/* Target Note Selector Modal */}
+            {isTargetNoteModalOpen && (
+              <TargetNoteSelectorModal
+                isOpen={isTargetNoteModalOpen}
+                notes={notes}
+                selectedExcerptText={activeSelection?.text}
+                onSelectNote={handleSelectTargetNote}
+                onClose={() => setIsTargetNoteModalOpen(false)}
+              />
+            )}
+          </div>
+
+          {/* Phase R1 Multi-Tab Research Sidebar */}
+          <ReaderSidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            activeTab={sidebarTab}
+            onTabChange={setSidebarTab}
+            tocItems={tocItems}
+            activeTocId={activeTocId}
             onSelectTocItem={handleSelectTocItem}
+            documentId={documentId}
+            documentTitle={title}
+            notes={notes}
+            excerpts={[]}
+            inboxItems={inboxItems}
           />
-
-          {/* Selection Toolbar */}
-          {activeSelection && (
-            <UnifiedSelectionToolbar
-              isOpen={Boolean(activeSelection)}
-              position={activeSelection.position}
-              selectedText={activeSelection.text}
-              onAction={handleToolbarAction}
-              onClose={() => setActiveSelection(null)}
-            />
-          )}
-
-          {/* Target Note Selector Modal */}
-          {isTargetNoteModalOpen && (
-            <TargetNoteSelectorModal
-              isOpen={isTargetNoteModalOpen}
-              notes={notes}
-              selectedExcerptText={activeSelection?.text}
-              onSelectNote={handleSelectTargetNote}
-              onClose={() => setIsTargetNoteModalOpen(false)}
-            />
-          )}
         </div>
       </div>
     </div>

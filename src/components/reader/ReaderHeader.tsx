@@ -1,11 +1,13 @@
 import React from 'react';
-import { BookOpen, List, X, FileText } from 'lucide-react';
+import { BookOpen, List, X, FileText, PanelRight } from 'lucide-react';
 
 export interface ReaderHeaderProps {
   title: string;
   format: string;
-  isTocOpen: boolean;
-  onToggleToc: () => void;
+  isTocOpen?: boolean;
+  onToggleToc?: () => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
   onClose: () => void;
   extraControls?: React.ReactNode;
 }
@@ -15,6 +17,8 @@ export function ReaderHeader({
   format,
   isTocOpen,
   onToggleToc,
+  isSidebarOpen,
+  onToggleSidebar,
   onClose,
   extraControls,
 }: ReaderHeaderProps) {
@@ -66,22 +70,44 @@ export function ReaderHeader({
 
       {/* Toolbar Controls */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Research Sidebar Toggle Button */}
+        {onToggleSidebar && (
+          <button
+            type="button"
+            data-testid="reader-toggle-sidebar-btn"
+            onClick={onToggleSidebar}
+            aria-expanded={isSidebarOpen}
+            aria-label="Thanh công cụ nghiên cứu"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition cursor-pointer border ${
+              isSidebarOpen
+                ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-2xs font-semibold'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200/80 dark:hover:bg-stone-700'
+            }`}
+            title="Mở / Đóng thanh công cụ nghiên cứu đa năng (Outline, Notes, Highlights, Inbox)"
+          >
+            <PanelRight className="w-4 h-4" />
+            <span>Thanh nghiên cứu</span>
+          </button>
+        )}
+
         {/* TOC Toggle Button */}
-        <button
-          type="button"
-          onClick={onToggleToc}
-          aria-expanded={isTocOpen}
-          aria-label="Mục lục"
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition cursor-pointer border ${
-            isTocOpen
-              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-2xs font-semibold'
-              : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200/80 dark:hover:bg-stone-700'
-          }`}
-          title="Mở / Đóng mục lục tài liệu"
-        >
-          <List className="w-4 h-4" />
-          <span>Mục lục</span>
-        </button>
+        {onToggleToc && (
+          <button
+            type="button"
+            onClick={onToggleToc}
+            aria-expanded={isTocOpen}
+            aria-label="Mục lục"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition cursor-pointer border ${
+              isTocOpen
+                ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 shadow-2xs font-semibold'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200/80 dark:hover:bg-stone-700'
+            }`}
+            title="Mở / Đóng mục lục tài liệu"
+          >
+            <List className="w-4 h-4" />
+            <span>Mục lục</span>
+          </button>
+        )}
 
         {/* Extra Controls (e.g. font size, layout) */}
         {extraControls}

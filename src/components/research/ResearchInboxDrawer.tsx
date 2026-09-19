@@ -179,7 +179,7 @@ export function ResearchInboxDrawer({
                         onClick={() => onView(item)}
                         aria-label="Xem lại"
                         className="flex items-center gap-1 px-2.5 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-medium transition cursor-pointer"
-                        title="Xem vị trí trích dẫn trong tài liệu"
+                        title="Mở vị trí nguồn tài liệu"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Xem lại</span>
@@ -202,7 +202,7 @@ export function ResearchInboxDrawer({
                       onClick={() => onDismiss(item.id)}
                       aria-label="Bỏ qua"
                       className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
-                      title="Đánh dấu đã xong / Bỏ qua"
+                      title="Đánh dấu đã xử lý / bỏ qua"
                     >
                       <CheckSquare className="w-4 h-4" />
                     </button>
