@@ -30,12 +30,13 @@ import {
   createRateLimitMiddleware,
   logStructuredEvent,
 } from "./src/lib/security";
+import { resolveServerPort } from "./src/server/serverConfig";
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = resolveServerPort(process.env.PORT);
 
   app.use(express.json({ limit: "15mb" }));
   app.use(
