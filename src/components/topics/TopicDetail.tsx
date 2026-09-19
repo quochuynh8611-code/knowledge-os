@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { NoteReaderModal } from "../modals/NoteReaderModal";
+import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
@@ -138,6 +139,33 @@ export function TopicDetail() {
   const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [readingNote, setReadingNote] = useState<Note | null>(null);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    content?: string;
+    initialPosition?: string;
+  } | null>(null);
+
+  const handleOpenArchiveLink = (documentId: string, locator?: string) => {
+    const matchedResource = (resources || []).find(
+      (r) => r.id === documentId || r.filePath === documentId || r.url === documentId
+    );
+    const title = matchedResource?.title || documentId.split("/").pop()?.replace(/\.[^.]+$/, "") || "Tài liệu nghiên cứu";
+    const format = matchedResource?.type === "pdf" ? "pdf" : (matchedResource?.filePath?.endsWith(".epub") || documentId.endsWith(".epub") ? "epub" : "md");
+    const fileUrl = matchedResource?.filePath
+      ? `/api/obsidian/vault/attachment?path=${encodeURIComponent(matchedResource.filePath)}`
+      : (matchedResource?.url || undefined);
+
+    setActiveReaderDoc({
+      documentId,
+      title,
+      format,
+      fileUrl,
+      initialPosition: locator,
+    });
+  };
 
   // Research Dashboard & Search states (Phase F7.0)
   const [showResearchSearchModal, setShowResearchSearchModal] = useState(false);
@@ -1391,6 +1419,7 @@ export function TopicDetail() {
           setEditingNote(noteToEdit);
           setShowNoteModal(true);
         }}
+        onOpenArchiveLink={handleOpenArchiveLink}
       />
       <ResourceFormModal
         isOpen={showResourceModal}
@@ -1507,6 +1536,19 @@ export function TopicDetail() {
             </div>
           </div>
         </React.Suspense>
+      )}
+
+      {/* Phase R3A Unified Research Reader */}
+      {activeReaderDoc && (
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          initialPosition={activeReaderDoc.initialPosition}
+          onClose={() => setActiveReaderDoc(null)}
+        />
       )}
     </div>
   );

@@ -15,12 +15,13 @@ import {
 } from 'lucide-react';
 import { NoteFormModal } from '../modals/NoteFormModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
+import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { toReadablePlainTextPreview } from '../../lib/markdownReadability';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
 export function NotesManager() {
-  const { notes, topics, deleteNote, openTopicDetail } = useData();
+  const { notes, topics, resources = [], deleteNote, openTopicDetail } = useData();
 
   const [typeFilter, setTypeFilter] = useState<'all' | NoteType>('all');
   const [topicFilter, setTopicFilter] = useState<string>('all');
@@ -29,6 +30,33 @@ export function NotesManager() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [readingNote, setReadingNote] = useState<Note | null>(null);
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    content?: string;
+    initialPosition?: string;
+  } | null>(null);
+
+  const handleOpenArchiveLink = (documentId: string, locator?: string) => {
+    const matchedResource = resources.find(
+      (r) => r.id === documentId || r.filePath === documentId || r.url === documentId
+    );
+    const title = matchedResource?.title || documentId.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Tài liệu nghiên cứu';
+    const format = matchedResource?.type === 'pdf' ? 'pdf' : (matchedResource?.filePath?.endsWith('.epub') || documentId.endsWith('.epub') ? 'epub' : 'md');
+    const fileUrl = matchedResource?.filePath
+      ? `/api/obsidian/vault/attachment?path=${encodeURIComponent(matchedResource.filePath)}`
+      : (matchedResource?.url || undefined);
+
+    setActiveReaderDoc({
+      documentId,
+      title,
+      format,
+      fileUrl,
+      initialPosition: locator,
+    });
+  };
 
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
@@ -313,7 +341,21 @@ export function NotesManager() {
           setEditingNote(note);
           setShowAddModal(true);
         }}
+        onOpenArchiveLink={handleOpenArchiveLink}
       />
+
+      {/* Phase R3A Unified Research Reader */}
+      {activeReaderDoc && (
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          initialPosition={activeReaderDoc.initialPosition}
+          onClose={() => setActiveReaderDoc(null)}
+        />
+      )}
     </div>
   );
 }
