@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink, ClipboardPaste, PenLine, X } from 'lucide-react';
 import { copyTextToClipboard } from '../../../lib/clipboard';
 import { TocItem } from '../ReaderTocDrawer';
 
@@ -47,6 +47,12 @@ export function PdfReaderAdapter({
 }: PdfReaderAdapterProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [copiedPath, setCopiedPath] = useState<boolean>(false);
+  const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
+  const [manualText, setManualText] = useState<string>('');
+
+  useEffect(() => {
+    setCurrentPage(initialPage);
+  }, [initialPage]);
 
   useEffect(() => {
     if (onTocGenerated && initialToc && initialToc.length > 0) {
@@ -73,6 +79,62 @@ export function PdfReaderAdapter({
       setCopiedPath(true);
       setTimeout(() => setCopiedPath(false), 2000);
     }
+  };
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    const newPage = isNaN(val) || val < 1 ? 1 : val;
+    setCurrentPage(newPage);
+    if (onPageChanged) {
+      onPageChanged(newPage);
+    }
+  };
+
+  const handleCaptureClipboard = async () => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        const trimmed = text ? text.trim() : '';
+        if (trimmed) {
+          if (onTextSelection) {
+            onTextSelection({
+              text: trimmed,
+              position: {
+                top: 140,
+                left: typeof window !== 'undefined' ? window.innerWidth / 2 : 400,
+              },
+              page: currentPage,
+            });
+          }
+          return;
+        }
+      }
+      // If clipboard is empty or returned empty text, open manual modal
+      setIsManualModalOpen(true);
+    } catch {
+      // Permission denied or clipboard read error -> open manual quote modal fallback
+      setIsManualModalOpen(true);
+    }
+  };
+
+  const handleManualQuoteSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = manualText.trim();
+    if (!trimmed) return;
+
+    if (onTextSelection) {
+      onTextSelection({
+        text: trimmed,
+        position: {
+          top: 140,
+          left: typeof window !== 'undefined' ? window.innerWidth / 2 : 400,
+        },
+        page: currentPage,
+      });
+    }
+
+    setManualText('');
+    setIsManualModalOpen(false);
   };
 
   const validateUrl = useCallback(() => {
@@ -219,18 +281,130 @@ export function PdfReaderAdapter({
       data-testid="pdf-selectable-area"
       className={`pdf-reader-viewport w-full h-full flex flex-col relative bg-stone-100 dark:bg-stone-950 rounded-2xl overflow-hidden border border-stone-200/80 dark:border-stone-800 ${className}`}
     >
+      {/* PDF Research Action Strip */}
+      <div
+        data-testid="pdf-research-action-strip"
+        className="px-3 py-2 bg-stone-100/90 dark:bg-stone-900/90 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between gap-3 text-xs shrink-0 flex-wrap"
+      >
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="pdf-capture-clipboard-btn"
+            onClick={handleCaptureClipboard}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer"
+            title="Trích đoạn văn bản vừa sao chép từ PDF vào công cụ nghiên cứu"
+          >
+            <ClipboardPaste className="w-3.5 h-3.5" />
+            <span>Trích đoạn từ Clipboard</span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="pdf-manual-quote-btn"
+            onClick={() => setIsManualModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-medium border border-stone-200 dark:border-stone-700 transition cursor-pointer"
+            title="Nhập hoặc dán đoạn trích thủ công"
+          >
+            <PenLine className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Nhập trích đoạn</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+          <span className="text-[11px] font-medium">Trang:</span>
+          <input
+            type="number"
+            min={1}
+            data-testid="pdf-page-input"
+            value={currentPage}
+            onChange={handlePageInputChange}
+            className="w-14 px-2 py-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-xs font-mono font-medium text-stone-900 dark:text-stone-100 text-center focus:outline-none focus:ring-1 focus:ring-amber-700"
+            title="Số trang hiện tại phục vụ đính kèm trích dẫn"
+          />
+        </div>
+      </div>
+
       {/* Native PDF Embed Container */}
       <embed
         data-testid="pdf-embed-element"
         src={fileUrl}
         type="application/pdf"
-        className="w-full flex-1 min-h-[500px] border-none rounded-2xl bg-white dark:bg-stone-900"
+        className="w-full flex-1 min-h-[500px] border-none rounded-b-2xl bg-white dark:bg-stone-900"
       />
 
       {/* Optional fallback / sample text selection layer */}
       {sampleText && (
         <div className="p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 text-xs sm:text-sm text-stone-800 dark:text-stone-200 select-text leading-relaxed">
           <p>{sampleText}</p>
+        </div>
+      )}
+
+      {/* Manual Quote Modal */}
+      {isManualModalOpen && (
+        <div
+          data-testid="pdf-manual-quote-modal"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+        >
+          <div className="w-full max-w-lg bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/60">
+              <div className="flex items-center gap-2">
+                <PenLine className="w-4 h-4 text-amber-800 dark:text-amber-400" />
+                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                  Nhập trích đoạn nghiên cứu từ PDF
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManualModalOpen(false)}
+                className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualQuoteSubmit} className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                  Nội dung đoạn trích:
+                </label>
+                <textarea
+                  data-testid="pdf-manual-quote-textarea"
+                  value={manualText}
+                  onChange={(e) => setManualText(e.target.value)}
+                  placeholder="Dán hoặc nhập nội dung đoạn văn bản từ PDF tại đây..."
+                  rows={4}
+                  autoFocus
+                  className="w-full p-3 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-700/40 leading-relaxed resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <div className="text-xs text-stone-500 dark:text-stone-400">
+                  Trang đính kèm: <span className="font-mono font-bold text-amber-800 dark:text-amber-400">{currentPage}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsManualModalOpen(false)}
+                    className="px-3.5 py-2 text-xs font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    data-testid="pdf-manual-quote-submit-btn"
+                    disabled={!manualText.trim()}
+                    className="px-4 py-2 bg-amber-800 hover:bg-amber-900 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                  >
+                    Mở công cụ trích xuất
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

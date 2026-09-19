@@ -57,6 +57,16 @@ export function UnifiedResearchReader({
     return globalReadingPositionStore.getPosition(documentId, normalizedFormat) || undefined;
   });
 
+  // Parse PDF initial page from initialPosition / currentPosition
+  const pdfInitialPage = useMemo(() => {
+    const raw = initialPosition || currentPosition;
+    if (!raw) return 1;
+    const match = String(raw).match(/page=(\d+)/i);
+    if (match) return parseInt(match[1], 10) || 1;
+    const parsed = parseInt(String(raw), 10);
+    return isNaN(parsed) || parsed < 1 ? 1 : parsed;
+  }, [initialPosition, currentPosition]);
+
   // Track position change in in-memory store
   const handlePositionChanged = useCallback(
     (newLocator: string) => {
@@ -414,6 +424,8 @@ export function UnifiedResearchReader({
                 fileUrl={fileUrl}
                 documentId={documentId}
                 title={title}
+                initialPage={pdfInitialPage}
+                onPageChanged={(newPage) => handlePositionChanged(String(newPage))}
                 initialToc={initialToc}
                 onTocGenerated={(items) => setTocItems(items)}
                 onTextSelection={handleTextSelection}
