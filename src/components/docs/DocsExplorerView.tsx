@@ -107,9 +107,14 @@ export function DocsExplorerView({
         fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
       });
     } else {
-      fetchDocContent(filePath);
+      setActiveReaderDoc({
+        documentId: `vault:${filePath}`,
+        title: fileName.replace(/\.md$/i, ""),
+        format: "md",
+        fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
+      });
     }
-  }, [fetchDocContent]);
+  }, []);
 
   useEffect(() => {
     fetchDocsList();
