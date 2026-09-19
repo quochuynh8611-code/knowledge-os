@@ -10,12 +10,16 @@ import {
   FolderOpen,
   Info,
   Eye,
+  Clock,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { FileViewer } from "./FileViewer";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
+import { globalReadingPositionStore } from "../../lib/readingPositionUnified";
 
 export interface DocItem {
   id: string;
@@ -41,6 +45,10 @@ export function DocsExplorerView({
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<DocDetail | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedFormat, setSelectedFormat] = useState<"all" | "pdf" | "epub" | "md">("all");
+  const [selectedSource, setSelectedSource] = useState<"all" | "vault" | "local">("all");
+  const [sortBy, setSortBy] = useState<"recent" | "title-asc" | "size-desc">("recent");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isLoadingList, setIsLoadingList] = useState<boolean>(true);
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
@@ -86,8 +94,17 @@ export function DocsExplorerView({
     }
   }, []);
 
+  const getDocFormat = useCallback((doc: DocItem): "pdf" | "epub" | "md" | "other" => {
+    const p = (doc.relativePath || "").toLowerCase();
+    if (p.endsWith(".pdf")) return "pdf";
+    if (p.endsWith(".epub") || doc.category === "books") return "epub";
+    if (p.endsWith(".md")) return "md";
+    return "other";
+  }, []);
+
   const handleDocClick = useCallback((doc: DocItem) => {
-    if (doc.relativePath.toLowerCase().endsWith(".epub") || doc.category === "books") {
+    const format = getDocFormat(doc);
+    if (format === "epub") {
       const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
       setActiveEpubFile({
         fileName: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
@@ -95,8 +112,18 @@ export function DocsExplorerView({
       });
       return;
     }
+    if (format === "pdf") {
+      const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
+      setActiveReaderDoc({
+        documentId: doc.id || doc.relativePath,
+        title: doc.title,
+        format: "pdf",
+        fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+      });
+      return;
+    }
     fetchDocContent(doc.relativePath);
-  }, [fetchDocContent]);
+  }, [fetchDocContent, getDocFormat]);
 
   const handleVaultFileSelect = useCallback((filePath: string) => {
     setIsVaultModalOpen(false);
@@ -146,21 +173,74 @@ export function DocsExplorerView({
   const isEpubOnly = mode === "epub-only";
 
   const filteredDocs = useMemo(() => {
+    return docs
+      .filter((doc) => {
+        const format = getDocFormat(doc);
+        if (isEpubOnly && format !== "epub") return false;
+
+        const matchCategory =
+          selectedCategory === "all" || doc.category === selectedCategory;
+
+        const matchFormat =
+          selectedFormat === "all" || format === selectedFormat;
+
+        const isVault =
+          doc.relativePath.startsWith("vault:") ||
+          doc.id.startsWith("vault:") ||
+          doc.relativePath.startsWith("01_Notes");
+
+        const matchSource =
+          selectedSource === "all" ||
+          (selectedSource === "vault" && isVault) ||
+          (selectedSource === "local" && !isVault);
+
+        const matchSearch =
+          searchTerm.trim() === "" ||
+          doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          doc.relativePath.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (doc.status && doc.status.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        return matchCategory && matchFormat && matchSource && matchSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === "title-asc") {
+          return a.title.localeCompare(b.title, "vi");
+        }
+        if (sortBy === "size-desc") {
+          return (b.sizeBytes || 0) - (a.sizeBytes || 0);
+        }
+        const timeA = new Date(a.lastModified || 0).getTime();
+        const timeB = new Date(b.lastModified || 0).getTime();
+        return timeB - timeA;
+      });
+  }, [
+    docs,
+    selectedCategory,
+    selectedFormat,
+    selectedSource,
+    sortBy,
+    searchTerm,
+    isEpubOnly,
+    getDocFormat,
+  ]);
+
+  const recentDocs = useMemo(() => {
+    const allPos = globalReadingPositionStore.getAllPositions();
+    const keys = Object.keys(allPos);
+    if (keys.length === 0) return [];
+
     return docs.filter((doc) => {
-      const isEpub =
-        doc.relativePath.toLowerCase().endsWith(".epub") ||
-        doc.category === "books";
-      if (isEpubOnly && !isEpub) return false;
-      const matchCategory =
-        selectedCategory === "all" || doc.category === selectedCategory;
-      const matchSearch =
-        searchTerm.trim() === "" ||
-        doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.relativePath.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (doc.status && doc.status.toLowerCase().includes(searchTerm.toLowerCase()));
-      return matchCategory && matchSearch;
+      const format = getDocFormat(doc);
+      const posById = globalReadingPositionStore.getPosition(doc.id, format);
+      const posByPath = globalReadingPositionStore.getPosition(doc.relativePath, format);
+      if (posById || posByPath) return true;
+      return keys.some(
+        (k) =>
+          (doc.id && k.includes(doc.id)) ||
+          (doc.relativePath && k.includes(doc.relativePath))
+      );
     });
-  }, [docs, selectedCategory, searchTerm, isEpubOnly]);
+  }, [docs, getDocFormat]);
 
   const handleCopyContent = async () => {
     if (!selectedDoc?.content) return;
@@ -215,9 +295,70 @@ export function DocsExplorerView({
         }
       />
 
+      {/* Recent Reads Shelf (Phase R1) */}
+      {recentDocs.length > 0 && (
+        <div
+          data-testid="recent-reads-shelf"
+          className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs animate-in fade-in duration-200"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center">
+                <Clock className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                  Đang đọc gần đây (Recent Reads)
+                </h3>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  Tiếp tục đọc từ vị trí gần nhất
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-medium text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
+              {recentDocs.length} tài liệu
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {recentDocs.map((doc) => {
+              const format = getDocFormat(doc);
+              return (
+                <button
+                  key={`recent-${doc.id || doc.relativePath}`}
+                  aria-label={`Đang đọc ${doc.title}`}
+                  onClick={() => handleDocClick(doc)}
+                  className="flex items-start gap-3 p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-xl transition text-left cursor-pointer shadow-2xs group"
+                >
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 shrink-0 group-hover:scale-105 transition-transform">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                        Đang đọc: {doc.title}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-stone-500 dark:text-stone-400 font-mono truncate mt-0.5">
+                      {doc.relativePath}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-amber-800 dark:text-amber-400 font-medium">
+                      <span className="uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded">
+                        {format}
+                      </span>
+                      <span>• Tiếp tục đọc →</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Split-Pane Content Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[600px]">
-        {/* Left Pane: Directory & Search */}
+        {/* Left Pane: Directory, Filters & Search */}
         <SurfaceCard variant="default" className="lg:col-span-4 flex flex-col space-y-3.5">
           {/* Search Input */}
           <div className="relative">
@@ -231,7 +372,7 @@ export function DocsExplorerView({
             />
           </div>
 
-          {/* Category Filter Tabs (mode full only) or Section Heading (epub-only) */}
+          {/* Category Filter Tabs (mode full only) */}
           {!isEpubOnly ? (
             <div
               role="group"
@@ -243,7 +384,7 @@ export function DocsExplorerView({
                 { id: "adr", label: "ADRs" },
                 { id: "specs", label: "Specs" },
                 { id: "gherkin", label: "Gherkin" },
-                { id: "books", label: "Sách EPUB" },
+                { id: "books", label: "Sách" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -264,7 +405,110 @@ export function DocsExplorerView({
             </div>
           )}
 
-          {/* Documents List */}
+          {/* Phase R1 Multi-Facet Filters Bar: Format, Source, Sort, View Toggle */}
+          <div className="space-y-2 pt-1 border-t border-stone-100 dark:border-stone-800">
+            {/* Format Filter Buttons */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                Định dạng
+              </span>
+              <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-xl text-xs">
+                {[
+                  { id: "all", label: "Tất cả", testId: "filter-format-all" },
+                  { id: "pdf", label: "PDF", testId: "filter-format-pdf" },
+                  { id: "epub", label: "EPUB", testId: "filter-format-epub" },
+                  { id: "md", label: "Markdown", testId: "filter-format-md" },
+                ].map((fmt) => (
+                  <button
+                    key={fmt.id}
+                    data-testid={fmt.testId}
+                    onClick={() => setSelectedFormat(fmt.id as any)}
+                    className={`px-2 py-0.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                      selectedFormat === fmt.id
+                        ? "bg-amber-800 text-amber-50 shadow-2xs"
+                        : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                    }`}
+                  >
+                    {fmt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Source Filter, Sort Dropdown & View Mode Toggle */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+              {/* Source Filters */}
+              <div className="flex items-center gap-1">
+                <button
+                  data-testid="filter-source-all"
+                  onClick={() => setSelectedSource("all")}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition cursor-pointer border ${
+                    selectedSource === "all"
+                      ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                      : "bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 border-transparent"
+                  }`}
+                >
+                  Tất cả nguồn
+                </button>
+                <button
+                  data-testid="filter-source-vault"
+                  onClick={() => setSelectedSource("vault")}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition cursor-pointer border ${
+                    selectedSource === "vault"
+                      ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
+                      : "bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 border-transparent"
+                  }`}
+                >
+                  Obsidian Vault
+                </button>
+              </div>
+
+              {/* Sort & View Mode */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  data-testid="library-sort-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="text-[11px] font-semibold bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-1 text-stone-700 dark:text-stone-300 cursor-pointer focus:outline-hidden"
+                >
+                  <option value="recent">Mới nhất (Recent)</option>
+                  <option value="title-asc">Tên A-Z (Title)</option>
+                  <option value="size-desc">Dung lượng (Size)</option>
+                </select>
+
+                <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg border border-stone-200 dark:border-stone-700">
+                  <button
+                    data-testid="view-mode-grid"
+                    onClick={() => setViewMode("grid")}
+                    className={`p-1 rounded transition cursor-pointer ${
+                      viewMode === "grid"
+                        ? "bg-white dark:bg-stone-700 text-amber-800 dark:text-amber-300 shadow-2xs"
+                        : "text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+                    }`}
+                    title="Chế độ lưới"
+                    aria-label="Chế độ lưới"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    data-testid="view-mode-list"
+                    onClick={() => setViewMode("list")}
+                    className={`p-1 rounded transition cursor-pointer ${
+                      viewMode === "list"
+                        ? "bg-white dark:bg-stone-700 text-amber-800 dark:text-amber-300 shadow-2xs"
+                        : "text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+                    }`}
+                    title="Chế độ danh sách"
+                    aria-label="Chế độ danh sách"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Documents List / Grid Container */}
           <div className="flex-1 overflow-y-auto max-h-[500px] space-y-2 pr-1">
             {isLoadingList ? (
               <div className="p-8 text-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
@@ -287,52 +531,71 @@ export function DocsExplorerView({
                 )}
               </div>
             ) : (
-              filteredDocs.map((doc) => {
-                const isSelected = selectedDoc?.relativePath === doc.relativePath;
-                const isEpub = doc.relativePath.toLowerCase().endsWith(".epub") || doc.category === "books";
-                return (
-                  <button
-                    key={doc.relativePath}
-                    data-testid={`doc-item-${doc.id}`}
-                    onClick={() => handleDocClick(doc)}
-                    className={`w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 cursor-pointer ${
-                      isSelected
-                        ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-1 ring-amber-400/40"
-                        : "bg-stone-50/60 dark:bg-stone-800/50 border-stone-200/80 dark:border-stone-700/80 hover:bg-stone-100/80 dark:hover:bg-stone-800"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />}
-                        <span className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-2">
-                          {doc.title}
-                        </span>
-                      </div>
-                      {doc.status && (
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono shrink-0 ${
-                            doc.status === "ACCEPTED"
-                              ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                              : doc.status === "PROPOSED"
-                              ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                              : doc.status === "EPUB"
-                              ? "bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
-                              : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
-                          }`}
-                        >
-                          {doc.status}
-                        </span>
-                      )}
-                    </div>
+              <div
+                data-testid={viewMode === "grid" ? "library-grid-container" : "library-list-container"}
+                className={
+                  viewMode === "grid"
+                    ? "grid grid-cols-1 gap-2.5"
+                    : "space-y-1.5"
+                }
+              >
+                {filteredDocs.map((doc) => {
+                  const isSelected = selectedDoc?.relativePath === doc.relativePath;
+                  const format = getDocFormat(doc);
+                  const isEpub = format === "epub";
+                  const isPdf = format === "pdf";
 
-                    <div className="flex items-center gap-2 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
-                      <span className="truncate">{doc.relativePath}</span>
-                      <span>•</span>
-                      <span className="shrink-0">{Math.round(doc.sizeBytes / 1024)} KB</span>
-                    </div>
-                  </button>
-                );
-              })
+                  return (
+                    <button
+                      key={doc.relativePath}
+                      data-testid={`doc-item-${doc.id}`}
+                      aria-label={doc.title}
+                      onClick={() => handleDocClick(doc)}
+                      className={`w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-1 ring-amber-400/40"
+                          : "bg-stone-50/60 dark:bg-stone-800/50 border-stone-200/80 dark:border-stone-700/80 hover:bg-stone-100/80 dark:hover:bg-stone-800"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />}
+                          {isPdf && <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />}
+                          <span
+                            data-testid="library-doc-title"
+                            className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-2"
+                          >
+                            {doc.title}
+                          </span>
+                        </div>
+                        {doc.status && (
+                          <span
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono shrink-0 ${
+                              doc.status === "ACCEPTED"
+                                ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                : doc.status === "PROPOSED"
+                                ? "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : doc.status === "EPUB"
+                                ? "bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
+                                : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
+                            }`}
+                          >
+                            {doc.status}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
+                        <span className="truncate">{doc.relativePath}</span>
+                        <span>•</span>
+                        <span className="shrink-0">{Math.round(doc.sizeBytes / 1024)} KB</span>
+                        <span>•</span>
+                        <span className="uppercase font-semibold text-amber-800 dark:text-amber-400">{format}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </SurfaceCard>
