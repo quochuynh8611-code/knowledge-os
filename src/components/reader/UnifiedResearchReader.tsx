@@ -174,6 +174,23 @@ export function UnifiedResearchReader({
     }, 2500);
   };
 
+  const handleOpenArchiveLinkFromSidebar = useCallback(
+    (targetDocId: string, locator?: string) => {
+      if (targetDocId === documentId) {
+        if (locator) {
+          setTargetHeadingId(locator);
+          handlePositionChanged(locator);
+          showToast(`Đã chuyển đến: ${locator}`);
+        } else {
+          showToast('Đang ở tài liệu hiện tại');
+        }
+      } else {
+        showToast(`Trích dẫn thuộc tài liệu khác: ${targetDocId}`);
+      }
+    },
+    [documentId, handlePositionChanged]
+  );
+
   const handleTextSelection = useCallback((selection: { text: string; position: { top: number; left: number }; page?: number }) => {
     setActiveSelection(selection);
   }, []);
@@ -460,6 +477,7 @@ export function UnifiedResearchReader({
             excerpts={documentHighlights}
             onSelectExcerpt={handleSelectExcerpt}
             inboxItems={inboxItems}
+            onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
           />
         </div>
       </div>

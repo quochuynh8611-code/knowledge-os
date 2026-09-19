@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { TocItem } from './ReaderTocDrawer';
 import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
+import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
 
 export type ReaderSidebarTab = 'outline' | 'notes' | 'highlights' | 'inbox';
 
@@ -31,6 +32,7 @@ export interface ReaderSidebarProps {
   excerpts?: ResearchExcerpt[];
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
   inboxItems?: ResearchInboxItem[];
+  onOpenArchiveLink?: (documentId: string, locator?: string) => void;
 }
 
 export function ReaderSidebar({
@@ -47,6 +49,7 @@ export function ReaderSidebar({
   excerpts = [],
   onSelectExcerpt,
   inboxItems = [],
+  onOpenArchiveLink,
 }: ReaderSidebarProps) {
   if (!isOpen) return null;
 
@@ -200,9 +203,12 @@ export function ReaderSidebar({
                   <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">
                     {note.title}
                   </h4>
-                  <p className="text-[11px] text-stone-600 dark:text-stone-400 line-clamp-3 leading-relaxed">
-                    {note.content}
-                  </p>
+                  <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
+                    <MarkdownReadabilityRenderer
+                      content={note.content}
+                      onOpenArchiveLink={onOpenArchiveLink}
+                    />
+                  </div>
                 </div>
               ))
             )}
