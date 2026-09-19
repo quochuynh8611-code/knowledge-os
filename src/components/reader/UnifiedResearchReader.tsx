@@ -207,7 +207,10 @@ export function UnifiedResearchReader({
     setActiveSelection(selection);
   }, []);
 
-  const handleToolbarAction = async (action: SelectionToolbarAction, payload: { text: string }) => {
+  const handleToolbarAction = async (
+    action: SelectionToolbarAction,
+    payload: { text: string; success?: boolean }
+  ) => {
     const selectedText = payload.text || activeSelection?.text || '';
     if (!selectedText) return;
 
@@ -234,10 +237,24 @@ export function UnifiedResearchReader({
     };
 
     if (action === 'copy') {
-      showToast('Đã sao chép đoạn trích vào clipboard');
-      setActiveSelection(null);
+      if (payload.success === false) {
+        showToast('Không thể sao chép vào clipboard');
+      } else {
+        showToast('Đã sao chép đoạn trích vào clipboard');
+        setActiveSelection(null);
+      }
     } else if (action === 'highlight') {
-      showToast('Đã đánh dấu đoạn trích nghiên cứu');
+      try {
+        if (addExcerptToInbox) {
+          await addExcerptToInbox(excerpt);
+          showToast('Đã lưu điểm trích nghiên cứu');
+        } else {
+          showToast('Không thể lưu điểm trích');
+        }
+      } catch (err) {
+        console.error('Failed to save highlight excerpt:', err);
+        showToast('Không thể lưu điểm trích');
+      }
       setActiveSelection(null);
     } else if (action === 'citation') {
       const citationText = citationSnapshot.formatted || citationSnapshot.apa || '';
@@ -245,7 +262,7 @@ export function UnifiedResearchReader({
       if (success) {
         showToast('Đã sao chép trích dẫn học thuật');
       } else {
-        showToast('Trích dẫn đã được tạo');
+        showToast('Không thể sao chép trích dẫn vào clipboard');
       }
       setActiveSelection(null);
     } else if (action === 'send_to_note') {

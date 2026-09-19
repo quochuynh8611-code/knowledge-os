@@ -67,6 +67,7 @@ describe('Phase 18A Wave 3: UnifiedSelectionToolbar', () => {
       expect(writeTextMock).toHaveBeenCalledWith(defaultProps.selectedText);
       expect(onAction).toHaveBeenCalledWith('copy', {
         text: defaultProps.selectedText,
+        success: true,
       });
     });
   });

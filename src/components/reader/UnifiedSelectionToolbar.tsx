@@ -13,7 +13,7 @@ export interface UnifiedSelectionToolbarProps {
   isOpen: boolean;
   position: { top: number; left: number } | null;
   selectedText: string;
-  onAction: (action: SelectionToolbarAction, payload: { text: string }) => void;
+  onAction: (action: SelectionToolbarAction, payload: { text: string; success?: boolean }) => void;
   onClose: () => void;
 }
 
@@ -50,9 +50,9 @@ export function UnifiedSelectionToolbar({
     if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-      onAction('copy', { text: selectedText });
+      onAction('copy', { text: selectedText, success: true });
     } else {
-      console.warn('Failed to copy selected text to clipboard');
+      onAction('copy', { text: selectedText, success: false });
     }
   };
 
