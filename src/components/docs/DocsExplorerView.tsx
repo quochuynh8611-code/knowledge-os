@@ -15,6 +15,7 @@ import { FileViewer } from "./FileViewer";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
+import { copyTextToClipboard } from "../../lib/clipboard";
 
 export interface DocItem {
   id: string;
@@ -100,10 +101,18 @@ export function DocsExplorerView({
   const handleVaultFileSelect = useCallback((filePath: string) => {
     setIsVaultModalOpen(false);
     const isEpub = filePath.toLowerCase().endsWith(".epub");
+    const isPdf = filePath.toLowerCase().endsWith(".pdf");
     const fileName = filePath.split("/").pop() || filePath;
     if (isEpub) {
       setActiveEpubFile({
         fileName,
+        fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+      });
+    } else if (isPdf) {
+      setActiveReaderDoc({
+        documentId: `vault:${filePath}`,
+        title: fileName.replace(/\.pdf$/i, ""),
+        format: "pdf",
         fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
       });
     } else {
@@ -153,11 +162,13 @@ export function DocsExplorerView({
     });
   }, [docs, selectedCategory, searchTerm, isEpubOnly]);
 
-  const handleCopyContent = () => {
+  const handleCopyContent = async () => {
     if (!selectedDoc?.content) return;
-    navigator.clipboard.writeText(selectedDoc.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyTextToClipboard(selectedDoc.content);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleRefresh = () => {

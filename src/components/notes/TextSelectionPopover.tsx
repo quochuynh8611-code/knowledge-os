@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import { Sparkles, Brain } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Sparkles, Brain, Copy, Check } from "lucide-react";
+import { copyTextToClipboard } from "../../lib/clipboard";
 
 export interface TextSelectionPopoverProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ export interface TextSelectionPopoverProps {
 
 /**
  * TextSelectionPopover renders a floating toolbar near active text selection
- * allowing instant creation of flashcards from reading notes.
+ * allowing instant creation of flashcards and copying excerpts from reading notes.
  */
 export function TextSelectionPopover({
   isOpen,
@@ -20,6 +21,8 @@ export function TextSelectionPopover({
   onCreateCard,
   onClose,
 }: TextSelectionPopoverProps) {
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -39,6 +42,17 @@ export function TextSelectionPopover({
   if (!isOpen || !position) {
     return null;
   }
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selectionText) return;
+    const success = await copyTextToClipboard(selectionText);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
 
   // Preview snippet truncated
   const preview =
@@ -72,6 +86,26 @@ export function TextSelectionPopover({
         <span className="text-[10px] font-mono px-1 py-0.5 bg-amber-600/30 rounded text-amber-950 ml-0.5">
           Alt+F
         </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex items-center gap-1 px-2 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 dark:bg-stone-200 dark:hover:bg-stone-300 dark:text-stone-800 rounded-xl transition cursor-pointer text-xs"
+        aria-label={copied ? "Đã sao chép" : "Sao chép"}
+        title="Sao chép vào clipboard"
+      >
+        {copied ? (
+          <>
+            <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+            <span className="hidden sm:inline text-[11px]">Đã chép</span>
+          </>
+        ) : (
+          <>
+            <Copy className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline text-[11px]">Sao chép</span>
+          </>
+        )}
       </button>
 
       {preview && (

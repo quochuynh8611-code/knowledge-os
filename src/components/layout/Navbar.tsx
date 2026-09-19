@@ -383,6 +383,15 @@ export function Navbar({
                 });
                 return;
               }
+              if (filePath.toLowerCase().endsWith(".pdf")) {
+                setActiveReaderDoc({
+                  documentId: `vault:${filePath}`,
+                  title: fileName.replace(/\.pdf$/i, ""),
+                  format: "pdf",
+                  fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+                });
+                return;
+              }
               const previewResource: Resource = {
                 id: "preview-" + filePath,
                 topicId: "",

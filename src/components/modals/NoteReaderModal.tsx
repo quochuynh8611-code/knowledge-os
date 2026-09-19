@@ -21,6 +21,7 @@ import { TextSelectionPopover } from "../notes/TextSelectionPopover";
 import { FlashcardFormModal } from "./FlashcardFormModal";
 import { detectClozeFromSelection } from "../../lib/detectClozeFromSelection";
 import { NoteCardListSection, clearNoteCardsCache } from "../notes/NoteCardListSection";
+import { copyTextToClipboard } from "../../lib/clipboard";
 
 export interface NoteReaderModalProps {
   isOpen: boolean;
@@ -147,17 +148,19 @@ export function NoteReaderModal({
 
   if (!isOpen || !note) return null;
 
-  const handleCopyPath = () => {
-    if (note.sourcePath && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(note.sourcePath).catch(() => {});
+  const handleCopyPath = async () => {
+    if (!note.sourcePath) return;
+    const success = await copyTextToClipboard(note.sourcePath);
+    if (success) {
       setCopiedPath(true);
       setTimeout(() => setCopiedPath(false), 2000);
     }
   };
 
-  const handleCopyContent = () => {
-    if (note.content && typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(note.content).catch(() => {});
+  const handleCopyContent = async () => {
+    if (!note.content) return;
+    const success = await copyTextToClipboard(note.content);
+    if (success) {
       setCopiedContent(true);
       setTimeout(() => setCopiedContent(false), 2000);
     }

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Highlighter, Copy, Quote, FilePlus, Inbox, Check } from 'lucide-react';
+import { copyTextToClipboard } from '../../lib/clipboard';
 
 export type SelectionToolbarAction =
   | 'highlight'
@@ -45,16 +46,13 @@ export function UnifiedSelectionToolbar({
   const handleCopy = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(selectedText);
-      }
+    const success = await copyTextToClipboard(selectedText);
+    if (success) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
       onAction('copy', { text: selectedText });
-    } catch (err) {
-      console.warn('Failed to copy selected text:', err);
-      onAction('copy', { text: selectedText });
+    } else {
+      console.warn('Failed to copy selected text to clipboard');
     }
   };
 

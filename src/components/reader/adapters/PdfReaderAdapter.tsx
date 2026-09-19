@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink } from 'lucide-react';
+import { copyTextToClipboard } from '../../../lib/clipboard';
 
 export interface PdfReaderSelectionDetails {
   text: string;
@@ -54,13 +55,13 @@ export function PdfReaderAdapter({
   );
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleCopyPath = () => {
+  const handleCopyPath = async () => {
     if (!fileUrl) return;
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(fileUrl).catch(() => {});
+    const success = await copyTextToClipboard(fileUrl);
+    if (success) {
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
     }
-    setCopiedPath(true);
-    setTimeout(() => setCopiedPath(false), 2000);
   };
 
   const validateUrl = useCallback(() => {

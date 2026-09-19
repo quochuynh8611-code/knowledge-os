@@ -11,6 +11,7 @@ import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
 import { ResearchExcerpt, Note } from '../../types';
+import { copyTextToClipboard } from '../../lib/clipboard';
 
 export interface UnifiedResearchReaderProps {
   documentId: string;
@@ -130,12 +131,11 @@ export function UnifiedResearchReader({
       showToast('Đã đánh dấu đoạn trích nghiên cứu');
       setActiveSelection(null);
     } else if (action === 'citation') {
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(citationSnapshot.formatted || citationSnapshot.apa || '');
-        }
+      const citationText = citationSnapshot.formatted || citationSnapshot.apa || '';
+      const success = await copyTextToClipboard(citationText);
+      if (success) {
         showToast('Đã sao chép trích dẫn học thuật');
-      } catch {
+      } else {
         showToast('Trích dẫn đã được tạo');
       }
       setActiveSelection(null);

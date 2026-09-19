@@ -220,7 +220,8 @@ export function ObsidianVaultBrowserModal({
       const isLoadingChild = loadingFolders.has(item.path);
       const isMd = item.extension === ".md" || item.extension === ".markdown";
       const isEpub = item.extension === ".epub" || item.name.toLowerCase().endsWith(".epub");
-      const isSelectable = isMd || isEpub;
+      const isPdf = item.extension === ".pdf" || item.name.toLowerCase().endsWith(".pdf");
+      const isSelectable = isMd || isEpub || isPdf;
 
       return (
         <div key={item.path} className="select-none">
@@ -230,6 +231,8 @@ export function ObsidianVaultBrowserModal({
                 ? "hover:bg-stone-100 dark:hover:bg-stone-800/80 text-stone-700 dark:text-stone-200 font-medium"
                 : isEpub
                 ? "hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-900 dark:hover:text-amber-300 text-amber-900 dark:text-amber-300 font-medium"
+                : isPdf
+                ? "hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-900 dark:hover:text-rose-300 text-rose-900 dark:text-rose-300 font-medium"
                 : isMd
                 ? "hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-300 text-stone-600 dark:text-stone-300"
                 : "text-stone-400 dark:text-stone-500 opacity-60 cursor-default"
@@ -265,6 +268,8 @@ export function ObsidianVaultBrowserModal({
               )
             ) : isEpub ? (
               <BookOpen className="w-4 h-4 shrink-0 text-amber-700 dark:text-amber-400" />
+            ) : isPdf ? (
+              <FileText className="w-4 h-4 shrink-0 text-rose-700 dark:text-rose-400" />
             ) : (
               <FileText
                 className={`w-4 h-4 shrink-0 ${
