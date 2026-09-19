@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink } from 'lucide-react';
 import { copyTextToClipboard } from '../../../lib/clipboard';
+import { TocItem } from '../ReaderTocDrawer';
 
 export interface PdfReaderSelectionDetails {
   text: string;
@@ -17,6 +18,8 @@ export interface PdfReaderAdapterProps {
   onTextSelection?: (selection: PdfReaderSelectionDetails) => void;
   sampleText?: string;
   className?: string;
+  initialToc?: TocItem[];
+  onTocGenerated?: (items: TocItem[]) => void;
 }
 
 export function isLocalFilesystemPath(url?: string): boolean {
@@ -39,9 +42,17 @@ export function PdfReaderAdapter({
   onTextSelection,
   sampleText,
   className = '',
+  initialToc,
+  onTocGenerated,
 }: PdfReaderAdapterProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [copiedPath, setCopiedPath] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (onTocGenerated && initialToc && initialToc.length > 0) {
+      onTocGenerated(initialToc);
+    }
+  }, [initialToc, onTocGenerated]);
 
   const isLocal = isLocalFilesystemPath(fileUrl);
   const isInvalidInitial = !isLocal && (!fileUrl || !fileUrl.trim() || fileUrl.includes('invalid-protocol://') || fileUrl.includes('corrupted'));

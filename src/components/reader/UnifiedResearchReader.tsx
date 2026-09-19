@@ -21,6 +21,7 @@ export interface UnifiedResearchReaderProps {
   fileUrl?: string;
   content?: string;
   initialPosition?: string;
+  initialToc?: TocItem[];
   onPositionChange?: (locator: string) => void;
   onClose: () => void;
   className?: string;
@@ -33,6 +34,7 @@ export function UnifiedResearchReader({
   fileUrl,
   content,
   initialPosition,
+  initialToc,
   onPositionChange,
   onClose,
   className = '',
@@ -41,7 +43,7 @@ export function UnifiedResearchReader({
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [sidebarTab, setSidebarTab] = useState<ReaderSidebarTab>('outline');
-  const [tocItems, setTocItems] = useState<TocItem[]>([]);
+  const [tocItems, setTocItems] = useState<TocItem[]>(initialToc || []);
   const [activeTocId, setActiveTocId] = useState<string | undefined>(undefined);
   const [targetHeadingId, setTargetHeadingId] = useState<string | undefined>(initialPosition);
 
@@ -412,6 +414,8 @@ export function UnifiedResearchReader({
                 fileUrl={fileUrl}
                 documentId={documentId}
                 title={title}
+                initialToc={initialToc}
+                onTocGenerated={(items) => setTocItems(items)}
                 onTextSelection={handleTextSelection}
               />
             ) : (
