@@ -29,6 +29,7 @@ export interface ReaderSidebarProps {
   documentTitle: string;
   notes?: Note[];
   excerpts?: ResearchExcerpt[];
+  onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
   inboxItems?: ResearchInboxItem[];
 }
 
@@ -44,6 +45,7 @@ export function ReaderSidebar({
   documentTitle,
   notes = [],
   excerpts = [],
+  onSelectExcerpt,
   inboxItems = [],
 }: ReaderSidebarProps) {
   if (!isOpen) return null;
@@ -222,13 +224,22 @@ export function ReaderSidebar({
               excerpts.map((excerpt) => (
                 <div
                   key={excerpt.id}
-                  className="p-3 bg-amber-50/50 dark:bg-amber-950/30 border-l-2 border-amber-500 dark:border-amber-400 rounded-r-xl space-y-1 shadow-2xs"
+                  onClick={() => onSelectExcerpt?.(excerpt)}
+                  className="p-3 bg-amber-50/50 dark:bg-amber-950/30 border-l-2 border-amber-500 dark:border-amber-400 rounded-r-xl space-y-1 shadow-2xs hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectExcerpt?.(excerpt);
+                    }
+                  }}
                 >
                   <blockquote className="text-xs italic text-stone-800 dark:text-stone-200 line-clamp-4">
                     "{excerpt.selectedText}"
                   </blockquote>
                   <div className="text-[10px] text-stone-400 dark:text-stone-500 font-mono pt-1">
-                    {excerpt.positionSelector?.headingId || `Trang ${excerpt.positionSelector?.pageNumber || '–'}`}
+                    {excerpt.positionSelector?.headingId || (excerpt.positionSelector?.pageNumber ? `Trang ${excerpt.positionSelector.pageNumber}` : excerpt.positionSelector?.cfi || '–')}
                   </div>
                 </div>
               ))

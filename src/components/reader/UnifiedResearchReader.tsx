@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
@@ -91,6 +91,81 @@ export function UnifiedResearchReader({
   const notes = dataContext?.notes || [];
   const inboxItems = dataContext?.researchInboxItems || [];
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
+
+  // Wave R2.3: Extract active document highlights from researchInboxItems
+  const documentHighlights = useMemo(() => {
+    return inboxItems
+      .map((item) => item.excerpt)
+      .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && excerpt.archivedDocumentId === documentId));
+  }, [inboxItems, documentId]);
+
+  // Wave R2.4: Document-scoped notes filtering with 4-tier precedence
+  const scopedNotes = useMemo(() => {
+    const targetNoteIds = new Set<string>();
+    for (const highlight of documentHighlights) {
+      if (highlight.targetNoteId) {
+        targetNoteIds.add(highlight.targetNoteId);
+      }
+    }
+
+    const archiveUriMarker = `archive://${documentId}`;
+    const normalizedDocId = documentId.trim().toLowerCase();
+    const normalizedTitle = title?.trim().toLowerCase();
+
+    return notes.filter((note) => {
+      // Tier 1: Explicit targetNoteId from excerpts belonging to active document
+      if (targetNoteIds.has(note.id)) {
+        return true;
+      }
+
+      const noteContent = note.content || '';
+
+      // Tier 2: Archive URI Marker in note content
+      if (
+        noteContent.includes(archiveUriMarker) ||
+        noteContent.includes(`archive://${encodeURIComponent(documentId)}`)
+      ) {
+        return true;
+      }
+
+      // Tier 3: Source path binding
+      if (note.sourcePath) {
+        const normalizedSourcePath = note.sourcePath.trim().toLowerCase();
+        if (
+          normalizedSourcePath === normalizedDocId ||
+          normalizedSourcePath.endsWith(`/${normalizedDocId}`) ||
+          normalizedSourcePath.endsWith(`\\${normalizedDocId}`) ||
+          normalizedSourcePath.replace(/\.(md|epub|pdf)$/i, '') === normalizedDocId.replace(/\.(md|epub|pdf)$/i, '')
+        ) {
+          return true;
+        }
+      }
+
+      // Tier 4: Heuristic fallback for document title citations
+      if (
+        normalizedTitle &&
+        (noteContent.toLowerCase().includes(`*${normalizedTitle}*`) ||
+          noteContent.toLowerCase().includes(`— *${normalizedTitle}*`))
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [notes, documentHighlights, documentId, title]);
+
+  const handleSelectExcerpt = useCallback(
+    (excerpt: ResearchExcerpt) => {
+      const locator =
+        excerpt.positionSelector?.headingId ||
+        (excerpt.positionSelector?.pageNumber !== undefined ? String(excerpt.positionSelector.pageNumber) : undefined) ||
+        excerpt.positionSelector?.cfi;
+      if (locator) {
+        handlePositionChanged(locator);
+      }
+    },
+    [handlePositionChanged]
+  );
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -381,8 +456,9 @@ export function UnifiedResearchReader({
             onSelectTocItem={handleSelectTocItem}
             documentId={documentId}
             documentTitle={title}
-            notes={notes}
-            excerpts={[]}
+            notes={scopedNotes}
+            excerpts={documentHighlights}
+            onSelectExcerpt={handleSelectExcerpt}
             inboxItems={inboxItems}
           />
         </div>
