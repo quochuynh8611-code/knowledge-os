@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AlertCircle, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink } from 'lucide-react';
 
 export interface PdfReaderSelectionDetails {
   text: string;
@@ -18,6 +18,17 @@ export interface PdfReaderAdapterProps {
   className?: string;
 }
 
+export function isLocalFilesystemPath(url?: string): boolean {
+  if (!url || !url.trim()) return false;
+  const trimmed = url.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower.startsWith('file://')) return true;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('/api/')) return true;
+  if (trimmed.startsWith('\\')) return true;
+  if (/^[a-zA-Z]:[/\\]/.test(trimmed)) return true;
+  return false;
+}
+
 export function PdfReaderAdapter({
   fileUrl,
   documentId,
@@ -29,7 +40,10 @@ export function PdfReaderAdapter({
   className = '',
 }: PdfReaderAdapterProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
-  const isInvalidInitial = !fileUrl || !fileUrl.trim() || fileUrl.includes('invalid-protocol://') || fileUrl.includes('corrupted');
+  const [copiedPath, setCopiedPath] = useState<boolean>(false);
+
+  const isLocal = isLocalFilesystemPath(fileUrl);
+  const isInvalidInitial = !isLocal && (!fileUrl || !fileUrl.trim() || fileUrl.includes('invalid-protocol://') || fileUrl.includes('corrupted'));
   const [loadError, setLoadError] = useState<boolean>(isInvalidInitial);
   const [errorMessage, setErrorMessage] = useState<string>(
     !fileUrl || !fileUrl.trim()
@@ -40,7 +54,22 @@ export function PdfReaderAdapter({
   );
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const handleCopyPath = () => {
+    if (!fileUrl) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(fileUrl).catch(() => {});
+    }
+    setCopiedPath(true);
+    setTimeout(() => setCopiedPath(false), 2000);
+  };
+
   const validateUrl = useCallback(() => {
+    if (isLocal) {
+      setLoadError(false);
+      setErrorMessage('');
+      return;
+    }
+
     if (!fileUrl || !fileUrl.trim()) {
       setLoadError(true);
       setErrorMessage('Không tìm thấy file PDF hoặc đường dẫn trống');
@@ -56,7 +85,7 @@ export function PdfReaderAdapter({
 
     setLoadError(false);
     setErrorMessage('');
-  }, [fileUrl]);
+  }, [fileUrl, isLocal]);
 
   useEffect(() => {
     validateUrl();
@@ -93,6 +122,57 @@ export function PdfReaderAdapter({
       });
     }
   }, [onTextSelection, currentPage]);
+
+  if (isLocal) {
+    return (
+      <div
+        data-testid="pdf-local-path-fallback"
+        className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10 text-center space-y-4 bg-stone-50 dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800 my-auto max-w-xl mx-auto"
+      >
+        <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200 dark:border-amber-800 shadow-2xs">
+          <Folder className="w-7 h-7" />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+            Tệp PDF lưu trên máy cục bộ
+          </h3>
+          <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed max-w-md">
+            Trình duyệt web không cho phép nhúng trực tiếp tệp từ hệ thống tập tin cục bộ vì lý do bảo mật. Bạn có thể sao chép đường dẫn để mở bằng ứng dụng đọc PDF chuyên dụng (Adobe Acrobat, Preview, Chrome).
+          </p>
+        </div>
+
+        {fileUrl && (
+          <div className="w-full bg-stone-100 dark:bg-stone-800/80 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-left space-y-1.5">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Đường dẫn tệp:</span>
+            <p className="text-xs font-mono text-stone-800 dark:text-stone-200 break-all select-all">
+              {fileUrl}
+            </p>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={handleCopyPath}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer"
+          >
+            {copiedPath ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Đã sao chép đường dẫn</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Sao chép đường dẫn</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (

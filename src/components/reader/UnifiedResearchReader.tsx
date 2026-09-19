@@ -299,6 +299,7 @@ export function UnifiedResearchReader({
             <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
               <MarkdownReaderAdapter
                 content={content}
+                fileUrl={fileUrl}
                 documentId={documentId}
                 initialHeadingId={targetHeadingId}
                 onTocGenerated={(items) => setTocItems(items)}
