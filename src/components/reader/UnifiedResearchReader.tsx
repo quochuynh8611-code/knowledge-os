@@ -111,6 +111,11 @@ export function UnifiedResearchReader({
       .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && excerpt.archivedDocumentId === documentId));
   }, [inboxItems, documentId]);
 
+  // Wave R4: Extract active document inbox items from researchInboxItems
+  const documentInboxItems = useMemo(() => {
+    return inboxItems.filter((item) => Boolean(item.excerpt && item.excerpt.archivedDocumentId === documentId));
+  }, [inboxItems, documentId]);
+
   // Wave R2.4: Document-scoped notes filtering with 4-tier precedence
   const scopedNotes = useMemo(() => {
     const targetNoteIds = new Set<string>();
@@ -509,7 +514,7 @@ export function UnifiedResearchReader({
             notes={scopedNotes}
             excerpts={documentHighlights}
             onSelectExcerpt={handleSelectExcerpt}
-            inboxItems={inboxItems}
+            inboxItems={documentInboxItems}
             onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
           />
         </div>
