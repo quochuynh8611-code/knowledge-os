@@ -5,6 +5,7 @@ import {
   Square,
   ExternalLink,
   FileText,
+  BookOpen,
   Loader2,
   AlertTriangle,
   AlertCircle,
@@ -19,6 +20,25 @@ import {
   TransclusionResult,
   MAX_TRANSCLUSION_DEPTH,
 } from './obsidianTransclusionResolver';
+
+/**
+ * Parses canonical archive URI (archive://<documentId>?loc=<locator>)
+ */
+export function parseArchiveUri(uri: string): { documentId: string; locator?: string } | null {
+  if (!uri || !uri.startsWith('archive://')) return null;
+  const raw = uri.slice('archive://'.length).trim();
+  if (!raw) return null;
+  const qIdx = raw.indexOf('?');
+  if (qIdx === -1) {
+    return { documentId: decodeURIComponent(raw) };
+  }
+  const documentId = decodeURIComponent(raw.slice(0, qIdx));
+  if (!documentId) return null;
+  const queryString = raw.slice(qIdx + 1);
+  const params = new URLSearchParams(queryString);
+  const locator = params.get('loc') ? decodeURIComponent(params.get('loc')!) : undefined;
+  return { documentId, locator };
+}
 
 /**
  * Sanitize raw markdown from Vault to prevent script execution, dangerous HTML attributes,
@@ -91,7 +111,7 @@ export function normalizeMarkdownForDisplay(rawContent?: string): string {
       // Markdown images / links
       /!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)/.source,
       // URLs
-      /(?:https?|mailto|obsidian):\/\/[^\s)\]]+/.source,
+      /(?:https?|mailto|obsidian|archive):\/\/[^\s)\]]+/.source,
       // Emails
       /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.source,
       // Absolute / API Paths
@@ -264,6 +284,7 @@ export interface TransclusionBlockProps {
   transclusionResolver?: ObsidianTransclusionResolver;
   vaultResolver?: MarkdownVaultLinkResolver;
   onOpenVaultLink?: (filePath: string, heading?: string) => void;
+  onOpenArchiveLink?: (documentId: string, locator?: string) => void;
   topics?: Topic[];
   onOpenTopic?: (id: string) => void;
 }
@@ -275,6 +296,7 @@ export function TransclusionBlock({
   transclusionResolver,
   vaultResolver,
   onOpenVaultLink,
+  onOpenArchiveLink,
   topics = [],
   onOpenTopic,
 }: TransclusionBlockProps) {
@@ -418,6 +440,7 @@ export function TransclusionBlock({
             onOpenTopic={onOpenTopic}
             vaultResolver={vaultResolver}
             onOpenVaultLink={onOpenVaultLink}
+            onOpenArchiveLink={onOpenArchiveLink}
             transclusionResolver={transclusionResolver}
             transclusionDepth={depth + 1}
             transclusionAncestors={nextAncestors}
@@ -449,7 +472,8 @@ export function renderInlineMarkdownWithWikiLinks(
   onOpenVaultLink?: (filePath: string, heading?: string) => void,
   transclusionResolver?: ObsidianTransclusionResolver,
   transclusionDepth: number = 1,
-  transclusionAncestors: string[] = []
+  transclusionAncestors: string[] = [],
+  onOpenArchiveLink?: (documentId: string, locator?: string) => void
 ): React.ReactNode[] {
   // Regex bắt các token: Embeds ![[...]], Images ![alt](url), Wiki links [[...]], Markdown links [text](url), Bold, Italic, Code, Strike
   const regex =
@@ -481,6 +505,7 @@ export function renderInlineMarkdownWithWikiLinks(
             transclusionResolver={transclusionResolver}
             vaultResolver={vaultResolver}
             onOpenVaultLink={onOpenVaultLink}
+            onOpenArchiveLink={onOpenArchiveLink}
             topics={topics}
             onOpenTopic={onOpenTopic}
           />
@@ -497,73 +522,77 @@ export function renderInlineMarkdownWithWikiLinks(
             <embed
               src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
               type="application/pdf"
-              className="w-full h-[500px] rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs"
+              className="w-full h-96 rounded-xl border border-stone-200 dark:border-stone-700 shadow-xs"
             />
-            <span className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center justify-between px-1">
-              <span>{target.split('/').pop()}</span>
-              <a
-                href={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-purple-700 dark:text-purple-400 hover:underline"
-              >
-                Mở PDF toàn màn hình ↗
-              </a>
+            <span className="text-[11px] text-stone-500 dark:text-stone-400 font-mono block truncate">
+              {target}
             </span>
           </span>
         );
       }
 
-      // 1b. Video Embed
+      // 1b. Image Embed
+      if (ATTACHMENT_IMAGE_EXTS.has(ext)) {
+        let style: React.CSSProperties = {};
+        let altText = target;
+
+        if (sizeOrAlt) {
+          const dimMatch = sizeOrAlt.match(/^(\d+)x(\d+)$/);
+          const widthMatch = sizeOrAlt.match(/^(\d+)$/);
+          if (dimMatch) {
+            style = { width: `${dimMatch[1]}px`, height: `${dimMatch[2]}px` };
+          } else if (widthMatch) {
+            style = { width: `${widthMatch[1]}px` };
+          } else {
+            altText = sizeOrAlt;
+          }
+        }
+
+        return (
+          <img
+            key={index}
+            src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
+            alt={altText}
+            style={style}
+            loading="lazy"
+            className="rounded-xl border border-stone-200 dark:border-stone-700 max-w-full my-2 object-contain shadow-xs inline-block"
+          />
+        );
+      }
+
+      // 1c. Video Embed
       if (ATTACHMENT_VIDEO_EXTS.has(ext)) {
         return (
-          <span key={index} className="block my-3">
-            <video
-              controls
-              src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
-              className="w-full max-h-[500px] rounded-xl border border-stone-200 dark:border-stone-700 bg-black shadow-xs"
-            />
-          </span>
+          <video
+            key={index}
+            src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
+            controls
+            className="rounded-xl border border-stone-200 dark:border-stone-700 max-w-full my-2 shadow-xs"
+          />
         );
       }
 
-      // 1c. Audio Embed
+      // 1d. Audio Embed
       if (ATTACHMENT_AUDIO_EXTS.has(ext)) {
         return (
-          <span key={index} className="block my-2">
-            <audio
-              controls
-              src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
-              className="w-full"
-            />
-          </span>
+          <audio
+            key={index}
+            src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
+            controls
+            className="w-full my-2"
+          />
         );
       }
 
-      // 1d. Image Embed (default for image extensions or general image transclusions)
-      let style: React.CSSProperties = {};
-      let altText = target.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Attachment';
-      if (sizeOrAlt) {
-        const dimMatch = sizeOrAlt.match(/^(\d+)x(\d+)$/);
-        const widthMatch = sizeOrAlt.match(/^(\d+)$/);
-        if (dimMatch) {
-          style = { width: `${dimMatch[1]}px`, height: `${dimMatch[2]}px` };
-        } else if (widthMatch) {
-          style = { width: `${widthMatch[1]}px` };
-        } else {
-          altText = sizeOrAlt;
-        }
-      }
-
+      // 1e. Generic Attachment Fallback
       return (
-        <img
+        <span
           key={index}
-          src={`/api/obsidian/vault/attachment?path=${encodeURIComponent(target)}`}
-          alt={altText}
-          style={style}
-          loading="lazy"
-          className="rounded-xl border border-stone-200 dark:border-stone-700 max-w-full my-2 object-contain shadow-xs inline-block"
-        />
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-mono border border-stone-200 dark:border-stone-700 my-1"
+        >
+          <FileText className="w-3.5 h-3.5 text-stone-400" />
+          <span>{target}</span>
+        </span>
       );
     }
 
@@ -655,6 +684,7 @@ export function renderInlineMarkdownWithWikiLinks(
         );
       }
 
+      // 1c. Plain tag fallback
       return (
         <span
           key={index}
@@ -671,15 +701,41 @@ export function renderInlineMarkdownWithWikiLinks(
       const [, linkText, rawLinkUrl] = linkMatch;
       const linkUrl = rawLinkUrl.trim();
 
-      // Scheme safety check: allow http, https, mailto, obsidian; deny javascript, data, vbscript, file, etc.
+      // Scheme safety check: allow http, https, mailto, obsidian, archive; deny javascript, data, vbscript, file, etc.
       const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(linkUrl);
-      const isAllowedScheme = /^(https?:|mailto:|obsidian:)/i.test(linkUrl);
+      const isAllowedScheme = /^(https?:|mailto:|obsidian:|archive:)/i.test(linkUrl);
 
       // Relative path or anchor (#heading, /path) is acceptable, but unallowed explicit schemes are unsafe
       const isSafe = !hasScheme || isAllowedScheme;
 
       if (!isSafe) {
         return <span key={index}>{linkText}</span>;
+      }
+
+      // Check if it is an archive:// citation link
+      if (linkUrl.startsWith('archive://')) {
+        const parsedArchive = parseArchiveUri(linkUrl);
+        if (parsedArchive) {
+          return (
+            <a
+              key={index}
+              href={linkUrl}
+              data-archive-document-id={parsedArchive.documentId}
+              data-archive-locator={parsedArchive.locator}
+              onClick={(e) => {
+                e.preventDefault();
+                if (onOpenArchiveLink) {
+                  onOpenArchiveLink(parsedArchive.documentId, parsedArchive.locator);
+                }
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-semibold rounded-md text-xs sm:text-sm border border-amber-300 dark:border-amber-700 transition mx-0.5 cursor-pointer align-baseline"
+              title={`Mở tài liệu: ${parsedArchive.documentId}${parsedArchive.locator ? ` (Vị trí: ${parsedArchive.locator})` : ''}`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
+              <span>{linkText}</span>
+            </a>
+          );
+        }
       }
 
       const isExternal = linkUrl.startsWith('http://') || linkUrl.startsWith('https://');
@@ -705,7 +761,7 @@ export function renderInlineMarkdownWithWikiLinks(
       const boldText = part.slice(2, -2);
       return (
         <strong key={index} className="font-bold text-stone-900 dark:text-stone-100">
-          {renderInlineMarkdownWithWikiLinks(boldText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
+          {renderInlineMarkdownWithWikiLinks(boldText, topics, onOpenTopic, vaultResolver, onOpenVaultLink, transclusionResolver, transclusionDepth, transclusionAncestors, onOpenArchiveLink)}
         </strong>
       );
     }
@@ -716,7 +772,7 @@ export function renderInlineMarkdownWithWikiLinks(
       const italicText = italicMatch[2];
       return (
         <em key={index} className="italic text-stone-800 dark:text-stone-200">
-          {renderInlineMarkdownWithWikiLinks(italicText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
+          {renderInlineMarkdownWithWikiLinks(italicText, topics, onOpenTopic, vaultResolver, onOpenVaultLink, transclusionResolver, transclusionDepth, transclusionAncestors, onOpenArchiveLink)}
         </em>
       );
     }
@@ -727,7 +783,7 @@ export function renderInlineMarkdownWithWikiLinks(
       const strikeText = strikeMatch[1];
       return (
         <del key={index} className="line-through text-stone-400 dark:text-stone-500">
-          {renderInlineMarkdownWithWikiLinks(strikeText, topics, onOpenTopic, vaultResolver, onOpenVaultLink)}
+          {renderInlineMarkdownWithWikiLinks(strikeText, topics, onOpenTopic, vaultResolver, onOpenVaultLink, transclusionResolver, transclusionDepth, transclusionAncestors, onOpenArchiveLink)}
         </del>
       );
     }
@@ -756,6 +812,7 @@ export interface MarkdownReadabilityRendererProps {
   onOpenTopic?: (id: string) => void;
   vaultResolver?: MarkdownVaultLinkResolver;
   onOpenVaultLink?: (filePath: string, heading?: string) => void;
+  onOpenArchiveLink?: (documentId: string, locator?: string) => void;
   transclusionResolver?: ObsidianTransclusionResolver;
   transclusionDepth?: number;
   transclusionAncestors?: string[];
@@ -778,6 +835,7 @@ export function MarkdownReadabilityRenderer({
   onOpenTopic,
   vaultResolver,
   onOpenVaultLink,
+  onOpenArchiveLink,
   transclusionResolver,
   transclusionDepth = 1,
   transclusionAncestors = [],
@@ -803,7 +861,8 @@ export function MarkdownReadabilityRenderer({
       onOpenVaultLink,
       transclusionResolver,
       transclusionDepth,
-      transclusionAncestors
+      transclusionAncestors,
+      onOpenArchiveLink
     );
 
   let inCodeBlock = false;

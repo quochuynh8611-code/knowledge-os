@@ -45,7 +45,7 @@ describe('Phase R2: Excerpt Citation & Provenance Normalization', () => {
       expect(output).toContain('— *Vi Diệu Pháp*');
       expect(output).toContain('Trưởng Lão');
       expect(output).toContain('tr. 24, § chuong-1');
-      expect(output).toContain('[Xem tài liệu](archive://doc-vi-dieu-phap)');
+      expect(output).toContain('[Xem tài liệu](archive://doc-vi-dieu-phap?loc=chuong-1)');
     });
 
     it('2.2. prioritizes explicit sourceUrl if provided', () => {
@@ -109,19 +109,57 @@ describe('Phase R2: Excerpt Citation & Provenance Normalization', () => {
   });
 
   describe('4. Provenance Normalization & Backlink Payload Contract', () => {
-    it('4.1. verifies normalized archive URI payload follows expected backlink pattern', () => {
+    it('4.1. verifies normalized archive URI payload follows expected backlink pattern without locator', () => {
       const blockquote = formatExcerptBlockquote(
         'Nhận thức luận là cơ sở của khoa học.',
-        { documentId: 'doc-epistemology', title: 'Epistemology' },
-        { heading: 'section-truth', page: 88 }
+        { documentId: 'doc-epistemology', title: 'Epistemology' }
       );
 
-      // Verify human-readable locator and archive URI marker
       const archiveMatch = blockquote.match(/\[Xem tài liệu\]\((archive:\/\/[^)]+)\)/);
       expect(archiveMatch).toBeTruthy();
       expect(archiveMatch?.[1]).toBe('archive://doc-epistemology');
+    });
+  });
 
-      expect(blockquote).toContain('tr. 88, § section-truth');
+  describe('5. Phase R3A.1: Archive URI Locator Query Parameter', () => {
+    it('5.1. appends canonical ?loc= query param when heading locator is present', () => {
+      const output = formatExcerptBlockquote(
+        'Tâm sở đồng sinh với tâm.',
+        { documentId: 'doc-vdp', title: 'Vi Diệu Pháp' },
+        { heading: 'chuong-2-sac-phap' }
+      );
+
+      expect(output).toContain('[Xem tài liệu](archive://doc-vdp?loc=chuong-2-sac-phap)');
+    });
+
+    it('5.2. appends canonical ?loc= query param when page locator is present', () => {
+      const output = formatExcerptBlockquote(
+        'Sắc pháp vô thường.',
+        { documentId: 'doc-vdp', title: 'Vi Diệu Pháp' },
+        { page: 42 }
+      );
+
+      expect(output).toContain('[Xem tài liệu](archive://doc-vdp?loc=42)');
+    });
+
+    it('5.3. encodes complex locators like CFI properly', () => {
+      const output = formatExcerptBlockquote(
+        'Đoạn văn trong sách điện tử.',
+        { documentId: 'doc-epub', title: 'EPUB Book' },
+        { cfi: '/6/4[chap01]!/4/2/10' }
+      );
+
+      expect(output).toContain(`[Xem tài liệu](archive://doc-epub?loc=${encodeURIComponent('/6/4[chap01]!/4/2/10')})`);
+    });
+
+    it('5.4. prioritizes heading over page if both are provided', () => {
+      const output = formatExcerptBlockquote(
+        'Nội dung tổng hợp.',
+        { documentId: 'doc-composite', title: 'Composite Book' },
+        { heading: 'muc-1', page: 24 }
+      );
+
+      expect(output).toContain('[Xem tài liệu](archive://doc-composite?loc=muc-1)');
     });
   });
 });

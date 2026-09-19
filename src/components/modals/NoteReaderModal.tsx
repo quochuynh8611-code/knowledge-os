@@ -28,6 +28,7 @@ export interface NoteReaderModalProps {
   note: Note | null;
   onClose: () => void;
   onEdit: (note: Note) => void;
+  onOpenArchiveLink?: (documentId: string, locator?: string) => void;
 }
 
 export function NoteReaderModal({
@@ -35,6 +36,7 @@ export function NoteReaderModal({
   note,
   onClose,
   onEdit,
+  onOpenArchiveLink,
 }: NoteReaderModalProps) {
   const { topics, openTopicDetail } = useData();
   const [copiedPath, setCopiedPath] = useState(false);
@@ -265,6 +267,10 @@ export function NoteReaderModal({
               onOpenTopic={(id) => {
                 onClose();
                 openTopicDetail(id);
+              }}
+              onOpenArchiveLink={(documentId, locator) => {
+                onClose();
+                onOpenArchiveLink?.(documentId, locator);
               }}
             />
           </div>

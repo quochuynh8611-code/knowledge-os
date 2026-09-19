@@ -85,7 +85,15 @@ export function generateExcerptCitationSnapshot(
 
   // 4. Markdown Footnote / Link
   let markdown = '';
-  const docLink = sourceUrl || (safeMeta.documentId ? `archive://${safeMeta.documentId}` : '');
+  const locParam =
+    safeLocator.heading ||
+    (safeLocator.page !== undefined && safeLocator.page !== null ? String(safeLocator.page) : undefined) ||
+    safeLocator.cfi ||
+    (safeLocator.paragraph !== undefined && safeLocator.paragraph !== null ? String(safeLocator.paragraph) : undefined);
+  const archiveUri = safeMeta.documentId
+    ? (locParam ? `archive://${safeMeta.documentId}?loc=${encodeURIComponent(locParam)}` : `archive://${safeMeta.documentId}`)
+    : '';
+  const docLink = sourceUrl || archiveUri;
   if (author) {
     markdown = `> — *${title}* (${year})${locLabel ? `, ${locLabel}` : ''} bởi ${author}.${docLink ? ` [Nguồn](${docLink})` : ''}`;
   } else {
@@ -118,7 +126,15 @@ export function formatExcerptBlockquote(
   const title = (safeMeta.title || 'Tài liệu nghiên cứu').trim();
   const author = (safeMeta.author || '').trim();
   const locLabel = formatLocatorLabel(safeLocator);
-  const docLink = safeMeta.sourceUrl || (safeMeta.documentId ? `archive://${safeMeta.documentId}` : '');
+  const locParam =
+    safeLocator.heading ||
+    (safeLocator.page !== undefined && safeLocator.page !== null ? String(safeLocator.page) : undefined) ||
+    safeLocator.cfi ||
+    (safeLocator.paragraph !== undefined && safeLocator.paragraph !== null ? String(safeLocator.paragraph) : undefined);
+  const archiveUri = safeMeta.documentId
+    ? (locParam ? `archive://${safeMeta.documentId}?loc=${encodeURIComponent(locParam)}` : `archive://${safeMeta.documentId}`)
+    : '';
+  const docLink = safeMeta.sourceUrl || archiveUri;
 
   // Wrap prose in blockquote lines
   const textLines = safeText.split(/\r?\n/).map((line) => `> ${line}`).join('\n');
