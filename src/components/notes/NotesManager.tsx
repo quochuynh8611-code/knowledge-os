@@ -18,6 +18,7 @@ import { NoteReaderModal } from '../modals/NoteReaderModal';
 import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { toReadablePlainTextPreview } from '../../lib/markdownReadability';
+import { resolveArchiveLinkToReaderDoc, ActiveReaderDocument } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
 export function NotesManager() {
@@ -30,32 +31,10 @@ export function NotesManager() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [readingNote, setReadingNote] = useState<Note | null>(null);
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
-  const [activeReaderDoc, setActiveReaderDoc] = useState<{
-    documentId: string;
-    title: string;
-    format: string;
-    fileUrl?: string;
-    content?: string;
-    initialPosition?: string;
-  } | null>(null);
+  const [activeReaderDoc, setActiveReaderDoc] = useState<ActiveReaderDocument | null>(null);
 
   const handleOpenArchiveLink = (documentId: string, locator?: string) => {
-    const matchedResource = resources.find(
-      (r) => r.id === documentId || r.filePath === documentId || r.url === documentId
-    );
-    const title = matchedResource?.title || documentId.split('/').pop()?.replace(/\.[^.]+$/, '') || 'Tài liệu nghiên cứu';
-    const format = matchedResource?.type === 'pdf' ? 'pdf' : (matchedResource?.filePath?.endsWith('.epub') || documentId.endsWith('.epub') ? 'epub' : 'md');
-    const fileUrl = matchedResource?.filePath
-      ? `/api/obsidian/vault/attachment?path=${encodeURIComponent(matchedResource.filePath)}`
-      : (matchedResource?.url || undefined);
-
-    setActiveReaderDoc({
-      documentId,
-      title,
-      format,
-      fileUrl,
-      initialPosition: locator,
-    });
+    setActiveReaderDoc(resolveArchiveLinkToReaderDoc(documentId, locator, resources));
   };
 
   const filteredNotes = useMemo(() => {
