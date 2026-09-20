@@ -11,8 +11,9 @@ import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
-import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
+import { ResearchExcerpt, ResearchInboxItem, Note, Resource } from '../../types';
 import { copyTextToClipboard } from '../../lib/clipboard';
+import { isExcerptMatchingDocument, normalizeDocumentPath, DocumentMatchContext } from '../../lib/readerDocumentResolver';
 
 export interface UnifiedResearchReaderProps {
   documentId: string;
@@ -97,26 +98,41 @@ export function UnifiedResearchReader({
 
   const dataContext = React.useContext(DataContext) as {
     notes?: Note[];
+    resources?: Resource[];
     researchInboxItems?: ResearchInboxItem[];
     addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
+    updateNote?: (id: string, noteData: Partial<Note>) => void;
   } | undefined;
   const notes = dataContext?.notes || [];
+  const resources = dataContext?.resources || [];
   const inboxItems = dataContext?.researchInboxItems || [];
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
 
-  // Wave R2.3: Extract active document highlights from researchInboxItems
+  // Wave R2.3: Extract active document highlights using Canonical Document Matcher
   const documentHighlights = useMemo(() => {
+    const matchContext: DocumentMatchContext = {
+      documentId,
+      title,
+      fileUrl,
+      resources,
+    };
     return inboxItems
       .map((item) => item.excerpt)
-      .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && excerpt.archivedDocumentId === documentId));
-  }, [inboxItems, documentId]);
+      .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && isExcerptMatchingDocument(excerpt, matchContext)));
+  }, [inboxItems, documentId, title, fileUrl, resources]);
 
-  // Wave R4: Extract active document inbox items from researchInboxItems
+  // Wave R4: Extract active document inbox items using Canonical Document Matcher
   const documentInboxItems = useMemo(() => {
-    return inboxItems.filter((item) => Boolean(item.excerpt && item.excerpt.archivedDocumentId === documentId));
-  }, [inboxItems, documentId]);
+    const matchContext: DocumentMatchContext = {
+      documentId,
+      title,
+      fileUrl,
+      resources,
+    };
+    return inboxItems.filter((item) => Boolean(item.excerpt && isExcerptMatchingDocument(item.excerpt, matchContext)));
+  }, [inboxItems, documentId, title, fileUrl, resources]);
 
-  // Wave R2.4: Document-scoped notes filtering with 4-tier precedence
+  // Wave R2.4: Document-scoped notes filtering with 4-tier precedence & canonical paths
   const scopedNotes = useMemo(() => {
     const targetNoteIds = new Set<string>();
     for (const highlight of documentHighlights) {
@@ -127,6 +143,7 @@ export function UnifiedResearchReader({
 
     const archiveUriMarker = `archive://${documentId}`;
     const normalizedDocId = documentId.trim().toLowerCase();
+    const canonicalPath = normalizeDocumentPath(documentId).toLowerCase();
     const normalizedTitle = title?.trim().toLowerCase();
 
     return notes.filter((note) => {
@@ -140,7 +157,10 @@ export function UnifiedResearchReader({
       // Tier 2: Archive URI Marker in note content
       if (
         noteContent.includes(archiveUriMarker) ||
-        noteContent.includes(`archive://${encodeURIComponent(documentId)}`)
+        noteContent.includes(`archive://${encodeURIComponent(documentId)}`) ||
+        (canonicalPath &&
+          (noteContent.includes(`archive://${canonicalPath}`) ||
+            noteContent.includes(`archive://${encodeURIComponent(canonicalPath)}`)))
       ) {
         return true;
       }
@@ -148,11 +168,16 @@ export function UnifiedResearchReader({
       // Tier 3: Source path binding
       if (note.sourcePath) {
         const normalizedSourcePath = note.sourcePath.trim().toLowerCase();
+        const canonicalSourcePath = normalizeDocumentPath(note.sourcePath).toLowerCase();
         if (
           normalizedSourcePath === normalizedDocId ||
           normalizedSourcePath.endsWith(`/${normalizedDocId}`) ||
           normalizedSourcePath.endsWith(`\\${normalizedDocId}`) ||
-          normalizedSourcePath.replace(/\.(md|epub|pdf)$/i, '') === normalizedDocId.replace(/\.(md|epub|pdf)$/i, '')
+          normalizedSourcePath.replace(/\.(md|epub|pdf)$/i, '') === normalizedDocId.replace(/\.(md|epub|pdf)$/i, '') ||
+          (canonicalPath &&
+            (canonicalSourcePath === canonicalPath ||
+              canonicalSourcePath.endsWith(`/${canonicalPath}`) ||
+              canonicalPath.endsWith(`/${canonicalSourcePath}`)))
         ) {
           return true;
         }
@@ -295,9 +320,52 @@ export function UnifiedResearchReader({
       { page: activeSelection.page, heading: activeTocId, cfi: currentPosition }
     );
 
+    const now = new Date().toISOString();
+    const excerpt: ResearchExcerpt = {
+      id: `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      archivedDocumentId: documentId,
+      targetNoteId,
+      selectedText: activeSelection.text,
+      positionSelector: {
+        headingId: activeTocId,
+        pageNumber: activeSelection.page,
+        cfi: currentPosition,
+      },
+      highlightColor: '#fef08a',
+      citationSnapshot: generateExcerptCitationSnapshot(
+        { documentId, title, format: normalizedFormat, sourceUrl: fileUrl },
+        { page: activeSelection.page, heading: activeTocId }
+      ),
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    };
+
     try {
+      let appendedContent = '';
       if (dataRepository.appendExcerptToNote) {
-        await dataRepository.appendExcerptToNote(targetNoteId, blockquote);
+        try {
+          const updated = await dataRepository.appendExcerptToNote(targetNoteId, blockquote);
+          if (updated?.content) {
+            appendedContent = updated.content;
+          }
+        } catch (repoErr) {
+          console.warn('[UnifiedResearchReader] dataRepository.appendExcerptToNote warning:', repoErr);
+        }
+      }
+
+      if (dataContext?.updateNote) {
+        const targetNote = notes.find((n) => n.id === targetNoteId);
+        const newContent =
+          appendedContent ||
+          (targetNote?.content
+            ? `${targetNote.content.trim()}\n\n${blockquote.trim()}`
+            : blockquote.trim());
+        dataContext.updateNote(targetNoteId, { content: newContent });
+      }
+
+      if (addExcerptToInbox) {
+        await addExcerptToInbox(excerpt);
       }
       showToast('Đã lưu trích đoạn vào ghi chú thành công');
     } catch (err) {

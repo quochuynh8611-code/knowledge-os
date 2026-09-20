@@ -1,4 +1,4 @@
-import { Resource } from '../types';
+import { Resource, ResearchExcerpt } from '../types';
 
 export interface ActiveReaderDocument {
   documentId: string;
@@ -7,6 +7,182 @@ export interface ActiveReaderDocument {
   fileUrl?: string;
   content?: string;
   initialPosition?: string;
+}
+
+export interface DocumentMatchContext {
+  documentId: string;
+  title?: string;
+  fileUrl?: string;
+  resources?: Resource[];
+}
+
+/**
+ * Normalizes any document ID, vault path, or file URL to a canonical relative path.
+ * Examples:
+ * - "vault:02_PDF_Source/guide.pdf" -> "02_PDF_Source/guide.pdf"
+ * - "/api/obsidian/vault/attachment?path=02_PDF_Source%2Fguide.pdf" -> "02_PDF_Source/guide.pdf"
+ * - "/api/docs/raw?path=02_PDF_Source%2Fguide.pdf" -> "02_PDF_Source/guide.pdf"
+ * - "02_PDF_Source/guide.pdf" -> "02_PDF_Source/guide.pdf"
+ */
+export function normalizeDocumentPath(rawIdOrUrl?: string | null): string {
+  if (!rawIdOrUrl) return '';
+  let cleaned = rawIdOrUrl.trim();
+
+  // Strip archive:// prefix if present
+  if (cleaned.toLowerCase().startsWith('archive://')) {
+    cleaned = cleaned.slice(10);
+    if (cleaned.includes('?')) {
+      cleaned = cleaned.split('?')[0];
+    }
+  }
+
+  // Strip vault: prefix
+  if (cleaned.toLowerCase().startsWith('vault:')) {
+    cleaned = cleaned.slice(6);
+  }
+
+  // Extract path from API URLs if applicable
+  if (cleaned.includes('path=')) {
+    try {
+      const urlObj = new URL(cleaned, 'http://localhost');
+      const param = urlObj.searchParams.get('path');
+      if (param) cleaned = param;
+    } catch {
+      const match = cleaned.match(/[?&]path=([^&]+)/);
+      if (match) cleaned = decodeURIComponent(match[1]);
+    }
+  }
+
+  // Decode URI components & normalize slashes
+  try {
+    cleaned = decodeURIComponent(cleaned);
+  } catch {
+    // fallback if already decoded
+  }
+
+  cleaned = cleaned.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return cleaned;
+}
+
+/**
+ * Checks whether a ResearchExcerpt belongs to the active document being viewed in Reader.
+ * Applies a 4-tier matching strategy with anti-collision checks:
+ * 1. Strict ID Match (guarded against colliding generic IDs with mismatched titles)
+ * 2. Canonical Path & Scheme Equivalence (vault:path == relative path == fileUrl path)
+ * 3. Resource ID <-> File Path Cross-Resolution
+ * 4. Filename Base Name & Citation Title Safe Fallback
+ */
+export function isExcerptMatchingDocument(
+  excerpt: ResearchExcerpt,
+  context: DocumentMatchContext
+): boolean {
+  if (!excerpt) return false;
+
+  const targetDocId = (context.documentId || '').trim();
+  const excerptDocId = (excerpt.archivedDocumentId || '').trim();
+  const contextTitle = (context.title || '').trim().toLowerCase();
+  const excerptTitle = (excerpt.citationSnapshot?.title || '').trim().toLowerCase();
+
+  if (!targetDocId && !excerptDocId && !contextTitle) return false;
+
+  const isGenericId =
+    !targetDocId ||
+    targetDocId === 'doc-1' ||
+    targetDocId === 'doc-generic' ||
+    targetDocId.startsWith('preview-');
+
+  // Tier 1: Exact ID match with anti-collision guard
+  if (targetDocId && excerptDocId && targetDocId === excerptDocId) {
+    if (contextTitle && excerptTitle && contextTitle !== excerptTitle) {
+      if (isGenericId || (!targetDocId.includes('/') && !targetDocId.includes('.'))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Tier 2: Canonical Path & Vault Scheme Matching
+  const canonicalTarget = normalizeDocumentPath(targetDocId);
+  const canonicalExcerpt = normalizeDocumentPath(excerptDocId);
+  const canonicalFileUrl = normalizeDocumentPath(context.fileUrl);
+
+  if (
+    canonicalTarget &&
+    canonicalExcerpt &&
+    canonicalTarget.toLowerCase() === canonicalExcerpt.toLowerCase()
+  ) {
+    return true;
+  }
+
+  if (
+    canonicalExcerpt &&
+    canonicalFileUrl &&
+    canonicalExcerpt.toLowerCase() === canonicalFileUrl.toLowerCase()
+  ) {
+    return true;
+  }
+
+  if (
+    canonicalTarget &&
+    canonicalFileUrl &&
+    canonicalTarget.toLowerCase() === canonicalFileUrl.toLowerCase()
+  ) {
+    if (canonicalExcerpt && canonicalExcerpt.toLowerCase() === canonicalTarget.toLowerCase()) {
+      return true;
+    }
+  }
+
+  // Tier 3: Resource Alias Cross-Resolution
+  const resources = context.resources || [];
+  const targetResource = resources.find(
+    (r) =>
+      r.id === targetDocId ||
+      (r.filePath && normalizeDocumentPath(r.filePath).toLowerCase() === canonicalTarget.toLowerCase())
+  );
+  const excerptResource = resources.find(
+    (r) =>
+      r.id === excerptDocId ||
+      (r.filePath && normalizeDocumentPath(r.filePath).toLowerCase() === canonicalExcerpt.toLowerCase())
+  );
+
+  if (targetResource && excerptResource && targetResource.id === excerptResource.id) {
+    return true;
+  }
+
+  if (
+    targetResource &&
+    targetResource.filePath &&
+    normalizeDocumentPath(targetResource.filePath).toLowerCase() === canonicalExcerpt.toLowerCase()
+  ) {
+    return true;
+  }
+
+  if (
+    excerptResource &&
+    excerptResource.filePath &&
+    normalizeDocumentPath(excerptResource.filePath).toLowerCase() === canonicalTarget.toLowerCase()
+  ) {
+    return true;
+  }
+
+  // Tier 4: Filename Base Name & Title Citation Match (Safe Fallback)
+  const targetBaseName = canonicalTarget.split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase();
+  const excerptBaseName = canonicalExcerpt.split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase();
+
+  if (
+    targetBaseName &&
+    excerptBaseName &&
+    targetBaseName === excerptBaseName &&
+    targetBaseName.length > 3
+  ) {
+    return true;
+  }
+
+  if (contextTitle && excerptTitle && contextTitle === excerptTitle && contextTitle.length > 3) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -19,8 +195,13 @@ export function resolveArchiveLinkToReaderDoc(
   resources: Resource[] = []
 ): ActiveReaderDocument {
   const normalizedDocId = (documentId || '').trim();
+  const canonicalPath = normalizeDocumentPath(normalizedDocId);
   const matchedResource = (resources || []).find(
-    (r) => r.id === normalizedDocId || r.filePath === normalizedDocId || r.url === normalizedDocId
+    (r) =>
+      r.id === normalizedDocId ||
+      r.filePath === normalizedDocId ||
+      (r.filePath && normalizeDocumentPath(r.filePath) === canonicalPath) ||
+      r.url === normalizedDocId
   );
 
   const title =
