@@ -65,6 +65,7 @@ export function clearAllAppStorage(): void {
     `${STORAGE_ROOT_KEY}_notes`,
     `${STORAGE_ROOT_KEY}_resources`,
     `${STORAGE_ROOT_KEY}_tags`,
+    `${STORAGE_ROOT_KEY}_research_inbox`,
     FOCUS_DOMAIN_STORAGE_KEY,
   ];
 

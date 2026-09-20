@@ -230,4 +230,89 @@ describe('Reader Document Identity & Canonical Matching Requirements', () => {
       within(highlightsPanel).getByText(/Đoạn trích quan trọng về Dataview Table/i)
     ).toBeInTheDocument();
   });
+
+  it('4. Legacy excerpts with generic/placeholder document IDs without matching title/context MUST NOT match active document', () => {
+    // Given: Legacy excerpt in storage created with generic fallback ID "pdf" or "doc-1" lacking title
+    const sampleInboxItems: ResearchInboxItem[] = [
+      {
+        id: 'inbox-legacy-generic',
+        excerptId: 'excerpt-legacy-generic',
+        excerpt: {
+          id: 'excerpt-legacy-generic',
+          archivedDocumentId: 'pdf', // Generic placeholder ID
+          selectedText: 'PORT=3005 npm run dev',
+          positionSelector: { pageNumber: 1 },
+          highlightColor: '#fef08a',
+          // citationSnapshot is missing or has empty title
+          status: 'inbox',
+          createdAt: '2026-09-18T00:00:00.000Z',
+          updatedAt: '2026-09-18T00:00:00.000Z',
+        },
+        isProcessed: false,
+        priority: 0,
+        createdAt: '2026-09-18T00:00:00.000Z',
+        updatedAt: '2026-09-18T00:00:00.000Z',
+      },
+      {
+        id: 'inbox-legacy-doc1',
+        excerptId: 'excerpt-legacy-doc1',
+        excerpt: {
+          id: 'excerpt-legacy-doc1',
+          archivedDocumentId: 'doc-1', // Generic placeholder ID
+          selectedText: 'Old temporary excerpt from doc-1',
+          citationSnapshot: { title: '' }, // empty title
+          status: 'inbox',
+          createdAt: '2026-09-18T00:00:00.000Z',
+          updatedAt: '2026-09-18T00:00:00.000Z',
+        },
+        isProcessed: false,
+        priority: 0,
+        createdAt: '2026-09-18T00:00:00.000Z',
+        updatedAt: '2026-09-18T00:00:00.000Z',
+      },
+    ];
+
+    const mockContext = {
+      notes: [],
+      resources: [],
+      researchInboxItems: sampleInboxItems,
+      addExcerptToInbox: vi.fn(),
+      dismissInboxItem: vi.fn(),
+      processInboxItem: vi.fn(),
+      unprocessedInboxCount: 2,
+    };
+
+    // When: User opens a document which happens to have documentId="pdf" or opens a specific PDF
+    render(
+      <DataContext.Provider value={mockContext as any}>
+        <UnifiedResearchReader
+          documentId="pdf"
+          title="Tài Liệu Hướng Dẫn Mới"
+          format="pdf"
+          fileUrl="/api/docs/raw?path=02_PDF_Source/new_guide.pdf"
+          onClose={vi.fn()}
+        />
+      </DataContext.Provider>
+    );
+
+    fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+    fireEvent.click(screen.getByTestId('sidebar-tab-highlights'));
+
+    const highlightsPanel = screen.getByTestId('sidebar-panel-highlights');
+
+    // Then: Generic legacy excerpts without matching title MUST NOT match or leak into active reader
+    expect(
+      within(highlightsPanel).queryByText(/PORT=3005 npm run dev/i)
+    ).not.toBeInTheDocument();
+    expect(
+      within(highlightsPanel).queryByText(/Old temporary excerpt from doc-1/i)
+    ).not.toBeInTheDocument();
+
+    // Also verify Inbox panel is clean
+    fireEvent.click(screen.getByTestId('sidebar-tab-inbox'));
+    const inboxPanel = screen.getByTestId('sidebar-panel-inbox');
+    expect(
+      within(inboxPanel).queryByText(/PORT=3005 npm run dev/i)
+    ).not.toBeInTheDocument();
+  });
 });

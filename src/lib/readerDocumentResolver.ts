@@ -72,6 +72,38 @@ export function normalizeDocumentPath(rawIdOrUrl?: string | null): string {
  * 3. Resource ID <-> File Path Cross-Resolution
  * 4. Filename Base Name & Citation Title Safe Fallback
  */
+const GENERIC_DOC_IDS = new Set([
+  'doc',
+  'pdf',
+  'epub',
+  'md',
+  'markdown',
+  'doc-1',
+  'doc-2',
+  'doc-generic',
+  'document',
+  'untitled',
+  'default',
+  'preview',
+]);
+
+export function isGenericDocId(id?: string | null): boolean {
+  if (!id) return true;
+  const trimmed = id.trim().toLowerCase();
+  if (!trimmed) return true;
+  if (GENERIC_DOC_IDS.has(trimmed)) return true;
+  if (trimmed.startsWith('preview-') || trimmed.startsWith('untitled-')) return true;
+  return false;
+}
+
+/**
+ * Checks whether a ResearchExcerpt belongs to the active document being viewed in Reader.
+ * Applies a 4-tier matching strategy with anti-collision checks:
+ * 1. Strict ID Match (guarded against colliding generic IDs with mismatched titles)
+ * 2. Canonical Path & Scheme Equivalence (vault:path == relative path == fileUrl path)
+ * 3. Resource ID <-> File Path Cross-Resolution
+ * 4. Filename Base Name & Citation Title Safe Fallback
+ */
 export function isExcerptMatchingDocument(
   excerpt: ResearchExcerpt,
   context: DocumentMatchContext
@@ -85,16 +117,21 @@ export function isExcerptMatchingDocument(
 
   if (!targetDocId && !excerptDocId && !contextTitle) return false;
 
-  const isGenericId =
-    !targetDocId ||
-    targetDocId === 'doc-1' ||
-    targetDocId === 'doc-generic' ||
-    targetDocId.startsWith('preview-');
+  const isTargetGeneric = isGenericDocId(targetDocId);
+  const isExcerptGeneric = isGenericDocId(excerptDocId);
 
   // Tier 1: Exact ID match with anti-collision guard
   if (targetDocId && excerptDocId && targetDocId === excerptDocId) {
+    if (isTargetGeneric || isExcerptGeneric) {
+      // For generic placeholder IDs, exact ID match is NOT trustworthy on its own;
+      // require verified matching title with length > 3
+      if (contextTitle && excerptTitle && contextTitle === excerptTitle && contextTitle.length > 3) {
+        return true;
+      }
+      return false;
+    }
     if (contextTitle && excerptTitle && contextTitle !== excerptTitle) {
-      if (isGenericId || (!targetDocId.includes('/') && !targetDocId.includes('.'))) {
+      if (!targetDocId.includes('/') && !targetDocId.includes('.')) {
         return false;
       }
     }
@@ -106,7 +143,12 @@ export function isExcerptMatchingDocument(
   const canonicalExcerpt = normalizeDocumentPath(excerptDocId);
   const canonicalFileUrl = normalizeDocumentPath(context.fileUrl);
 
+  const isCanonicalTargetGeneric = isGenericDocId(canonicalTarget);
+  const isCanonicalExcerptGeneric = isGenericDocId(canonicalExcerpt);
+
   if (
+    !isCanonicalTargetGeneric &&
+    !isCanonicalExcerptGeneric &&
     canonicalTarget &&
     canonicalExcerpt &&
     canonicalTarget.toLowerCase() === canonicalExcerpt.toLowerCase()
@@ -115,6 +157,7 @@ export function isExcerptMatchingDocument(
   }
 
   if (
+    !isCanonicalExcerptGeneric &&
     canonicalExcerpt &&
     canonicalFileUrl &&
     canonicalExcerpt.toLowerCase() === canonicalFileUrl.toLowerCase()
@@ -123,11 +166,16 @@ export function isExcerptMatchingDocument(
   }
 
   if (
+    !isCanonicalTargetGeneric &&
     canonicalTarget &&
     canonicalFileUrl &&
     canonicalTarget.toLowerCase() === canonicalFileUrl.toLowerCase()
   ) {
-    if (canonicalExcerpt && canonicalExcerpt.toLowerCase() === canonicalTarget.toLowerCase()) {
+    if (
+      !isCanonicalExcerptGeneric &&
+      canonicalExcerpt &&
+      canonicalExcerpt.toLowerCase() === canonicalTarget.toLowerCase()
+    ) {
       return true;
     }
   }
@@ -172,6 +220,8 @@ export function isExcerptMatchingDocument(
   if (
     targetBaseName &&
     excerptBaseName &&
+    !isGenericDocId(targetBaseName) &&
+    !isGenericDocId(excerptBaseName) &&
     targetBaseName === excerptBaseName &&
     targetBaseName.length > 3
   ) {

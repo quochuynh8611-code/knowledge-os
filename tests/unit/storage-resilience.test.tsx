@@ -166,6 +166,7 @@ describe('Storage & Schema Resilience (Post-Reset Runtime Crash Prevention)', ()
     it('clears all Knowledge OS keys from localStorage without touching unrelated keys', () => {
       safeSetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3', JSON.stringify({ ok: true }));
       safeSetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3_topics', JSON.stringify([]));
+      safeSetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3_research_inbox', JSON.stringify([{ id: 'inbox-old' }]));
       safeSetLocalStorageItem('knowledge_os_focus_domain_id_v1', 'cat-dong-y');
       safeSetLocalStorageItem('unrelated_user_theme', 'dark');
 
@@ -173,6 +174,7 @@ describe('Storage & Schema Resilience (Post-Reset Runtime Crash Prevention)', ()
 
       expect(safeGetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3')).toBeNull();
       expect(safeGetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3_topics')).toBeNull();
+      expect(safeGetLocalStorageItem('phat_hoc_huyen_hoc_clean_v3_research_inbox')).toBeNull();
       expect(safeGetLocalStorageItem('knowledge_os_focus_domain_id_v1')).toBeNull();
       expect(safeGetLocalStorageItem('unrelated_user_theme')).toBe('dark');
     });
@@ -182,6 +184,7 @@ describe('Storage & Schema Resilience (Post-Reset Runtime Crash Prevention)', ()
       safeSetLocalStorageItem(STORAGE_VERSION_KEY, '2');
       safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([{ id: 'cat-old', name: 'Old' }]));
       safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([{ id: 'top-old', title: 'Old Top' }]));
+      safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_research_inbox`, JSON.stringify([{ id: 'inbox-legacy' }]));
       safeSetLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-old');
       safeSetLocalStorageItem('other_app_unrelated_key', 'keep_me');
 
@@ -191,6 +194,7 @@ describe('Storage & Schema Resilience (Post-Reset Runtime Crash Prevention)', ()
       // App keys purged
       expect(safeGetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`)).toBeNull();
       expect(safeGetLocalStorageItem(`${STORAGE_ROOT_KEY}_topics`)).toBeNull();
+      expect(safeGetLocalStorageItem(`${STORAGE_ROOT_KEY}_research_inbox`)).toBeNull();
       expect(safeGetLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY)).toBeNull();
 
       // Version bumped to CURRENT_STORAGE_VERSION (3)
