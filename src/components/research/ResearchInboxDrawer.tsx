@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { X, Inbox, Eye, CheckSquare, FileText, Bookmark, Clock, ArrowRight } from 'lucide-react';
+import { X, Inbox, Eye, CheckSquare, FileText, Bookmark, Clock, ArrowRight, Trash2 } from 'lucide-react';
 import { ResearchExcerpt, ResearchInboxItem } from '../../types';
 
 export function filterUnprocessedInboxItems(items: ResearchInboxItem[] = []): ResearchInboxItem[] {
@@ -54,6 +54,7 @@ export interface ResearchInboxDrawerProps {
   items: ResearchInboxItem[];
   onView: (item: ResearchInboxItem) => void;
   onDismiss: (id: string) => void;
+  onDelete?: (id: string) => void;
   onSendToNote: (item: ResearchInboxItem) => void;
   onClose: () => void;
   className?: string;
@@ -64,6 +65,7 @@ export function ResearchInboxDrawer({
   items = [],
   onView,
   onDismiss,
+  onDelete,
   onSendToNote,
   onClose,
   className = '',
@@ -197,15 +199,28 @@ export function ResearchInboxDrawer({
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onDismiss(item.id)}
-                      aria-label="Bỏ qua"
-                      className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
-                      title="Đánh dấu đã xử lý / bỏ qua"
-                    >
-                      <CheckSquare className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={() => onDelete(item.id)}
+                          aria-label="Xóa trích đoạn"
+                          className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
+                          title="Xóa vĩnh viễn khỏi Inbox"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onDismiss(item.id)}
+                        aria-label="Bỏ qua"
+                        className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
+                        title="Đánh dấu đã xử lý / bỏ qua"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

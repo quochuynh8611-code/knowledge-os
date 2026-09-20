@@ -11,6 +11,7 @@ import {
   Clock,
   CheckCircle2,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { TocItem } from './ReaderTocDrawer';
 import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
@@ -31,7 +32,9 @@ export interface ReaderSidebarProps {
   notes?: Note[];
   excerpts?: ResearchExcerpt[];
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
+  onDeleteExcerpt?: (id: string) => void;
   inboxItems?: ResearchInboxItem[];
+  onDeleteInboxItem?: (id: string) => void;
   onOpenArchiveLink?: (documentId: string, locator?: string) => void;
 }
 
@@ -48,7 +51,9 @@ export function ReaderSidebar({
   notes = [],
   excerpts = [],
   onSelectExcerpt,
+  onDeleteExcerpt,
   inboxItems = [],
+  onDeleteInboxItem,
   onOpenArchiveLink,
 }: ReaderSidebarProps) {
   if (!isOpen) return null;
@@ -244,8 +249,24 @@ export function ReaderSidebar({
                   <blockquote className="text-xs italic text-stone-800 dark:text-stone-200 line-clamp-4">
                     "{excerpt.selectedText}"
                   </blockquote>
-                  <div className="text-[10px] text-stone-400 dark:text-stone-500 font-mono pt-1">
-                    {excerpt.positionSelector?.headingId || (excerpt.positionSelector?.pageNumber ? `Trang ${excerpt.positionSelector.pageNumber}` : excerpt.positionSelector?.cfi || '–')}
+                  <div className="flex items-center justify-between text-[10px] text-stone-400 dark:text-stone-500 font-mono pt-1">
+                    <span>
+                      {excerpt.positionSelector?.headingId || (excerpt.positionSelector?.pageNumber ? `Trang ${excerpt.positionSelector.pageNumber}` : excerpt.positionSelector?.cfi || '–')}
+                    </span>
+                    {onDeleteExcerpt && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteExcerpt(excerpt.id);
+                        }}
+                        aria-label="Xóa điểm trích"
+                        className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                        title="Xóa điểm trích"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -280,15 +301,31 @@ export function ReaderSidebar({
                     <span className="truncate max-w-[140px]">
                       {item.excerpt?.citationSnapshot?.title || documentTitle}
                     </span>
-                    <span
-                      className={`px-1.5 py-0.5 rounded font-mono ${
-                        item.isProcessed
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                          : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-semibold'
-                      }`}
-                    >
-                      {item.isProcessed ? 'ĐÃ XỬ LÝ' : 'CHƯA XỬ LÝ'}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      {onDeleteInboxItem && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteInboxItem(item.id);
+                          }}
+                          aria-label="Xóa trích đoạn"
+                          className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                          title="Xóa trích đoạn khỏi Inbox"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <span
+                        className={`px-1.5 py-0.5 rounded font-mono ${
+                          item.isProcessed
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300 font-semibold'
+                        }`}
+                      >
+                        {item.isProcessed ? 'ĐÃ XỬ LÝ' : 'CHƯA XỬ LÝ'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))

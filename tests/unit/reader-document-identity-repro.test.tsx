@@ -260,6 +260,8 @@ describe('Reader Document Identity & Canonical Matching Requirements', () => {
           id: 'excerpt-legacy-doc1',
           archivedDocumentId: 'doc-1', // Generic placeholder ID
           selectedText: 'Old temporary excerpt from doc-1',
+          positionSelector: { pageNumber: 1 },
+          highlightColor: '#fef08a',
           citationSnapshot: { title: '' }, // empty title
           status: 'inbox',
           createdAt: '2026-09-18T00:00:00.000Z',

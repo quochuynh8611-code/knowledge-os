@@ -21,6 +21,7 @@ import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget } from '../../lib/resourceOpenResolver';
+import { resolveReaderFileUrl } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
 export function ResourcesManager() {
@@ -213,12 +214,15 @@ export function ResourcesManager() {
                   <button
                     onClick={() => {
                       const fileTarget = resolveResourceOpenTarget(res);
+                      const rawTarget = fileTarget.targetUrl || res.filePath || res.url;
+                      const resolvedFileUrl = resolveReaderFileUrl(rawTarget);
+
                       if (res.type === 'pdf' || res.type === 'book' || res.type === 'md' || (res.filePath && (res.filePath.endsWith('.pdf') || res.filePath.endsWith('.epub') || res.filePath.endsWith('.md')))) {
                         setActiveReaderDoc({
                           documentId: res.id,
                           title: res.title,
                           format: res.type === 'pdf' ? 'pdf' : res.type === 'book' || res.filePath?.endsWith('.epub') ? 'epub' : 'md',
-                          fileUrl: fileTarget.targetUrl || res.url || res.filePath,
+                          fileUrl: resolvedFileUrl,
                         });
                       } else {
                         setViewingResource(res);

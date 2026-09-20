@@ -51,7 +51,7 @@ describe("Safe Clipboard Copying across Reader & Note components (Unit Tests)", 
       await waitFor(() => {
         expect(writeTextMock).toHaveBeenCalledWith("đoạn trích nghiên cứu");
         expect(screen.getByText("Đã chép")).toBeInTheDocument();
-        expect(onAction).toHaveBeenCalledWith("copy", { text: "đoạn trích nghiên cứu" });
+        expect(onAction).toHaveBeenCalledWith("copy", expect.objectContaining({ text: "đoạn trích nghiên cứu", success: true }));
       });
     });
 
@@ -85,6 +85,39 @@ describe("Safe Clipboard Copying across Reader & Note components (Unit Tests)", 
       await waitFor(() => {
         expect(execCommandMock).toHaveBeenCalledWith("copy");
         expect(screen.getByText("Đã chép")).toBeInTheDocument();
+      });
+    });
+
+    it("does not show 'Đã chép' and reports success: false when clipboard copy fails completely", async () => {
+      const writeTextMock = vi.fn().mockRejectedValue(new Error("Permission denied"));
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        writable: true,
+        configurable: true,
+      });
+
+      const execCommandMock = vi.fn().mockReturnValue(false);
+      document.execCommand = execCommandMock;
+
+      const onAction = vi.fn();
+      const onClose = vi.fn();
+
+      render(
+        <UnifiedSelectionToolbar
+          isOpen={true}
+          position={{ top: 100, left: 100 }}
+          selectedText="đoạn trích thất bại"
+          onAction={onAction}
+          onClose={onClose}
+        />
+      );
+
+      const copyBtn = screen.getByRole("button", { name: /Sao chép/i });
+      fireEvent.click(copyBtn);
+
+      await waitFor(() => {
+        expect(onAction).toHaveBeenCalledWith("copy", { text: "đoạn trích thất bại", success: false });
+        expect(screen.queryByText("Đã chép")).toBeNull();
       });
     });
   });

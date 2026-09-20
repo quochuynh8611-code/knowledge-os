@@ -17,6 +17,90 @@ export interface DocumentMatchContext {
 }
 
 /**
+ * Resolves any raw file path, URL, vault path, or document ID into a valid endpoint URL for Reader adapters.
+ * Path Taxonomy Contract:
+ * 1. Web URLs & Blobs (http://, https://, blob:) -> untouched
+ * 2. Pre-resolved API endpoints (/api/...) -> untouched
+ * 3. Docs repository paths (docs/books/..., /docs/...) -> /api/docs/raw?path=${encodeURIComponent(cleanDocsPath)}
+ * 4. Obsidian Vault paths (05_EPUB_Export/..., attachments/..., 02_PDF_Source/..., etc.) -> /api/obsidian/vault/attachment?path=${encodeURIComponent(relVaultPath)}
+ * 5. Absolute paths containing Obsidian Vault root or folder -> extracts relative vault path -> /api/obsidian/vault/attachment?path=...
+ * 6. Bare filenames:
+ *    - .epub -> /api/obsidian/vault/attachment?path=05_EPUB_Export%2F${encodeURIComponent(filename)} (Obsidian EPUB export convention)
+ *    - .pdf -> /api/obsidian/vault/attachment?path=${encodeURIComponent(filename)}
+ */
+export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
+  if (!rawUrlOrPath) return '';
+  const trimmed = rawUrlOrPath.trim();
+  if (!trimmed) return '';
+
+  // 1. External URLs, Blobs, and pre-resolved API routes
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('/api/')
+  ) {
+    return trimmed;
+  }
+
+  // Normalize backslashes to forward slashes
+  const normalized = trimmed.replace(/\\/g, '/');
+
+  // 2. Docs repo path (e.g. "docs/books/sample.epub" or "/docs/books/sample.epub")
+  if (normalized.startsWith('docs/') || normalized.startsWith('/docs/')) {
+    const cleanDocsPath = normalized.replace(/^\/?docs\//, '');
+    return `/api/docs/raw?path=${encodeURIComponent(cleanDocsPath)}`;
+  }
+
+  // If starts with "books/" (subfolder in docs repo)
+  if (normalized.startsWith('books/') && !normalized.includes('05_EPUB_Export')) {
+    return `/api/docs/raw?path=${encodeURIComponent(normalized)}`;
+  }
+
+  // 3. Absolute path containing Obsidian Vault or 05_EPUB_Export
+  // e.g. /Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian/05_EPUB_Export/sample.epub
+  // or C:/Users/.../Obsidian/Vault/05_EPUB_Export/sample.epub
+  if (normalized.includes('/05_EPUB_Export/')) {
+    const relPart = normalized.slice(normalized.indexOf('05_EPUB_Export/'));
+    return `/api/obsidian/vault/attachment?path=${encodeURIComponent(relPart)}`;
+  }
+
+  if (normalized.includes('/Obsidian/')) {
+    // Extract part after vault name: /Obsidian/<vaultName>/<relPart>
+    const match = normalized.match(/\/Obsidian\/[^/]+\/(.+)$/i);
+    if (match && match[1]) {
+      return `/api/obsidian/vault/attachment?path=${encodeURIComponent(match[1])}`;
+    }
+  }
+
+  // 4. Obsidian Vault Relative Path (e.g. "05_EPUB_Export/sample.epub", "attachments/sample.pdf")
+  if (
+    normalized.startsWith('05_EPUB_Export/') ||
+    normalized.startsWith('attachments/') ||
+    normalized.startsWith('02_PDF_Source/') ||
+    normalized.startsWith('01_Books/') ||
+    normalized.startsWith('03_Notes/')
+  ) {
+    const cleanRel = normalized.replace(/^\/+/, '');
+    return `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanRel)}`;
+  }
+
+  // 5. Bare filename handling
+  const isBare = !normalized.includes('/');
+  if (isBare) {
+    if (normalized.toLowerCase().endsWith('.epub')) {
+      // Convention: Knowledge OS Obsidian EPUB export folder
+      return `/api/obsidian/vault/attachment?path=${encodeURIComponent('05_EPUB_Export/' + normalized)}`;
+    }
+    return `/api/obsidian/vault/attachment?path=${encodeURIComponent(normalized)}`;
+  }
+
+  // 6. Generic relative path fallback -> vault attachment endpoint
+  const cleanFallback = normalized.replace(/^\/+/, '');
+  return `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanFallback)}`;
+}
+
+/**
  * Normalizes any document ID, vault path, or file URL to a canonical relative path.
  * Examples:
  * - "vault:02_PDF_Source/guide.pdf" -> "02_PDF_Source/guide.pdf"
@@ -271,8 +355,10 @@ export function resolveArchiveLinkToReaderDoc(
   const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
 
   const fileUrl = matchedResource?.filePath
-    ? `/api/obsidian/vault/attachment?path=${encodeURIComponent(matchedResource.filePath)}`
-    : matchedResource?.url || undefined;
+    ? resolveReaderFileUrl(matchedResource.filePath)
+    : matchedResource?.url
+    ? resolveReaderFileUrl(matchedResource.url)
+    : undefined;
 
   return {
     documentId: normalizedDocId,

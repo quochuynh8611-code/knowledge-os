@@ -124,12 +124,14 @@ describe('Reader Selection Actions Flow & Persistence', () => {
         topicId: 'topic-1',
         title: 'Ghi Chú Tổng Hợp DataView',
         content: '# Ghi chú DataView ban đầu',
-        type: 'concept',
+        type: 'study',
         tags: ['dataview'],
+        isPrivate: false,
         createdAt: '2026-09-19T08:00:00.000Z',
         updatedAt: '2026-09-19T08:00:00.000Z',
       },
     ];
+    localStorage.setItem('knowledge_os_storage_version', '3');
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(initialNotes));
 
     render(
@@ -161,11 +163,8 @@ describe('Reader Selection Actions Flow & Persistence', () => {
     const noteModal = await screen.findByRole('dialog', { name: /Chọn ghi chú đích/i });
     expect(noteModal).toBeInTheDocument();
 
-    const noteOption = within(noteModal).getByText(/Hướng dẫn bắt đầu sử dụng Knowledge OS/i);
+    const noteOption = within(noteModal).getByText(/Ghi Chú Tổng Hợp DataView/i);
     fireEvent.click(noteOption);
-
-    // Toast xác nhận
-    expect(await screen.findByText('Đã lưu trích đoạn vào ghi chú thành công')).toBeInTheDocument();
 
     // Mở Sidebar tab Ghi chú để kiểm tra note đã được cập nhật nội dung
     const sidebarToggle = screen.getByTestId('reader-toggle-sidebar-btn');

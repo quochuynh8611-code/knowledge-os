@@ -52,10 +52,67 @@ Subsystem **Obsidian Vault Bridge** đã hoàn thành toàn bộ lộ trình 7 g
 
 ---
 
+---
+
+## Phase 18: Unified Research Reader & Research Inbox Hardening
+
+### Các Lỗi Đã Được Khóa Bằng Test-First (Red Stage) & Khắc Phục (Green Stage):
+
+1. **Bug 1: Điều hướng EPUB từ DocsExplorerView / Navbar vào UnifiedResearchReader**
+   - **Triệu chứng cũ**: Mở sách `.epub` từ Thư Viện Sách hoặc Vault Browser Modal rơi vào `FileViewer` cũ, không có Selection Toolbar và Reader Sidebar.
+   - **Khắc phục**: Chuyển toàn bộ routing sang `setActiveReaderDoc({ format: 'epub', ... })`, loại bỏ hoàn toàn `activeEpubFile` và `FileViewer` cho EPUB.
+   - **Test Suite**: `tests/unit/docs-explorer-epub-routing.test.tsx` (3/3 PASS).
+
+2. **Bug 2: Thêm Hard Delete cho Research Inbox và Reader Sidebar**
+   - **Triệu chứng cũ**: Không có nút xóa cho trích đoạn trong Inbox và Reader Sidebar (chỉ có Dismiss/Process).
+   - **Khắc phục**: Bổ sung `deleteInboxItem` vào `DataContext` (xóa vĩnh viễn khỏi React state và `localStorage`), thêm nút `Trash2` (`aria-label="Xóa trích đoạn"`, `aria-label="Xóa điểm trích"`) tại `ResearchInboxDrawer` và `ReaderSidebar`.
+   - **Test Suite**: `tests/unit/research-inbox-hard-delete.test.tsx` (3/3 PASS).
+
+3. **Bug 3: Đồng bộ State UI và Scoping Note khi lưu Excerpt**
+   - **Triệu chứng cũ**: Lưu trích đoạn từ Inbox/Reader vào note đích khiến item biến mất khỏi Inbox nhưng note trong UI không cập nhật hoặc bị filter khỏi tab Ghi chú của Reader.
+   - **Khắc phục**:
+     - Đồng bộ ngay lập tức React state `notes` trong `Navbar.tsx` qua `updateNote(updated)`.
+     - Giữ lại marker `<!-- archive://${documentId} -->` trong `formatExcerptBlockquote` ngay cả khi có `sourceUrl`.
+     - Mở rộng phạm vi tìm kiếm `scopedNotes` trong `UnifiedResearchReader.tsx` để khớp `fileUrl`, `sourceUrl`, và `documentId`.
+   - **Test Suite**: `tests/unit/reader-save-note-scoping.test.tsx` (5/5 PASS).
+
+### Tổng Hợp Kiểm Thử Phase 18:
+- **Tất cả 9 test suites liên quan đều PASS (40/40 tests)**:
+  - `tests/unit/docs-explorer-epub-routing.test.tsx`
+  - `tests/unit/research-inbox-hard-delete.test.tsx`
+  - `tests/unit/reader-save-note-scoping.test.tsx`
+  - `tests/unit/safe-clipboard-copy.test.tsx`
+  - `tests/unit/epub-reader-url-resolution.test.tsx`
+  - `tests/unit/epub-selection-toolbar-actions.test.tsx`
+  - `tests/unit/navbar-obsidian-readonly-flow.test.tsx`
+  - `tests/integration/vault-file-open-reader.test.tsx`
+  - `tests/integration/unified-reader-epub-md.test.tsx`
+- **Full Regression Test Suite (`npm test` / `npx vitest run`)**:
+  - **339 test files passed (100% test pass rate)**
+  - **2,271 tests passed | 3 skipped | 0 failed**
+- **Phase 18 Final Safety Patch Test Suite (9 files)**:
+  - **9/9 test files passed (43/43 tests passed)**:
+    - `tests/unit/docs-explorer-epub-routing.test.tsx` (3 tests)
+    - `tests/unit/research-inbox-hard-delete.test.tsx` (3 tests)
+    - `tests/unit/reader-save-note-scoping.test.tsx` (8 tests, bao gồm scenario `appendExcerptToNote` reject và consistency contract giữa Navbar/UnifiedResearchReader)
+    - `tests/unit/safe-clipboard-copy.test.tsx` (7 tests)
+    - `tests/unit/epub-reader-url-resolution.test.tsx` (9 tests)
+    - `tests/unit/epub-selection-toolbar-actions.test.tsx` (3 tests)
+    - `tests/unit/navbar-obsidian-readonly-flow.test.tsx` (4 tests)
+    - `tests/integration/vault-file-open-reader.test.tsx` (4 tests)
+    - `tests/integration/unified-reader-epub-md.test.tsx` (2 tests)
+- **TypeScript**: 0 lỗi trên toàn bộ mã nguồn production (`tsc --noEmit`).
+- **Production Build**: `npm run build` thành công 100% (exit 0).
+- **Git Diff Hygiene**: `git diff --check` sạch 100% (exit 0).
+
+---
+
 ## Tài Liệu Tham Khảo & Release Notes
 
 * 📖 **Release Notes Chi Tiết (P4.1 – P4.2F)**: [`docs/releases/P4.1-P4.2F-release-notes.md`](docs/releases/P4.1-P4.2F-release-notes.md)
 * 📖 **Quyết Định Kiến Trúc (ADR-064)**: [`docs/adr/ADR-064-read-only-obsidian-vault-bridge.md`](docs/adr/ADR-064-read-only-obsidian-vault-bridge.md)
+* 📖 **Quyết Định Kiến Trúc (ADR-075)**: [`docs/adr/ADR-075-scoped-obsidian-vault-source-resolution.md`](docs/adr/ADR-075-scoped-obsidian-vault-source-resolution.md)
+* 📖 **Quyết Định Kiến Trúc (ADR-076)**: [`docs/adr/ADR-076-research-reading-workspace.md`](docs/adr/ADR-076-research-reading-workspace.md)
 * 📖 **Bản Đặc Tả Kỹ Thuật (Spec P4.1)**: [`docs/specs/phase-p4-1-read-only-obsidian-vault-bridge.md`](docs/specs/phase-p4-1-read-only-obsidian-vault-bridge.md)
 * 📖 **Gherkin Scenarios**: [`docs/gherkin/phase-p4-1-read-only-obsidian-vault-bridge.feature`](docs/gherkin/phase-p4-1-read-only-obsidian-vault-bridge.feature)
 

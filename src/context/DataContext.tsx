@@ -108,6 +108,7 @@ interface DataContextType {
   addExcerptToInbox: (excerpt: ResearchExcerpt) => Promise<ResearchInboxItem>;
   dismissInboxItem: (id: string) => Promise<void>;
   processInboxItem: (id: string) => Promise<void>;
+  deleteInboxItem: (id: string) => Promise<void>;
   unprocessedInboxCount: number;
 
   // Actions - Navigation
@@ -337,6 +338,14 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       const updated = prev.map((item) =>
         item.id === id ? { ...item, isProcessed: true, updatedAt: new Date().toISOString() } : item
       );
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const deleteInboxItem = useCallback(async (id: string) => {
+    setResearchInboxItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
     });
@@ -743,14 +752,18 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       createdAt: now,
       updatedAt: now,
     };
-    setNotes((prev) => [...prev, newNote]);
+    setNotes((prev) => {
+      const next = [...prev, newNote];
+      safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(next));
+      return next;
+    });
     dataRepository.saveNote(newNote).catch(console.error);
     return newId;
   };
 
   const updateNote = (id: string, noteData: Partial<Note>) => {
-    setNotes((prev) =>
-      prev.map((n) => {
+    setNotes((prev) => {
+      const next = prev.map((n) => {
         if (n.id === id) {
           const resolvedTopicIds =
             noteData.topicIds !== undefined
@@ -773,12 +786,18 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
           return updated;
         }
         return n;
-      }),
-    );
+      });
+      safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(next));
+      return next;
+    });
   };
 
   const deleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setNotes((prev) => {
+      const next = prev.filter((n) => n.id !== id);
+      safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(next));
+      return next;
+    });
     dataRepository.deleteNote(id).catch(console.error);
   };
 
@@ -1163,13 +1182,14 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       addExcerptToInbox,
       dismissInboxItem,
       processInboxItem,
+      deleteInboxItem,
       unprocessedInboxCount,
       exportAllDataJSON,
       importAllDataJSON,
       resetToDefaultData,
       reloadAllData,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, unprocessedInboxCount],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount],
   );
 
   return (

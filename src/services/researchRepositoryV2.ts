@@ -94,6 +94,27 @@ export class ResearchRepositoryV2 implements IDataRepository {
     return this.base.deleteNote(noteId);
   }
 
+  async appendExcerptToNote(noteId: string, excerptBlockquote: string): Promise<Note> {
+    if (this.base.appendExcerptToNote) {
+      return this.base.appendExcerptToNote(noteId, excerptBlockquote);
+    }
+    const data = await this.loadInitialData();
+    const note = data.notes.find((n) => n.id === noteId);
+    if (!note) {
+      throw new Error(`Note with id "${noteId}" not found`);
+    }
+    const existingContent = note.content || '';
+    const newContent = existingContent.trim()
+      ? `${existingContent.trim()}\n\n${excerptBlockquote.trim()}`
+      : excerptBlockquote.trim();
+    const updatedNote: Note = {
+      ...note,
+      content: newContent,
+      updatedAt: new Date().toISOString(),
+    };
+    return this.saveNote(updatedNote);
+  }
+
   async saveResource(resource: Resource): Promise<Resource> {
     return this.base.saveResource(resource);
   }

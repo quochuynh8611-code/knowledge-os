@@ -22,21 +22,15 @@ import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ExportImportModal } from "../modals/ExportImportModal";
-import { Resource } from "../../types";
-import { FileViewer } from "../docs/FileViewer";
 import { ResearchInboxDrawer } from "../research/ResearchInboxDrawer";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
+import { TargetNoteSelectorModal } from "../reader/TargetNoteSelectorModal";
 import { dataRepository } from "../../context/DataContext";
 import { formatExcerptBlockquote } from "../../lib/excerptCitationService";
 
 const ObsidianVaultBrowserModal = React.lazy(() =>
   import("../modals/ObsidianVaultBrowserModal").then((m) => ({
     default: m.ObsidianVaultBrowserModal,
-  }))
-);
-const ObsidianDocumentViewerModal = React.lazy(() =>
-  import("../modals/ObsidianDocumentViewerModal").then((m) => ({
-    default: m.ObsidianDocumentViewerModal,
   }))
 );
 const NotebookLMStudioModal = React.lazy(() =>
@@ -50,7 +44,7 @@ const AntigravityHandoffModal = React.lazy(() =>
   }))
 );
 
-export interface NavbarProps {
+interface NavbarProps {
   onOpenCommandPalette?: () => void;
   onOpenShortcutsModal?: () => void;
   onOpenNotebookLMModal?: () => void;
@@ -62,21 +56,24 @@ export function Navbar({
   onOpenShortcutsModal,
   onOpenNotebookLMModal,
   onOpenAntigravityModal,
-}: NavbarProps = {}) {
+}: NavbarProps) {
   const {
+    topics,
+    notes = [],
     searchQuery,
     setSearchQuery,
     setActiveTab,
-    isTimerRunning,
-    timerSeconds,
     activeTimerTopicId,
-    topics,
-    notes = [],
+    timerSeconds,
+    isTimerRunning,
     reviewQueue,
     researchInboxItems = [],
     unprocessedInboxCount = 0,
     dismissInboxItem,
     processInboxItem,
+    deleteInboxItem,
+    updateNote,
+    addNote,
   } = useData();
 
   const [showTopicModal, setShowTopicModal] = useState(false);
@@ -84,6 +81,7 @@ export function Navbar({
   const [showResourceModal, setShowResourceModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showInboxDrawer, setShowInboxDrawer] = useState(false);
+  const [pendingInboxItemForNote, setPendingInboxItemForNote] = useState<any | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
     documentId: string;
     title: string;
@@ -93,7 +91,6 @@ export function Navbar({
     initialPosition?: string;
   } | null>(null);
   const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
-  const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
   const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
@@ -113,6 +110,61 @@ export function Navbar({
     e.preventDefault();
     if (searchQuery.trim()) {
       setActiveTab("search");
+    }
+  };
+
+  const handleAppendExcerptToNote = async (targetNoteId: string, item: any) => {
+    if (!item?.excerpt) return;
+    const blockquote = formatExcerptBlockquote(
+      item.excerpt.selectedText,
+      {
+        title: item.excerpt.citationSnapshot?.title,
+        author: item.excerpt.citationSnapshot?.author,
+        documentId: item.excerpt.archivedDocumentId,
+        sourceUrl: item.excerpt.citationSnapshot?.sourceUrl,
+      },
+      {
+        page: item.excerpt.positionSelector?.pageNumber,
+        heading: item.excerpt.positionSelector?.headingId,
+        cfi: item.excerpt.positionSelector?.cfi,
+      }
+    );
+
+    const targetNote = notes.find((n) => n.id === targetNoteId) || (notes.length > 0 ? notes[0] : null);
+
+    if (targetNote) {
+      if (dataRepository.appendExcerptToNote) {
+        try {
+          const updated = await dataRepository.appendExcerptToNote(targetNote.id, blockquote);
+          if (updateNote && updated?.content) {
+            updateNote(targetNote.id, { content: updated.content });
+          }
+          await processInboxItem(item.id);
+        } catch (err) {
+          console.error('[Navbar] Lỗi khi lưu trích đoạn vào ghi chú:', err);
+          return;
+        }
+      } else if (updateNote) {
+        const newContent = targetNote.content
+          ? `${targetNote.content.trim()}\n\n${blockquote.trim()}`
+          : blockquote.trim();
+        updateNote(targetNote.id, { content: newContent });
+        await processInboxItem(item.id);
+      }
+    } else if (addNote) {
+      try {
+        addNote({
+          title: `Ghi chú: ${item.excerpt.citationSnapshot?.title || 'Trích đoạn nghiên cứu'}`,
+          content: blockquote,
+          topicId: topics[0]?.id || 'general',
+          type: 'insight',
+          tags: [],
+          isPrivate: false,
+        });
+        await processInboxItem(item.id);
+      } catch (err) {
+        console.error('[Navbar] Lỗi khi tạo ghi chú mới cho trích đoạn:', err);
+      }
     }
   };
 
@@ -377,8 +429,10 @@ export function Navbar({
               setShowObsidianBrowserModal(false);
               const fileName = filePath.split("/").pop() || filePath;
               if (filePath.toLowerCase().endsWith(".epub")) {
-                setActiveEpubFile({
-                  fileName,
+                setActiveReaderDoc({
+                  documentId: `vault:${filePath}`,
+                  title: fileName.replace(/\.epub$/i, ""),
+                  format: "epub",
                   fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
                 });
                 return;
@@ -392,34 +446,16 @@ export function Navbar({
                 });
                 return;
               }
-              const previewResource: Resource = {
-                id: "preview-" + filePath,
-                topicId: "",
-                title: fileName,
-                type: "md",
-                filePath,
-                createdAt: new Date().toISOString(),
-              };
-              setViewingObsidianResource(previewResource);
+              // Route .md into UnifiedResearchReader (same path as pdf/epub)
+              setActiveReaderDoc({
+                documentId: `vault:${filePath}`,
+                title: fileName.replace(/\.md$/i, ""),
+                format: "md",
+                fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
+              });
             }}
           />
         </React.Suspense>
-      )}
-      {viewingObsidianResource && (
-        <React.Suspense fallback={null}>
-          <ObsidianDocumentViewerModal
-            isOpen={Boolean(viewingObsidianResource)}
-            onClose={() => setViewingObsidianResource(null)}
-            resource={viewingObsidianResource}
-          />
-        </React.Suspense>
-      )}
-      {activeEpubFile && (
-        <FileViewer
-          fileUrl={activeEpubFile.fileUrl}
-          fileName={activeEpubFile.fileName}
-          onClose={() => setActiveEpubFile(null)}
-        />
       )}
       {showNotebookLMModal && (
         <React.Suspense fallback={null}>
@@ -463,29 +499,38 @@ export function Navbar({
           }
         }}
         onDismiss={(id) => dismissInboxItem(id)}
+        onDelete={(id) => deleteInboxItem(id)}
         onSendToNote={async (item) => {
-          if (notes.length > 0 && item.excerpt) {
-            const blockquote = formatExcerptBlockquote(
-              item.excerpt.selectedText,
-              {
-                title: item.excerpt.citationSnapshot?.title,
-                author: item.excerpt.citationSnapshot?.author,
-                documentId: item.excerpt.archivedDocumentId,
-              },
-              {
-                page: item.excerpt.positionSelector?.pageNumber,
-                heading: item.excerpt.positionSelector?.headingId,
-                cfi: item.excerpt.positionSelector?.cfi,
-              }
-            );
-            if (dataRepository.appendExcerptToNote) {
-              await dataRepository.appendExcerptToNote(notes[0].id, blockquote);
-            }
-            await processInboxItem(item.id);
+          if (!item.excerpt) return;
+          if (item.excerpt.targetNoteId) {
+            await handleAppendExcerptToNote(item.excerpt.targetNoteId, item);
+          } else if (notes.length > 1) {
+            setPendingInboxItemForNote(item);
+          } else if (notes.length === 1) {
+            await handleAppendExcerptToNote(notes[0].id, item);
+          } else {
+            await handleAppendExcerptToNote('', item);
           }
         }}
         onClose={() => setShowInboxDrawer(false)}
       />
+
+      {/* Target Note Selector Modal for Inbox item */}
+      {pendingInboxItemForNote && (
+        <TargetNoteSelectorModal
+          isOpen={Boolean(pendingInboxItemForNote)}
+          notes={notes}
+          selectedExcerptText={pendingInboxItemForNote.excerpt?.selectedText}
+          onSelectNote={async (noteId) => {
+            if (pendingInboxItemForNote) {
+              const item = pendingInboxItemForNote;
+              setPendingInboxItemForNote(null);
+              await handleAppendExcerptToNote(noteId, item);
+            }
+          }}
+          onClose={() => setPendingInboxItemForNote(null)}
+        />
+      )}
 
       {/* Phase 18A Unified Research Reader */}
       {activeReaderDoc && (

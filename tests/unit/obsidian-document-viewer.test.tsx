@@ -509,6 +509,11 @@ describe('Phase P4.1D: Obsidian Document Viewer & Safe Rendering', () => {
       expect(screen.getByText('Nội dung kiểm tra copy invariant.')).toBeInTheDocument();
     });
 
+    // Wait for initial URL-driven reading position auto-scroll effect to stabilize
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+
     const urlBefore = window.location.href;
     const scrollCallsBefore = scrollIntoViewMock.mock.calls.length;
 

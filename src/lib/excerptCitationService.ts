@@ -146,8 +146,11 @@ export function formatExcerptBlockquote(
   if (locLabel) {
     attributionParts.push(locLabel);
   }
-  if (docLink) {
-    attributionParts.push(`[Xem tài liệu](${docLink})`);
+  if (safeMeta.sourceUrl) {
+    const comment = archiveUri ? ` <!-- ${archiveUri} -->` : '';
+    attributionParts.push(`[Xem tài liệu](${safeMeta.sourceUrl})${comment}`);
+  } else if (archiveUri) {
+    attributionParts.push(`[Xem tài liệu](${archiveUri})`);
   }
 
   const attributionLine = `>\n> ${attributionParts.join(', ')}`;

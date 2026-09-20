@@ -110,7 +110,6 @@ export function TargetNoteSelectorModal({
                 type="button"
                 onClick={() => {
                   onSelectNote(note.id);
-                  onClose();
                 }}
                 className="w-full text-left p-3 rounded-2xl border border-stone-200/70 dark:border-stone-800 hover:border-emerald-400/80 dark:hover:border-emerald-600 bg-white dark:bg-stone-900 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition cursor-pointer flex items-center justify-between gap-3 group"
               >

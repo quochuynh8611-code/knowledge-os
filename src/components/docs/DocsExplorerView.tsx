@@ -14,7 +14,6 @@ import {
   LayoutGrid,
   List,
 } from "lucide-react";
-import { FileViewer } from "./FileViewer";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
@@ -54,7 +53,6 @@ export function DocsExplorerView({
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
     documentId: string;
     title: string;
@@ -106,8 +104,10 @@ export function DocsExplorerView({
     const format = getDocFormat(doc);
     if (format === "epub") {
       const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-      setActiveEpubFile({
-        fileName: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
+      setActiveReaderDoc({
+        documentId: doc.id || doc.relativePath,
+        title: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
+        format: "epub",
         fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
       });
       return;
@@ -131,8 +131,10 @@ export function DocsExplorerView({
     const isPdf = filePath.toLowerCase().endsWith(".pdf");
     const fileName = filePath.split("/").pop() || filePath;
     if (isEpub) {
-      setActiveEpubFile({
-        fileName,
+      setActiveReaderDoc({
+        documentId: `vault:${filePath}`,
+        title: fileName.replace(/\.epub$/i, ""),
+        format: "epub",
         fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
       });
     } else if (isPdf) {
@@ -160,8 +162,11 @@ export function DocsExplorerView({
     if (initialPath) {
       if (initialPath.toLowerCase().endsWith(".epub")) {
         const sanitizedRelative = initialPath.replace(/^\/+/, "");
-        setActiveEpubFile({
-          fileName: initialPath.split("/").pop() || initialPath,
+        const fileName = initialPath.split("/").pop() || initialPath;
+        setActiveReaderDoc({
+          documentId: initialPath,
+          title: fileName.replace(/\.epub$/i, ""),
+          format: "epub",
           fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
         });
       } else {
@@ -746,15 +751,6 @@ export function DocsExplorerView({
           )}
         </SurfaceCard>
       </div>
-
-      {/* EPUB Viewer Modal Overlay */}
-      {activeEpubFile && (
-        <FileViewer
-          fileUrl={activeEpubFile.fileUrl}
-          fileName={activeEpubFile.fileName}
-          onClose={() => setActiveEpubFile(null)}
-        />
-      )}
 
       {/* Obsidian Vault Browser Modal */}
       {isVaultModalOpen && (

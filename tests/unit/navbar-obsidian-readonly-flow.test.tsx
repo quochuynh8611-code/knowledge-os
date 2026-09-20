@@ -83,7 +83,7 @@ describe("P4.2G — Navbar Obsidian Entry with Read-Only Vault Browser", () => {
     expect(screen.queryByTitle(/Đồng bộ hai chiều/i)).toBeNull();
   });
 
-  it("2. opens ObsidianVaultBrowserModal on click and transitions to ObsidianDocumentViewerModal upon file selection", async () => {
+  it("2. opens ObsidianVaultBrowserModal on click and transitions to UnifiedResearchReader upon .md file selection", async () => {
     render(
       <DataProvider>
         <Navbar />
@@ -105,21 +105,23 @@ describe("P4.2G — Navbar Obsidian Entry with Read-Only Vault Browser", () => {
     // Click file to view document
     fireEvent.click(fileItem);
 
-    // Browser modal closes and DocumentViewer modal opens
+    // Browser modal closes
     await waitFor(() => {
       expect(screen.queryByText("Khám phá cấu trúc tệp và tìm kiếm ghi chú toàn văn")).toBeNull();
     });
 
-    // DocumentViewer modal displays document title & content
-    const docTitle = await screen.findByText("Knowledge Architecture.md");
-    expect(docTitle).toBeInTheDocument();
+    // UnifiedResearchReader opens (it is a dialog with aria-label matching the stripped title)
+    await waitFor(() => {
+      const reader = screen.getByRole("dialog", { name: /Knowledge Architecture/i });
+      expect(reader).toBeInTheDocument();
+    });
 
-    // Close DocumentViewer modal
+    // Close UnifiedResearchReader
     const closeBtn = screen.getByRole("button", { name: /Đóng/i });
     fireEvent.click(closeBtn);
 
     await waitFor(() => {
-      expect(screen.queryByText("Knowledge Architecture.md")).toBeNull();
+      expect(screen.queryByRole("dialog", { name: /Knowledge Architecture/i })).toBeNull();
     });
   });
 });
