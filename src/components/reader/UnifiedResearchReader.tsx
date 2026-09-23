@@ -111,6 +111,7 @@ export function UnifiedResearchReader({
   } | null>(null);
   const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
   const [viewingBacklinkNote, setViewingBacklinkNote] = useState<Note | null>(null);
+  const [viewingBacklinkTargetCitation, setViewingBacklinkTargetCitation] = useState<{ documentId: string; locator?: string } | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const dataContext = React.useContext(DataContext) as {
@@ -639,10 +640,11 @@ export function UnifiedResearchReader({
             documentTitle={title}
             notes={scopedNotes}
             backlinks={backlinks}
-            onOpenBacklinkNote={(noteId) => {
+            onOpenBacklinkNote={(noteId, locator) => {
               const matched = notes.find((n) => n.id === noteId);
               if (matched) {
                 setViewingBacklinkNote(matched);
+                setViewingBacklinkTargetCitation({ documentId, locator });
               }
             }}
             excerpts={documentHighlights}
@@ -663,14 +665,19 @@ export function UnifiedResearchReader({
           />
         </div>
 
-        {/* Phase 21A: Note Context Viewer Modal from Backlink Explorer */}
+        {/* Phase 21A/21B: Note Context Viewer Modal from Backlink Explorer */}
         {viewingBacklinkNote && (
           <NoteReaderModal
             isOpen={Boolean(viewingBacklinkNote)}
             note={viewingBacklinkNote}
-            onClose={() => setViewingBacklinkNote(null)}
+            targetCitation={viewingBacklinkTargetCitation}
+            onClose={() => {
+              setViewingBacklinkNote(null);
+              setViewingBacklinkTargetCitation(undefined);
+            }}
             onEdit={() => {
               setViewingBacklinkNote(null);
+              setViewingBacklinkTargetCitation(undefined);
             }}
             onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
           />

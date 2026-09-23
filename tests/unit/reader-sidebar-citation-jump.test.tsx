@@ -318,4 +318,77 @@ Nhận thức luận nghiên cứu về tri thức.
       expect(handlePositionChange).not.toHaveBeenCalled();
     });
   });
+
+  describe('4. Phase 21B: Backlink Occurrence Navigation & Reader Context Preservation', () => {
+    it('4.1. clicking a backlink passes targetCitation hint to NoteReaderModal and scrolls to target occurrence', async () => {
+      const scrollIntoViewMock = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <UnifiedResearchReader
+            documentId="doc-triet-hoc"
+            title="Triết Học Khái Luận"
+            format="md"
+            content={sampleMarkdownContent}
+            onClose={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      // Open Sidebar -> Notes Tab
+      fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+      fireEvent.click(screen.getByTestId('sidebar-tab-notes'));
+
+      const backlinksSection = await screen.findByTestId('sidebar-backlinks-section');
+      const backlinkItem = within(backlinksSection).getByText('Ghi chú Trích dẫn Cùng Tài liệu có Locator');
+      fireEvent.click(backlinkItem);
+
+      // NoteReaderModal is displayed
+      const noteModal = await screen.findByRole('dialog', { name: /Chi tiết ghi chú/i });
+      expect(noteModal).toBeInTheDocument();
+
+      // scrollIntoView should be triggered for the target occurrence inside the modal
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+
+    it('4.2. closing NoteReaderModal preserves active source reader context and position without mutation', async () => {
+      const handlePositionChange = vi.fn();
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <UnifiedResearchReader
+            documentId="doc-triet-hoc"
+            title="Triết Học Khái Luận"
+            format="md"
+            content={sampleMarkdownContent}
+            initialPosition="chuong-2"
+            onPositionChange={handlePositionChange}
+            onClose={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      // Open Sidebar -> Notes Tab -> Click Backlink
+      fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+      fireEvent.click(screen.getByTestId('sidebar-tab-notes'));
+
+      const backlinksSection = await screen.findByTestId('sidebar-backlinks-section');
+      fireEvent.click(within(backlinksSection).getByText('Ghi chú Trích dẫn Cùng Tài liệu có Locator'));
+
+      const noteModal = await screen.findByRole('dialog', { name: /Chi tiết ghi chú/i });
+      expect(noteModal).toBeInTheDocument();
+
+      // Close modal
+      const closeButtons = within(noteModal).getAllByRole('button', { name: /Đóng/i });
+      fireEvent.click(closeButtons[0]);
+
+      // Note modal is closed
+      expect(screen.queryByRole('dialog', { name: /Chi tiết ghi chú/i })).not.toBeInTheDocument();
+
+      // Reader is still open and unchanged
+      expect(screen.getByRole('dialog', { name: /Triết Học Khái Luận/i })).toBeInTheDocument();
+      expect(handlePositionChange).not.toHaveBeenCalled();
+    });
+  });
 });

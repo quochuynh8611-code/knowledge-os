@@ -112,4 +112,90 @@ Trích đoạn quan trọng từ sách:
     expect(handleClose).toHaveBeenCalled();
     expect(handleOpenArchive).toHaveBeenCalledWith('doc-nhan-thuc', undefined);
   });
+
+  describe('Phase 21B: Backlink Occurrence Navigation in NoteReaderModal', () => {
+    const sampleNoteWithMultipleCitations: Note = {
+      id: 'note-multi-cit',
+      topicId: 'topic-1',
+      title: 'Ghi Chú Đa Trích Dẫn',
+      content: `
+# Khái Luận Triết Học
+
+Phần 1:
+> Luận điểm đầu.
+> — [Xem chương 1](archive://doc-triet-hoc?loc=chuong-1)
+
+Phần 2:
+> Luận điểm thứ hai.
+> — [Xem chương 2](archive://doc-triet-hoc?loc=chuong-2)
+      `.trim(),
+      type: 'study',
+      isPrivate: false,
+      tags: ['triet-hoc'],
+      createdAt: '2026-09-19T08:00:00.000Z',
+      updatedAt: '2026-09-19T08:00:00.000Z',
+    };
+
+    it('UT-21B.1. scrolls to exact locator occurrence when targetCitation matches documentId and locator', async () => {
+      const scrollIntoViewMock = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <NoteReaderModal
+            isOpen={true}
+            note={sampleNoteWithMultipleCitations}
+            targetCitation={{ documentId: 'doc-triet-hoc', locator: 'chuong-2' }}
+            onClose={vi.fn()}
+            onEdit={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      const targetElement = await screen.findByRole('link', { name: /Xem chương 2/i });
+      expect(targetElement).toBeInTheDocument();
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+
+    it('UT-21B.2. falls back to first document occurrence when locator does not match', async () => {
+      const scrollIntoViewMock = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <NoteReaderModal
+            isOpen={true}
+            note={sampleNoteWithMultipleCitations}
+            targetCitation={{ documentId: 'doc-triet-hoc', locator: 'chuong-99' }}
+            onClose={vi.fn()}
+            onEdit={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      const firstElement = await screen.findByRole('link', { name: /Xem chương 1/i });
+      expect(firstElement).toBeInTheDocument();
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+
+    it('UT-21B.3. safely degrades without calling scrollIntoView when target document has no occurrences', async () => {
+      const scrollIntoViewMock = vi.fn();
+      window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <NoteReaderModal
+            isOpen={true}
+            note={sampleNoteWithMultipleCitations}
+            targetCitation={{ documentId: 'doc-unrelated' }}
+            onClose={vi.fn()}
+            onEdit={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      expect(screen.getByText('Ghi Chú Đa Trích Dẫn')).toBeInTheDocument();
+      expect(scrollIntoViewMock).not.toHaveBeenCalled();
+    });
+  });
 });

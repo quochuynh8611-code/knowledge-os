@@ -32,7 +32,7 @@ export interface ReaderSidebarProps {
   documentTitle: string;
   notes?: Note[];
   backlinks?: CitationBacklinkEntry[];
-  onOpenBacklinkNote?: (noteId: string) => void;
+  onOpenBacklinkNote?: (noteId: string, locator?: string) => void;
   excerpts?: ResearchExcerpt[];
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
   onDeleteExcerpt?: (id: string) => void;
@@ -241,11 +241,11 @@ export function ReaderSidebar({
                     key={bl.noteId}
                     role="button"
                     tabIndex={0}
-                    onClick={() => onOpenBacklinkNote?.(bl.noteId)}
+                    onClick={() => onOpenBacklinkNote?.(bl.noteId, bl.locators[0])}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        onOpenBacklinkNote?.(bl.noteId);
+                        onOpenBacklinkNote?.(bl.noteId, bl.locators[0]);
                       }
                     }}
                     className="p-3 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/60 rounded-xl space-y-1.5 shadow-2xs hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition cursor-pointer text-left w-full group"

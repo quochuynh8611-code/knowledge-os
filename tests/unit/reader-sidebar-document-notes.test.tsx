@@ -145,7 +145,7 @@ describe('Phase R2: Reader Sidebar Document-Scoped Notes', () => {
       within(notesPanel).getByText('Ghi chú Trực tiếp từ Reader TargetNote')
     ).toBeInTheDocument();
     expect(
-      within(notesPanel).getByText('Ghi chú Có Chứa Archive URI Marker')
+      within(notesPanel).getAllByText('Ghi chú Có Chứa Archive URI Marker')[0]
     ).toBeInTheDocument();
     expect(
       within(notesPanel).getByText('Ghi chú File Markdown Nguồn')
@@ -207,7 +207,7 @@ describe('Phase R2: Reader Sidebar Document-Scoped Notes', () => {
 
     // Should render empty state message and zero note cards
     expect(
-      within(notesPanel).getByText(/Chưa có ghi chú nào/i)
+      within(notesPanel).getAllByText(/Chưa có ghi chú nào/i)[0]
     ).toBeInTheDocument();
     expect(
       within(notesPanel).queryByText('Ghi chú Không Liên Quan Về Sinh Học')

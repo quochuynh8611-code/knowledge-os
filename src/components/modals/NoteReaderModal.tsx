@@ -29,7 +29,19 @@ export interface NoteReaderModalProps {
   onClose: () => void;
   onEdit: (note: Note) => void;
   onOpenArchiveLink?: (documentId: string, locator?: string) => void;
+  /** Phase 21B: Optional navigation hint to scroll to a specific citation occurrence */
+  targetCitation?: {
+    documentId: string;
+    locator?: string;
+  };
 }
+
+const escapeSelectorValue = (val: string): string => {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(val);
+  }
+  return val.replace(/["\\]/g, '\\$&');
+};
 
 export function NoteReaderModal({
   isOpen,
@@ -37,8 +49,10 @@ export function NoteReaderModal({
   onClose,
   onEdit,
   onOpenArchiveLink,
+  targetCitation,
 }: NoteReaderModalProps) {
   const { topics, openTopicDetail } = useData();
+  const contentContainerRef = React.useRef<HTMLDivElement>(null);
   const [copiedPath, setCopiedPath] = useState(false);
   const [copiedContent, setCopiedContent] = useState(false);
 
@@ -148,6 +162,42 @@ export function NoteReaderModal({
     };
   }, [isOpen, onClose, selectedText, isPopoverOpen, isFlashcardModalOpen, note?.id]);
 
+  // Phase 21B: Occurrence navigation & transient visual focus when targetCitation is provided
+  useEffect(() => {
+    if (!isOpen || !note || !targetCitation?.documentId || !contentContainerRef.current) {
+      return;
+    }
+
+    const container = contentContainerRef.current;
+    let targetElement: HTMLElement | null = null;
+
+    // Tier 1: Exact locator match (if locator provided)
+    if (targetCitation.locator) {
+      const exactSelector = `a[data-archive-document-id="${escapeSelectorValue(targetCitation.documentId)}"][data-archive-locator="${escapeSelectorValue(targetCitation.locator)}"]`;
+      targetElement = container.querySelector<HTMLElement>(exactSelector);
+    }
+
+    // Tier 2: First document occurrence fallback
+    if (!targetElement) {
+      const docSelector = `a[data-archive-document-id="${escapeSelectorValue(targetCitation.documentId)}"]`;
+      targetElement = container.querySelector<HTMLElement>(docSelector);
+    }
+
+    // Tier 3: Safe fallback (if targetElement is null, do nothing)
+    if (targetElement) {
+      targetElement.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      targetElement.classList?.add('ring-2', 'ring-amber-500', 'bg-amber-500/20', 'rounded-sm', 'transition-all', 'duration-500');
+      const timer = setTimeout(() => {
+        targetElement?.classList?.remove('ring-2', 'ring-amber-500', 'bg-amber-500/20', 'rounded-sm', 'transition-all', 'duration-500');
+      }, 2500);
+
+      return () => {
+        clearTimeout(timer);
+        targetElement?.classList?.remove('ring-2', 'ring-amber-500', 'bg-amber-500/20', 'rounded-sm', 'transition-all', 'duration-500');
+      };
+    }
+  }, [isOpen, note?.id, targetCitation?.documentId, targetCitation?.locator]);
+
   if (!isOpen || !note) return null;
 
   const handleCopyPath = async () => {
@@ -251,7 +301,7 @@ export function NoteReaderModal({
         </div>
 
         {/* Focus Reading Content Area */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-7 space-y-6 scrollbar-thin">
+        <div ref={contentContainerRef} className="flex-1 overflow-y-auto px-6 sm:px-10 py-7 space-y-6 scrollbar-thin">
           {/* Note Title */}
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-50 font-serif-title leading-snug tracking-tight">
