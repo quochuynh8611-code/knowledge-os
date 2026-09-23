@@ -509,8 +509,8 @@ export function resolveCitationTargetDocument(
       r.type === 'pdf' ||
       Boolean(r.filePath?.toLowerCase().endsWith('.pdf'));
     const isEpub =
-      r.type === 'epub' ||
-      Boolean(r.filePath?.toLowerCase().endsWith('.epub'));
+      Boolean(r.filePath?.toLowerCase().endsWith('.epub')) ||
+      (r.type === 'book' && !isPdf);
     const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
     const fileUrl = r.filePath ? resolveReaderFileUrl(r.filePath) : undefined;
     return {

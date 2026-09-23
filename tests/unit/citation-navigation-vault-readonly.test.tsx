@@ -13,19 +13,15 @@ describe('Phase 19 Suite C: Citation Navigation Security & Obsidian Vault Read-O
       type: 'md',
       filePath: '01_Books/doc1.md',
       topicId: 'topic-1',
-      tags: ['test'],
       createdAt: '2026-09-01T00:00:00.000Z',
-      updatedAt: '2026-09-01T00:00:00.000Z',
     },
     {
       id: 'doc-2',
       title: 'Tài liệu Nghiên Cứu 2',
-      type: 'epub',
+      type: 'book',
       filePath: '05_EPUB_Export/doc2.epub',
       topicId: 'topic-2',
-      tags: ['test'],
       createdAt: '2026-09-01T00:00:00.000Z',
-      updatedAt: '2026-09-01T00:00:00.000Z',
     },
   ];
 

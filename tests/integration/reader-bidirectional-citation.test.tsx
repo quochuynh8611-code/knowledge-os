@@ -22,19 +22,15 @@ Nhận thức luận nghiên cứu về tri thức.
       type: 'md',
       filePath: 'docs/books/triet-hoc.md',
       topicId: 'topic-1',
-      tags: ['triet-hoc'],
       createdAt: '2026-09-01T00:00:00.000Z',
-      updatedAt: '2026-09-01T00:00:00.000Z',
     },
     {
       id: 'doc-tam-ly',
       title: 'Tâm Lý Học Nhận Thức',
-      type: 'epub',
+      type: 'book',
       filePath: '05_EPUB_Export/tam-ly.epub',
       topicId: 'topic-2',
-      tags: ['tam-ly'],
       createdAt: '2026-09-01T00:00:00.000Z',
-      updatedAt: '2026-09-01T00:00:00.000Z',
     },
     {
       id: 'doc-y-hoc',
@@ -42,9 +38,7 @@ Nhận thức luận nghiên cứu về tri thức.
       type: 'pdf',
       filePath: '02_PDF_Source/y-hoc.pdf',
       topicId: 'topic-3',
-      tags: ['y-hoc'],
       createdAt: '2026-09-01T00:00:00.000Z',
-      updatedAt: '2026-09-01T00:00:00.000Z',
     },
   ];
 
