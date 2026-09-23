@@ -229,6 +229,93 @@ Nhận thức luận nghiên cứu về tri thức.
       // Phase 19: no resources in DataContext → resolver returns null → safe fallback toast
       expect(screen.getByText(/Không tìm thấy tài liệu nguồn tương ứng/i)).toBeInTheDocument();
     });
+  });
 
+  describe('3. Phase 21A: Citation Backlinks Explorer in ReaderSidebar Notes Tab', () => {
+    it('3.1. renders backlinks subsection in Notes tab for notes citing active document', async () => {
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <UnifiedResearchReader
+            documentId="doc-triet-hoc"
+            title="Triết Học Khái Luận"
+            format="md"
+            content={sampleMarkdownContent}
+            onClose={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      // Open Sidebar -> Notes Tab
+      fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+      fireEvent.click(screen.getByTestId('sidebar-tab-notes'));
+
+      // Check for Backlinks subsection
+      const backlinksSection = await screen.findByTestId('sidebar-backlinks-section');
+      expect(backlinksSection).toBeInTheDocument();
+
+      // Should display matching notes with citation counts
+      expect(within(backlinksSection).getByText('Ghi chú Trích dẫn Cùng Tài liệu có Locator')).toBeInTheDocument();
+      expect(within(backlinksSection).getByText('Ghi chú Trích dẫn Cùng Tài liệu không Locator')).toBeInTheDocument();
+      // Should exclude note-cross-doc which only cites doc-tam-ly
+      expect(within(backlinksSection).queryByText('Ghi chú Trích dẫn Khác Tài liệu')).not.toBeInTheDocument();
+    });
+
+    it('3.2. displays explanatory empty state when no notes cite the active document', async () => {
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <UnifiedResearchReader
+            documentId="doc-unrelated-new"
+            title="Tài Liệu Mới Hoàn Toàn"
+            format="md"
+            content={sampleMarkdownContent}
+            onClose={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+      fireEvent.click(screen.getByTestId('sidebar-tab-notes'));
+
+      const backlinksSection = await screen.findByTestId('sidebar-backlinks-section');
+      expect(backlinksSection).toBeInTheDocument();
+      expect(within(backlinksSection).getByText(/Chưa có ghi chú nào trích dẫn tài liệu này/i)).toBeInTheDocument();
+    });
+
+    it('3.3. clicking backlink opens note context while preserving active document and position', async () => {
+      const handlePositionChange = vi.fn();
+
+      render(
+        <DataContext.Provider value={mockContextValue as any}>
+          <UnifiedResearchReader
+            documentId="doc-triet-hoc"
+            title="Triết Học Khái Luận"
+            format="md"
+            content={sampleMarkdownContent}
+            initialPosition="chuong-1"
+            onPositionChange={handlePositionChange}
+            onClose={vi.fn()}
+          />
+        </DataContext.Provider>
+      );
+
+      fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+      fireEvent.click(screen.getByTestId('sidebar-tab-notes'));
+
+      const backlinksSection = await screen.findByTestId('sidebar-backlinks-section');
+      const backlinkItem = within(backlinksSection).getByText('Ghi chú Trích dẫn Cùng Tài liệu có Locator');
+      fireEvent.click(backlinkItem);
+
+      // Verify NoteReaderModal opened with the note title
+      const noteModal = await screen.findByRole('dialog', { name: /Chi tiết ghi chú/i });
+      expect(noteModal).toBeInTheDocument();
+      expect(within(noteModal).getByText('Ghi chú Trích dẫn Cùng Tài liệu có Locator')).toBeInTheDocument();
+
+      // Verify main reader is still present with active document
+      const readerDialog = screen.getByRole('dialog', { name: /Triết Học Khái Luận/i });
+      expect(readerDialog).toBeInTheDocument();
+
+      // Position should not be mutated/reset
+      expect(handlePositionChange).not.toHaveBeenCalled();
+    });
   });
 });

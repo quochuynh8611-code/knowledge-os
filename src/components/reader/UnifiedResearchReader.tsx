@@ -8,12 +8,14 @@ import { EpubReaderAdapter } from './adapters/EpubReaderAdapter';
 import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
 import { UnifiedSelectionToolbar, SelectionToolbarAction } from './UnifiedSelectionToolbar';
 import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
+import { NoteReaderModal } from '../modals/NoteReaderModal';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
 import { ResearchExcerpt, ResearchInboxItem, Note, Resource } from '../../types';
 import { copyTextToClipboard } from '../../lib/clipboard';
 import { isExcerptMatchingDocument, normalizeDocumentPath, DocumentMatchContext, resolveCitationTargetDocument } from '../../lib/readerDocumentResolver';
+import { extractCitationBacklinks } from '../../lib/readerBacklinksSelector';
 
 export interface UnifiedResearchReaderProps {
   documentId: string;
@@ -108,6 +110,7 @@ export function UnifiedResearchReader({
     cfi?: string;
   } | null>(null);
   const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
+  const [viewingBacklinkNote, setViewingBacklinkNote] = useState<Note | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const dataContext = React.useContext(DataContext) as {
@@ -123,6 +126,11 @@ export function UnifiedResearchReader({
   const inboxItems = dataContext?.researchInboxItems || [];
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
   const deleteInboxItem = dataContext?.deleteInboxItem;
+
+  // Phase 21A: Extract active document reverse citations (backlinks)
+  const backlinks = useMemo(() => {
+    return extractCitationBacklinks(notes, documentId);
+  }, [notes, documentId]);
 
   // Wave R2.3: Extract active document highlights using Canonical Document Matcher
   const documentHighlights = useMemo(() => {
@@ -630,6 +638,13 @@ export function UnifiedResearchReader({
             documentId={documentId}
             documentTitle={title}
             notes={scopedNotes}
+            backlinks={backlinks}
+            onOpenBacklinkNote={(noteId) => {
+              const matched = notes.find((n) => n.id === noteId);
+              if (matched) {
+                setViewingBacklinkNote(matched);
+              }
+            }}
             excerpts={documentHighlights}
             onSelectExcerpt={handleSelectExcerpt}
             onDeleteExcerpt={(excerptId) => {
@@ -647,6 +662,19 @@ export function UnifiedResearchReader({
             onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
           />
         </div>
+
+        {/* Phase 21A: Note Context Viewer Modal from Backlink Explorer */}
+        {viewingBacklinkNote && (
+          <NoteReaderModal
+            isOpen={Boolean(viewingBacklinkNote)}
+            note={viewingBacklinkNote}
+            onClose={() => setViewingBacklinkNote(null)}
+            onEdit={() => {
+              setViewingBacklinkNote(null);
+            }}
+            onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+          />
+        )}
       </div>
     </div>
   );

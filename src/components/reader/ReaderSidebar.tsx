@@ -16,6 +16,7 @@ import {
 import { TocItem } from './ReaderTocDrawer';
 import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
+import { CitationBacklinkEntry } from '../../lib/readerBacklinksSelector';
 
 export type ReaderSidebarTab = 'outline' | 'notes' | 'highlights' | 'inbox';
 
@@ -30,6 +31,8 @@ export interface ReaderSidebarProps {
   documentId: string;
   documentTitle: string;
   notes?: Note[];
+  backlinks?: CitationBacklinkEntry[];
+  onOpenBacklinkNote?: (noteId: string) => void;
   excerpts?: ResearchExcerpt[];
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
   onDeleteExcerpt?: (id: string) => void;
@@ -49,6 +52,8 @@ export function ReaderSidebar({
   documentId,
   documentTitle,
   notes = [],
+  backlinks = [],
+  onOpenBacklinkNote,
   excerpts = [],
   onSelectExcerpt,
   onDeleteExcerpt,
@@ -190,33 +195,78 @@ export function ReaderSidebar({
 
         {/* Notes Panel */}
         {activeTab === 'notes' && (
-          <div data-testid="sidebar-panel-notes" className="space-y-3">
-            <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider px-1">
-              Ghi chú liên kết ({notes.length})
-            </div>
-            {notes.length === 0 ? (
-              <div className="p-6 text-center text-xs text-stone-400 dark:text-stone-500 space-y-2">
-                <StickyNote className="w-6 h-6 mx-auto text-stone-300 dark:text-stone-600" />
-                <p>Chưa có ghi chú nào. Hãy bôi đen văn bản để thêm ghi chú mới.</p>
+          <div data-testid="sidebar-panel-notes" className="space-y-4">
+            {/* 1. Scoped / Linked Notes */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider px-1">
+                Ghi chú liên kết ({notes.length})
               </div>
-            ) : (
-              notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 rounded-xl space-y-1.5 shadow-2xs"
-                >
-                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">
-                    {note.title}
-                  </h4>
-                  <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
-                    <MarkdownReadabilityRenderer
-                      content={note.content}
-                      onOpenArchiveLink={onOpenArchiveLink}
-                    />
-                  </div>
+              {notes.length === 0 ? (
+                <div className="p-4 text-center text-xs text-stone-400 dark:text-stone-500 space-y-1.5 bg-stone-50/50 dark:bg-stone-800/30 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
+                  <StickyNote className="w-5 h-5 mx-auto text-stone-300 dark:text-stone-600" />
+                  <p>Chưa có ghi chú nào. Hãy bôi đen văn bản để thêm ghi chú mới.</p>
                 </div>
-              ))
-            )}
+              ) : (
+                notes.map((note) => (
+                  <div
+                    key={note.id}
+                    className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 rounded-xl space-y-1.5 shadow-2xs"
+                  >
+                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">
+                      {note.title}
+                    </h4>
+                    <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
+                      <MarkdownReadabilityRenderer
+                        content={note.content}
+                        onOpenArchiveLink={onOpenArchiveLink}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* 2. Phase 21A: Reverse Citations (Backlinks) Subsection */}
+            <div data-testid="sidebar-backlinks-section" className="space-y-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <div className="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                <span>Trích dẫn liên kết ngược ({backlinks.length})</span>
+              </div>
+              {backlinks.length === 0 ? (
+                <div className="p-4 text-center text-xs text-stone-400 dark:text-stone-500 space-y-1 bg-stone-50/50 dark:bg-stone-800/30 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
+                  <p>Chưa có ghi chú nào trích dẫn tài liệu này.</p>
+                </div>
+              ) : (
+                backlinks.map((bl) => (
+                  <div
+                    key={bl.noteId}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenBacklinkNote?.(bl.noteId)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onOpenBacklinkNote?.(bl.noteId);
+                      }
+                    }}
+                    className="p-3 bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/60 rounded-xl space-y-1.5 shadow-2xs hover:bg-amber-100/60 dark:hover:bg-amber-900/30 transition cursor-pointer text-left w-full group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1 group-hover:text-amber-900 dark:group-hover:text-amber-200 transition">
+                        {bl.noteTitle}
+                      </h4>
+                      <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-full shrink-0">
+                        {bl.referenceCount} trích dẫn
+                      </span>
+                    </div>
+                    {bl.snippet && (
+                      <p className="text-[11px] text-stone-600 dark:text-stone-400 line-clamp-2 leading-relaxed">
+                        {bl.snippet}
+                      </p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
