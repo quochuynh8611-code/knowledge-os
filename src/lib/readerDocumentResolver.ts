@@ -368,3 +368,212 @@ export function resolveArchiveLinkToReaderDoc(
     initialPosition: locator,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 19: Bidirectional Citation Deep-Link Navigation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Result of parseArchiveCitation — null means the URI is invalid or unsafe. */
+export interface ParsedArchiveCitation {
+  documentId: string;
+  locator: string | undefined;
+}
+
+/**
+ * Blocked URI schemes — any raw href starting with these is rejected immediately.
+ * This list is intentionally conservative (allowlist-by-exclusion).
+ */
+const BLOCKED_SCHEMES = ['javascript:', 'data:', 'vbscript:', 'file:'];
+
+/**
+ * Parses an `archive://` citation URI into its documentId and optional locator.
+ *
+ * Format: `archive://{documentId}[?loc={locator}]`
+ *
+ * - Decodes URL-encoded locators (supports EPUB CFI, unicode headings, etc.)
+ * - Rejects dangerous pseudo-schemes (XSS prevention).
+ * - Returns null for any malformed or non-archive URI.
+ *
+ * @pure — no side effects, no mutations.
+ */
+export function parseArchiveCitation(href: string): ParsedArchiveCitation | null {
+  if (!href || typeof href !== 'string') return null;
+
+  const trimmed = href.trim();
+  if (!trimmed) return null;
+
+  // Security: reject blocked pseudo-schemes regardless of case
+  const lowerHref = trimmed.toLowerCase();
+  for (const scheme of BLOCKED_SCHEMES) {
+    if (lowerHref.startsWith(scheme)) return null;
+  }
+
+  // Must start with archive://
+  if (!lowerHref.startsWith('archive://')) return null;
+
+  // Strip the scheme
+  const withoutScheme = trimmed.slice('archive://'.length);
+  if (!withoutScheme) return null;
+
+  // Split on first '?' to separate documentId from query
+  const qIndex = withoutScheme.indexOf('?');
+  const rawDocId = qIndex === -1 ? withoutScheme : withoutScheme.slice(0, qIndex);
+  const queryString = qIndex === -1 ? '' : withoutScheme.slice(qIndex + 1);
+
+  // documentId must not be empty after stripping
+  if (!rawDocId || rawDocId.trim() === '') return null;
+
+  let documentId: string;
+  try {
+    documentId = decodeURIComponent(rawDocId);
+  } catch {
+    documentId = rawDocId;
+  }
+
+  if (!documentId || documentId.trim() === '') return null;
+
+  // Extract locator from ?loc= query param
+  let locator: string | undefined;
+  if (queryString) {
+    const params = new URLSearchParams(queryString);
+    const rawLoc = params.get('loc');
+    if (rawLoc !== null) {
+      try {
+        locator = decodeURIComponent(rawLoc);
+      } catch {
+        locator = rawLoc;
+      }
+    }
+  }
+
+  return { documentId, locator };
+}
+
+/** Result returned by resolveCitationTargetDocument. */
+export interface CitationResolutionResult {
+  isSameDocument: boolean;
+  locator: string | undefined;
+  document: {
+    documentId: string;
+    title: string;
+    format: 'md' | 'epub' | 'pdf' | string;
+    fileUrl?: string;
+  } | null;
+}
+
+/**
+ * 5-tier resolver engine for bidirectional citation navigation (Phase 19).
+ *
+ * Resolution order:
+ *  T1 – Same-document fast path (exact active documentId match)
+ *  T2 – Direct documentId match against resources list
+ *  T3 – Resource filePath / alias match (decoded canonical paths)
+ *  T4 – Canonical path normalization (vault: prefix, URL-encoded paths)
+ *  T5 – Title / baseName heuristic (last resort, non-generic names only)
+ *  T6 – Unresolved → returns null (safe no-op)
+ *
+ * @pure — no side effects, no mutations, no vault writes.
+ */
+export function resolveCitationTargetDocument(
+  targetDocId: string,
+  locator: string | undefined,
+  activeDocContext: {
+    documentId: string;
+    title?: string;
+    format?: string;
+    fileUrl?: string;
+  },
+  resources: Resource[]
+): CitationResolutionResult | null {
+  if (!targetDocId) return null;
+
+  const normalizedTarget = targetDocId.trim();
+
+  // Tier 1: Same-document fast path
+  if (normalizedTarget === activeDocContext.documentId) {
+    return {
+      isSameDocument: true,
+      locator,
+      document: {
+        documentId: activeDocContext.documentId,
+        title: activeDocContext.title || activeDocContext.documentId,
+        format: activeDocContext.format || 'md',
+        fileUrl: activeDocContext.fileUrl,
+      },
+    };
+  }
+
+  // Helper: build CitationResolutionResult for a matched resource
+  const makeResult = (r: Resource): CitationResolutionResult => {
+    const isPdf =
+      r.type === 'pdf' ||
+      Boolean(r.filePath?.toLowerCase().endsWith('.pdf'));
+    const isEpub =
+      r.type === 'epub' ||
+      Boolean(r.filePath?.toLowerCase().endsWith('.epub'));
+    const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
+    const fileUrl = r.filePath ? resolveReaderFileUrl(r.filePath) : undefined;
+    return {
+      isSameDocument: false,
+      locator,
+      document: {
+        documentId: r.id,
+        title: r.title || r.id,
+        format,
+        fileUrl,
+      },
+    };
+  };
+
+  // Tier 2: Direct documentId match
+  const byId = resources.find((r) => r.id === normalizedTarget);
+  if (byId) return makeResult(byId);
+
+  // Tier 3: filePath / alias match (raw & decoded canonical)
+  const canonicalTarget = normalizeDocumentPath(normalizedTarget).toLowerCase();
+
+  const byFilePath = resources.find((r) => {
+    if (!r.filePath) return false;
+    const rawPath = r.filePath.trim();
+    const canonicalFilePath = normalizeDocumentPath(rawPath).toLowerCase();
+    return (
+      rawPath === normalizedTarget ||
+      rawPath.toLowerCase() === normalizedTarget.toLowerCase() ||
+      canonicalFilePath === canonicalTarget
+    );
+  });
+  if (byFilePath) return makeResult(byFilePath);
+
+  // Tier 4: vault: prefix canonical normalization
+  // e.g. "vault:05_EPUB_Export/tam-ly.epub" → "05_epub_export/tam-ly.epub"
+  if (normalizedTarget.toLowerCase().startsWith('vault:')) {
+    const stripped = normalizeDocumentPath(normalizedTarget).toLowerCase();
+    const byVaultPath = resources.find((r) => {
+      if (!r.filePath) return false;
+      return normalizeDocumentPath(r.filePath).toLowerCase() === stripped;
+    });
+    if (byVaultPath) return makeResult(byVaultPath);
+  }
+
+  // Tier 5: Title / baseName heuristic — only for non-generic names (len > 3)
+  if (normalizedTarget.length > 3 && !isGenericDocId(normalizedTarget)) {
+    const lowerTarget = normalizedTarget.toLowerCase();
+
+    // Try exact title match first
+    const byTitle = resources.find(
+      (r) => r.title && r.title.trim().toLowerCase() === lowerTarget
+    );
+    if (byTitle) return makeResult(byTitle);
+
+    // Try baseName (filename without extension) match
+    const byBaseName = resources.find((r) => {
+      if (!r.filePath) return false;
+      const base = r.filePath.split('/').pop()?.replace(/\.[^.]+$/, '').toLowerCase();
+      return base && base.length > 3 && base === lowerTarget;
+    });
+    if (byBaseName) return makeResult(byBaseName);
+  }
+
+  // Tier 6: No match — safe null fallback
+  return null;
+}

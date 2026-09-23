@@ -13,7 +13,7 @@ import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
 import { ResearchExcerpt, ResearchInboxItem, Note, Resource } from '../../types';
 import { copyTextToClipboard } from '../../lib/clipboard';
-import { isExcerptMatchingDocument, normalizeDocumentPath, DocumentMatchContext } from '../../lib/readerDocumentResolver';
+import { isExcerptMatchingDocument, normalizeDocumentPath, DocumentMatchContext, resolveCitationTargetDocument } from '../../lib/readerDocumentResolver';
 
 export interface UnifiedResearchReaderProps {
   documentId: string;
@@ -24,6 +24,18 @@ export interface UnifiedResearchReaderProps {
   initialPosition?: string;
   initialToc?: TocItem[];
   onPositionChange?: (locator: string) => void;
+  /**
+   * Phase 19: Called when the user clicks a cross-document archive citation.
+   * The callee is responsible for opening the target document in a new reader session.
+   * Not called for same-document navigation (handled internally via onPositionChange).
+   */
+  onNavigateToDocument?: (target: {
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    initialPosition?: string;
+  }) => void;
   onClose: () => void;
   className?: string;
 }
@@ -37,6 +49,7 @@ export function UnifiedResearchReader({
   initialPosition,
   initialToc,
   onPositionChange,
+  onNavigateToDocument,
   onClose,
   className = '',
 }: UnifiedResearchReaderProps) {
@@ -210,6 +223,7 @@ export function UnifiedResearchReader({
     });
   }, [notes, documentHighlights, documentId, title, fileUrl]);
 
+
   const handleSelectExcerpt = useCallback(
     (excerpt: ResearchExcerpt) => {
       const locator =
@@ -232,6 +246,7 @@ export function UnifiedResearchReader({
 
   const handleOpenArchiveLinkFromSidebar = useCallback(
     (targetDocId: string, locator?: string) => {
+      // Tier 1: Same-document fast path — handled internally
       if (targetDocId === documentId) {
         if (locator) {
           setTargetHeadingId(locator);
@@ -240,11 +255,36 @@ export function UnifiedResearchReader({
         } else {
           showToast('Đang ở tài liệu hiện tại');
         }
+        return;
+      }
+
+      // Cross-document: use 5-tier resolver
+      const resolved = resolveCitationTargetDocument(
+        targetDocId,
+        locator,
+        { documentId, title, format: normalizedFormat, fileUrl },
+        resources
+      );
+
+      if (resolved && resolved.document) {
+        if (onNavigateToDocument) {
+          onNavigateToDocument({
+            documentId: resolved.document.documentId,
+            title: resolved.document.title,
+            format: resolved.document.format,
+            fileUrl: resolved.document.fileUrl,
+            initialPosition: resolved.locator,
+          });
+        } else {
+          // No navigation handler registered — graceful degradation
+          showToast(`Trích dẫn thuộc tài liệu khác: ${targetDocId}`);
+        }
       } else {
-        showToast(`Trích dẫn thuộc tài liệu khác: ${targetDocId}`);
+        // Tier 6: unresolved — gentle toast, no crash
+        showToast('Không tìm thấy tài liệu nguồn tương ứng');
       }
     },
-    [documentId, handlePositionChanged]
+    [documentId, title, normalizedFormat, fileUrl, resources, handlePositionChanged, onNavigateToDocument]
   );
 
   const handleTextSelection = useCallback(

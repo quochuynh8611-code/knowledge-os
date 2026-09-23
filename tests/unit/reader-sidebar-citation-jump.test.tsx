@@ -226,7 +226,9 @@ Nhận thức luận nghiên cứu về tri thức.
 
       expect(handleClose).not.toHaveBeenCalled();
       expect(handlePositionChange).not.toHaveBeenCalled();
-      expect(screen.getByText(/Trích dẫn thuộc tài liệu khác: doc-tam-ly/i)).toBeInTheDocument();
+      // Phase 19: no resources in DataContext → resolver returns null → safe fallback toast
+      expect(screen.getByText(/Không tìm thấy tài liệu nguồn tương ứng/i)).toBeInTheDocument();
     });
+
   });
 });
