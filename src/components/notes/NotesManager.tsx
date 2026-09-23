@@ -18,7 +18,7 @@ import { NoteReaderModal } from '../modals/NoteReaderModal';
 import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { toReadablePlainTextPreview } from '../../lib/markdownReadability';
-import { resolveArchiveLinkToReaderDoc, ActiveReaderDocument } from '../../lib/readerDocumentResolver';
+import { resolveCitationTargetDocument, ActiveReaderDocument } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
 export function NotesManager() {
@@ -34,7 +34,16 @@ export function NotesManager() {
   const [activeReaderDoc, setActiveReaderDoc] = useState<ActiveReaderDocument | null>(null);
 
   const handleOpenArchiveLink = (documentId: string, locator?: string) => {
-    setActiveReaderDoc(resolveArchiveLinkToReaderDoc(documentId, locator, resources));
+    const res = resolveCitationTargetDocument(documentId, locator, activeReaderDoc, resources);
+    if (res) {
+      setActiveReaderDoc({
+        documentId: res.document.documentId,
+        title: res.document.title,
+        format: res.document.format,
+        fileUrl: res.document.fileUrl,
+        initialPosition: res.locator,
+      });
+    }
   };
 
   const filteredNotes = useMemo(() => {
@@ -332,6 +341,15 @@ export function NotesManager() {
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
           initialPosition={activeReaderDoc.initialPosition}
+          onNavigateToDocument={(target) => {
+            setActiveReaderDoc({
+              documentId: target.documentId,
+              title: target.title,
+              format: target.format,
+              fileUrl: target.fileUrl,
+              initialPosition: target.initialPosition,
+            });
+          }}
           onClose={() => setActiveReaderDoc(null)}
         />
       )}

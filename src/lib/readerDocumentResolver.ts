@@ -482,7 +482,7 @@ export function resolveCitationTargetDocument(
     title?: string;
     format?: string;
     fileUrl?: string;
-  },
+  } | null | undefined,
   resources: Resource[]
 ): CitationResolutionResult | null {
   if (!targetDocId) return null;
@@ -490,7 +490,7 @@ export function resolveCitationTargetDocument(
   const normalizedTarget = targetDocId.trim();
 
   // Tier 1: Same-document fast path
-  if (normalizedTarget === activeDocContext.documentId) {
+  if (activeDocContext && normalizedTarget === activeDocContext.documentId) {
     return {
       isSameDocument: true,
       locator,

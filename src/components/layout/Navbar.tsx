@@ -541,6 +541,15 @@ export function Navbar({
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
           initialPosition={activeReaderDoc.initialPosition}
+          onNavigateToDocument={(target) => {
+            setActiveReaderDoc({
+              documentId: target.documentId,
+              title: target.title,
+              format: target.format,
+              fileUrl: target.fileUrl,
+              initialPosition: target.initialPosition,
+            });
+          }}
           onClose={() => setActiveReaderDoc(null)}
         />
       )}

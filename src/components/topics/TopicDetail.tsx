@@ -30,7 +30,7 @@ import {
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { NoteReaderModal } from "../modals/NoteReaderModal";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
-import { resolveArchiveLinkToReaderDoc, ActiveReaderDocument } from "../../lib/readerDocumentResolver";
+import { resolveCitationTargetDocument, ActiveReaderDocument } from "../../lib/readerDocumentResolver";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
@@ -39,7 +39,6 @@ import { ResourceViewerModal } from "../modals/ResourceViewerModal";
 import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceLinkModal";
 import { ObsidianDocumentViewerModal } from "../modals/ObsidianDocumentViewerModal";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
-import { FileViewer } from "../docs/FileViewer";
 import { getStoredVaultName } from "../../lib/obsidian";
 import { useNavigation } from "../../context/NavigationContext";
 import { FlashcardAnalyticsWidget } from "../flashcards/FlashcardAnalyticsWidget";
@@ -137,13 +136,21 @@ export function TopicDetail() {
   const [showAIStudioModal, setShowAIStudioModal] = useState(false);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [viewingObsidianResource, setViewingObsidianResource] = useState<Resource | null>(null);
-  const [activeEpubFile, setActiveEpubFile] = useState<{ fileName: string; fileUrl: string } | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [readingNote, setReadingNote] = useState<Note | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<ActiveReaderDocument | null>(null);
 
   const handleOpenArchiveLink = (documentId: string, locator?: string) => {
-    setActiveReaderDoc(resolveArchiveLinkToReaderDoc(documentId, locator, resources));
+    const res = resolveCitationTargetDocument(documentId, locator, activeReaderDoc, resources);
+    if (res) {
+      setActiveReaderDoc({
+        documentId: res.document.documentId,
+        title: res.document.title,
+        format: res.document.format,
+        fileUrl: res.document.fileUrl,
+        initialPosition: res.locator,
+      });
+    }
   };
 
   // Research Dashboard & Search states (Phase F7.0)
@@ -1449,8 +1456,10 @@ export function TopicDetail() {
           setShowObsidianBrowserModal(false);
           const fileName = filePath.split("/").pop() || filePath;
           if (filePath.toLowerCase().endsWith(".epub")) {
-            setActiveEpubFile({
-              fileName,
+            setActiveReaderDoc({
+              documentId: `vault:${filePath}`,
+              title: fileName.replace(/\.epub$/i, ""),
+              format: "epub",
               fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
             });
             return;
@@ -1475,13 +1484,6 @@ export function TopicDetail() {
           setViewingObsidianResource(null);
         }}
       />
-      {activeEpubFile && (
-        <FileViewer
-          fileUrl={activeEpubFile.fileUrl}
-          fileName={activeEpubFile.fileName}
-          onClose={() => setActiveEpubFile(null)}
-        />
-      )}
 
 
       {showNotebookLMModal && (
@@ -1526,6 +1528,15 @@ export function TopicDetail() {
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
           initialPosition={activeReaderDoc.initialPosition}
+          onNavigateToDocument={(target) => {
+            setActiveReaderDoc({
+              documentId: target.documentId,
+              title: target.title,
+              format: target.format,
+              fileUrl: target.fileUrl,
+              initialPosition: target.initialPosition,
+            });
+          }}
           onClose={() => setActiveReaderDoc(null)}
         />
       )}
