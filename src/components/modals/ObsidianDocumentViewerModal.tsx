@@ -565,6 +565,8 @@ export function ObsidianDocumentViewerModal({
                 <div className="prose prose-stone max-w-none">
                   <MarkdownReadabilityRenderer
                     content={sanitizedContent}
+                    docPath={activePath || undefined}
+                    sourceType="vault"
                     vaultResolver={vaultResolver || undefined}
                     onOpenVaultLink={handleOpenVaultLink}
                     transclusionResolver={transclusionResolver || undefined}

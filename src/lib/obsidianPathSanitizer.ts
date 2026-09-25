@@ -81,21 +81,22 @@ export function sanitizeObsidianPath(
     };
   }
 
-  // Step 2: Normalize platform separators and strip leading/redundant slashes
+  // Step 2: Normalize platform separators, strip leading redundant slashes, and posix normalize
   const normalizedSeparators = trimmed.replace(/\\/g, "/");
-  const cleanedPath = normalizedSeparators.replace(/^\/+/, "").replace(/\/+/g, "/");
+  const posixNormalized = path.posix.normalize(normalizedSeparators);
+  const cleanedPath = posixNormalized.replace(/^\/+/, "").replace(/\/+/g, "/");
 
   // Step 3: Segment analysis
-  const segments = cleanedPath.split("/").map((s) => s.trim()).filter((s) => s.length > 0);
+  const segments = cleanedPath.split("/").map((s) => s.trim()).filter((s) => s.length > 0 && s !== ".");
   for (const seg of segments) {
-    if (seg === "." || seg === "..") {
+    if (seg === "..") {
       return {
         ok: false,
         error: "PATH_TRAVERSAL_DETECTED",
         message: "Path traversal segment detected.",
       };
     }
-    if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || seg.startsWith(".")) {
+    if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || (seg.startsWith(".") && seg !== "." && seg !== "..")) {
       return {
         ok: false,
         error: "ACCESS_DENIED_SENSITIVE_DIR",
@@ -279,21 +280,22 @@ export function sanitizeObsidianDirPath(
       };
     }
 
-    // Normalize separators and strip redundant slashes
+    // Normalize separators, strip redundant slashes, and posix normalize
     const normalizedSeparators = trimmed.replace(/\\/g, "/");
-    const stripped = normalizedSeparators.replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/+$/, "");
+    const posixNormalized = path.posix.normalize(normalizedSeparators);
+    const stripped = posixNormalized.replace(/^\/+/, "").replace(/\/+/g, "/").replace(/\/+$/, "");
 
     // Segment analysis
-    const segments = stripped.split("/").map((s) => s.trim()).filter((s) => s.length > 0);
+    const segments = stripped.split("/").map((s) => s.trim()).filter((s) => s.length > 0 && s !== ".");
     for (const seg of segments) {
-      if (seg === "." || seg === "..") {
+      if (seg === "..") {
         return {
           ok: false,
           error: "PATH_TRAVERSAL_DETECTED",
           message: "Path traversal segment detected.",
         };
       }
-      if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || seg.startsWith(".")) {
+      if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || (seg.startsWith(".") && seg !== "." && seg !== "..")) {
         return {
           ok: false,
           error: "ACCESS_DENIED_SENSITIVE_DIR",
@@ -516,21 +518,22 @@ export function sanitizeObsidianAttachmentPath(
     };
   }
 
-  // Step 2: Normalize platform separators and strip leading/redundant slashes
+  // Step 2: Normalize platform separators, strip leading redundant slashes, and posix normalize
   const normalizedSeparators = trimmed.replace(/\\/g, "/");
-  const cleanedPath = normalizedSeparators.replace(/^\/+/, "").replace(/\/+/g, "/");
+  const posixNormalized = path.posix.normalize(normalizedSeparators);
+  const cleanedPath = posixNormalized.replace(/^\/+/, "").replace(/\/+/g, "/");
 
   // Step 3: Segment analysis
-  const segments = cleanedPath.split("/").map((s) => s.trim()).filter((s) => s.length > 0);
+  const segments = cleanedPath.split("/").map((s) => s.trim()).filter((s) => s.length > 0 && s !== ".");
   for (const seg of segments) {
-    if (seg === "." || seg === "..") {
+    if (seg === "..") {
       return {
         ok: false,
         error: "PATH_TRAVERSAL_DETECTED",
         message: "Path traversal segment detected.",
       };
     }
-    if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || seg.startsWith(".")) {
+    if (FORBIDDEN_SEGMENTS.has(seg.toLowerCase()) || (seg.startsWith(".") && seg !== "." && seg !== "..")) {
       return {
         ok: false,
         error: "ACCESS_DENIED_SENSITIVE_DIR",

@@ -34,6 +34,31 @@ describe("Phase P4.2D: Obsidian Vault Attachment Endpoint & Sanitizer", () => {
       }
     });
 
+    it("allows relative image path with ./ prefix", () => {
+      const imgPath = path.join(tempVaultDir, "avatar.png");
+      fs.writeFileSync(imgPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+
+      const res = sanitizeObsidianAttachmentPath(tempVaultDir, "./avatar.png");
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.fileName).toBe("avatar.png");
+        expect(res.relativePath).toBe("avatar.png");
+      }
+    });
+
+    it("allows nested subfolder image path like ./assets/image.png", () => {
+      fs.mkdirSync(path.join(tempVaultDir, "assets"), { recursive: true });
+      const imgPath = path.join(tempVaultDir, "assets", "diagram.png");
+      fs.writeFileSync(imgPath, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+
+      const res = sanitizeObsidianAttachmentPath(tempVaultDir, "./assets/diagram.png");
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.fileName).toBe("diagram.png");
+        expect(res.relativePath).toBe("assets/diagram.png");
+      }
+    });
+
     it("allows valid PDF and video files (.pdf, .mp4) under 50 MiB", () => {
       const pdfPath = path.join(tempVaultDir, "document.pdf");
       fs.writeFileSync(pdfPath, "%PDF-1.5 test content");
@@ -154,6 +179,19 @@ describe("Phase P4.2D: Obsidian Vault Attachment Endpoint & Sanitizer", () => {
       expect(res.status).toBe(200);
       expect(res.headers["content-type"]).toBe("application/pdf");
       expect(Number(res.headers["content-length"])).toBe(samplePdf.length);
+    });
+
+    it("finds attachment in standard fallback folder like attachments/photo.png", async () => {
+      fs.mkdirSync(path.join(tempVaultDir, "attachments"), { recursive: true });
+      const samplePng = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      fs.writeFileSync(path.join(tempVaultDir, "attachments", "nested-photo.png"), samplePng);
+
+      const res = await request(app)
+        .get("/api/obsidian/vault/attachment?path=nested-photo.png")
+        .responseType("blob");
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toBe("image/png");
     });
 
     it("returns 404 for missing attachment", async () => {

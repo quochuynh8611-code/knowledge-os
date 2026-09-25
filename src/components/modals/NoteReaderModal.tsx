@@ -314,6 +314,8 @@ export function NoteReaderModal({
             <MarkdownReadabilityRenderer
               content={note.content}
               topics={topics}
+              docPath={note.sourcePath ? note.sourcePath.replace(/^vault:/i, "") : undefined}
+              sourceType={note.sourcePath?.startsWith("docs/") ? "docs" : note.sourcePath ? "vault" : undefined}
               onOpenTopic={(id) => {
                 onClose();
                 openTopicDetail(id);

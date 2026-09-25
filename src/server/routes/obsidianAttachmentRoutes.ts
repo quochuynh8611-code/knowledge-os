@@ -33,7 +33,22 @@ export function createObsidianAttachmentRouter(
         return;
       }
 
-      const sanitizeResult = sanitizeObsidianAttachmentPath(root, rawPath);
+      let sanitizeResult = sanitizeObsidianAttachmentPath(root, rawPath);
+
+      // Safe fallback probe for flat filenames across standard vault attachment directories
+      if (sanitizeResult.ok === false && sanitizeResult.error === "FILE_NOT_FOUND") {
+        const fallbackFolders = ["attachments", "assets", "images", "_resources", "media"];
+        const cleanBase = rawPath.replace(/^\.\//, "").replace(/^\/+/, "");
+        for (const folder of fallbackFolders) {
+          const candidatePath = `${folder}/${cleanBase}`;
+          const fallbackResult = sanitizeObsidianAttachmentPath(root, candidatePath);
+          if (fallbackResult.ok) {
+            sanitizeResult = fallbackResult;
+            break;
+          }
+        }
+      }
+
       if (sanitizeResult.ok === false) {
         const errorResult = sanitizeResult as {
           ok: false;

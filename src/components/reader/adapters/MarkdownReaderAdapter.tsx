@@ -127,6 +127,26 @@ export function MarkdownReaderAdapter({
   // Extract TOC items
   const tocItems = useMemo(() => extractMarkdownToc(activeContent), [activeContent]);
 
+  const isDocsSource = useMemo(() => {
+    if (fileUrl && fileUrl.includes('/api/docs')) return true;
+    if (documentId && (documentId.startsWith('docs/') || documentId.endsWith('.feature'))) return true;
+    if (documentId && documentId.startsWith('vault:')) return false;
+    return false;
+  }, [fileUrl, documentId]);
+
+  const effectiveDocPath = useMemo(() => {
+    if (fileUrl && fileUrl.includes('path=')) {
+      try {
+        const urlParams = new URL(fileUrl, 'http://localhost').searchParams;
+        const qPath = urlParams.get('path');
+        if (qPath) return decodeURIComponent(qPath);
+      } catch {
+        // Fallback
+      }
+    }
+    return documentId ? documentId.replace(/^vault:/i, '') : '';
+  }, [fileUrl, documentId]);
+
   // Handle text selection in viewport
   const handleMouseUp = () => {
     if (!onTextSelection) return;
@@ -235,7 +255,11 @@ export function MarkdownReaderAdapter({
       data-testid="markdown-selectable-area"
       className={`markdown-reader-viewport overflow-y-auto px-6 py-8 sm:px-12 sm:py-10 max-w-4xl mx-auto w-full prose prose-stone dark:prose-invert leading-relaxed ${className}`}
     >
-      <MarkdownReadabilityRenderer content={sanitizedContent} />
+      <MarkdownReadabilityRenderer
+        content={sanitizedContent}
+        docPath={effectiveDocPath}
+        sourceType={isDocsSource ? 'docs' : 'vault'}
+      />
     </div>
   );
 }

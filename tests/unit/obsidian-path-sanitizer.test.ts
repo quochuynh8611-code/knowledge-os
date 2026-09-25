@@ -147,5 +147,14 @@ describe("Phase P4.1: Obsidian Path Sanitizer & Sandbox Security", () => {
         expect(result.relativePath).not.toContain(tempVaultDir);
       }
     });
+
+    it("accepts safe relative path with ./ prefix", () => {
+      const result = sanitizeObsidianPath(tempVaultDir, "./Phat-Hoc/ValidNote.md");
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.relativePath).toBe("Phat-Hoc/ValidNote.md");
+        expect(result.fileName).toBe("ValidNote.md");
+      }
+    });
   });
 });

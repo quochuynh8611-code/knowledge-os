@@ -218,6 +218,8 @@ export function ReaderSidebar({
                     <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
                       <MarkdownReadabilityRenderer
                         content={note.content}
+                        docPath={note.sourcePath ? note.sourcePath.replace(/^vault:/i, "") : undefined}
+                        sourceType={note.sourcePath?.startsWith("docs/") ? "docs" : note.sourcePath ? "vault" : undefined}
                         onOpenArchiveLink={onOpenArchiveLink}
                       />
                     </div>

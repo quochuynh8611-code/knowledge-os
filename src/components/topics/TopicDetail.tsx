@@ -677,6 +677,7 @@ export function TopicDetail() {
             <MarkdownReadabilityRenderer
               content={topic.content}
               topics={topics}
+              sourceType="vault"
               onOpenTopic={openTopicDetail}
             />
           </div>

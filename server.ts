@@ -27,6 +27,7 @@ import { createObsidianAttachmentRouter } from "./src/server/routes/obsidianAtta
 import { createObsidianWatcherRouter } from "./src/server/routes/obsidianWatcherRoutes";
 import { ObsidianVaultManager } from "./src/lib/vault-manager";
 import { ManagedVaultProfile } from "./src/lib/vault-manager.types";
+import { discoverAndMergeVaultProfiles } from "./src/lib/vaultDiscovery";
 import {
   createRateLimiter,
   createRateLimitMiddleware,
@@ -80,30 +81,36 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
     ),
   );
 
-  // Read-only Obsidian Vault Profile Manager
-  const defaultProfiles: ManagedVaultProfile[] = [];
+  // Read-only Obsidian Vault Profile Manager with Dynamic Discovery
+  const explicitProfiles: ManagedVaultProfile[] = [];
   if (process.env.OBSIDIAN_VAULTS_CONFIG) {
     try {
       const parsed = JSON.parse(process.env.OBSIDIAN_VAULTS_CONFIG);
       if (Array.isArray(parsed)) {
-        defaultProfiles.push(...parsed);
+        explicitProfiles.push(...parsed);
       }
     } catch {
       // Ignore invalid JSON config
     }
   }
 
-  if (defaultProfiles.length === 0 && process.env.OBSIDIAN_VAULT_ROOT) {
-    defaultProfiles.push({
-      vaultId: "default",
-      label: path.basename(process.env.OBSIDIAN_VAULT_ROOT) || "Default Vault",
-      rootPath: process.env.OBSIDIAN_VAULT_ROOT,
-    });
+  const discoveryResult = discoverAndMergeVaultProfiles({
+    explicitProfiles,
+    primaryVaultRoot: process.env.OBSIDIAN_VAULT_ROOT,
+  });
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      `[ObsidianVaultManager] Loaded ${discoveryResult.profiles.length} vaults (` +
+        `explicit: ${discoveryResult.sources.explicitCount}, ` +
+        `obsidian.json: ${discoveryResult.sources.obsidianJsonCount}, ` +
+        `scanned: ${discoveryResult.sources.scannedCount})`
+    );
   }
 
   const obsidianVaultManager = new ObsidianVaultManager({
-    profiles: defaultProfiles,
-    defaultVaultId: defaultProfiles[0]?.vaultId,
+    profiles: discoveryResult.profiles,
+    defaultVaultId: discoveryResult.profiles[0]?.vaultId,
   });
 
   // Health check routes
