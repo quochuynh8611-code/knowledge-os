@@ -56,12 +56,33 @@ describe('Phase R3A.2: Note to Reader Deep-Link Wiring in Owners', () => {
     updatedAt: '2026-09-19T08:00:00.000Z',
   };
 
+  const sampleResources: Resource[] = [
+    {
+      id: 'doc-triet-hoc',
+      topicId: 'topic-1',
+      title: 'doc-triet-hoc',
+      type: 'book',
+      filePath: '05_EPUB_Export/doc-triet-hoc.epub',
+      url: '',
+      createdAt: '2026-09-19T08:00:00.000Z',
+    },
+    {
+      id: 'doc-tam-ly',
+      topicId: 'topic-1',
+      title: 'doc-tam-ly',
+      type: 'book',
+      filePath: '05_EPUB_Export/doc-tam-ly.epub',
+      url: '',
+      createdAt: '2026-09-19T08:00:00.000Z',
+    },
+  ];
+
   const mockContextValue = {
     categories: [{ id: 'cat-1', name: 'Triết Học', slug: 'triet-hoc' }],
     notes: [sampleNoteWithLocator, sampleNoteWithHeading],
     topics: [sampleTopic],
     selectedTopicId: 'topic-1',
-    resources: [] as Resource[],
+    resources: sampleResources,
     tags: [],
     deleteNote: vi.fn(),
     openTopicDetail: vi.fn(),

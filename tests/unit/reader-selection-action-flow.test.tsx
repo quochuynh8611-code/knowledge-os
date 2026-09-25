@@ -174,8 +174,10 @@ describe('Reader Selection Actions Flow & Persistence', () => {
     fireEvent.click(notesTab);
 
     const notesPanel = screen.getByTestId('sidebar-panel-notes');
+    const blockquoteElement = notesPanel.querySelector('blockquote');
+    expect(blockquoteElement).toBeInTheDocument();
     expect(
-      within(notesPanel).getByText(/Luận điểm quan trọng về Dataview JS/i)
+      within(blockquoteElement!).getByText(/Luận điểm quan trọng về Dataview JS/i)
     ).toBeInTheDocument();
   });
 });

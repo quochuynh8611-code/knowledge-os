@@ -60,14 +60,16 @@ describe('Patch Scope A: MarkdownReaderAdapter Async fileUrl Fetching', () => {
     expect(screen.queryByTestId('markdown-reader-loading')).not.toBeInTheDocument();
 
     // Verify TOC generated from fetched markdown
-    expect(onTocGenerated).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          label: 'Tài Liệu Từ JSON API',
-          level: 1,
-        }),
-      ])
-    );
+    await waitFor(() => {
+      expect(onTocGenerated).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: 'Tài Liệu Từ JSON API',
+            level: 1,
+          }),
+        ])
+      );
+    });
   });
 
   it('displays loading spinner and fetches content from plain text/raw markdown endpoint', async () => {
