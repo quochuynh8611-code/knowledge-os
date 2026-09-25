@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { createServer as createViteServer } from "vite";
 import { prisma } from "./src/lib/prisma";
 import { getGenAI } from "./src/server/services/geminiService";
 import { createHealthRouter } from "./src/server/routes/healthRoutes";
@@ -17,6 +16,9 @@ import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createArchiveRouter } from "./src/server/routes/archiveRoutes";
 import { createResearchSessionRouter } from "./src/server/routes/researchSessionRoutes";
+import { createResearchProviderRuntimeDiagnostics } from "./src/server/bootstrap/researchProviderComposition";
+import { ResearchProviderConfig } from "./src/server/config/researchProviderConfig";
+import { ProviderRegistry } from "./src/server/services/providers/providerRegistry";
 import { createArtifactRouter } from "./src/server/routes/artifactRoutes";
 import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
@@ -34,9 +36,21 @@ import { resolveServerPort } from "./src/server/serverConfig";
 
 dotenv.config();
 
-async function startServer() {
+export interface ServerAppDeps {
+  prismaClient?: typeof prisma;
+  researchDiagnostics?: {
+    config: ResearchProviderConfig;
+    providerRegistry: ProviderRegistry | null;
+  };
+}
+
+/**
+ * Builds and configures Express application with all middleware and routes.
+ * Pure additive test seam for deterministic server bootstrap testing.
+ */
+export function createServerApp(deps?: ServerAppDeps): express.Express {
   const app = express();
-  const PORT = resolveServerPort(process.env.PORT);
+  const activePrisma = deps?.prismaClient || prisma;
 
   app.use(express.json({ limit: "15mb" }));
   app.use(
@@ -66,59 +80,7 @@ async function startServer() {
     ),
   );
 
-  // Health check routes
-  app.use("/api", createHealthRouter(prisma));
-
-  // Antigravity & Gemini Research Scholar Endpoints
-  app.use("/api", createGeminiRouter(getGenAI, () => obsidianVaultManager));
-
-  // ==========================================
-  // REST CRUD & PERSISTENCE ENDPOINTS (PHASE 2A)
-  // ==========================================
-
-  // 0. Categories CRUD
-  app.use("/api", createCategoryRouter(prisma));
-
-  // 1. Topics CRUD
-  app.use("/api", createTopicRouter(prisma));
-
-  // 2. Notes CRUD
-  app.use("/api", createNoteRouter(prisma));
-
-  // 3. Resources CRUD
-  app.use("/api", createResourceRouter(prisma));
-
-  // 4. Spaced Repetition Review Progress
-  app.use("/api", createStudyProgressRouter(prisma));
-
-  // 5. Idempotent Hydration Sync Endpoint
-  app.use("/api", createSyncRouter(prisma));
-
-  // 6. Flashcards & Spaced Repetition Subsystem (Phase F4)
-  app.use("/api", createFlashcardRouter(prisma));
-
-  // 7. NotebookLM Research Hub v2.1 Pipeline Endpoints
-  app.use("/api", createResearchSessionRouter(prisma));
-  app.use("/api", createArtifactRouter(prisma));
-
-  // ==========================================
-  // BACKUP ROUTES (EXPORT & RESTORE)
-  // ==========================================
-  app.use("/api", createBackupRouter(prisma, restoreRateLimiter));
-
-  // ==========================================
-  // ARCHITECTURE DOCUMENTATION & SPECS ROUTES
-  // ==========================================
-  app.use("/api", createDocsRouter());
-
-  // ==========================================
-  // PHASE 18A: LOCAL ARCHIVE STORAGE ROUTES
-  // ==========================================
-  app.use("/api", createArchiveRouter({ prisma }));
-
-  // ==========================================
-  // READ-ONLY OBSIDIAN VAULT BRIDGE & VAULT PROFILE MANAGER (PHASE P4.1 - P4.3B)
-  // ==========================================
+  // Read-only Obsidian Vault Profile Manager
   const defaultProfiles: ManagedVaultProfile[] = [];
   if (process.env.OBSIDIAN_VAULTS_CONFIG) {
     try {
@@ -144,6 +106,74 @@ async function startServer() {
     defaultVaultId: defaultProfiles[0]?.vaultId,
   });
 
+  // Health check routes
+  app.use("/api", createHealthRouter(activePrisma));
+
+  // Antigravity & Gemini Research Scholar Endpoints
+  app.use("/api", createGeminiRouter(getGenAI, () => obsidianVaultManager));
+
+  // ==========================================
+  // REST CRUD & PERSISTENCE ENDPOINTS (PHASE 2A)
+  // ==========================================
+
+  // 0. Categories CRUD
+  app.use("/api", createCategoryRouter(activePrisma));
+
+  // 1. Topics CRUD
+  app.use("/api", createTopicRouter(activePrisma));
+
+  // 2. Notes CRUD
+  app.use("/api", createNoteRouter(activePrisma));
+
+  // 3. Resources CRUD
+  app.use("/api", createResourceRouter(activePrisma));
+
+  // 4. Spaced Repetition Review Progress
+  app.use("/api", createStudyProgressRouter(activePrisma));
+
+  // 5. Idempotent Hydration Sync Endpoint
+  app.use("/api", createSyncRouter(activePrisma));
+
+  // 6. Flashcards & Spaced Repetition Subsystem (Phase F4)
+  app.use("/api", createFlashcardRouter(activePrisma));
+
+  // 7. NotebookLM Research Hub v2.1 Pipeline Endpoints (With Runtime Injection)
+  let researchDiagnostics = deps?.researchDiagnostics;
+  if (researchDiagnostics === undefined && (!deps || !("researchDiagnostics" in deps))) {
+    try {
+      researchDiagnostics = createResearchProviderRuntimeDiagnostics();
+    } catch (diagError) {
+      console.error("[ResearchProvider] Failed to initialize provider diagnostics:", diagError);
+      researchDiagnostics = undefined;
+    }
+  }
+
+  app.use(
+    "/api",
+    createResearchSessionRouter(activePrisma, {
+      providerDiagnostics: researchDiagnostics,
+    })
+  );
+  app.use("/api", createArtifactRouter(activePrisma));
+
+  // ==========================================
+  // BACKUP ROUTES (EXPORT & RESTORE)
+  // ==========================================
+  app.use("/api", createBackupRouter(activePrisma, restoreRateLimiter));
+
+  // ==========================================
+  // ARCHITECTURE DOCUMENTATION & SPECS ROUTES
+  // ==========================================
+  app.use("/api", createDocsRouter());
+
+  // ==========================================
+  // PHASE 18A: LOCAL ARCHIVE STORAGE ROUTES
+  // ==========================================
+  app.use("/api", createArchiveRouter({ prisma: activePrisma }));
+
+  // ==========================================
+  // READ-ONLY OBSIDIAN VAULT BRIDGE & VAULT PROFILE MANAGER (PHASE P4.1 - P4.3B)
+  // ==========================================
   app.use("/api", createObsidianVaultRoutes(obsidianVaultManager));
   app.use("/api", createObsidianVaultTreeRouter(() => obsidianVaultManager.getActiveVaultRoot()));
   app.use(
@@ -161,8 +191,16 @@ async function startServer() {
   app.use("/api", createObsidianAttachmentRouter(() => obsidianVaultManager.getActiveVaultRoot()));
   app.use("/api", createObsidianWatcherRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveWatcher()));
 
+  return app;
+}
+
+async function startServer() {
+  const PORT = resolveServerPort(process.env.PORT);
+  const app = createServerApp();
+
   // Vite middleware for development or Static Serving in Production
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -187,4 +225,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (process.env.NODE_ENV !== "test" && !process.env.VITEST) {
+  startServer();
+}
