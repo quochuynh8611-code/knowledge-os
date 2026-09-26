@@ -163,3 +163,117 @@ export function resolveResourceOpenTarget(
 export function getResourceOpenState(resource: Resource | null | undefined): ResourceTargetType {
   return resolveResourceOpenTarget(resource).targetType;
 }
+
+export interface ResourceReaderDescriptor {
+  canOpenInReader: boolean;
+  format?: 'md' | 'epub' | 'pdf' | string;
+  documentId?: string;
+  title?: string;
+  fileUrl?: string;
+  sourceType?: 'docs' | 'vault';
+  reason?: string;
+}
+
+/**
+ * Phân giải Resource sang Reader Runtime Descriptor dựa trên phần mở rộng thực tế
+ * của target/filePath/url, đảm bảo không bị suy diễn sai lệch theo Resource.type.
+ */
+export function resolveResourceReaderDescriptor(
+  resource: Resource | null | undefined
+): ResourceReaderDescriptor {
+  if (!resource) {
+    return {
+      canOpenInReader: false,
+      reason: 'Tài liệu không tồn tại',
+    };
+  }
+
+  // 1. Xác định target path/url theo thứ tự ưu tiên
+  const rawTarget = (resource.openTarget && resource.openTarget.trim())
+    ? resource.openTarget.trim()
+    : (resource.filePath && resource.filePath.trim())
+    ? resource.filePath.trim()
+    : (resource.url && resource.url.trim())
+    ? resource.url.trim()
+    : '';
+
+  if (!rawTarget) {
+    return {
+      canOpenInReader: false,
+      reason: 'Tài liệu chưa có đường dẫn hoặc liên kết',
+    };
+  }
+
+  // 2. Nếu là URL Web hoặc Custom app scheme -> mở qua Viewer/Browser ngoài
+  if (/^(https?:|mailto:|obsidian:|zotero:|notion:|\w+:\/\/)/i.test(rawTarget) && !rawTarget.toLowerCase().startsWith('file://')) {
+    return {
+      canOpenInReader: false,
+      reason: 'Liên kết web hoặc ứng dụng ngoài, mở qua trình duyệt hoặc ứng dụng ngoài',
+    };
+  }
+
+  // 3. Chuẩn hóa đường dẫn tệp
+  const normalized = rawTarget.replace(/^file:\/\//i, '').replace(/\\/g, '/');
+  const cleanPath = normalized.replace(/^\/+/, '');
+  const lower = cleanPath.toLowerCase();
+
+  const isDocs = lower.startsWith('docs/') || lower.startsWith('/docs/') || lower.endsWith('.feature');
+  const sourceType: 'docs' | 'vault' = isDocs ? 'docs' : 'vault';
+
+  // 4. Phân giải tệp Markdown (.md)
+  if (lower.endsWith('.md')) {
+    const fileUrl = isDocs
+      ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
+      : `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`;
+    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+
+    return {
+      canOpenInReader: true,
+      format: 'md',
+      documentId,
+      title: resource.title,
+      fileUrl,
+      sourceType,
+    };
+  }
+
+  // 5. Phân giải tệp EPUB (.epub)
+  if (lower.endsWith('.epub')) {
+    const fileUrl = isDocs
+      ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
+    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+
+    return {
+      canOpenInReader: true,
+      format: 'epub',
+      documentId,
+      title: resource.title,
+      fileUrl,
+      sourceType,
+    };
+  }
+
+  // 6. Phân giải tệp PDF (.pdf)
+  if (lower.endsWith('.pdf')) {
+    const fileUrl = isDocs
+      ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
+    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+
+    return {
+      canOpenInReader: true,
+      format: 'pdf',
+      documentId,
+      title: resource.title,
+      fileUrl,
+      sourceType,
+    };
+  }
+
+  // 7. Định dạng không hỗ trợ (.zip, .mp3, .mp4, .docx, ...) -> fallback an toàn
+  return {
+    canOpenInReader: false,
+    reason: 'Định dạng tệp không được hỗ trợ trong bộ đọc tích hợp',
+  };
+}

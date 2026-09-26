@@ -137,7 +137,7 @@ export function PdfReaderAdapter({
     setIsManualModalOpen(false);
   };
 
-  const validateUrl = useCallback(() => {
+  const validateUrl = useCallback(async () => {
     if (isLocal) {
       setLoadError(false);
       setErrorMessage('');
@@ -155,6 +155,39 @@ export function PdfReaderAdapter({
       setLoadError(true);
       setErrorMessage('Định dạng URL tài liệu PDF không hợp lệ');
       return;
+    }
+
+    // Pre-flight check for API routes to catch 404 FILE_NOT_FOUND responses
+    if (fileUrl.startsWith('/api/')) {
+      try {
+        const res = await fetch(fileUrl);
+        if (!res.ok) {
+          const contentType = res.headers?.get ? (res.headers.get('content-type') || '') : '';
+          let errMsg = 'Không tìm thấy tệp PDF trong Vault hoặc đường dẫn không khả dụng';
+          if (contentType.includes('application/json')) {
+            try {
+              const json = await res.json();
+              if (json?.message) {
+                errMsg = `${errMsg} (${json.message})`;
+              }
+            } catch {
+              // ignore json parse error
+            }
+          }
+          setLoadError(true);
+          setErrorMessage(errMsg);
+          return;
+        }
+
+        const contentType = res.headers?.get ? (res.headers.get('content-type') || '') : '';
+        if (contentType.includes('application/json')) {
+          setLoadError(true);
+          setErrorMessage('Phản hồi từ máy chủ không phải là tệp PDF hợp lệ');
+          return;
+        }
+      } catch {
+        // If fetch fails without an explicit response, proceed unless already failed
+      }
     }
 
     setLoadError(false);

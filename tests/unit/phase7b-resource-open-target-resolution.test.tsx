@@ -1,7 +1,11 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { resolveResourceOpenTarget, getResourceOpenState } from '../../src/lib/resourceOpenResolver';
+import {
+  resolveResourceOpenTarget,
+  getResourceOpenState,
+  resolveResourceReaderDescriptor,
+} from '../../src/lib/resourceOpenResolver';
 import { ResourceViewerModal } from '../../src/components/modals/ResourceViewerModal';
 import { ResourceFormModal } from '../../src/components/modals/ResourceFormModal';
 import { ResourcesManager } from '../../src/components/resources/ResourcesManager';
@@ -275,6 +279,92 @@ describe('Phase 7B: Resource Open Target Resolution & Model/Form/Viewer UX Upgra
 
       const result = ResourceCreateSchema.safeParse(input);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('5. resolveResourceReaderDescriptor Contract & Format Integrity (Scenario C)', () => {
+    it('5.1. Resource type = book nhưng filePath là .md -> format = md, sourceType = vault, fileUrl = /api/obsidian/vault/file', () => {
+      const res: Resource = {
+        id: 'res-book-md',
+        topicId: 'topic-1',
+        title: 'Sách Markdown',
+        type: 'book',
+        filePath: '000-Dashboard/Abhidharma.md',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const descriptor = resolveResourceReaderDescriptor(res);
+      expect(descriptor).toBeDefined();
+      expect(descriptor.canOpenInReader).toBe(true);
+      expect(descriptor.format).toBe('md');
+      expect(descriptor.sourceType).toBe('vault');
+      expect(descriptor.fileUrl).toBe('/api/obsidian/vault/file?path=000-Dashboard%2FAbhidharma.md');
+    });
+
+    it('5.2. Resource type = book và filePath là .epub -> format = epub, sourceType = vault, fileUrl = /api/obsidian/vault/attachment', () => {
+      const res: Resource = {
+        id: 'res-book-epub',
+        topicId: 'topic-1',
+        title: 'Sách EPUB',
+        type: 'book',
+        filePath: '05_EPUB_Export/Abhidharma.epub',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const descriptor = resolveResourceReaderDescriptor(res);
+      expect(descriptor).toBeDefined();
+      expect(descriptor.canOpenInReader).toBe(true);
+      expect(descriptor.format).toBe('epub');
+      expect(descriptor.sourceType).toBe('vault');
+      expect(descriptor.fileUrl).toBe('/api/obsidian/vault/attachment?path=05_EPUB_Export%2FAbhidharma.epub');
+    });
+
+    it('5.3. Resource type = pdf và filePath là .pdf -> format = pdf, sourceType = vault, fileUrl = /api/obsidian/vault/attachment', () => {
+      const res: Resource = {
+        id: 'res-pdf-vault',
+        topicId: 'topic-1',
+        title: 'Tài liệu PDF',
+        type: 'pdf',
+        filePath: '02_PDF_Source/guide.pdf',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const descriptor = resolveResourceReaderDescriptor(res);
+      expect(descriptor).toBeDefined();
+      expect(descriptor.canOpenInReader).toBe(true);
+      expect(descriptor.format).toBe('pdf');
+      expect(descriptor.sourceType).toBe('vault');
+      expect(descriptor.fileUrl).toBe('/api/obsidian/vault/attachment?path=02_PDF_Source%2Fguide.pdf');
+    });
+
+    it('5.4. Resource type = article với Web URL -> canOpenInReader = false (fallback sang viewer)', () => {
+      const res: Resource = {
+        id: 'res-web-article',
+        topicId: 'topic-1',
+        title: 'Bài viết Web',
+        type: 'article',
+        url: 'https://suttacentral.net/dn22',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const descriptor = resolveResourceReaderDescriptor(res);
+      expect(descriptor).toBeDefined();
+      expect(descriptor.canOpenInReader).toBe(false);
+    });
+
+    it('5.5. Resource có tệp nhị phân không được hỗ trợ (.zip) -> canOpenInReader = false', () => {
+      const res: Resource = {
+        id: 'res-zip',
+        topicId: 'topic-1',
+        title: 'Tài liệu Zip',
+        type: 'book',
+        filePath: 'archives/bundle.zip',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const descriptor = resolveResourceReaderDescriptor(res);
+      expect(descriptor).toBeDefined();
+      expect(descriptor.canOpenInReader).toBe(false);
     });
   });
 });

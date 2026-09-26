@@ -20,7 +20,7 @@ import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
-import { resolveResourceOpenTarget } from '../../lib/resourceOpenResolver';
+import { resolveResourceOpenTarget, resolveResourceReaderDescriptor } from '../../lib/resourceOpenResolver';
 import { resolveReaderFileUrl } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
 
@@ -38,6 +38,7 @@ export function ResourcesManager() {
     format: string;
     fileUrl?: string;
     content?: string;
+    sourceType?: 'docs' | 'vault';
   } | null>(null);
   const [citingResource, setCitingResource] = useState<Resource | null>(null);
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -213,16 +214,14 @@ export function ResourcesManager() {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => {
-                      const fileTarget = resolveResourceOpenTarget(res);
-                      const rawTarget = fileTarget.targetUrl || res.filePath || res.url;
-                      const resolvedFileUrl = resolveReaderFileUrl(rawTarget);
-
-                      if (res.type === 'pdf' || res.type === 'book' || res.type === 'md' || (res.filePath && (res.filePath.endsWith('.pdf') || res.filePath.endsWith('.epub') || res.filePath.endsWith('.md')))) {
+                      const descriptor = resolveResourceReaderDescriptor(res);
+                      if (descriptor.canOpenInReader && descriptor.format && descriptor.fileUrl) {
                         setActiveReaderDoc({
-                          documentId: res.id,
-                          title: res.title,
-                          format: res.type === 'pdf' ? 'pdf' : res.type === 'book' || res.filePath?.endsWith('.epub') ? 'epub' : 'md',
-                          fileUrl: resolvedFileUrl,
+                          documentId: descriptor.documentId || res.id,
+                          title: descriptor.title || res.title,
+                          format: descriptor.format,
+                          fileUrl: descriptor.fileUrl,
+                          sourceType: descriptor.sourceType,
                         });
                       } else {
                         setViewingResource(res);
@@ -293,6 +292,7 @@ export function ResourcesManager() {
           format={activeReaderDoc.format}
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
+          sourceType={activeReaderDoc.sourceType}
           onClose={() => setActiveReaderDoc(null)}
         />
       )}
