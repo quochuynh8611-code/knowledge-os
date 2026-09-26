@@ -23,6 +23,7 @@ export interface UnifiedResearchReaderProps {
   format: 'epub' | 'md' | 'markdown' | string;
   fileUrl?: string;
   content?: string;
+  sourceType?: 'docs' | 'vault';
   initialPosition?: string;
   initialToc?: TocItem[];
   onPositionChange?: (locator: string) => void;
@@ -48,6 +49,7 @@ export function UnifiedResearchReader({
   format,
   fileUrl,
   content,
+  sourceType,
   initialPosition,
   initialToc,
   onPositionChange,
@@ -562,6 +564,7 @@ export function UnifiedResearchReader({
                   content={content}
                   fileUrl={fileUrl}
                   documentId={documentId}
+                  sourceType={sourceType}
                   initialHeadingId={targetHeadingId}
                   onTocGenerated={(items) => setTocItems(items)}
                   onPositionChange={handlePositionChanged}

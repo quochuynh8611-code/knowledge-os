@@ -16,6 +16,7 @@ export interface MarkdownReaderAdapterProps {
   content?: string;
   fileUrl?: string;
   documentId: string;
+  sourceType?: 'docs' | 'vault';
   initialHeadingId?: string;
   onTocGenerated?: (items: TocItem[]) => void;
   onPositionChange?: (headingId: string) => void;
@@ -58,6 +59,7 @@ export function MarkdownReaderAdapter({
   content = '',
   fileUrl,
   documentId,
+  sourceType,
   initialHeadingId,
   onTocGenerated,
   onPositionChange,
@@ -128,11 +130,12 @@ export function MarkdownReaderAdapter({
   const tocItems = useMemo(() => extractMarkdownToc(activeContent), [activeContent]);
 
   const isDocsSource = useMemo(() => {
-    if (fileUrl && fileUrl.includes('/api/docs')) return true;
+    if (sourceType) return sourceType === 'docs';
+    if (fileUrl && (fileUrl.includes('/api/docs') || fileUrl.includes('/docs/'))) return true;
     if (documentId && (documentId.startsWith('docs/') || documentId.endsWith('.feature'))) return true;
     if (documentId && documentId.startsWith('vault:')) return false;
     return false;
-  }, [fileUrl, documentId]);
+  }, [fileUrl, documentId, sourceType]);
 
   const effectiveDocPath = useMemo(() => {
     if (fileUrl && fileUrl.includes('path=')) {

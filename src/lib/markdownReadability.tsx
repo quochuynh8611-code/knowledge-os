@@ -487,9 +487,12 @@ export function resolveAttachmentUrl(
   const isDocsSource =
     sourceType === 'docs' ||
     (sourceType !== 'vault' &&
-      (docPath?.startsWith('docs/') ||
-        docPath?.endsWith('.feature') ||
-        (docPath && !docPath.startsWith('vault:'))));
+      Boolean(
+        docPath &&
+          (docPath.startsWith('docs/') ||
+            docPath.startsWith('/docs/') ||
+            docPath.endsWith('.feature'))
+      ));
 
   // Clean relative path separators
   let cleanRel = trimmed.replace(/\\/g, '/');

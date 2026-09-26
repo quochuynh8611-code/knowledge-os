@@ -88,6 +88,7 @@ export function Navbar({
     format: string;
     fileUrl?: string;
     content?: string;
+    sourceType?: 'docs' | 'vault';
     initialPosition?: string;
   } | null>(null);
   const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
@@ -433,6 +434,7 @@ export function Navbar({
                   documentId: `vault:${filePath}`,
                   title: fileName.replace(/\.epub$/i, ""),
                   format: "epub",
+                  sourceType: "vault",
                   fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
                 });
                 return;
@@ -442,6 +444,7 @@ export function Navbar({
                   documentId: `vault:${filePath}`,
                   title: fileName.replace(/\.pdf$/i, ""),
                   format: "pdf",
+                  sourceType: "vault",
                   fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
                 });
                 return;
@@ -451,6 +454,7 @@ export function Navbar({
                 documentId: `vault:${filePath}`,
                 title: fileName.replace(/\.md$/i, ""),
                 format: "md",
+                sourceType: "vault",
                 fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
               });
             }}
@@ -540,6 +544,7 @@ export function Navbar({
           format={activeReaderDoc.format}
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
+          sourceType={activeReaderDoc.sourceType}
           initialPosition={activeReaderDoc.initialPosition}
           onNavigateToDocument={(target) => {
             setActiveReaderDoc({
