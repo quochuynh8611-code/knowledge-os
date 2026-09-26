@@ -122,4 +122,44 @@ describe("Phase P12.3: In-App Docs Backend API & Path Security Contract", () => 
       expect(res.body).toHaveProperty("error");
     });
   });
+
+  describe("4. GET /api/docs/raw - Streaming Binary Assets & Images", () => {
+    it("4.1. streams image asset with correct MIME type and cache header", async () => {
+      const app = express();
+      app.use("/api", createDocsRouter(docsRoot));
+
+      const res = await request(app)
+        .get("/api/docs/raw")
+        .query({ path: "assets/screenshots/ss-01-dashboard-overview.png" });
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toBe("image/png");
+      expect(res.headers["cache-control"]).toContain("public");
+    });
+
+    it("4.2. blocks path traversal on /api/docs/raw", async () => {
+      const app = express();
+      app.use("/api", createDocsRouter(docsRoot));
+
+      const res = await request(app)
+        .get("/api/docs/raw")
+        .query({ path: "../../package.json" });
+
+      expect([400, 403]).toContain(res.status);
+    });
+  });
+
+  describe("5. Recursive Folder Breadth & Dynamic Categories", () => {
+    it("5.1. scans nested subdirectories (e.g. drafts/, releases/, test-plans/)", async () => {
+      const app = express();
+      app.use("/api", createDocsRouter(docsRoot));
+
+      const res = await request(app).get("/api/docs");
+      expect(res.status).toBe(200);
+
+      const categories = Object.keys(res.body.categories);
+      // Confirms breadth is not limited to 4 hardcoded categories
+      expect(categories.length).toBeGreaterThan(3);
+    });
+  });
 });

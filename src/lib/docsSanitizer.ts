@@ -26,9 +26,24 @@ export function sanitizeDocsPath(docsRoot: string, userPath: string): string | n
     return null;
   }
 
-  // Allowed file extensions: markdown (.md), gherkin (.feature), and books (.epub)
+  // Allowed file extensions: markdown (.md, .markdown), gherkin (.feature), books (.epub), and image attachments (.png, .jpg, .jpeg, .gif, .webp, .svg, .bmp, .ico)
   const ext = path.extname(resolvedTarget).toLowerCase();
-  if (ext !== ".md" && ext !== ".feature" && ext !== ".epub") {
+  const ALLOWED_EXTENSIONS = new Set([
+    ".md",
+    ".markdown",
+    ".feature",
+    ".epub",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".svg",
+    ".bmp",
+    ".ico",
+  ]);
+
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
     return null;
   }
 

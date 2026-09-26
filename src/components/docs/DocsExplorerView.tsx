@@ -19,6 +19,7 @@ import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
 import { globalReadingPositionStore } from "../../lib/readingPositionUnified";
+import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
 export interface DocItem {
   id: string;
@@ -59,6 +60,7 @@ export function DocsExplorerView({
     format: string;
     fileUrl?: string;
     content?: string;
+    sourceType?: 'docs' | 'vault';
   } | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
 
@@ -108,6 +110,7 @@ export function DocsExplorerView({
         documentId: doc.id || doc.relativePath,
         title: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
         format: "epub",
+        sourceType: "docs",
         fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
       });
       return;
@@ -118,6 +121,7 @@ export function DocsExplorerView({
         documentId: doc.id || doc.relativePath,
         title: doc.title,
         format: "pdf",
+        sourceType: "docs",
         fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
       });
       return;
@@ -135,6 +139,7 @@ export function DocsExplorerView({
         documentId: `vault:${filePath}`,
         title: fileName.replace(/\.epub$/i, ""),
         format: "epub",
+        sourceType: "vault",
         fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
       });
     } else if (isPdf) {
@@ -142,6 +147,7 @@ export function DocsExplorerView({
         documentId: `vault:${filePath}`,
         title: fileName.replace(/\.pdf$/i, ""),
         format: "pdf",
+        sourceType: "vault",
         fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
       });
     } else {
@@ -149,6 +155,7 @@ export function DocsExplorerView({
         documentId: `vault:${filePath}`,
         title: fileName.replace(/\.md$/i, ""),
         format: "md",
+        sourceType: "vault",
         fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
       });
     }
@@ -246,6 +253,44 @@ export function DocsExplorerView({
       );
     });
   }, [docs, getDocFormat]);
+
+  const dynamicCategories = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const doc of docs) {
+      if (doc.category) {
+        counts[doc.category] = (counts[doc.category] || 0) + 1;
+      }
+    }
+    const friendlyLabels: Record<string, string> = {
+      adr: "ADRs",
+      specs: "Specs",
+      gherkin: "Gherkin",
+      books: "Sách",
+      guides: "Hướng dẫn",
+      drafts: "Bản nháp",
+      releases: "Releases",
+      "test-plans": "Test Plans",
+      runbooks: "Runbooks",
+      sop: "SOP",
+    };
+    const catKeys = Object.keys(counts).sort((a, b) => {
+      const order = ["adr", "specs", "gherkin", "books", "guides", "drafts", "releases", "test-plans", "runbooks", "sop"];
+      const idxA = order.indexOf(a);
+      const idxB = order.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return [
+      { id: "all", label: `Tất Cả (${docs.length})` },
+      ...catKeys.map((cat) => ({
+        id: cat,
+        label: friendlyLabels[cat] || cat.toUpperCase(),
+      })),
+    ];
+  }, [docs]);
 
   const handleCopyContent = async () => {
     if (!selectedDoc?.content) return;
@@ -384,13 +429,7 @@ export function DocsExplorerView({
               aria-label="Bộ lọc danh mục tài liệu"
               className="flex flex-wrap gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-xl"
             >
-              {[
-                { id: "all", label: `Tất Cả (${docs.length})` },
-                { id: "adr", label: "ADRs" },
-                { id: "specs", label: "Specs" },
-                { id: "gherkin", label: "Gherkin" },
-                { id: "books", label: "Sách" },
-              ].map((tab) => (
+              {dynamicCategories.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setSelectedCategory(tab.id)}
@@ -630,10 +669,13 @@ export function DocsExplorerView({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
+                      const sanitizedRelative = selectedDoc.relativePath.replace(/^\/+/, "");
                       setActiveReaderDoc({
                         documentId: selectedDoc.relativePath,
                         title: selectedDoc.title,
                         format: 'md',
+                        sourceType: 'docs',
+                        fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
                         content: selectedDoc.content,
                       });
                     }}
@@ -663,9 +705,13 @@ export function DocsExplorerView({
                 </div>
               </div>
 
-              {/* Raw / Formatted Markdown Reader Content */}
-              <div className="prose prose-stone dark:prose-invert max-w-none text-xs text-stone-800 dark:text-stone-200 leading-relaxed font-sans whitespace-pre-wrap bg-stone-50 dark:bg-stone-850 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700/80 overflow-x-auto">
-                {selectedDoc.content}
+              {/* Formatted Markdown Reader Content */}
+              <div className="prose prose-stone dark:prose-invert max-w-none text-xs text-stone-800 dark:text-stone-200 leading-relaxed font-sans bg-stone-50/50 dark:bg-stone-850/50 p-4 sm:p-6 rounded-xl border border-stone-200/80 dark:border-stone-700/80 overflow-x-auto">
+                <MarkdownReadabilityRenderer
+                  content={selectedDoc.content}
+                  docPath={selectedDoc.relativePath}
+                  sourceType="docs"
+                />
               </div>
             </div>
           ) : isEpubOnly ? (
@@ -769,6 +815,7 @@ export function DocsExplorerView({
           format={activeReaderDoc.format}
           fileUrl={activeReaderDoc.fileUrl}
           content={activeReaderDoc.content}
+          sourceType={activeReaderDoc.sourceType}
           onClose={() => setActiveReaderDoc(null)}
         />
       )}

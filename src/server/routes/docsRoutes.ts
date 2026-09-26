@@ -6,7 +6,7 @@ import { sanitizeDocsPath } from "../../lib/docsSanitizer";
 export interface DocMetadata {
   id: string;
   title: string;
-  category: "adr" | "specs" | "gherkin" | "runbooks" | "guides" | "books";
+  category: "adr" | "specs" | "gherkin" | "runbooks" | "guides" | "books" | string;
   relativePath: string;
   status?: string;
   sizeBytes: number;
@@ -19,8 +19,37 @@ export interface DocsListResponse {
   documents: DocMetadata[];
 }
 
+const FORBIDDEN_DIRS = new Set([
+  ".git",
+  ".obsidian",
+  ".trash",
+  "node_modules",
+  ".next",
+  "dist",
+  "build",
+]);
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".svg": "image/svg+xml",
+  ".bmp": "image/bmp",
+  ".ico": "image/x-icon",
+};
+
+function getDocMimeType(ext: string): string {
+  if (ext === ".epub") return "application/epub+zip";
+  if (ext === ".md" || ext === ".markdown") return "text/markdown; charset=utf-8";
+  if (ext === ".feature") return "text/plain; charset=utf-8";
+  if (IMAGE_MIME_TYPES[ext]) return IMAGE_MIME_TYPES[ext];
+  return "application/octet-stream";
+}
+
 function parseDocHeader(content: string, filename: string): { title: string; status?: string } {
-  let title = filename.replace(/\.(md|feature|epub)$/i, "");
+  let title = filename.replace(/\.(md|markdown|feature|epub)$/i, "");
   let status: string | undefined = undefined;
 
   if (filename.toLowerCase().endsWith(".epub")) {
@@ -30,7 +59,7 @@ function parseDocHeader(content: string, filename: string): { title: string; sta
   const lines = content.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!title || title === filename.replace(/\.(md|feature|epub)$/i, "")) {
+    if (!title || title === filename.replace(/\.(md|markdown|feature|epub)$/i, "")) {
       if (trimmed.startsWith("# ")) {
         title = trimmed.replace(/^#\s+/, "").trim();
       } else if (trimmed.startsWith("Feature: ")) {
@@ -48,54 +77,74 @@ function parseDocHeader(content: string, filename: string): { title: string; sta
   return { title, status };
 }
 
-function collectDocsFromDirectory(docsRoot: string): DocMetadata[] {
+function deriveCategory(relativePath: string): string {
+  const parts = relativePath.split(/[/\\]/);
+  if (parts.length > 1) {
+    const topFolder = parts[0].toLowerCase();
+    return topFolder;
+  }
+  return "guides";
+}
+
+function collectDocsFromDirectory(docsRoot: string, currentRelDir = "", depth = 0): DocMetadata[] {
   const documents: DocMetadata[] = [];
-  if (!fs.existsSync(docsRoot)) return documents;
+  if (!fs.existsSync(docsRoot) || depth > 5) return documents;
 
-  const subdirs: Array<{ dir: string; category: DocMetadata["category"] }> = [
-    { dir: "adr", category: "adr" },
-    { dir: "specs", category: "specs" },
-    { dir: "gherkin", category: "gherkin" },
-    { dir: "runbooks", category: "runbooks" },
-    { dir: "books", category: "books" },
-    { dir: "", category: "guides" },
-  ];
+  const currentDir = currentRelDir ? path.join(docsRoot, currentRelDir) : docsRoot;
+  if (!fs.existsSync(currentDir)) return documents;
 
-  for (const { dir, category } of subdirs) {
-    const targetDir = dir ? path.join(docsRoot, dir) : docsRoot;
-    if (!fs.existsSync(targetDir)) continue;
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(currentDir, { withFileTypes: true });
+  } catch {
+    return documents;
+  }
 
-    const entries = fs.readdirSync(targetDir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory()) continue;
-      const ext = path.extname(entry.name).toLowerCase();
-      if (ext !== ".md" && ext !== ".feature" && ext !== ".epub") continue;
+  for (const entry of entries) {
+    if (entry.name.startsWith(".") || FORBIDDEN_DIRS.has(entry.name.toLowerCase())) {
+      continue;
+    }
 
-      const filePath = path.join(targetDir, entry.name);
-      const relativePath = dir ? `${dir}/${entry.name}` : entry.name;
-      const stat = fs.statSync(filePath);
+    const relPath = currentRelDir ? `${currentRelDir}/${entry.name}` : entry.name;
+    const fullPath = path.join(currentDir, entry.name);
 
+    if (entry.isDirectory()) {
+      const subDocs = collectDocsFromDirectory(docsRoot, relPath, depth + 1);
+      documents.push(...subDocs);
+      continue;
+    }
+
+    const ext = path.extname(entry.name).toLowerCase();
+    if (ext !== ".md" && ext !== ".markdown" && ext !== ".feature" && ext !== ".epub") {
+      continue;
+    }
+
+    try {
+      const stat = fs.statSync(fullPath);
       let content = "";
       if (ext !== ".epub") {
         try {
-          content = fs.readFileSync(filePath, "utf8");
+          content = fs.readFileSync(fullPath, "utf8");
         } catch {
           // Fallback on read failure
         }
       }
 
       const { title, status } = parseDocHeader(content, entry.name);
-      const id = entry.name.replace(/\.(md|feature|epub)$/i, "").toLowerCase();
+      const id = relPath.replace(/\.(md|markdown|feature|epub)$/i, "").toLowerCase();
+      const category = deriveCategory(relPath);
 
       documents.push({
         id,
         title,
         category,
-        relativePath,
+        relativePath: relPath.replace(/\\/g, "/"),
         status: status || (category === "specs" ? "SPEC" : category === "gherkin" ? "FEATURE" : category === "books" ? "EPUB" : "GUIDE"),
         sizeBytes: stat.size,
         lastModified: stat.mtime.toISOString(),
       });
+    } catch {
+      continue;
     }
   }
 
@@ -119,15 +168,7 @@ export function createDocsRouter(docsDir?: string): Router {
         ? allDocs.filter((d) => d.category === requestedCategory)
         : allDocs;
 
-      const categoriesCount: Record<string, number> = {
-        adr: 0,
-        specs: 0,
-        gherkin: 0,
-        runbooks: 0,
-        guides: 0,
-        books: 0,
-      };
-
+      const categoriesCount: Record<string, number> = {};
       for (const doc of allDocs) {
         categoriesCount[doc.category] = (categoriesCount[doc.category] || 0) + 1;
       }
@@ -144,7 +185,7 @@ export function createDocsRouter(docsDir?: string): Router {
     }
   });
 
-  // GET /docs/raw?path=... - Stream raw binary document content (e.g. .epub)
+  // GET /docs/raw?path=... - Stream raw binary document content (e.g. .epub, images)
   router.get("/docs/raw", (req: Request, res: Response) => {
     const rawPath = req.query.path as string | undefined;
 
@@ -172,7 +213,7 @@ export function createDocsRouter(docsDir?: string): Router {
     try {
       const stat = fs.statSync(sanitized);
       const ext = path.extname(sanitized).toLowerCase();
-      const mimeType = ext === ".epub" ? "application/epub+zip" : ext === ".md" ? "text/markdown; charset=utf-8" : "application/octet-stream";
+      const mimeType = getDocMimeType(ext);
 
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Length", stat.size);
@@ -230,12 +271,7 @@ export function createDocsRouter(docsDir?: string): Router {
       const filename = path.basename(sanitized);
       const { title, status } = parseDocHeader(content, filename);
 
-      const categoryPart = rawPath.split("/")[0];
-      const category: DocMetadata["category"] =
-        categoryPart === "adr" || categoryPart === "specs" || categoryPart === "gherkin" || categoryPart === "runbooks" || categoryPart === "books"
-          ? categoryPart
-          : "guides";
-
+      const category = deriveCategory(rawPath);
       const id = filename.replace(/\.(md|feature|epub)$/i, "").toLowerCase();
 
       res.status(200).json({
