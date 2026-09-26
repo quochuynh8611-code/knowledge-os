@@ -20,6 +20,7 @@ export interface PdfReaderAdapterProps {
   className?: string;
   initialToc?: TocItem[];
   onTocGenerated?: (items: TocItem[]) => void;
+  onEditResource?: () => void;
 }
 
 export function isLocalFilesystemPath(url?: string): boolean {
@@ -44,6 +45,7 @@ export function PdfReaderAdapter({
   className = '',
   initialToc,
   onTocGenerated,
+  onEditResource,
 }: PdfReaderAdapterProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [copiedPath, setCopiedPath] = useState<boolean>(false);
@@ -282,6 +284,12 @@ export function PdfReaderAdapter({
   }
 
   if (loadError) {
+    const isVaultMissing =
+      errorMessage.includes('Vault') ||
+      errorMessage.includes('FILE_NOT_FOUND') ||
+      errorMessage.includes('không khả dụng') ||
+      errorMessage.includes('trống');
+
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-50 dark:bg-stone-900/50 rounded-2xl border border-stone-200 dark:border-stone-800">
         <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 rounded-2xl flex items-center justify-center border border-rose-200 dark:border-rose-800">
@@ -291,18 +299,33 @@ export function PdfReaderAdapter({
           <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
             Không thể hiển thị tài liệu PDF này
           </h3>
-          <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
+          <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm leading-relaxed">
             {errorMessage || 'Tệp PDF có thể bị hỏng hoặc liên kết tài liệu không còn khả dụng.'}
           </p>
+          {isVaultMissing && (
+            <p className="text-[11px] text-amber-800 dark:text-amber-300 max-w-md pt-1 leading-relaxed">
+              * Gợi ý: Đối với tài liệu trong thư mục con của Vault, vui lòng chỉnh sửa đường dẫn chuẩn (ví dụ: <code className="font-mono font-semibold">02_PDF_Source/04_Thien_Hoc/ten_file.pdf</code>) hoặc tải tệp trực tiếp lên hệ thống.
+            </p>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={validateUrl}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Thử lại</span>
-        </button>
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={validateUrl}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Thử lại</span>
+          </button>
+          <button
+            type="button"
+            onClick={onEditResource}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+          >
+            <PenLine className="w-3.5 h-3.5" />
+            <span>Chỉnh sửa tài liệu</span>
+          </button>
+        </div>
       </div>
     );
   }

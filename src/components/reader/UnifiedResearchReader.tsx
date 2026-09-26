@@ -40,6 +40,7 @@ export interface UnifiedResearchReaderProps {
     initialPosition?: string;
   }) => void;
   onClose: () => void;
+  onEditResource?: () => void;
   className?: string;
 }
 
@@ -55,6 +56,7 @@ export function UnifiedResearchReader({
   onPositionChange,
   onNavigateToDocument,
   onClose,
+  onEditResource,
   className = '',
 }: UnifiedResearchReaderProps) {
   const normalizedFormat = (format || 'md').toLowerCase();
@@ -581,6 +583,7 @@ export function UnifiedResearchReader({
                 initialToc={initialToc}
                 onTocGenerated={(items) => setTocItems(items)}
                 onTextSelection={handleTextSelection}
+                onEditResource={onEditResource}
               />
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
