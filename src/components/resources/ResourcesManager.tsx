@@ -31,8 +31,10 @@ export function ResourcesManager() {
   const [topicFilter, setTopicFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
+    resourceId?: string;
     documentId: string;
     title: string;
     format: string;
@@ -217,6 +219,7 @@ export function ResourcesManager() {
                       const descriptor = resolveResourceReaderDescriptor(res);
                       if (descriptor.canOpenInReader && descriptor.format && descriptor.fileUrl) {
                         setActiveReaderDoc({
+                          resourceId: res.id,
                           documentId: descriptor.documentId || res.id,
                           title: descriptor.title || res.title,
                           format: descriptor.format,
@@ -279,7 +282,14 @@ export function ResourcesManager() {
       </div>
 
       {/* Modals */}
-      <ResourceFormModal isOpen={showAddModal} onClose={() => setShowAddModal(false)} />
+      <ResourceFormModal
+        isOpen={showAddModal || !!editingResource}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingResource(null);
+        }}
+        initialResource={editingResource}
+      />
       <ResourceViewerModal resource={viewingResource} onClose={() => setViewingResource(null)} />
       <CitationModal isOpen={!!citingResource} onClose={() => setCitingResource(null)} resource={citingResource} />
       <BatchCitationModal isOpen={showBatchModal} onClose={() => setShowBatchModal(false)} resources={filteredResources} />
@@ -294,6 +304,15 @@ export function ResourcesManager() {
           content={activeReaderDoc.content}
           sourceType={activeReaderDoc.sourceType}
           onClose={() => setActiveReaderDoc(null)}
+          onEditResource={() => {
+            const targetResource = activeReaderDoc.resourceId
+              ? resources.find((r) => r.id === activeReaderDoc.resourceId)
+              : resources.find((r) => r.id === activeReaderDoc.documentId);
+            setActiveReaderDoc(null);
+            if (targetResource) {
+              setEditingResource(targetResource);
+            }
+          }}
         />
       )}
     </div>
