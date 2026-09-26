@@ -6,6 +6,7 @@ export interface ActiveReaderDocument {
   format: 'pdf' | 'epub' | 'md' | string;
   fileUrl?: string;
   content?: string;
+  sourceType?: 'docs' | 'vault';
   initialPosition?: string;
 }
 
@@ -22,11 +23,13 @@ export interface DocumentMatchContext {
  * 1. Web URLs & Blobs (http://, https://, blob:) -> untouched
  * 2. Pre-resolved API endpoints (/api/...) -> untouched
  * 3. Docs repository paths (docs/books/..., /docs/...) -> /api/docs/raw?path=${encodeURIComponent(cleanDocsPath)}
- * 4. Obsidian Vault paths (05_EPUB_Export/..., attachments/..., 02_PDF_Source/..., etc.) -> /api/obsidian/vault/attachment?path=${encodeURIComponent(relVaultPath)}
- * 5. Absolute paths containing Obsidian Vault root or folder -> extracts relative vault path -> /api/obsidian/vault/attachment?path=...
- * 6. Bare filenames:
+ * 4. Obsidian Vault Markdown (.md) -> /api/obsidian/vault/file?path=${encodeURIComponent(relVaultPath)}
+ * 5. Obsidian Vault Attachments (.epub, .pdf, images, etc.) -> /api/obsidian/vault/attachment?path=${encodeURIComponent(relVaultPath)}
+ * 6. Absolute paths containing Obsidian Vault root or folder -> extracts relative vault path
+ * 7. Bare filenames:
  *    - .epub -> /api/obsidian/vault/attachment?path=05_EPUB_Export%2F${encodeURIComponent(filename)} (Obsidian EPUB export convention)
  *    - .pdf -> /api/obsidian/vault/attachment?path=${encodeURIComponent(filename)}
+ *    - .md -> /api/obsidian/vault/file?path=${encodeURIComponent(filename)}
  */
 export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
   if (!rawUrlOrPath) return '';
@@ -45,6 +48,8 @@ export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
 
   // Normalize backslashes to forward slashes
   const normalized = trimmed.replace(/\\/g, '/');
+  const lower = normalized.toLowerCase();
+  const isMarkdown = lower.endsWith('.md');
 
   // 2. Docs repo path (e.g. "docs/books/sample.epub" or "/docs/books/sample.epub")
   if (normalized.startsWith('docs/') || normalized.startsWith('/docs/')) {
@@ -58,46 +63,57 @@ export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
   }
 
   // 3. Absolute path containing Obsidian Vault or 05_EPUB_Export
-  // e.g. /Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian/05_EPUB_Export/sample.epub
-  // or C:/Users/.../Obsidian/Vault/05_EPUB_Export/sample.epub
   if (normalized.includes('/05_EPUB_Export/')) {
     const relPart = normalized.slice(normalized.indexOf('05_EPUB_Export/'));
-    return `/api/obsidian/vault/attachment?path=${encodeURIComponent(relPart)}`;
+    return isMarkdown
+      ? `/api/obsidian/vault/file?path=${encodeURIComponent(relPart)}`
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(relPart)}`;
   }
 
   if (normalized.includes('/Obsidian/')) {
     // Extract part after vault name: /Obsidian/<vaultName>/<relPart>
     const match = normalized.match(/\/Obsidian\/[^/]+\/(.+)$/i);
     if (match && match[1]) {
-      return `/api/obsidian/vault/attachment?path=${encodeURIComponent(match[1])}`;
+      return isMarkdown
+        ? `/api/obsidian/vault/file?path=${encodeURIComponent(match[1])}`
+        : `/api/obsidian/vault/attachment?path=${encodeURIComponent(match[1])}`;
     }
   }
 
-  // 4. Obsidian Vault Relative Path (e.g. "05_EPUB_Export/sample.epub", "attachments/sample.pdf")
+  // 4. Obsidian Vault Relative Path (e.g. "05_EPUB_Export/sample.epub", "attachments/sample.pdf", "01_Notes/note.md")
   if (
     normalized.startsWith('05_EPUB_Export/') ||
     normalized.startsWith('attachments/') ||
     normalized.startsWith('02_PDF_Source/') ||
     normalized.startsWith('01_Books/') ||
+    normalized.startsWith('01_Notes/') ||
+    normalized.startsWith('000-Dashboard/') ||
     normalized.startsWith('03_Notes/')
   ) {
     const cleanRel = normalized.replace(/^\/+/, '');
-    return `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanRel)}`;
+    return isMarkdown
+      ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanRel)}`
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanRel)}`;
   }
 
   // 5. Bare filename handling
   const isBare = !normalized.includes('/');
   if (isBare) {
-    if (normalized.toLowerCase().endsWith('.epub')) {
+    if (isMarkdown) {
+      return `/api/obsidian/vault/file?path=${encodeURIComponent(normalized)}`;
+    }
+    if (lower.endsWith('.epub')) {
       // Convention: Knowledge OS Obsidian EPUB export folder
       return `/api/obsidian/vault/attachment?path=${encodeURIComponent('05_EPUB_Export/' + normalized)}`;
     }
     return `/api/obsidian/vault/attachment?path=${encodeURIComponent(normalized)}`;
   }
 
-  // 6. Generic relative path fallback -> vault attachment endpoint
+  // 6. Generic relative path fallback -> vault file for .md, attachment for binaries
   const cleanFallback = normalized.replace(/^\/+/, '');
-  return `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanFallback)}`;
+  return isMarkdown
+    ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanFallback)}`
+    : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanFallback)}`;
 }
 
 /**
@@ -343,16 +359,31 @@ export function resolveArchiveLinkToReaderDoc(
     normalizedDocId.split('/').pop()?.replace(/\.[^.]+$/, '') ||
     'Tài liệu nghiên cứu';
 
+  const rawTarget = (matchedResource?.filePath && matchedResource.filePath.trim())
+    ? matchedResource.filePath.trim()
+    : (matchedResource?.url && matchedResource.url.trim())
+    ? matchedResource.url.trim()
+    : normalizedDocId;
+
+  const cleanLower = rawTarget.toLowerCase();
+
   const isPdf =
+    cleanLower.endsWith('.pdf') ||
     matchedResource?.type === 'pdf' ||
-    Boolean(matchedResource?.filePath?.toLowerCase().endsWith('.pdf')) ||
     normalizedDocId.toLowerCase().endsWith('.pdf');
 
   const isEpub =
-    Boolean(matchedResource?.filePath?.toLowerCase().endsWith('.epub')) ||
+    cleanLower.endsWith('.epub') ||
+    (matchedResource?.type === 'epub') ||
     normalizedDocId.toLowerCase().endsWith('.epub');
 
   const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
+
+  const isDocs =
+    cleanLower.startsWith('docs/') ||
+    cleanLower.startsWith('/docs/') ||
+    cleanLower.endsWith('.feature');
+  const sourceType: 'docs' | 'vault' = isDocs ? 'docs' : 'vault';
 
   const fileUrl = matchedResource?.filePath
     ? resolveReaderFileUrl(matchedResource.filePath)
@@ -365,6 +396,7 @@ export function resolveArchiveLinkToReaderDoc(
     title,
     format,
     fileUrl,
+    sourceType,
     initialPosition: locator,
   };
 }
@@ -458,6 +490,7 @@ export interface CitationResolutionResult {
     title: string;
     format: 'md' | 'epub' | 'pdf' | string;
     fileUrl?: string;
+    sourceType?: 'docs' | 'vault';
   } | null;
 }
 
@@ -482,6 +515,7 @@ export function resolveCitationTargetDocument(
     title?: string;
     format?: string;
     fileUrl?: string;
+    sourceType?: 'docs' | 'vault';
   } | null | undefined,
   resources: Resource[]
 ): CitationResolutionResult | null {
@@ -499,20 +533,37 @@ export function resolveCitationTargetDocument(
         title: activeDocContext.title || activeDocContext.documentId,
         format: activeDocContext.format || 'md',
         fileUrl: activeDocContext.fileUrl,
+        sourceType: activeDocContext.sourceType,
       },
     };
   }
 
   // Helper: build CitationResolutionResult for a matched resource
   const makeResult = (r: Resource): CitationResolutionResult => {
+    const rawTarget = (r.filePath && r.filePath.trim())
+      ? r.filePath.trim()
+      : (r.url && r.url.trim())
+      ? r.url.trim()
+      : '';
+    const cleanLower = rawTarget.toLowerCase();
+
     const isPdf =
-      r.type === 'pdf' ||
-      Boolean(r.filePath?.toLowerCase().endsWith('.pdf'));
+      cleanLower.endsWith('.pdf') ||
+      r.type === 'pdf';
+
     const isEpub =
-      Boolean(r.filePath?.toLowerCase().endsWith('.epub')) ||
-      (r.type === 'book' && !isPdf);
+      cleanLower.endsWith('.epub') ||
+      (r.type === 'epub' && !isPdf);
+
     const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
-    const fileUrl = r.filePath ? resolveReaderFileUrl(r.filePath) : undefined;
+    const fileUrl = rawTarget ? resolveReaderFileUrl(rawTarget) : undefined;
+
+    const isDocs =
+      cleanLower.startsWith('docs/') ||
+      cleanLower.startsWith('/docs/') ||
+      cleanLower.endsWith('.feature');
+    const sourceType: 'docs' | 'vault' = isDocs ? 'docs' : 'vault';
+
     return {
       isSameDocument: false,
       locator,
@@ -521,6 +572,7 @@ export function resolveCitationTargetDocument(
         title: r.title || r.id,
         format,
         fileUrl,
+        sourceType,
       },
     };
   };

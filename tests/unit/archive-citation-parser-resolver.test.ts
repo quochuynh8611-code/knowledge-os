@@ -159,5 +159,28 @@ describe('Phase 19 Suite A: Archive Citation Parser & 5-Tier Resolver Engine', (
       );
       expect(res).toBeNull();
     });
+
+    it('A2.7. Scenario A: Resource type = "book" but filePath is ".md" -> resolves format = "md", sourceType = "vault", fileUrl = /api/obsidian/vault/file', () => {
+      const bookMdResource: Resource = {
+        id: 'res-book-md-1',
+        topicId: 'topic-1',
+        title: 'Sách Vi Diệu Pháp',
+        type: 'book',
+        filePath: '000-Dashboard/Abhidharma.md',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const res = resolveCitationTargetDocument(
+        'res-book-md-1',
+        'heading-1',
+        activeDocContext,
+        [...sampleResources, bookMdResource]
+      );
+
+      expect(res).not.toBeNull();
+      expect(res?.document?.format).toBe('md');
+      expect(res?.document?.sourceType).toBe('vault');
+      expect(res?.document?.fileUrl).toBe('/api/obsidian/vault/file?path=000-Dashboard%2FAbhidharma.md');
+    });
   });
 });

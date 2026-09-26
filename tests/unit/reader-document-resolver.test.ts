@@ -45,7 +45,8 @@ describe('Phase R3C: Shared Reader Deep-Link Resolver Consolidation', () => {
         documentId: 'res-triet-hoc-1',
         title: 'Triết Học Khái Luận',
         format: 'md',
-        fileUrl: '/api/obsidian/vault/attachment?path=01_Notes%2Ftriet-hoc.md',
+        fileUrl: '/api/obsidian/vault/file?path=01_Notes%2Ftriet-hoc.md',
+        sourceType: 'vault',
         initialPosition: 'chuong-1-ban-the-luan',
       });
     });
@@ -62,6 +63,7 @@ describe('Phase R3C: Shared Reader Deep-Link Resolver Consolidation', () => {
         title: 'Giáo Trình Tâm Lý Học',
         format: 'epub',
         fileUrl: '/api/obsidian/vault/attachment?path=02_Sources%2Ftam-ly-hoc.epub',
+        sourceType: 'vault',
         initialPosition: 'cfi-loc-123',
       });
     });
@@ -78,6 +80,7 @@ describe('Phase R3C: Shared Reader Deep-Link Resolver Consolidation', () => {
         title: 'Sinh Học Phân Tử',
         format: 'pdf',
         fileUrl: 'https://archive.org/biology.pdf',
+        sourceType: 'vault',
         initialPosition: '42',
       });
     });
@@ -144,6 +147,26 @@ describe('Phase R3C: Shared Reader Deep-Link Resolver Consolidation', () => {
       expect(result.format).toBe('md');
       expect(result.fileUrl).toBeUndefined();
       expect(result.initialPosition).toBe('loc-1');
+    });
+
+    it('3.4. Scenario A: Resource type is "book" but filePath ends with ".md" -> resolves format as "md"', () => {
+      const bookMdResource: Resource = {
+        id: 'res-book-md-1',
+        topicId: 'topic-1',
+        title: 'Sách Vi Diệu Pháp',
+        type: 'book',
+        filePath: '000-Dashboard/Abhidharma.md',
+        createdAt: '2026-08-01T00:00:00Z',
+      };
+
+      const result = resolveArchiveLinkToReaderDoc(
+        'res-book-md-1',
+        'heading-1',
+        [bookMdResource]
+      );
+
+      expect(result.format).toBe('md');
+      expect(result.fileUrl).toBe('/api/obsidian/vault/file?path=000-Dashboard%2FAbhidharma.md');
     });
   });
 });
