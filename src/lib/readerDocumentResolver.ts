@@ -62,7 +62,25 @@ export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
     return `/api/docs/raw?path=${encodeURIComponent(normalized)}`;
   }
 
-  // 3. Absolute path containing Obsidian Vault or 05_EPUB_Export
+  // 3a. Handle explicit vault: prefix (e.g. "vault:phat-hoc:02_PDF_Source/guide.pdf" or "vault:02_PDF_Source/guide.pdf")
+  if (/^vault:/i.test(normalized)) {
+    const withoutPrefix = normalized.replace(/^vault:/i, '');
+    let explicitVaultId: string | undefined = undefined;
+    let pathPart = withoutPrefix;
+    const parts = withoutPrefix.split(':');
+    if (parts.length >= 2 && parts[0] && !parts[0].includes('/')) {
+      explicitVaultId = parts[0];
+      pathPart = parts.slice(1).join(':');
+    }
+    const cleanRel = pathPart.replace(/^\/+/, '');
+    const isMd = cleanRel.toLowerCase().endsWith('.md');
+    const vaultQuery = explicitVaultId ? `&vaultId=${encodeURIComponent(explicitVaultId)}` : '';
+    return isMd
+      ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanRel)}${vaultQuery}`
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanRel)}${vaultQuery}`;
+  }
+
+  // 3b. Absolute path containing Obsidian Vault or 05_EPUB_Export
   if (normalized.includes('/05_EPUB_Export/')) {
     const relPart = normalized.slice(normalized.indexOf('05_EPUB_Export/'));
     return isMarkdown

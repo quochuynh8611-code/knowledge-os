@@ -195,7 +195,7 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
       () => obsidianVaultManager.getActiveIndex()
     )
   );
-  app.use("/api", createObsidianAttachmentRouter(() => obsidianVaultManager.getActiveVaultRoot()));
+  app.use("/api", createObsidianAttachmentRouter(obsidianVaultManager));
   app.use("/api", createObsidianWatcherRouter(() => obsidianVaultManager.getActiveVaultRoot(), () => obsidianVaultManager.getActiveWatcher()));
 
   return app;

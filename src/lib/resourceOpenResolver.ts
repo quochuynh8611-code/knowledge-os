@@ -213,19 +213,35 @@ export function resolveResourceReaderDescriptor(
   }
 
   // 3. Chuẩn hóa đường dẫn tệp
-  const normalized = rawTarget.replace(/^file:\/\//i, '').replace(/\\/g, '/');
+  let normalized = rawTarget.replace(/^file:\/\//i, '').replace(/\\/g, '/');
+  let explicitVaultId: string | undefined = undefined;
+
+  // Hỗ trợ định dạng vault:<vaultId>:<relPath> hoặc vault:<relPath>
+  if (/^vault:/i.test(normalized)) {
+    const withoutPrefix = normalized.replace(/^vault:/i, '');
+    const parts = withoutPrefix.split(':');
+    if (parts.length >= 2 && parts[0] && !parts[0].includes('/')) {
+      explicitVaultId = parts[0];
+      normalized = parts.slice(1).join(':');
+    } else {
+      normalized = withoutPrefix;
+    }
+  }
+
   const cleanPath = normalized.replace(/^\/+/, '');
   const lower = cleanPath.toLowerCase();
 
   const isDocs = lower.startsWith('docs/') || lower.startsWith('/docs/') || lower.endsWith('.feature');
   const sourceType: 'docs' | 'vault' = isDocs ? 'docs' : 'vault';
+  const vaultQuery = explicitVaultId ? `&vaultId=${encodeURIComponent(explicitVaultId)}` : '';
+  const docIdPrefix = explicitVaultId ? `vault:${explicitVaultId}:` : 'vault:';
 
   // 4. Phân giải tệp Markdown (.md)
   if (lower.endsWith('.md')) {
     const fileUrl = isDocs
       ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
-      : `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`;
-    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+      : `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}${vaultQuery}`;
+    const documentId = isDocs ? cleanPath : `${docIdPrefix}${cleanPath}`;
 
     return {
       canOpenInReader: true,
@@ -241,8 +257,8 @@ export function resolveResourceReaderDescriptor(
   if (lower.endsWith('.epub')) {
     const fileUrl = isDocs
       ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
-      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
-    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}${vaultQuery}`;
+    const documentId = isDocs ? cleanPath : `${docIdPrefix}${cleanPath}`;
 
     return {
       canOpenInReader: true,
@@ -258,8 +274,8 @@ export function resolveResourceReaderDescriptor(
   if (lower.endsWith('.pdf')) {
     const fileUrl = isDocs
       ? `/api/docs/raw?path=${encodeURIComponent(cleanPath.replace(/^docs\//i, ''))}`
-      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
-    const documentId = isDocs ? cleanPath : `vault:${cleanPath}`;
+      : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}${vaultQuery}`;
+    const documentId = isDocs ? cleanPath : `${docIdPrefix}${cleanPath}`;
 
     return {
       canOpenInReader: true,
