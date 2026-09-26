@@ -105,9 +105,9 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         return;
       }
 
-      // 5. Check if document record already exists for this contentHash
-      let doc = await prisma.archivedDocument.findUnique({
-        where: { contentHash: saveResult.contentHash } as any,
+      // 5. Check if document record already exists for this contentHash (Deduplication)
+      let doc = await prisma.archivedDocument.findFirst({
+        where: { contentHash: saveResult.contentHash },
       });
 
       if (!doc) {
