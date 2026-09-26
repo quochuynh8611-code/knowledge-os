@@ -1241,3 +1241,58 @@ export class ApiDataRepository implements IDataRepository {
     return this.localFallback.getFlashcardProgress(filters);
   }
 }
+
+export interface ArchiveUploadResult {
+  success: boolean;
+  document: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    mimeType: string;
+    fileFormat: string;
+    contentHash: string;
+    storageRelPath: string;
+    createdAt?: string;
+  };
+}
+
+export async function uploadArchiveFile(options: {
+  file: File | Blob | ArrayBuffer | Uint8Array;
+  originalName: string;
+  fileFormat: 'pdf' | 'epub' | 'md' | string;
+  resourceId?: string;
+  apiBaseUrl?: string;
+}): Promise<ArchiveUploadResult> {
+  const { file, originalName, fileFormat, resourceId, apiBaseUrl = '/api' } = options;
+  const params = new URLSearchParams({
+    originalName,
+    fileFormat,
+  });
+  if (resourceId) {
+    params.set('resourceId', resourceId);
+  }
+
+  const endpoint = `${apiBaseUrl}/archive/upload?${params.toString()}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    let errorMsg = `HTTP ${response.status}: Tải lên tệp thất bại`;
+    try {
+      const errBody = await response.json();
+      if (errBody && errBody.message) {
+        errorMsg = errBody.message;
+      }
+    } catch {
+      // no json body
+    }
+    throw new Error(errorMsg);
+  }
+
+  return await response.json();
+}

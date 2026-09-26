@@ -46,6 +46,13 @@ export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
     return trimmed;
   }
 
+  // 1b. Archive Scheme (e.g. "archive://doc-123" or "archive://doc-123?loc=...")
+  if (trimmed.toLowerCase().startsWith('archive://')) {
+    const rawDocId = trimmed.slice(10).trim();
+    const cleanDocId = rawDocId.split('?')[0].trim();
+    return `/api/archive/file/${encodeURIComponent(cleanDocId)}`;
+  }
+
   // Normalize backslashes to forward slashes
   const normalized = trimmed.replace(/\\/g, '/');
   const lower = normalized.toLowerCase();
@@ -377,7 +384,9 @@ export function resolveArchiveLinkToReaderDoc(
     normalizedDocId.split('/').pop()?.replace(/\.[^.]+$/, '') ||
     'Tài liệu nghiên cứu';
 
-  const rawTarget = (matchedResource?.filePath && matchedResource.filePath.trim())
+  const rawTarget = (matchedResource?.openTarget && matchedResource.openTarget.trim())
+    ? matchedResource.openTarget.trim()
+    : (matchedResource?.filePath && matchedResource.filePath.trim())
     ? matchedResource.filePath.trim()
     : (matchedResource?.url && matchedResource.url.trim())
     ? matchedResource.url.trim()
@@ -403,7 +412,9 @@ export function resolveArchiveLinkToReaderDoc(
     cleanLower.endsWith('.feature');
   const sourceType: 'docs' | 'vault' = isDocs ? 'docs' : 'vault';
 
-  const fileUrl = matchedResource?.filePath
+  const fileUrl = matchedResource?.openTarget
+    ? resolveReaderFileUrl(matchedResource.openTarget)
+    : matchedResource?.filePath
     ? resolveReaderFileUrl(matchedResource.filePath)
     : matchedResource?.url
     ? resolveReaderFileUrl(matchedResource.url)
@@ -558,7 +569,9 @@ export function resolveCitationTargetDocument(
 
   // Helper: build CitationResolutionResult for a matched resource
   const makeResult = (r: Resource): CitationResolutionResult => {
-    const rawTarget = (r.filePath && r.filePath.trim())
+    const rawTarget = (r.openTarget && r.openTarget.trim())
+      ? r.openTarget.trim()
+      : (r.filePath && r.filePath.trim())
       ? r.filePath.trim()
       : (r.url && r.url.trim())
       ? r.url.trim()

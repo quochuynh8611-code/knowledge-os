@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useData } from '../../context/DataContext';
 import { Resource, ResourceType } from '../../types';
-import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, FileText, Book, Video, Headphones, Globe, Link, FolderOpen, AlertTriangle, AlertCircle, Loader2 } from 'lucide-react';
 import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
 import { safeGetLocalStorageItem } from '../../lib/storage';
+import { uploadArchiveFile } from '../../services/dataRepository';
 
 interface ResourceFormModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
   const [sourceMode, setSourceMode] = useState<'web' | 'local'>('web');
   const [url, setUrl] = useState('');
   const [filePath, setFilePath] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [openTarget, setOpenTarget] = useState('');
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -31,6 +34,8 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
   useEffect(() => {
     setFormError(null);
+    setSelectedFile(null);
+    setIsUploading(false);
     if (initialResource) {
       setTopicId(initialResource.topicId);
       setTitle(initialResource.title);
@@ -88,6 +93,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFile(file);
     setFilePath(file.name);
     setFormError(null);
     const { detectedType, suggestedTitle } = detectTypeAndTitle(file.name);
@@ -101,7 +107,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -112,6 +118,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
     let finalUrl: string | undefined;
     let finalPath: string | undefined;
+    let finalOpenTarget: string | undefined = openTarget.trim() || undefined;
 
     if (sourceMode === 'web') {
       if (!url.trim() || url.trim() === 'https://') {
@@ -120,11 +127,45 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
       }
       finalUrl = url.trim();
     } else {
-      if (!filePath.trim()) {
+      if (!filePath.trim() && !selectedFile) {
         setFormError('Vui lòng nhập đường dẫn tệp cục bộ hợp lệ.');
         return;
       }
-      finalPath = normalizeFilePath(filePath);
+
+      if (selectedFile) {
+        setIsUploading(true);
+        try {
+          const ext = selectedFile.name.slice(selectedFile.name.lastIndexOf('.')).toLowerCase();
+          let fileFormat: 'pdf' | 'epub' | 'md' = 'pdf';
+          if (ext === '.epub') fileFormat = 'epub';
+          else if (ext === '.md' || ext === '.markdown') fileFormat = 'md';
+          else if (ext === '.pdf') fileFormat = 'pdf';
+          else if (type === 'book') fileFormat = 'epub';
+          else if (type === 'article') fileFormat = 'md';
+
+          const uploadRes = await uploadArchiveFile({
+            file: selectedFile,
+            originalName: selectedFile.name,
+            fileFormat,
+            resourceId: initialResource?.id,
+          });
+
+          if (!uploadRes.success || !uploadRes.document?.id) {
+            throw new Error('Upload không trả về ID tài liệu hợp lệ.');
+          }
+
+          finalOpenTarget = openTarget.trim() || `archive://${uploadRes.document.id}`;
+          finalPath = uploadRes.document.storageRelPath || normalizeFilePath(filePath);
+        } catch (uploadErr: any) {
+          setIsUploading(false);
+          setFormError(uploadErr.message || 'Lỗi khi tải tệp lên kho lưu trữ.');
+          return;
+        } finally {
+          setIsUploading(false);
+        }
+      } else {
+        finalPath = normalizeFilePath(filePath);
+      }
     }
 
     const currentTopic = topics.find((t) => t.id === topicId);
@@ -138,7 +179,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
         author: author.trim() || undefined,
         url: finalUrl,
         filePath: finalPath,
-        openTarget: openTarget.trim() || undefined,
+        openTarget: finalOpenTarget,
         notes: notes.trim() || undefined,
       });
     } else {
@@ -150,7 +191,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
         author: author.trim() || undefined,
         url: finalUrl,
         filePath: finalPath,
-        openTarget: openTarget.trim() || undefined,
+        openTarget: finalOpenTarget,
         notes: notes.trim() || undefined,
       });
     }
@@ -423,9 +464,13 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-sm font-medium rounded-xl shadow-xs transition"
+              disabled={isUploading}
+              className="px-5 py-2 bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl shadow-xs transition flex items-center gap-2"
             >
-              {initialResource ? 'Lưu Tài Liệu' : 'Thêm Tài Liệu'}
+              {isUploading && (
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
+              <span>{isUploading ? 'Đang tải lên...' : (initialResource ? 'Lưu Tài Liệu' : 'Thêm Tài Liệu')}</span>
             </button>
           </div>
         </form>

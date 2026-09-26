@@ -204,6 +204,31 @@ export function resolveResourceReaderDescriptor(
     };
   }
 
+  // 1a. Phân giải Local Archive URI (archive://{documentId})
+  if (rawTarget.toLowerCase().startsWith('archive://')) {
+    const docId = rawTarget.slice(10).split('?')[0].trim();
+    if (docId) {
+      let format: 'pdf' | 'epub' | 'md' = 'pdf';
+      const lowerPath = (resource.filePath || '').toLowerCase();
+      if (resource.type === 'book' || lowerPath.endsWith('.epub')) {
+        format = 'epub';
+      } else if (resource.type === 'article' || resource.type === 'md' || lowerPath.endsWith('.md')) {
+        format = 'md';
+      } else if (resource.type === 'pdf' || lowerPath.endsWith('.pdf')) {
+        format = 'pdf';
+      }
+
+      return {
+        canOpenInReader: true,
+        format,
+        documentId: docId,
+        title: resource.title,
+        fileUrl: `/api/archive/file/${encodeURIComponent(docId)}`,
+        sourceType: 'vault',
+      };
+    }
+  }
+
   // 2. Nếu là URL Web hoặc Custom app scheme -> mở qua Viewer/Browser ngoài
   if (/^(https?:|mailto:|obsidian:|zotero:|notion:|\w+:\/\/)/i.test(rawTarget) && !rawTarget.toLowerCase().startsWith('file://')) {
     return {
