@@ -229,6 +229,29 @@ export function resolveResourceReaderDescriptor(
     }
   }
 
+  // 1b. Phân giải Archive Content-Hash Storage Path
+  // Pattern: <type>/<2-char-prefix>/<sha256-hash>.<ext>
+  // Ví dụ: "epub/f0/f06dce...epub", "md/3e/3ef2ef...md", "pdf/ab/ab12...pdf"
+  // Các file này được lưu tại data/archive/ bởi upload pipeline,
+  // KHÔNG nằm trong Obsidian vault — phải route qua /api/archive/file/<hash>
+  {
+    const ARCHIVE_HASH_PATTERN = /^(md|epub|pdf)\/([a-f0-9]{2})\/([a-f0-9]{40,})\.(md|epub|pdf)$/i;
+    const archiveMatch = rawTarget.match(ARCHIVE_HASH_PATTERN);
+    if (archiveMatch) {
+      const contentHash = archiveMatch[3]; // hash without extension
+      const format = archiveMatch[4].toLowerCase() as 'md' | 'epub' | 'pdf';
+
+      return {
+        canOpenInReader: true,
+        format,
+        documentId: contentHash,
+        title: resource.title,
+        fileUrl: `/api/archive/file/${encodeURIComponent(contentHash)}`,
+        sourceType: 'vault',
+      };
+    }
+  }
+
   // 2. Nếu là URL Web hoặc Custom app scheme -> mở qua Viewer/Browser ngoài
   if (/^(https?:|mailto:|obsidian:|zotero:|notion:|\w+:\/\/)/i.test(rawTarget) && !rawTarget.toLowerCase().startsWith('file://')) {
     return {

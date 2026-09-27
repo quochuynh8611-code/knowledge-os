@@ -53,6 +53,16 @@ export function resolveReaderFileUrl(rawUrlOrPath?: string | null): string {
     return `/api/archive/file/${encodeURIComponent(cleanDocId)}`;
   }
 
+  // 1c. Archive Content-Hash Storage Path (e.g. "md/3e/<hash>.md", "epub/f0/<hash>.epub", "pdf/ab/<hash>.pdf")
+  {
+    const ARCHIVE_HASH_PATTERN = /^(md|epub|pdf)\/([a-f0-9]{2})\/([a-f0-9]{40,})\.(md|epub|pdf)$/i;
+    const archiveMatch = trimmed.match(ARCHIVE_HASH_PATTERN);
+    if (archiveMatch) {
+      const contentHash = archiveMatch[3];
+      return `/api/archive/file/${encodeURIComponent(contentHash)}`;
+    }
+  }
+
   // Normalize backslashes to forward slashes
   const normalized = trimmed.replace(/\\/g, '/');
   const lower = normalized.toLowerCase();
@@ -401,7 +411,7 @@ export function resolveArchiveLinkToReaderDoc(
 
   const isEpub =
     cleanLower.endsWith('.epub') ||
-    (matchedResource?.type === 'epub') ||
+    ((matchedResource?.type as string) === 'epub') ||
     normalizedDocId.toLowerCase().endsWith('.epub');
 
   const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
@@ -584,7 +594,7 @@ export function resolveCitationTargetDocument(
 
     const isEpub =
       cleanLower.endsWith('.epub') ||
-      (r.type === 'epub' && !isPdf);
+      (((r.type as string) === 'epub') && !isPdf);
 
     const format = isPdf ? 'pdf' : isEpub ? 'epub' : 'md';
     const fileUrl = rawTarget ? resolveReaderFileUrl(rawTarget) : undefined;

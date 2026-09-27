@@ -33,6 +33,10 @@ describe("Phase 18A Wave 1: Archive Express Router Integration Tests", () => {
         }),
         findUnique: vi.fn().mockImplementation(async ({ where }) => {
           if (where.id) return inMemoryDocs[where.id] || null;
+          return null;
+        }),
+        // findFirst used for contentHash fallback lookup in GET /archive/file/:id
+        findFirst: vi.fn().mockImplementation(async ({ where }) => {
           if (where.contentHash) {
             return Object.values(inMemoryDocs).find((d: any) => d.contentHash === where.contentHash) || null;
           }
@@ -138,5 +142,73 @@ describe("Phase 18A Wave 1: Archive Express Router Integration Tests", () => {
     expect(listRes.body.documents).toBeInstanceOf(Array);
     expect(listRes.body.documents.length).toBeGreaterThanOrEqual(1);
     expect(listRes.body.total).toBeGreaterThanOrEqual(1);
+  });
+
+  // ── New Tests: contentHash fallback lookup ────────────────────────────────
+
+  // Scenario: Client resolver routes archive hash path as /api/archive/file/<contentHash>
+  // The :id param is a SHA-256 hash (64 hex chars), NOT a UUID.
+  // Backend must fall back to findFirst({ where: { contentHash } }) when findUnique by id
+  // returns null (as it will, since id is a UUID, not the hash).
+
+  it("7. [FAILING] GET /api/archive/file/:contentHash streams file when :id is a SHA-256 contentHash (not UUID)", async () => {
+    // Given: an uploaded EPUB file — we capture its contentHash from the upload response
+    const epubContent = Buffer.from("PK\x03\x04MockEpubContent");
+    const uploadRes = await request(app)
+      .post("/api/archive/upload?originalName=Luan-Giai-Tu-Vi.epub&fileFormat=epub")
+      .set("Content-Type", "application/epub+zip")
+      .send(epubContent);
+
+    expect(uploadRes.status).toBe(201);
+    const contentHash = uploadRes.body.document.contentHash;
+    const docId = uploadRes.body.document.id;
+
+    // Sanity: contentHash is NOT the same as the UUID id
+    expect(contentHash).not.toBe(docId);
+    expect(contentHash).toHaveLength(64); // SHA-256 hex
+
+    // When: client fetches /api/archive/file/<contentHash>  (NOT the UUID id)
+    // This is exactly what resolveResourceReaderDescriptor now produces for hashed archive paths.
+    // BEFORE fix: returns 404 (findUnique({ where: { id: contentHash } }) finds nothing)
+    // AFTER fix:  returns 200 (fallback findFirst({ where: { contentHash } }) finds the doc)
+    const streamRes = await request(app).get(`/api/archive/file/${contentHash}`);
+
+    // Status 200 and correct Content-Type prove the fallback lookup succeeded.
+    // Note: supertest does not auto-parse application/epub+zip as Buffer — binary body
+    // integrity is covered by test 4 (PDF), which uses the same streaming code path.
+    expect(streamRes.status).toBe(200);
+    expect(streamRes.headers["content-type"]).toContain("application/epub+zip");
+    expect(streamRes.headers["content-length"]).toBeDefined();
+  });
+
+
+  it("8. [FAILING] GET /api/archive/file/:contentHash serves MD file via contentHash fallback", async () => {
+    // Given: an uploaded markdown file
+    const mdContent = Buffer.from("# 00 Dashboard Phat Hoc\n\nNội dung bài học Phật Học.");
+    const uploadRes = await request(app)
+      .post("/api/archive/upload?originalName=00_Dashboard_Phat_Hoc.md&fileFormat=md")
+      .set("Content-Type", "text/markdown")
+      .send(mdContent);
+
+    expect(uploadRes.status).toBe(201);
+    const contentHash = uploadRes.body.document.contentHash;
+
+    // When: client fetches by contentHash
+    const streamRes = await request(app).get(`/api/archive/file/${contentHash}`);
+
+    // BEFORE fix: 404; AFTER fix: 200 with correct Content-Type
+    expect(streamRes.status).toBe(200);
+    expect(streamRes.headers["content-type"]).toContain("text/markdown");
+  });
+
+  it("9. GET /api/archive/file/:id returns 404 when neither UUID id nor contentHash match (both lookups fail)", async () => {
+    // Given: no uploaded documents
+    const nonExistentHash = "a".repeat(64);
+
+    const res = await request(app).get(`/api/archive/file/${nonExistentHash}`);
+
+    // Both findUnique by id AND findFirst by contentHash return null → 404
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("DOCUMENT_NOT_FOUND");
   });
 });

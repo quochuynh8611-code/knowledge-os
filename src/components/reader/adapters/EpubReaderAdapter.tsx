@@ -151,6 +151,15 @@ export function EpubReaderAdapter({
     loadAndSanitize();
   }, [loadAndSanitize]);
 
+  // Reactive spread update: re-apply spread mode whenever pageMode changes
+  // after the rendition has already been mounted (renditionRef is populated).
+  // Without this, toggling "Trang đơn / Trang đôi" after book load has no effect.
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !rendition.spread) return;
+    rendition.spread(pageMode === 'single' ? 'none' : 'auto');
+  }, [pageMode]);
+
   const handleLocationChanged = (newLocation: string) => {
     setLocation(newLocation);
     if (onLocationChanged) {

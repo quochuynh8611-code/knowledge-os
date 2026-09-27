@@ -129,12 +129,25 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
   });
 
   // GET /archive/file/:id - Stream binary document
+  // Supports two lookup modes (backward-compatible):
+  //   1. Primary:  findUnique({ where: { id } })     — UUID record id (legacy / archive:// URIs)
+  //   2. Fallback: findFirst({ where: { contentHash: id } }) — SHA-256 hash (hashed archive paths
+  //               produced by resolveResourceReaderDescriptor for filePaths like epub/<2ch>/<hash>.epub)
   router.get("/archive/file/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const doc = await prisma.archivedDocument.findUnique({
+
+      // 1. Primary lookup by UUID id
+      let doc = await prisma.archivedDocument.findUnique({
         where: { id },
       });
+
+      // 2. Fallback: lookup by contentHash (client may send SHA-256 hash as :id)
+      if (!doc) {
+        doc = await prisma.archivedDocument.findFirst({
+          where: { contentHash: id },
+        });
+      }
 
       if (!doc) {
         res.status(404).json({
