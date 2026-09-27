@@ -6,7 +6,7 @@ import { SyncStatusBadge } from "../../src/components/ui/SyncStatusBadge";
 import type { SyncMutation } from "../../src/lib/syncQueue";
 import type { SyncTelemetryEvent } from "../../src/lib/syncTelemetry";
 
-describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
+describe("Phase P2.9b — Sync Diagnostics Disclosure & Telemetry Panel UI", () => {
   const STORAGE_KEY = "phat_hoc_huyen_hoc_sync_debug_panel_test";
   let service: SyncQueueService;
 
@@ -30,50 +30,47 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
     fireEvent.click(badge);
   };
 
-  // ─── 1. Hook & Tab Switcher Contract ──────────────────────────────────────
+  // Helper to open diagnostics disclosure
+  const openDiagnostics = () => {
+    const toggle = screen.getByTestId("sync-diagnostics-toggle");
+    fireEvent.click(toggle);
+  };
 
-  describe("1. Tab Navigation & Default State", () => {
-    it("1.1. defaults to 'Hàng đợi' tab when popover is opened", () => {
+  // ─── 1. Diagnostics Disclosure Toggle ──────────────────────────────────────
+
+  describe("1. Diagnostics Disclosure & Default Hidden State", () => {
+    it("1.1. diagnostics panel is hidden by default in user-facing view", () => {
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
 
-      // Tab buttons exist
-      const queueTab = screen.getByRole("tab", { name: /hàng đợi/i });
-      const telemetryTab = screen.getByRole("tab", { name: /nhật ký/i });
+      // Diagnostics toggle button exists
+      const toggle = screen.getByTestId("sync-diagnostics-toggle");
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveTextContent(/xem chi tiết kỹ thuật/i);
 
-      expect(queueTab).toBeInTheDocument();
-      expect(telemetryTab).toBeInTheDocument();
-
-      // Queue tab is selected by default
-      expect(queueTab).toHaveAttribute("aria-selected", "true");
-      expect(telemetryTab).toHaveAttribute("aria-selected", "false");
+      // Telemetry panel is hidden
+      expect(screen.queryByTestId("sync-telemetry-panel")).not.toBeInTheDocument();
     });
 
-    it("1.2. allows toggling between 'Hàng đợi' and 'Nhật ký & Thống kê' tabs", () => {
+    it("1.2. allows toggling diagnostics disclosure open and closed", () => {
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
 
-      const queueTab = screen.getByRole("tab", { name: /hàng đợi/i });
-      const telemetryTab = screen.getByRole("tab", { name: /nhật ký/i });
+      // Open diagnostics
+      openDiagnostics();
+      expect(screen.getByTestId("sync-telemetry-panel")).toBeInTheDocument();
 
-      // Click telemetry tab
-      fireEvent.click(telemetryTab);
-      expect(telemetryTab).toHaveAttribute("aria-selected", "true");
-      expect(queueTab).toHaveAttribute("aria-selected", "false");
-
-      // Click queue tab back
-      fireEvent.click(queueTab);
-      expect(queueTab).toHaveAttribute("aria-selected", "true");
-      expect(telemetryTab).toHaveAttribute("aria-selected", "false");
+      // Close diagnostics
+      openDiagnostics();
+      expect(screen.queryByTestId("sync-telemetry-panel")).not.toBeInTheDocument();
     });
   });
 
   // ─── 2. Aggregate Metrics Rendering ───────────────────────────────────────
 
-  describe("2. Aggregate Metrics Rendering", () => {
-    it("2.1. renders summary metrics cards accurately in the Telemetry tab", async () => {
-      // Simulate multiple events in service telemetry
-      // 8 successes, 2 failures, 1 discard
+  describe("2. Aggregate Metrics Rendering in Diagnostics View", () => {
+    it("2.1. renders summary metrics cards accurately when diagnostics is opened", async () => {
+      // Simulate 8 successes
       for (let i = 1; i <= 8; i++) {
         service.enqueue({
           id: `mut-s-${i}`,
@@ -94,10 +91,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
-
-      // Switch to telemetry tab
-      const telemetryTab = screen.getByRole("tab", { name: /nhật ký/i });
-      fireEvent.click(telemetryTab);
+      openDiagnostics();
 
       const panel = screen.getByTestId("sync-telemetry-panel");
       expect(panel).toBeInTheDocument();
@@ -130,9 +124,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
-
-      // Switch to Telemetry tab
-      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+      openDiagnostics();
 
       const eventItems = screen.getAllByTestId("sync-telemetry-item");
       expect(eventItems).toHaveLength(10); // Capped at 10
@@ -142,7 +134,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
       expect(eventItems[9]).toHaveTextContent("note-6");
     });
 
-    it("3.2. displays error details for failed events and hides error box for successes", () => {
+    it("3.2. displays raw error details in diagnostics view for debugging", () => {
       const events: SyncTelemetryEvent[] = [
         {
           id: "evt-fail",
@@ -150,7 +142,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
           type: "REPLAY_FAILED",
           entityType: "topic",
           entityId: "top-error-1",
-          error: "Connection refused by server",
+          error: "PrismaClientKnownRequestError: Connection refused by server",
         },
         {
           id: "evt-success",
@@ -164,11 +156,10 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
-
-      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+      openDiagnostics();
 
       expect(
-        screen.getByText(/Connection refused by server/i)
+        screen.getByText(/PrismaClientKnownRequestError: Connection refused by server/i)
       ).toBeInTheDocument();
     });
   });
@@ -176,7 +167,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
   // ─── 4. Regression Safety ─────────────────────────────────────────────────
 
   describe("4. Regression Safety for Queue Controls", () => {
-    it("4.1. preserves active queue items and operator discard controls in 'Hàng đợi' tab", () => {
+    it("4.1. preserves active queue items and operator discard controls", () => {
       const failedMutation: SyncMutation = {
         id: "mut-f-1",
         entityType: "topic",
@@ -192,27 +183,28 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
 
-      // Queue tab has mutation item
+      // Queue item exists in user view
       const queueItem = screen.getByTestId("sync-queue-item");
       expect(queueItem).toBeInTheDocument();
-      expect(queueItem).toHaveTextContent("top-reg-1");
+      expect(queueItem).toHaveTextContent(/chủ đề/i);
 
-      // Switch to telemetry and back
-      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
-      fireEvent.click(screen.getByRole("tab", { name: /hàng đợi/i }));
+      // Open diagnostics and close
+      openDiagnostics();
+      expect(screen.getByTestId("sync-telemetry-panel")).toBeInTheDocument();
+      openDiagnostics();
 
       // Queue item still intact
       expect(screen.getByTestId("sync-queue-item")).toBeInTheDocument();
     });
   });
 
-  // ─── 5. Sync Health Status Banner in Telemetry Tab ─────────────────────────
+  // ─── 5. Sync Health Status Banner in Diagnostics View ─────────────────────
 
-  describe("5. Sync Health Status Banner in Telemetry Tab", () => {
+  describe("5. Sync Health Status Banner in Diagnostics View", () => {
     it("5.1. renders unknown health banner when queue is empty and no telemetry exists", () => {
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
-      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+      openDiagnostics();
 
       const banner = screen.getByTestId("sync-health-banner");
       expect(banner).toBeInTheDocument();
@@ -233,7 +225,7 @@ describe("Phase P2.9b — Sync Telemetry Read Model & Debug Panel UI", () => {
 
       render(<SyncStatusBadge syncQueueService={service} />);
       openPopover();
-      fireEvent.click(screen.getByRole("tab", { name: /nhật ký/i }));
+      openDiagnostics();
 
       const banner = screen.getByTestId("sync-health-banner");
       expect(banner).toBeInTheDocument();

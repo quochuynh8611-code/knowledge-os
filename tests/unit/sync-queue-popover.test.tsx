@@ -90,9 +90,9 @@ describe("Phase P2.6a — Sync Queue Read-Only Details Popover", () => {
     });
   });
 
-  // ─── 2. FIFO Order & Read-Only Content ────────────────────────────────────
+  // ─── 2. FIFO Order & Sanitized Content ────────────────────────────────────
 
-  describe("2. FIFO Order & Read-Only Content", () => {
+  describe("2. FIFO Order & Sanitized Content", () => {
     it("2.1. renders queue items in exact FIFO order with entityType, action, status, and timestamp", () => {
       syncQueueService.enqueue(samplePendingNote);
       syncQueueService.enqueue(sampleFailedTopic);
@@ -107,25 +107,57 @@ describe("Phase P2.6a — Sync Queue Read-Only Details Popover", () => {
       expect(items).toHaveLength(2);
 
       // Item 1: Note save (Pending)
-      expect(items[0]).toHaveTextContent(/note|ghi chú/i);
-      expect(items[0]).toHaveTextContent(/save|lưu/i);
-      expect(items[0]).toHaveTextContent(/pending|chờ/i);
+      expect(items[0]).toHaveTextContent(/ghi chú/i);
+      expect(items[0]).toHaveTextContent(/lưu/i);
+      expect(items[0]).toHaveTextContent(/chờ/i);
 
       // Item 2: Topic delete (Failed)
-      expect(items[1]).toHaveTextContent(/topic|chủ đề/i);
-      expect(items[1]).toHaveTextContent(/delete|xóa/i);
-      expect(items[1]).toHaveTextContent(/failed|lỗi/i);
+      expect(items[1]).toHaveTextContent(/chủ đề/i);
+      expect(items[1]).toHaveTextContent(/xóa/i);
+      expect(items[1]).toHaveTextContent(/chờ thử lại/i);
     });
 
-    it("2.2. failed mutation displays its specific lastError message", () => {
+    it("2.2. failed mutation displays sanitized user-friendly message and masks raw 500 error in default view", () => {
       syncQueueService.enqueue(sampleFailedTopic);
 
       render(<SyncStatusBadge syncQueueService={syncQueueService} />);
       fireEvent.click(screen.getByTestId("sync-status-badge"));
 
+      // Friendly message is rendered
       expect(
-        screen.getByText(/HTTP 500: Internal Server Error/i)
+        screen.getByText(/máy chủ đang bận xử lý hoặc gặp sự cố tạm thời/i)
       ).toBeInTheDocument();
+
+      // Raw technical error is NOT rendered in default user-facing view
+      expect(
+        screen.queryByText(/HTTP 500: Internal Server Error/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it("2.2b. masks raw Prisma errors with gentle conflict message in default view", () => {
+      syncQueueService.enqueue({
+        id: "mut-prisma-fail",
+        entityType: "note",
+        action: "save",
+        entityId: "note-prisma-1",
+        clientTimestamp: "2026-08-28T10:16:02.000Z",
+        retryCount: 1,
+        status: "failed",
+        lastError: "PrismaClientKnownRequestError: Unique constraint failed on the fields: (`id`)",
+      });
+
+      render(<SyncStatusBadge syncQueueService={syncQueueService} />);
+      fireEvent.click(screen.getByTestId("sync-status-badge"));
+
+      // Friendly conflict message is rendered
+      expect(
+        screen.getByText(/dữ liệu có thể đã tồn tại hoặc bị xung đột phiên bản/i)
+      ).toBeInTheDocument();
+
+      // Raw Prisma error string is NOT rendered in default user-facing view
+      expect(
+        screen.queryByText(/PrismaClientKnownRequestError/i)
+      ).not.toBeInTheDocument();
     });
 
     it("2.3. strictly confirms there is no discard/delete button for pending mutations", () => {
@@ -142,10 +174,10 @@ describe("Phase P2.6a — Sync Queue Read-Only Details Popover", () => {
     });
   });
 
-  // ─── 3. Manual Sync Action ────────────────────────────────────────────────
+  // ─── 3. Manual Sync Action & Reassurance ───────────────────────────────────
 
-  describe("3. Manual Sync Action", () => {
-    it("3.1. clicking 'Đồng bộ ngay' in popover triggers flush()", async () => {
+  describe("3. Manual Sync Action & Reassurance", () => {
+    it("3.1. clicking 'Lưu tất cả ngay' in popover triggers flush()", async () => {
       syncQueueService.enqueue(samplePendingNote);
       const flushSpy = vi.spyOn(syncQueueService, "flushQueue").mockResolvedValue({
         syncedCount: 1,
@@ -155,11 +187,25 @@ describe("Phase P2.6a — Sync Queue Read-Only Details Popover", () => {
       render(<SyncStatusBadge syncQueueService={syncQueueService} />);
       fireEvent.click(screen.getByTestId("sync-status-badge"));
 
-      const syncNowBtn = screen.getByRole("button", { name: /đồng bộ ngay/i });
+      const syncNowBtn = screen.getByRole("button", { name: /lưu tất cả ngay|đồng bộ ngay/i });
       expect(syncNowBtn).toBeInTheDocument();
 
       fireEvent.click(syncNowBtn);
       expect(flushSpy).toHaveBeenCalledOnce();
+    });
+
+    it("3.2. displays reassuring offline message when offline", () => {
+      Object.defineProperty(navigator, "onLine", {
+        configurable: true,
+        value: false,
+      });
+
+      render(<SyncStatusBadge syncQueueService={syncQueueService} />);
+      fireEvent.click(screen.getByTestId("sync-status-badge"));
+
+      expect(
+        screen.getByText(/đang ngoại tuyến\. mọi thay đổi vẫn an toàn và sẽ tự gửi lại khi có mạng\./i)
+      ).toBeInTheDocument();
     });
   });
 });

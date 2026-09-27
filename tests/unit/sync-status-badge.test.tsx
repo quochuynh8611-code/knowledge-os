@@ -29,12 +29,12 @@ describe("Phase P2.5 — Sync Status Badge & Navbar UI Integration", () => {
   // ─── 1. SyncStatusBadge Standalone States ──────────────────────────────────
 
   describe("1. SyncStatusBadge Standalone States", () => {
-    it("1.1. shows synced state when online and no pending/failed mutations", () => {
+    it("1.1. shows saved state when online and no pending/failed mutations", () => {
       render(<SyncStatusBadge syncQueueService={syncQueueService} />);
 
       const badge = screen.getByTestId("sync-status-badge");
       expect(badge).toBeInTheDocument();
-      expect(badge).toHaveTextContent(/đã đồng bộ/i);
+      expect(badge).toHaveTextContent(/đã lưu/i);
     });
 
     it("1.2. shows offline state with pending count when offline", () => {
@@ -71,13 +71,12 @@ describe("Phase P2.5 — Sync Status Badge & Navbar UI Integration", () => {
     });
 
     it("1.3. shows flushing state with spinner when isFlushing is true", () => {
-      // Mock flushQueue to keep isFlushing true or spy on isFlushing
       vi.spyOn(syncQueueService, "getIsFlushing").mockReturnValue(true);
 
       render(<SyncStatusBadge syncQueueService={syncQueueService} />);
 
       const badge = screen.getByTestId("sync-status-badge");
-      expect(badge).toHaveTextContent(/đang đồng bộ/i);
+      expect(badge).toHaveTextContent(/đang lưu\.\.\./i);
     });
 
     it("1.4. shows retry button when failedCount > 0 and calls flush on click", async () => {
@@ -98,6 +97,9 @@ describe("Phase P2.5 — Sync Status Badge & Navbar UI Integration", () => {
       });
 
       render(<SyncStatusBadge syncQueueService={syncQueueService} />);
+
+      const badge = screen.getByTestId("sync-status-badge");
+      expect(badge).toHaveTextContent(/chưa lưu/i);
 
       const retryBtn = screen.getByRole("button", { name: /thử lại/i });
       expect(retryBtn).toBeInTheDocument();
