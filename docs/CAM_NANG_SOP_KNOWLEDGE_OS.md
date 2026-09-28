@@ -47,6 +47,8 @@ Cách đọc giao diện khi mới mở app:
 
 Đây là trình tự mở máy và bắt đầu học được khuyến nghị nhất cho người dùng thường xuyên [cite:11][cite:15].
 
+![Tổng quan giao diện Dashboard và thẻ học trọng tâm Today Learning Hero](assets/screenshots/ss-01-dashboard-overview.png)
+
 1. Mở Dashboard.
 2. Xem Today Learning Hero hoặc khu hành động ưu tiên để chọn topic [cite:15].
 3. Kiểm tra nhanh cadence tuần và analytics để biết hôm nay nên học mới hay ôn cũ [cite:15].
@@ -66,6 +68,8 @@ Quy tắc chuẩn:
 - Mỗi topic nên có mô tả ngắn, ít tags nhưng chính xác, và có tiến độ học đi kèm [cite:10].
 
 SOP tạo topic:
+
+![Giao diện Tạo Chủ Đề Nghiên Cứu Mới và cấu trúc phân cấp lĩnh vực](assets/screenshots/ss-02-topic-tree-creation.png)
 
 1. Vào đúng domain/category trước.
 2. Tạo topic mới bằng tên ngắn, rõ, không đa nghĩa.
@@ -89,6 +93,8 @@ SOP tại topic detail:
 
 Gherkin phase 17 mô tả rõ luồng `ActiveLearningSessionBar`, tạm dừng/tiếp tục, wrap-up modal, cập nhật thời gian và tạo note `insight` từ takeaway [cite:11]. Điều này xác nhận phiên học là một quy trình first-class trong hệ thống chứ không chỉ là timer trang trí [cite:11][cite:15].
 
+![Thanh phiên học tập trung Active Learning Session Bar chạy ở đáy màn hình](assets/screenshots/ss-03-active-learning-session.png)
+
 SOP phiên học:
 
 1. Từ dashboard hoặc topic detail, bấm bắt đầu học [cite:11].
@@ -97,6 +103,8 @@ SOP phiên học:
 4. Khi kết thúc, mở wrap-up và điền takeaway.
 5. Cập nhật phần trăm tiến độ thực tế, không tô hồng kết quả [cite:11].
 6. Lưu thành quả để tăng time-spent, cập nhật progress và tạo insight note khi có nội dung takeaway [cite:11].
+
+![Hộp thoại Tổng kết phiên học (Session Wrapup) và ghi nhận đúc kết (Key Takeaway)](assets/screenshots/ss-07-wrap-up-takeaway.png)
 
 Quy tắc chất lượng takeaway:
 
@@ -155,6 +163,8 @@ README, flashcard studio và các module parser/scheduler cho thấy Knowled
 
 SOP chuyển note thành thẻ:
 
+![Modal tạo Flashcard hỗ trợ chế độ Điền khuyết (Cloze) chuẩn cú pháp](assets/screenshots/ss-05-flashcard-creation.png)
+
 1. Chọn note đã đủ rõ nghĩa.
 2. Rút ra mệnh đề, định nghĩa, quy trình hoặc cặp hỏi-đáp ngắn.
 3. Tạo flashcard thường hoặc cloze tùy loại kiến thức [cite:3].
@@ -164,6 +174,8 @@ SOP chuyển note thành thẻ:
 ## 13. SOP review flashcards hằng ngày
 
 `FlashcardReviewStudio.tsx` cho thấy review studio có queue, session stats, create/import/edit/history/export modal, retention curve, smart queue, exam date và các chế độ session khác nhau [cite:13]. Điều này nghĩa là người mới có thể bắt đầu đơn giản, còn người dùng lâu dài có thể nâng dần mức tinh chỉnh mà không cần đổi công cụ [cite:13][cite:14].
+
+![Không gian Flashcard Review Studio với thẻ lật và thanh đánh giá 4 mức chuẩn SM-2](assets/screenshots/ss-06-flashcard-review-studio.png)
 
 SOP review cơ bản:
 
