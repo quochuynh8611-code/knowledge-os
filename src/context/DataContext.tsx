@@ -111,6 +111,11 @@ interface DataContextType {
   deleteInboxItem: (id: string) => Promise<void>;
   unprocessedInboxCount: number;
 
+  // Dedicated Research Excerpts (Phase R5A)
+  researchExcerpts: ResearchExcerpt[];
+  addExcerpt: (excerpt: ResearchExcerpt) => Promise<ResearchExcerpt>;
+  deleteExcerpt: (id: string) => Promise<void>;
+
   // Actions - Navigation
   setActiveTab: (tab: ActiveTab) => void;
   setSelectedTopicId: (id: string | null) => void;
@@ -348,6 +353,50 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter((item) => item.id !== id);
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
+    });
+  }, []);
+
+  // Dedicated Research Excerpts State (Phase R5A)
+  const [researchExcerpts, setResearchExcerpts] = useState<ResearchExcerpt[]>(() => {
+    try {
+      const saved = safeGetLocalStorageItem(`${STORAGE_KEY}_research_excerpts`);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const addExcerpt = useCallback(async (excerpt: ResearchExcerpt) => {
+    setResearchExcerpts((prev) => {
+      const updated = [excerpt, ...prev.filter((e) => e.id !== excerpt.id)];
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_excerpts`, JSON.stringify(updated));
+      return updated;
+    });
+    return excerpt;
+  }, []);
+
+  const deleteExcerpt = useCallback(async (id: string) => {
+    setResearchExcerpts((prev) => {
+      const updated = prev.filter((e) => e.id !== id);
+      safeSetLocalStorageItem(`${STORAGE_KEY}_research_excerpts`, JSON.stringify(updated));
+      return updated;
+    });
+
+    // Suppression strategy for legacy inbox fallback:
+    // Null out excerpt reference in researchInboxItems without deleting the inbox task itself
+    setResearchInboxItems((prev) => {
+      let changed = false;
+      const updated = prev.map((item) => {
+        if (item.excerpt?.id === id || item.excerptId === id) {
+          changed = true;
+          return { ...item, excerpt: undefined, updatedAt: new Date().toISOString() };
+        }
+        return item;
+      });
+      if (changed) {
+        safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+      }
+      return changed ? updated : prev;
     });
   }, []);
 
@@ -1184,12 +1233,15 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       processInboxItem,
       deleteInboxItem,
       unprocessedInboxCount,
+      researchExcerpts,
+      addExcerpt,
+      deleteExcerpt,
       exportAllDataJSON,
       importAllDataJSON,
       resetToDefaultData,
       reloadAllData,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount, researchExcerpts, addExcerpt, deleteExcerpt],
   );
 
   return (

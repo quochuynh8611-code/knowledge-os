@@ -67,13 +67,14 @@ describe('Phase R3: Reader Selection Toolbar Actions Persistence & Feedback (Red
     // Toast phải thông báo đã lưu điểm trích
     expect(await screen.findByText('Đã lưu điểm trích nghiên cứu')).toBeInTheDocument();
 
-    // Dữ liệu phải được persist vào localStorage research inbox
-    const stored = localStorage.getItem(INBOX_STORAGE_KEY);
+    // Dữ liệu phải được persist vào localStorage (research excerpts hoặc legacy inbox)
+    const stored = localStorage.getItem('phat_hoc_huyen_hoc_clean_v3_research_excerpts') || localStorage.getItem(INBOX_STORAGE_KEY);
     expect(stored).toBeTruthy();
-    const inboxItems = JSON.parse(stored || '[]');
-    expect(inboxItems.length).toBeGreaterThan(0);
-    expect(inboxItems[0].excerpt.selectedText).toBe('Bản thể luận là nhánh nghiên cứu về tồn tại.');
-    expect(inboxItems[0].excerpt.archivedDocumentId).toBe('pdf-doc-123');
+    const items = JSON.parse(stored || '[]');
+    expect(items.length).toBeGreaterThan(0);
+    const excerptObj = items[0].excerpt || items[0];
+    expect(excerptObj.selectedText).toBe('Bản thể luận là nhánh nghiên cứu về tồn tại.');
+    expect(excerptObj.archivedDocumentId).toBe('pdf-doc-123');
 
     // Mở Sidebar tab Đánh dấu để xác nhận excerpt hiển thị
     const sidebarToggle = screen.getByTestId('reader-toggle-sidebar-btn');

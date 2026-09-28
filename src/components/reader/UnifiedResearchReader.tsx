@@ -135,6 +135,9 @@ export function UnifiedResearchReader({
     notes?: Note[];
     resources?: Resource[];
     researchInboxItems?: ResearchInboxItem[];
+    researchExcerpts?: ResearchExcerpt[];
+    addExcerpt?: (excerpt: ResearchExcerpt) => Promise<ResearchExcerpt>;
+    deleteExcerpt?: (id: string) => Promise<void>;
     addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
     updateNote?: (id: string, noteData: Partial<Note>) => void;
     deleteInboxItem?: (id: string) => Promise<void>;
@@ -142,6 +145,9 @@ export function UnifiedResearchReader({
   const notes = dataContext?.notes || [];
   const resources = dataContext?.resources || [];
   const inboxItems = dataContext?.researchInboxItems || [];
+  const researchExcerpts = dataContext?.researchExcerpts || [];
+  const addExcerpt = dataContext?.addExcerpt;
+  const deleteExcerpt = dataContext?.deleteExcerpt;
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
   const deleteInboxItem = dataContext?.deleteInboxItem;
 
@@ -150,7 +156,7 @@ export function UnifiedResearchReader({
     return extractCitationBacklinks(notes, documentId);
   }, [notes, documentId]);
 
-  // Wave R2.3: Extract active document highlights using Canonical Document Matcher
+  // Wave R5A: Extract active document highlights using Dual-Read (Dedicated Store + Legacy Inbox Fallback) with Deduplication & Store Precedence
   const documentHighlights = useMemo(() => {
     const matchContext: DocumentMatchContext = {
       documentId,
@@ -158,10 +164,19 @@ export function UnifiedResearchReader({
       fileUrl,
       resources,
     };
-    return inboxItems
+    const dedicated = researchExcerpts.filter((e) => isExcerptMatchingDocument(e, matchContext));
+    const legacy = inboxItems
       .map((item) => item.excerpt)
       .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && isExcerptMatchingDocument(excerpt, matchContext)));
-  }, [inboxItems, documentId, title, fileUrl, resources]);
+
+    const map = new Map<string, ResearchExcerpt>();
+    // Legacy inbox excerpts are loaded first
+    legacy.forEach((e) => map.set(e.id, e));
+    // Dedicated excerpts are loaded second to override legacy on ID collision (store precedence)
+    dedicated.forEach((e) => map.set(e.id, e));
+
+    return Array.from(map.values());
+  }, [researchExcerpts, inboxItems, documentId, title, fileUrl, resources]);
 
   // Wave R4: Extract active document inbox items using Canonical Document Matcher
   const documentInboxItems = useMemo(() => {
@@ -373,7 +388,10 @@ export function UnifiedResearchReader({
       }
     } else if (action === 'highlight') {
       try {
-        if (addExcerptToInbox) {
+        if (addExcerpt) {
+          await addExcerpt(excerpt);
+          showToast('Đã lưu điểm trích nghiên cứu');
+        } else if (addExcerptToInbox) {
           await addExcerptToInbox(excerpt);
           showToast('Đã lưu điểm trích nghiên cứu');
         } else {
@@ -795,9 +813,13 @@ export function UnifiedResearchReader({
           excerpts={documentHighlights}
           onSelectExcerpt={handleSelectExcerpt}
           onDeleteExcerpt={(excerptId) => {
-            const matchedItem = inboxItems.find((i) => i.excerpt?.id === excerptId || i.id === excerptId);
-            if (matchedItem && deleteInboxItem) {
-              deleteInboxItem(matchedItem.id);
+            if (deleteExcerpt) {
+              deleteExcerpt(excerptId);
+            } else if (deleteInboxItem) {
+              const matchedItem = inboxItems.find((i) => i.excerpt?.id === excerptId || i.id === excerptId);
+              if (matchedItem) {
+                deleteInboxItem(matchedItem.id);
+              }
             }
           }}
           inboxItems={documentInboxItems}
