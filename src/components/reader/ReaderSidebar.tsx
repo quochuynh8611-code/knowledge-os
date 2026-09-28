@@ -42,6 +42,12 @@ export interface ReaderSidebarProps {
   onOpenNoteDetail?: (noteId: string) => void;
 }
 
+function formatBadgeCount(count: number): string | null {
+  if (count <= 0) return null;
+  if (count > 99) return '99+';
+  return String(count);
+}
+
 export function ReaderSidebar({
   isOpen,
   onClose,
@@ -64,6 +70,11 @@ export function ReaderSidebar({
   onOpenNoteDetail,
 }: ReaderSidebarProps) {
   if (!isOpen) return null;
+
+  const outlineBadge = formatBadgeCount(tocItems.length);
+  const notesBadge = formatBadgeCount(notes.length);
+  const highlightsBadge = formatBadgeCount(excerpts.length);
+  const inboxBadge = formatBadgeCount(inboxItems.filter((i) => !i.isProcessed).length);
 
   return (
     <aside
@@ -105,7 +116,17 @@ export function ReaderSidebar({
             }`}
           >
             <List className="w-3.5 h-3.5" />
-            <span>Mục lục</span>
+            <span className="flex items-center gap-1">
+              <span>Mục lục</span>
+              {outlineBadge && (
+                <span
+                  data-testid="tab-badge-outline"
+                  className="px-1 min-w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 leading-none"
+                >
+                  {outlineBadge}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -121,7 +142,17 @@ export function ReaderSidebar({
             }`}
           >
             <StickyNote className="w-3.5 h-3.5" />
-            <span>Ghi chú</span>
+            <span className="flex items-center gap-1">
+              <span>Ghi chú</span>
+              {notesBadge && (
+                <span
+                  data-testid="tab-badge-notes"
+                  className="px-1 min-w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 leading-none"
+                >
+                  {notesBadge}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -137,7 +168,17 @@ export function ReaderSidebar({
             }`}
           >
             <Highlighter className="w-3.5 h-3.5" />
-            <span>Đánh dấu</span>
+            <span className="flex items-center gap-1">
+              <span>Đánh dấu</span>
+              {highlightsBadge && (
+                <span
+                  data-testid="tab-badge-highlights"
+                  className="px-1 min-w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 leading-none"
+                >
+                  {highlightsBadge}
+                </span>
+              )}
+            </span>
           </button>
 
           <button
@@ -153,10 +194,17 @@ export function ReaderSidebar({
             }`}
           >
             <Inbox className="w-3.5 h-3.5" />
-            <span>Inbox</span>
-            {inboxItems.filter((i) => !i.isProcessed).length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-amber-500 rounded-full" />
-            )}
+            <span className="flex items-center gap-1">
+              <span>Inbox</span>
+              {inboxBadge && (
+                <span
+                  data-testid="tab-badge-inbox"
+                  className="px-1 min-w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 leading-none"
+                >
+                  {inboxBadge}
+                </span>
+              )}
+            </span>
           </button>
         </div>
       </div>
