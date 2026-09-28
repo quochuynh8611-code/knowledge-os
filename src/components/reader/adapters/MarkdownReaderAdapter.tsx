@@ -191,7 +191,7 @@ export function MarkdownReaderAdapter({
       if (!containerRef.current) return;
       const targetEl = containerRef.current.querySelector(`[id="${initialHeadingId}"]`);
       if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        targetEl.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
 

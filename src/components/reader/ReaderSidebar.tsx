@@ -39,6 +39,7 @@ export interface ReaderSidebarProps {
   inboxItems?: ResearchInboxItem[];
   onDeleteInboxItem?: (id: string) => void;
   onOpenArchiveLink?: (documentId: string, locator?: string) => void;
+  onOpenNoteDetail?: (noteId: string) => void;
 }
 
 export function ReaderSidebar({
@@ -60,6 +61,7 @@ export function ReaderSidebar({
   inboxItems = [],
   onDeleteInboxItem,
   onOpenArchiveLink,
+  onOpenNoteDetail,
 }: ReaderSidebarProps) {
   if (!isOpen) return null;
 
@@ -207,24 +209,81 @@ export function ReaderSidebar({
                   <p>Chưa có ghi chú nào. Hãy bôi đen văn bản để thêm ghi chú mới.</p>
                 </div>
               ) : (
-                notes.map((note) => (
-                  <div
-                    key={note.id}
-                    className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 rounded-xl space-y-1.5 shadow-2xs"
-                  >
-                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1">
-                      {note.title}
-                    </h4>
-                    <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
-                      <MarkdownReadabilityRenderer
-                        content={note.content}
-                        docPath={note.sourcePath ? note.sourcePath.replace(/^vault:/i, "") : undefined}
-                        sourceType={note.sourcePath?.startsWith("docs/") ? "docs" : note.sourcePath ? "vault" : undefined}
-                        onOpenArchiveLink={onOpenArchiveLink}
-                      />
+                notes.map((note) => {
+                  const activeDocProvenances = (note.citationProvenances || []).filter(
+                    (p) => p.documentId === documentId
+                  );
+                  const hasSingleActiveProv = activeDocProvenances.length === 1;
+                  const hasMultiActiveProv = activeDocProvenances.length > 1;
+
+                  return (
+                    <div
+                      key={note.id}
+                      className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/80 rounded-xl space-y-2 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h4
+                          onClick={() => onOpenNoteDetail?.(note.id)}
+                          className={`text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1 ${
+                            onOpenNoteDetail ? 'hover:text-amber-900 dark:hover:text-amber-200 cursor-pointer transition' : ''
+                          }`}
+                        >
+                          {note.title}
+                        </h4>
+                      </div>
+
+                      <div className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed max-h-48 overflow-y-auto scrollbar-thin">
+                        <MarkdownReadabilityRenderer
+                          content={note.content}
+                          docPath={note.sourcePath ? note.sourcePath.replace(/^vault:/i, "") : undefined}
+                          sourceType={note.sourcePath?.startsWith("docs/") ? "docs" : note.sourcePath ? "vault" : undefined}
+                          onOpenArchiveLink={onOpenArchiveLink}
+                        />
+                      </div>
+
+                      {/* Phase R3: Same-document Provenance Action Footer */}
+                      {hasSingleActiveProv && onOpenArchiveLink && (
+                        <div className="pt-2 border-t border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400 truncate">
+                            {activeDocProvenances[0].locator || 'Đoạn trích'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onOpenArchiveLink(
+                                activeDocProvenances[0].documentId,
+                                activeDocProvenances[0].locator
+                              )
+                            }
+                            className="px-2 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer shadow-2xs"
+                            title="Tới đoạn trích trong tài liệu"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Tới đoạn trích</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {hasMultiActiveProv && (
+                        <div className="pt-2 border-t border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between gap-2">
+                          <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-md">
+                            {activeDocProvenances.length} nguồn
+                          </span>
+                          {onOpenNoteDetail && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenNoteDetail(note.id)}
+                              className="px-2 py-1 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                              title="Xem chi tiết các nguồn trích dẫn"
+                            >
+                              <span>Xem chi tiết</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 

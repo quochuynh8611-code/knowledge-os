@@ -83,9 +83,9 @@ export function UnifiedResearchReader({
     return globalReadingPositionStore.getPosition(documentId, normalizedFormat) || undefined;
   });
 
-  // Parse PDF initial page from initialPosition / currentPosition
+  // Parse PDF initial page from currentPosition / initialPosition
   const pdfInitialPage = useMemo(() => {
-    const raw = initialPosition || currentPosition;
+    const raw = currentPosition || initialPosition;
     if (!raw) return 1;
     const match = String(raw).match(/page=(\d+)/i);
     if (match) return parseInt(match[1], 10) || 1;
@@ -190,6 +190,19 @@ export function UnifiedResearchReader({
     const normalizedFileUrl = fileUrl ? fileUrl.trim().toLowerCase() : '';
 
     return notes.filter((note) => {
+      // Tier 0: Structured Citation Provenance binding (Phase 3/R3 Canonical)
+      if (
+        note.citationProvenances &&
+        note.citationProvenances.some(
+          (p) =>
+            p.documentId === documentId ||
+            p.documentId.toLowerCase() === normalizedDocId ||
+            (canonicalPath && p.documentId.toLowerCase() === canonicalPath)
+        )
+      ) {
+        return true;
+      }
+
       // Tier 1: Explicit targetNoteId from excerpts belonging to active document
       if (targetNoteIds.has(note.id)) {
         return true;
@@ -277,9 +290,10 @@ export function UnifiedResearchReader({
         if (locator) {
           setTargetHeadingId(locator);
           handlePositionChanged(locator);
-          showToast(`Đã chuyển đến: ${locator}`);
+          showToast('Đã chuyển đến vị trí trích dẫn');
         } else {
-          showToast('Đang ở tài liệu hiện tại');
+          handlePositionChanged('0');
+          showToast('Không tìm thấy vị trí chính xác, đã chuyển về đầu tài liệu');
         }
         return;
       }
@@ -793,6 +807,12 @@ export function UnifiedResearchReader({
             }
           }}
           onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+          onOpenNoteDetail={(noteId) => {
+            const matched = notes.find((n) => n.id === noteId);
+            if (matched) {
+              setViewingBacklinkNote(matched);
+            }
+          }}
         />
       </div>
 

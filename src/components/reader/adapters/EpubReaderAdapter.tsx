@@ -160,6 +160,18 @@ export function EpubReaderAdapter({
     rendition.spread(pageMode === 'single' ? 'none' : 'auto');
   }, [pageMode]);
 
+  // Phase R3: Reactive relocation when initialLocation changes dynamically in active session
+  useEffect(() => {
+    if (initialLocation === undefined || initialLocation === null) return;
+    setLocation(initialLocation);
+    const rendition = renditionRef.current;
+    if (rendition && rendition.display) {
+      rendition.display(initialLocation as any).catch((err: any) => {
+        console.warn('[EpubReaderAdapter] rendition.display failed during relocation:', err);
+      });
+    }
+  }, [initialLocation]);
+
   const handleLocationChanged = (newLocation: string) => {
     setLocation(newLocation);
     if (onLocationChanged) {
