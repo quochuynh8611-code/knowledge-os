@@ -307,8 +307,7 @@ export function UnifiedResearchReader({
           handlePositionChanged(locator);
           showToast('Đã chuyển đến vị trí trích dẫn');
         } else {
-          handlePositionChanged('0');
-          showToast('Không tìm thấy vị trí chính xác, đã chuyển về đầu tài liệu');
+          showToast('Đang ở tài liệu hiện tại (không có vị trí cụ thể)');
         }
         return;
       }

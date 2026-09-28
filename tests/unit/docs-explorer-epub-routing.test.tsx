@@ -154,7 +154,22 @@ describe("EPUB Reader Routing Contract (Red Stage)", () => {
 
   it("3. selecting an EPUB file from Vault Modal in Navbar opens UnifiedResearchReader", async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.includes("/api/obsidian/vault/tree")) {
+      const urlStr = String(url);
+      if (urlStr.includes("/api/obsidian/vault/attachment") || urlStr.includes("/api/docs/raw")) {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(100),
+          headers: { get: () => "application/epub+zip" },
+        });
+      }
+      if (urlStr.includes("/api/obsidian/vaults")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ vaults: [], activeVaultId: null }),
+          headers: { get: () => "application/json" },
+        });
+      }
+      if (urlStr.includes("/api/obsidian/vault/tree")) {
         return Promise.resolve({
           ok: true,
           json: async () => ({
@@ -170,11 +185,13 @@ describe("EPUB Reader Routing Contract (Red Stage)", () => {
               },
             ],
           }),
+          headers: { get: () => "application/json" },
         });
       }
       return Promise.resolve({
         ok: true,
         json: async () => ({}),
+        headers: { get: () => "application/json" },
       });
     });
 

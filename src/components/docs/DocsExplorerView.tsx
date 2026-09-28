@@ -13,6 +13,8 @@ import {
   Clock,
   LayoutGrid,
   List,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
@@ -54,6 +56,7 @@ export function DocsExplorerView({
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState<boolean>(false);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
     documentId: string;
     title: string;
@@ -345,95 +348,104 @@ export function DocsExplorerView({
         }
       />
 
-      {/* Recent Reads Shelf (Phase R1) */}
+      {/* Recent Reads Shelf (Phase R1 / Reader-First Compact Strip) */}
       {recentDocs.length > 0 && (
         <div
           data-testid="recent-reads-shelf"
-          className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs animate-in fade-in duration-200"
+          aria-label="Đang đọc gần đây"
+          className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200"
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center">
-                <Clock className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                  Đang đọc gần đây (Recent Reads)
-                </h3>
-                <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                  Tiếp tục đọc từ vị trí gần nhất
-                </p>
-              </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-5 h-5 rounded-md bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center">
+              <Clock className="w-3 h-3" />
             </div>
-            <span className="text-xs font-mono font-medium text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
-              {recentDocs.length} tài liệu
+            <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+              Đang đọc gần đây:
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {recentDocs.map((doc) => {
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none flex-1 max-w-full">
+            {recentDocs.slice(0, 4).map((doc) => {
               const format = getDocFormat(doc);
               return (
                 <button
                   key={`recent-${doc.id || doc.relativePath}`}
                   aria-label={`Đang đọc ${doc.title}`}
                   onClick={() => handleDocClick(doc)}
-                  className="flex items-start gap-3 p-3 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-xl transition text-left cursor-pointer shadow-2xs group"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-stone-900 hover:bg-amber-100/80 dark:hover:bg-amber-950/80 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-lg transition text-left cursor-pointer shadow-2xs shrink-0 max-w-[220px]"
                 >
-                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 shrink-0 group-hover:scale-105 transition-transform">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
-                        Đang đọc: {doc.title}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-stone-500 dark:text-stone-400 font-mono truncate mt-0.5">
-                      {doc.relativePath}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-amber-800 dark:text-amber-400 font-medium">
-                      <span className="uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded">
-                        {format}
-                      </span>
-                      <span>• Tiếp tục đọc →</span>
-                    </div>
-                  </div>
+                  <BookOpen className="w-3 h-3 text-amber-800 dark:text-amber-400 shrink-0" />
+                  <span className="text-xs font-medium text-stone-900 dark:text-stone-100 truncate">
+                    {doc.title}
+                  </span>
+                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded text-amber-800 dark:text-amber-400 font-semibold shrink-0">
+                    {format}
+                  </span>
                 </button>
               );
             })}
           </div>
+
+          <span className="text-[10px] font-mono font-semibold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0 hidden md:inline-block">
+            {recentDocs.length} tài liệu
+          </span>
         </div>
       )}
 
-      {/* Split-Pane Content Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-[600px]">
-        {/* Left Pane: Directory, Filters & Search */}
-        <SurfaceCard variant="default" className="lg:col-span-4 flex flex-col space-y-3.5">
+      {/* Split-Pane Content Container: Reader-First Flexbox Layout */}
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch min-h-[650px] relative">
+        {/* Left Pane: Directory, Filters & Search (Slim & Collapsible) */}
+        <SurfaceCard
+          data-testid="library-left-sidebar"
+          variant="default"
+          className={`${
+            isLeftSidebarCollapsed
+              ? "hidden"
+              : "w-full lg:w-80 shrink-0"
+          } flex flex-col space-y-3 transition-all duration-200`}
+        >
+          {/* Top Row inside Left Pane: Title & Collapse Toggle */}
+          <div className="flex items-center justify-between pb-1 border-b border-stone-100 dark:border-stone-800">
+            <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+              <FolderOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span>{isEpubOnly ? `Danh sách sách (${filteredDocs.length})` : `Danh mục (${filteredDocs.length})`}</span>
+            </span>
+            <button
+              data-testid="toggle-left-sidebar-btn"
+              type="button"
+              onClick={() => setIsLeftSidebarCollapsed(true)}
+              aria-label="Thu gọn danh mục"
+              title="Thu gọn danh mục để mở rộng vùng đọc"
+              className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </div>
+
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={isEpubOnly ? "Tìm kiếm sách EPUB trong thư viện..." : "Tìm kiếm tài liệu (ADR-061, Spec, P12.2...)"}
-              className="w-full pl-9 pr-4 py-2 text-xs bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 transition shadow-2xs"
+              className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 transition shadow-2xs"
             />
           </div>
 
           {/* Category Filter Tabs (mode full only) */}
-          {!isEpubOnly ? (
+          {!isEpubOnly && (
             <div
               role="group"
               aria-label="Bộ lọc danh mục tài liệu"
-              className="flex flex-wrap gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-xl"
+              className="flex flex-wrap gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-xl max-h-24 overflow-y-auto"
             >
               {dynamicCategories.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setSelectedCategory(tab.id)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                  className={`px-2 py-0.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
                     selectedCategory === tab.id
                       ? "bg-amber-800 text-amber-50 shadow-2xs"
                       : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
@@ -443,20 +455,16 @@ export function DocsExplorerView({
                 </button>
               ))}
             </div>
-          ) : (
-            <div className="flex items-center justify-between text-xs font-semibold text-stone-700 dark:text-stone-300 px-1">
-              <span>Danh sách sách ({filteredDocs.length})</span>
-            </div>
           )}
 
           {/* Phase R1 Multi-Facet Filters Bar: Format, Source, Sort, View Toggle */}
-          <div className="space-y-2 pt-1 border-t border-stone-100 dark:border-stone-800">
+          <div className="space-y-2 pt-1 border-t border-stone-100 dark:border-stone-800 text-xs">
             {/* Format Filter Buttons */}
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                 Định dạng
               </span>
-              <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-xl text-xs">
+              <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg text-[11px]">
                 {[
                   { id: "all", label: "Tất cả", testId: "filter-format-all" },
                   { id: "pdf", label: "PDF", testId: "filter-format-pdf" },
@@ -467,7 +475,7 @@ export function DocsExplorerView({
                     key={fmt.id}
                     data-testid={fmt.testId}
                     onClick={() => setSelectedFormat(fmt.id as any)}
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                    className={`px-1.5 py-0.5 font-semibold rounded transition cursor-pointer ${
                       selectedFormat === fmt.id
                         ? "bg-amber-800 text-amber-50 shadow-2xs"
                         : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
@@ -480,51 +488,51 @@ export function DocsExplorerView({
             </div>
 
             {/* Source Filter, Sort Dropdown & View Mode Toggle */}
-            <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+            <div className="flex items-center justify-between gap-1.5 flex-wrap pt-0.5">
               {/* Source Filters */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <button
                   data-testid="filter-source-all"
                   onClick={() => setSelectedSource("all")}
-                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition cursor-pointer border ${
+                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition cursor-pointer border ${
                     selectedSource === "all"
                       ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                       : "bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 border-transparent"
                   }`}
                 >
-                  Tất cả nguồn
+                  Tất cả
                 </button>
                 <button
                   data-testid="filter-source-vault"
                   onClick={() => setSelectedSource("vault")}
-                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md transition cursor-pointer border ${
+                  className={`px-1.5 py-0.5 text-[10px] font-semibold rounded transition cursor-pointer border ${
                     selectedSource === "vault"
                       ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700"
                       : "bg-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 border-transparent"
                   }`}
                 >
-                  Obsidian Vault
+                  Vault
                 </button>
               </div>
 
               {/* Sort & View Mode */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <select
                   data-testid="library-sort-select"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="text-[11px] font-semibold bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-2 py-1 text-stone-700 dark:text-stone-300 cursor-pointer focus:outline-hidden"
+                  className="text-[10px] font-semibold bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg px-1.5 py-0.5 text-stone-700 dark:text-stone-300 cursor-pointer focus:outline-hidden"
                 >
-                  <option value="recent">Mới nhất (Recent)</option>
-                  <option value="title-asc">Tên A-Z (Title)</option>
-                  <option value="size-desc">Dung lượng (Size)</option>
+                  <option value="recent">Mới nhất</option>
+                  <option value="title-asc">Tên A-Z</option>
+                  <option value="size-desc">Dung lượng</option>
                 </select>
 
                 <div className="flex items-center gap-0.5 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg border border-stone-200 dark:border-stone-700">
                   <button
                     data-testid="view-mode-grid"
                     onClick={() => setViewMode("grid")}
-                    className={`p-1 rounded transition cursor-pointer ${
+                    className={`p-0.5 rounded transition cursor-pointer ${
                       viewMode === "grid"
                         ? "bg-white dark:bg-stone-700 text-amber-800 dark:text-amber-300 shadow-2xs"
                         : "text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
@@ -532,12 +540,12 @@ export function DocsExplorerView({
                     title="Chế độ lưới"
                     aria-label="Chế độ lưới"
                   >
-                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <LayoutGrid className="w-3 h-3" />
                   </button>
                   <button
                     data-testid="view-mode-list"
                     onClick={() => setViewMode("list")}
-                    className={`p-1 rounded transition cursor-pointer ${
+                    className={`p-0.5 rounded transition cursor-pointer ${
                       viewMode === "list"
                         ? "bg-white dark:bg-stone-700 text-amber-800 dark:text-amber-300 shadow-2xs"
                         : "text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
@@ -545,7 +553,7 @@ export function DocsExplorerView({
                     title="Chế độ danh sách"
                     aria-label="Chế độ danh sách"
                   >
-                    <List className="w-3.5 h-3.5" />
+                    <List className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -553,15 +561,15 @@ export function DocsExplorerView({
           </div>
 
           {/* Documents List / Grid Container */}
-          <div className="flex-1 overflow-y-auto max-h-[500px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[520px] space-y-2 pr-1 scrollbar-thin">
             {isLoadingList ? (
               <div className="p-8 text-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
                 {isEpubOnly ? "Đang nạp danh sách sách EPUB..." : "Đang nạp danh mục tài liệu..."}
               </div>
             ) : filteredDocs.length === 0 ? (
-              <div className="p-8 text-center text-xs text-stone-500 dark:text-stone-400 space-y-3 bg-stone-50/50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
-                <Book className="w-8 h-8 text-stone-300 dark:text-stone-600 mx-auto" />
-                <p className="font-medium text-stone-600 dark:text-stone-300">
+              <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 space-y-3 bg-stone-50/50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
+                <Book className="w-7 h-7 text-stone-300 dark:text-stone-600 mx-auto" />
+                <p className="font-medium text-stone-600 dark:text-stone-300 text-xs">
                   {isEpubOnly ? "Chưa có sách EPUB nào trong danh mục." : "Không tìm thấy tài liệu phù hợp"}
                 </p>
                 {isEpubOnly && (
@@ -579,12 +587,12 @@ export function DocsExplorerView({
                 data-testid={viewMode === "grid" ? "library-grid-container" : "library-list-container"}
                 className={
                   viewMode === "grid"
-                    ? "grid grid-cols-1 gap-2.5"
+                    ? "grid grid-cols-1 gap-2"
                     : "space-y-1.5"
                 }
               >
                 {filteredDocs.map((doc) => {
-                  const isSelected = selectedDoc?.relativePath === doc.relativePath;
+                  const isSelected = selectedDoc?.relativePath === doc.relativePath || activeReaderDoc?.documentId === doc.id || activeReaderDoc?.documentId === doc.relativePath;
                   const format = getDocFormat(doc);
                   const isEpub = format === "epub";
                   const isPdf = format === "pdf";
@@ -595,26 +603,26 @@ export function DocsExplorerView({
                       data-testid={`doc-item-${doc.id}`}
                       aria-label={doc.title}
                       onClick={() => handleDocClick(doc)}
-                      className={`w-full text-left p-3 rounded-xl border transition flex flex-col gap-1.5 cursor-pointer ${
+                      className={`w-full text-left p-2.5 rounded-xl border transition flex flex-col gap-1 cursor-pointer ${
                         isSelected
                           ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 ring-1 ring-amber-400/40"
                           : "bg-stone-50/60 dark:bg-stone-800/50 border-stone-200/80 dark:border-stone-700/80 hover:bg-stone-100/80 dark:hover:bg-stone-800"
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-1.5">
                         <div className="flex items-center gap-1.5 min-w-0">
                           {isEpub && <Book className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />}
                           {isPdf && <FileText className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />}
                           <span
                             data-testid="library-doc-title"
-                            className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-2"
+                            className="text-xs font-bold text-stone-900 dark:text-stone-100 line-clamp-1"
                           >
                             {doc.title}
                           </span>
                         </div>
                         {doc.status && (
                           <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono shrink-0 ${
+                            className={`text-[8px] font-bold px-1 py-0.2 rounded uppercase font-mono shrink-0 ${
                               doc.status === "ACCEPTED"
                                 ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                                 : doc.status === "PROPOSED"
@@ -629,8 +637,8 @@ export function DocsExplorerView({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
-                        <span className="truncate">{doc.relativePath}</span>
+                      <div className="flex items-center gap-1.5 text-[9px] text-stone-500 dark:text-stone-400 font-mono">
+                        <span className="truncate max-w-[140px]">{doc.relativePath}</span>
                         <span>•</span>
                         <span className="shrink-0">{Math.round(doc.sizeBytes / 1024)} KB</span>
                         <span>•</span>
@@ -644,8 +652,25 @@ export function DocsExplorerView({
           </div>
         </SurfaceCard>
 
-        {/* Right Pane: Embedded Reader, Markdown Preview, or Overview */}
-        <div className="lg:col-span-8 flex flex-col min-h-[600px] overflow-hidden">
+        {/* Right Pane: Dominant Embedded Reader, Markdown Preview, or Overview */}
+        <div
+          data-testid="library-right-content-pane"
+          className="flex-1 min-w-0 flex flex-col min-h-[600px] overflow-hidden relative"
+        >
+          {/* Floating Expand Sidebar Button when Left Sidebar is Collapsed */}
+          {isLeftSidebarCollapsed && (
+            <button
+              data-testid="expand-left-sidebar-btn"
+              type="button"
+              onClick={() => setIsLeftSidebarCollapsed(false)}
+              aria-label="Mở danh mục"
+              title="Mở danh mục sách"
+              className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 dark:bg-stone-900/95 hover:bg-amber-50 dark:hover:bg-amber-950/50 text-stone-700 dark:text-stone-300 hover:text-amber-800 dark:hover:text-amber-300 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold shadow-md backdrop-blur-xs transition cursor-pointer animate-in fade-in"
+            >
+              <PanelLeftOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+              <span className="hidden sm:inline">Danh mục</span>
+            </button>
+          )}
           {activeReaderDoc ? (
             <UnifiedResearchReader
               documentId={activeReaderDoc.documentId}
