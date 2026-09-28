@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import type { Flashcard, FlashcardReview, ReviewRating } from "../../types/flashcard";
+import type { Flashcard, FlashcardReview, ReviewRating, FlashcardCitationProvenance } from "../../types/flashcard";
+import { resolveFlashcardJumpBack } from "../../lib/flashcardJumpBackResolver";
 import { FlashcardCardView } from "./FlashcardCardView";
 import { FlashcardFormModal } from "../modals/FlashcardFormModal";
 import { FlashcardImportModal } from "../modals/FlashcardImportModal";
@@ -49,6 +50,13 @@ import {
 export interface FlashcardReviewStudioProps {
   topicId?: string;
   onClose?: () => void;
+  onNavigateToDocument?: (target: {
+    documentId: string;
+    title: string;
+    format: string;
+    fileUrl?: string;
+    initialPosition?: string;
+  }) => void;
   sessionType?: StudySessionType;
   cramMode?: boolean;
   initialQueue?: Flashcard[];
@@ -62,6 +70,7 @@ function useSafeData() {
   } catch {
     return {
       topics: [] as Array<{ id: string; title: string }>,
+      resources: [] as any[],
     };
   }
 }
@@ -73,6 +82,7 @@ function useSafeData() {
 export function FlashcardReviewStudio({
   topicId,
   onClose,
+  onNavigateToDocument,
   sessionType = "review",
   cramMode = false,
   initialQueue,
@@ -83,7 +93,7 @@ export function FlashcardReviewStudio({
     sessionType || (cramMode ? "cram" : "review");
   const isCram = cramMode || effectiveSessionType === "cram";
 
-  const { topics } = useSafeData();
+  const { topics, resources } = useSafeData();
   const topicTitle = topicId ? topics?.find((t) => t.id === topicId)?.title : null;
   const [cards, setCards] = useState<Flashcard[]>(initialQueue || []);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -204,6 +214,32 @@ export function FlashcardReviewStudio({
       setIsEditModalOpen(false);
     },
     []
+  );
+
+  // Jump-back to citation provenance in reader
+  const handleOpenCitationProvenance = useCallback(
+    (provenance: FlashcardCitationProvenance) => {
+      const result = resolveFlashcardJumpBack(provenance, resources);
+      if (result.status === "success") {
+        if (onNavigateToDocument) {
+          onNavigateToDocument({
+            documentId: result.documentId,
+            title: provenance.documentTitle,
+            format: result.format,
+            initialPosition: result.locator,
+          });
+        }
+      } else if (result.status === "fallback_document_start") {
+        if (onNavigateToDocument) {
+          onNavigateToDocument({
+            documentId: result.documentId,
+            title: provenance.documentTitle,
+            format: result.format,
+          });
+        }
+      }
+    },
+    [resources, onNavigateToDocument]
   );
 
   // Reset activity timestamp
@@ -973,6 +1009,7 @@ export function FlashcardReviewStudio({
           onFlip={handleFlip}
           onEdit={handleOpenQuickEdit}
           onHistory={handleOpenHistory}
+          onOpenCitationProvenance={handleOpenCitationProvenance}
         />
       )}
 

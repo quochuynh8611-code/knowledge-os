@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useData } from "../../context/DataContext";
-import type { Flashcard, FlashcardType } from "../../types/flashcard";
+import type { Flashcard, FlashcardType, FlashcardCitationProvenance } from "../../types/flashcard";
 import { parseClozeDeletions, detectClozeFromSelection } from "../../lib/clozeParser";
 import {
   X,
@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Scissors,
   Check,
+  Quote,
 } from "lucide-react";
 
 import {
@@ -31,6 +32,8 @@ export interface FlashcardFormModalProps {
   initialFront?: string;
   initialBack?: string;
   initialType?: FlashcardType;
+  initialProvenance?: FlashcardCitationProvenance;
+  restoreFocusRef?: React.RefObject<HTMLElement | null>;
   defaultNoteId?: string;
   editingCard?: Flashcard | null;
 }
@@ -61,6 +64,8 @@ export function FlashcardFormModal({
   initialFront,
   initialBack,
   initialType,
+  initialProvenance,
+  restoreFocusRef,
   defaultNoteId,
   editingCard,
 }: FlashcardFormModalProps) {
@@ -73,8 +78,6 @@ export function FlashcardFormModal({
     customRepo ||
     (dataContext as any).dataRepository ||
     defaultRepository;
-
-
 
   const [topicId, setTopicId] = useState<string>(
     () => editingCard?.topicId || defaultTopicId || ""
@@ -101,8 +104,33 @@ export function FlashcardFormModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const frontInputRef = useRef<HTMLTextAreaElement>(null);
-
   const prevIsOpenRef = useRef(false);
+
+  // Focus restoration hook on close / unmount
+  useEffect(() => {
+    return () => {
+      if (restoreFocusRef?.current) {
+        restoreFocusRef.current.focus();
+      }
+    };
+  }, [restoreFocusRef]);
+
+  // Escape key isolation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onClose]);
 
   // Initialize or reset form only on modal open transition or card change
   useEffect(() => {
@@ -276,6 +304,7 @@ export function FlashcardFormModal({
           type,
           front: trimmedFront,
           back: trimmedBack,
+          citationProvenance: initialProvenance || null,
           lifecycleStatus: "active",
         });
 
@@ -295,15 +324,25 @@ export function FlashcardFormModal({
     }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      e.stopPropagation();
+      onClose();
+    }
+  };
+
   return (
     <div
       data-testid="flashcard-form-modal"
       role="dialog"
       aria-label={isEdit ? "Chỉnh Sửa Flashcard" : "Tạo Flashcard Mới"}
-      onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200"
     >
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col my-8">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col my-8"
+      >
         {/* Header */}
         <div className="px-6 py-5 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -329,6 +368,23 @@ export function FlashcardFormModal({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Provenance Preview Badge if initialProvenance exists */}
+        {initialProvenance && (
+          <div
+            data-testid="provenance-preview-badge"
+            className="mx-6 mt-4 p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200"
+          >
+            <Quote className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <div className="truncate">
+              <span className="font-semibold">Nguồn trích: </span>
+              <span>{initialProvenance.documentTitle}</span>
+              {initialProvenance.locator && (
+                <span className="opacity-80 ml-1">({initialProvenance.locator})</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">

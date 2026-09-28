@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Highlighter, Copy, Quote, FilePlus, Inbox, Check } from 'lucide-react';
+import { Highlighter, Copy, Quote, FilePlus, Inbox, Check, Brain } from 'lucide-react';
 import { copyTextToClipboard } from '../../lib/clipboard';
 
 export type SelectionToolbarAction =
@@ -7,7 +7,8 @@ export type SelectionToolbarAction =
   | 'copy'
   | 'citation'
   | 'send_to_note'
-  | 'add_to_inbox';
+  | 'add_to_inbox'
+  | 'create_flashcard';
 
 export interface UnifiedSelectionToolbarProps {
   isOpen: boolean;
@@ -132,6 +133,18 @@ export function UnifiedSelectionToolbar({
       >
         <Inbox className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">Vào Inbox</span>
+      </button>
+
+      {/* 6. Create Flashcard */}
+      <button
+        type="button"
+        onClick={() => onAction('create_flashcard', { text: selectedText })}
+        className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-stone-800 dark:hover:bg-stone-200 text-rose-400 dark:text-rose-700 font-medium rounded-xl transition cursor-pointer"
+        aria-label="Tạo thẻ nhớ"
+        title="Tạo thẻ nhớ từ đoạn trích"
+      >
+        <Brain className="w-3.5 h-3.5" />
+        <span className="hidden sm:inline">Tạo thẻ nhớ</span>
       </button>
     </div>
   );

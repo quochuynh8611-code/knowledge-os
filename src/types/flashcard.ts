@@ -6,6 +6,18 @@ export type FlashcardLifecycleStatus = 'active' | 'suspended' | 'archived';
 
 export type ReviewRating = 1 | 2 | 3 | 4;
 
+export type ReaderDocumentFormat = 'epub' | 'pdf' | 'md';
+
+export interface FlashcardCitationProvenance {
+  documentId: string;
+  documentTitle: string;
+  format: ReaderDocumentFormat;
+  locator?: string;
+  sourceUrl?: string;
+  excerptText?: string;
+  citationFormatted?: string;
+}
+
 export interface Flashcard {
   id: string;
   topicId: string;
@@ -14,6 +26,7 @@ export interface Flashcard {
   type: FlashcardType;
   front: string;
   back: string;
+  citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus; // Default: 'active'
   schedule?: FlashcardSchedule;
   createdAt: string;
@@ -79,6 +92,7 @@ export interface FlashcardCreateInput {
   type: FlashcardType;
   front: string;
   back: string;
+  citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus;
 }
 
@@ -89,6 +103,7 @@ export interface FlashcardUpdateInput {
   type?: FlashcardType;
   front?: string;
   back?: string;
+  citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus;
 }
 

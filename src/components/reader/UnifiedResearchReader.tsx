@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
@@ -9,6 +9,8 @@ import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
 import { UnifiedSelectionToolbar, SelectionToolbarAction } from './UnifiedSelectionToolbar';
 import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
+import { FlashcardFormModal } from '../modals/FlashcardFormModal';
+import type { FlashcardCitationProvenance, ReaderDocumentFormat } from '../../types/flashcard';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
@@ -116,6 +118,10 @@ export function UnifiedResearchReader({
     cfi?: string;
   } | null>(null);
   const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
+  const [isCreateFlashcardModalOpen, setIsCreateFlashcardModalOpen] = useState(false);
+  const [flashcardProvenance, setFlashcardProvenance] = useState<FlashcardCitationProvenance | undefined>(undefined);
+  const [flashcardInitialFront, setFlashcardInitialFront] = useState<string>('');
+  const readerViewportRef = useRef<HTMLDivElement>(null);
   const [viewingBacklinkNote, setViewingBacklinkNote] = useState<Note | null>(null);
   const [viewingBacklinkTargetCitation, setViewingBacklinkTargetCitation] = useState<{ documentId: string; locator?: string } | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -381,6 +387,38 @@ export function UnifiedResearchReader({
         showToast('Không thể thêm vào Research Inbox');
       }
       setActiveSelection(null);
+    } else if (action === 'create_flashcard') {
+      const formatNormalized: ReaderDocumentFormat =
+        normalizedFormat === 'epub' ? 'epub' : normalizedFormat === 'pdf' ? 'pdf' : 'md';
+
+      let canonicalLoc: string | undefined = undefined;
+      if (formatNormalized === 'epub') {
+        canonicalLoc = activeSelection?.cfi || currentPosition;
+      } else if (formatNormalized === 'pdf') {
+        canonicalLoc = activeSelection?.page
+          ? `page=${activeSelection.page}`
+          : currentPosition
+          ? currentPosition.startsWith('page=')
+            ? currentPosition
+            : `page=${currentPosition}`
+          : undefined;
+      } else {
+        canonicalLoc = activeTocId || targetHeadingId;
+      }
+
+      const provenance: FlashcardCitationProvenance = {
+        documentId,
+        documentTitle: title,
+        format: formatNormalized,
+        locator: canonicalLoc,
+        sourceUrl: fileUrl,
+        excerptText: selectedText,
+        citationFormatted: citationSnapshot.formatted || citationSnapshot.apa,
+      };
+
+      setFlashcardProvenance(provenance);
+      setFlashcardInitialFront(selectedText);
+      setIsCreateFlashcardModalOpen(true);
     }
   };
 
@@ -544,7 +582,14 @@ export function UnifiedResearchReader({
 
       {/* Reader Workspace: Viewport Area & Multi-Tab Sidebar */}
       <div className="flex-1 relative overflow-hidden flex flex-row bg-stone-50 dark:bg-stone-950">
-        <div className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4">
+        <div
+          ref={readerViewportRef}
+          data-testid="reader-viewport-container"
+          tabIndex={-1}
+          role="region"
+          aria-label="Vùng hiển thị nội dung tài liệu đọc"
+          className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4 outline-none"
+        >
           {normalizedFormat === 'epub' ? (
             <EpubReaderAdapter
               fileUrl={fileUrl}
@@ -682,6 +727,25 @@ export function UnifiedResearchReader({
             setViewingBacklinkTargetCitation(undefined);
           }}
           onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+        />
+      )}
+
+      {/* Phase 2B: Flashcard Creation Modal with Provenance Handoff */}
+      {isCreateFlashcardModalOpen && (
+        <FlashcardFormModal
+          isOpen={isCreateFlashcardModalOpen}
+          initialFront={flashcardInitialFront}
+          initialProvenance={flashcardProvenance}
+          restoreFocusRef={readerViewportRef}
+          onClose={() => {
+            setIsCreateFlashcardModalOpen(false);
+            setActiveSelection(null);
+          }}
+          onSuccess={(card) => {
+            setIsCreateFlashcardModalOpen(false);
+            setActiveSelection(null);
+            showToast(`Đã tạo flashcard: "${card.front.slice(0, 30)}..."`);
+          }}
         />
       )}
     </div>

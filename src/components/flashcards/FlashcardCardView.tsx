@@ -1,18 +1,20 @@
 import React, { useMemo } from "react";
 import { parseClozeDeletions } from "../../lib/clozeParser";
-import type { Flashcard } from "../../types/flashcard";
-import { Sparkles, Eye, RotateCw, Pencil, History } from "lucide-react";
+import type { Flashcard, FlashcardCitationProvenance } from "../../types/flashcard";
+import { Sparkles, Eye, RotateCw, Pencil, History, Quote } from "lucide-react";
 
 export interface FlashcardCardViewProps {
   card: Pick<Flashcard, "id" | "type" | "front" | "back"> & {
     topicId?: string;
     lifecycleStatus?: string;
     schedule?: any;
+    citationProvenance?: FlashcardCitationProvenance | null;
   };
   isFlipped: boolean;
   onFlip?: () => void;
   onEdit?: () => void;
   onHistory?: () => void;
+  onOpenCitationProvenance?: (provenance: FlashcardCitationProvenance) => void;
 }
 
 /**
@@ -24,6 +26,7 @@ export function FlashcardCardView({
   onFlip,
   onEdit,
   onHistory,
+  onOpenCitationProvenance,
 }: FlashcardCardViewProps) {
   const isCloze = card.type === "cloze";
 
@@ -70,31 +73,46 @@ export function FlashcardCardView({
 
   // Render back content
   const renderBack = () => {
-    if (isCloze && clozeItems.length > 0) {
-      const firstCloze = clozeItems[0];
-      const parts = card.front.split(/\{\{c\d+::[\s\S]*?\}\}/);
-
-      return (
-        <div className="space-y-4">
-          <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
-            {parts[0]}
-            <span className="inline-flex items-center px-3 py-1 mx-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold text-base shadow-xs animate-in fade-in duration-300">
-              {firstCloze.answer}
-            </span>
-            {parts[1] || ""}
-          </div>
-          {card.back && (
-            <div className="pt-3 border-t border-stone-200 dark:border-stone-800 text-sm md:text-base text-stone-600 dark:text-stone-300 whitespace-pre-wrap">
-              {card.back}
-            </div>
-          )}
-        </div>
-      );
-    }
-
     return (
-      <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100 whitespace-pre-wrap">
-        {card.back}
+      <div className="space-y-4 w-full">
+        {isCloze && clozeItems.length > 0 ? (
+          <>
+            <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
+              {card.front.split(/\{\{c\d+::[\s\S]*?\}\}/)[0]}
+              <span className="inline-flex items-center px-3 py-1 mx-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold text-base shadow-xs animate-in fade-in duration-300">
+                {clozeItems[0].answer}
+              </span>
+              {card.front.split(/\{\{c\d+::[\s\S]*?\}\}/)[1] || ""}
+            </div>
+            {card.back && (
+              <div className="pt-3 border-t border-stone-200 dark:border-stone-800 text-sm md:text-base text-stone-600 dark:text-stone-300 whitespace-pre-wrap">
+                {card.back}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100 whitespace-pre-wrap">
+            {card.back}
+          </div>
+        )}
+
+        {card.citationProvenance && (
+          <div className="pt-3 border-t border-stone-200/80 dark:border-stone-800/80 flex items-center justify-center">
+            <button
+              type="button"
+              data-testid="btn-citation-jump-back"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenCitationProvenance?.(card.citationProvenance!);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 transition cursor-pointer"
+              title="Mở tài liệu đọc tại vị trí nguồn"
+            >
+              <Quote className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Nguồn: {card.citationProvenance.documentTitle}</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   };
