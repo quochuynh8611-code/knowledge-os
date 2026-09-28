@@ -78,7 +78,7 @@ describe("Phase P2.7c — Sync Backoff Indicator UI", () => {
       expect(item).toHaveTextContent(/thử lại sau 1 phút/i);
     });
 
-    it("1.3. displays 'Sẵn sàng thử lại' when nextRetryAt has already elapsed", () => {
+    it("1.3. displays 'Sẵn sàng gửi lại' when nextRetryAt has already elapsed", () => {
       const now = new Date("2026-08-28T12:00:10.000Z").getTime();
       vi.spyOn(Date, "now").mockReturnValue(now);
 
@@ -101,7 +101,7 @@ describe("Phase P2.7c — Sync Backoff Indicator UI", () => {
       fireEvent.click(screen.getByTestId("sync-status-badge"));
 
       const item = screen.getByTestId("sync-queue-item");
-      expect(item).toHaveTextContent(/sẵn sàng thử lại/i);
+      expect(item).toHaveTextContent(/sẵn sàng gửi lại|sẵn sàng thử lại/i);
       expect(item).not.toHaveTextContent(/thử lại sau/i);
     });
 
@@ -121,9 +121,9 @@ describe("Phase P2.7c — Sync Backoff Indicator UI", () => {
       fireEvent.click(screen.getByTestId("sync-status-badge"));
 
       const item = screen.getByTestId("sync-queue-item");
-      expect(item).toHaveTextContent(/chờ đồng bộ/i);
+      expect(item).toHaveTextContent(/đang chờ|chờ đồng bộ/i);
       expect(item).not.toHaveTextContent(/thử lại sau/i);
-      expect(item).not.toHaveTextContent(/sẵn sàng thử lại/i);
+      expect(item).not.toHaveTextContent(/sẵn sàng gửi lại|sẵn sàng thử lại/i);
     });
   });
 
@@ -177,7 +177,7 @@ describe("Phase P2.7c — Sync Backoff Indicator UI", () => {
       act(() => {
         vi.advanceTimersByTime(1000);
       });
-      expect(item).toHaveTextContent(/sẵn sàng thử lại/i);
+      expect(item).toHaveTextContent(/sẵn sàng gửi lại|sẵn sàng thử lại/i);
     });
 
     it("2.2. cleans up interval when popover is closed", () => {

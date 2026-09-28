@@ -8,11 +8,22 @@
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ResourceFormModal } from '../../src/components/modals/ResourceFormModal';
 
 const mockAddResource = vi.fn();
 const mockUpdateResource = vi.fn();
+const mockUploadArchiveFile = vi.fn().mockResolvedValue({
+  success: true,
+  document: {
+    id: 'doc-archive-123',
+    storageRelPath: 'KyMonBiKip.pdf',
+  },
+});
+
+vi.mock('../../src/services/dataRepository', () => ({
+  uploadArchiveFile: (...args: any[]) => mockUploadArchiveFile(...args),
+}));
 
 const mockTopics = [
   {
@@ -161,7 +172,7 @@ describe('ADR-012 Phase 1: ResourceFormModal Local File Picker UX Contract Tests
   // ---------------------------------------------------------------------------
   // Test 6: Submitting after file pick sends clean metadata with ZERO binary content
   // ---------------------------------------------------------------------------
-  it('6. Submitting picked file sends clean metadata with zero binary ingestion', () => {
+  it('6. Submitting picked file sends clean metadata with zero binary ingestion', async () => {
     const handleClose = vi.fn();
     render(<ResourceFormModal isOpen={true} onClose={handleClose} />);
 
@@ -184,7 +195,9 @@ describe('ADR-012 Phase 1: ResourceFormModal Local File Picker UX Contract Tests
     });
     fireEvent.click(submitButton);
 
-    expect(mockAddResource).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockAddResource).toHaveBeenCalledTimes(1);
+    });
     const submittedPayload = mockAddResource.mock.calls[0][0];
 
     expect(submittedPayload.filePath).toBe('KyMonBiKip.pdf');

@@ -53,7 +53,7 @@ describe("Phase P4.2D: ObsidianDocumentViewerModal Attachment Rendering", () => 
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute(
       "src",
-      "/api/obsidian/vault/attachment?path=assets%2Fmindmap.png"
+      "/api/obsidian/vault/attachment?path=Media%2Fassets%2Fmindmap.png"
     );
   });
 
@@ -90,7 +90,7 @@ describe("Phase P4.2D: ObsidianDocumentViewerModal Attachment Rendering", () => 
     expect(embed).toHaveAttribute("type", "application/pdf");
     expect(embed).toHaveAttribute(
       "src",
-      "/api/obsidian/vault/attachment?path=reports%2Fsummary.pdf"
+      "/api/obsidian/vault/attachment?path=Media%2Freports%2Fsummary.pdf"
     );
 
     const video = container.querySelector("video");
@@ -98,7 +98,7 @@ describe("Phase P4.2D: ObsidianDocumentViewerModal Attachment Rendering", () => 
     expect(video).toHaveAttribute("controls");
     expect(video).toHaveAttribute(
       "src",
-      "/api/obsidian/vault/attachment?path=clips%2Fpresentation.mp4"
+      "/api/obsidian/vault/attachment?path=Media%2Fclips%2Fpresentation.mp4"
     );
   });
 });
