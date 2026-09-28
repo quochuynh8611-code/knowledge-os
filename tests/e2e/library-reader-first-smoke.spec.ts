@@ -91,13 +91,24 @@ test.describe("Library Reader-First Layout & Sidebar Collapse Smoke", () => {
       const readerSidebarToggle = page.getByTestId("reader-toggle-sidebar-btn");
       await expect(readerSidebarToggle).toBeVisible({ timeout: 5000 });
 
+      // Layout Ratio Verification: Right reader pane must be significantly wider than left sidebar (>= 2.2x)
+      const leftBox = await leftSidebar.boundingBox();
+      const rightBox = await rightContentPane.boundingBox();
+      if (leftBox && rightBox) {
+        expect(rightBox.width).toBeGreaterThanOrEqual(leftBox.width * 2.2);
+      }
+
       // Collapse sidebar while reading
       const toggleBtn = page.getByTestId("toggle-left-sidebar-btn");
       await toggleBtn.click();
       await expect(leftSidebar).not.toBeVisible();
 
-      // Reader viewport remains mounted and visible in dominant full-width space
+      // Reader viewport remains mounted and expands to take up released space
       await expect(readerViewport).toBeVisible();
+      const rightBoxExpanded = await rightContentPane.boundingBox();
+      if (rightBox && rightBoxExpanded) {
+        expect(rightBoxExpanded.width).toBeGreaterThan(rightBox.width);
+      }
 
       // Expand button is available
       const expandBtn = page.getByTestId("expand-left-sidebar-btn");

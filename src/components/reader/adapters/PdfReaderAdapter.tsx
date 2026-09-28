@@ -385,7 +385,7 @@ export function PdfReaderAdapter({
         data-testid="pdf-embed-element"
         src={fileUrl}
         type="application/pdf"
-        className="w-full flex-1 min-h-[500px] border-none rounded-b-2xl bg-white dark:bg-stone-900"
+        className="w-full h-full flex-1 min-h-[600px] lg:min-h-[700px] border-none rounded-b-2xl bg-white dark:bg-stone-900"
       />
 
       {/* Optional fallback / sample text selection layer */}

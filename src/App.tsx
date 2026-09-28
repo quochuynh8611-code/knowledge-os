@@ -402,7 +402,7 @@ function AppContent() {
       />
 
       {/* Main Container: Sidebar + Content */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto pb-16 md:pb-0">
+      <div className={`flex-1 flex w-full mx-auto pb-16 md:pb-0 ${activeTab === "library" ? "max-w-[1700px] 2xl:max-w-[1800px]" : "max-w-7xl"}`}>
         {/* Desktop & Tablet Sidebar */}
         <div className="hidden md:block">
           <Sidebar />

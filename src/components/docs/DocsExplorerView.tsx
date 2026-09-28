@@ -312,7 +312,7 @@ export function DocsExplorerView({
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-in fade-in duration-200">
+    <div className={`p-4 md:p-6 lg:p-8 ${activeReaderDoc ? "max-w-[1700px] 2xl:px-8" : "max-w-7xl"} mx-auto space-y-5 animate-in fade-in duration-200`}>
       {/* Page Header */}
       <PageHeader
         title={isEpubOnly ? "Thư Viện Sách" : "Tài Liệu Kiến Trúc & Đặc Tả Hệ Thống"}
@@ -393,7 +393,7 @@ export function DocsExplorerView({
       )}
 
       {/* Split-Pane Content Container: Reader-First Flexbox Layout */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch min-h-[650px] relative">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch min-h-[700px] lg:min-h-[calc(100vh-160px)] relative">
         {/* Left Pane: Directory, Filters & Search (Slim & Collapsible) */}
         <SurfaceCard
           data-testid="library-left-sidebar"
@@ -401,7 +401,7 @@ export function DocsExplorerView({
           className={`${
             isLeftSidebarCollapsed
               ? "hidden"
-              : "w-full lg:w-80 shrink-0"
+              : "w-full lg:w-72 shrink-0"
           } flex flex-col space-y-3 transition-all duration-200`}
         >
           {/* Top Row inside Left Pane: Title & Collapse Toggle */}
@@ -655,7 +655,7 @@ export function DocsExplorerView({
         {/* Right Pane: Dominant Embedded Reader, Markdown Preview, or Overview */}
         <div
           data-testid="library-right-content-pane"
-          className="flex-1 min-w-0 flex flex-col min-h-[600px] overflow-hidden relative"
+          className="flex-1 min-w-0 flex flex-col min-h-[700px] lg:min-h-[calc(100vh-160px)] overflow-hidden relative"
         >
           {/* Floating Expand Sidebar Button when Left Sidebar is Collapsed */}
           {isLeftSidebarCollapsed && (

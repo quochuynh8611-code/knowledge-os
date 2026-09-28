@@ -82,8 +82,8 @@ describe('Reader-First Layout Specification for DocsExplorerView', () => {
 
     const leftPane = screen.getByTestId('library-left-sidebar');
     expect(leftPane).toBeInTheDocument();
-    // Verify left pane uses a slim width container class (not bulky 33.3% grid column)
-    expect(leftPane.className).toMatch(/lg:w-(72|80)|w-\[(280|290|300|320)px\]/);
+    // Verify left pane uses a slim width container class (e.g. lg:w-72 or lg:w-[270px])
+    expect(leftPane.className).toMatch(/lg:w-(72|80)|w-\[(260|270|280|290|300|320)px\]/);
 
     const rightPane = screen.getByTestId('library-right-content-pane');
     expect(rightPane).toBeInTheDocument();
@@ -138,5 +138,20 @@ describe('Reader-First Layout Specification for DocsExplorerView', () => {
     // Click expand to restore
     fireEvent.click(expandBtn);
     expect(leftPane.className).not.toMatch(/hidden|w-0/);
+  });
+
+  it('4. Container expands beyond max-w-7xl when activeReaderDoc is open', async () => {
+    const { container } = render(
+      <DataContext.Provider value={baseDataContextValue}>
+        <DocsExplorerView mode="full" />
+      </DataContext.Provider>
+    );
+
+    const docItem = await screen.findByText('Kinh Kim Cương Bát Nhã');
+    fireEvent.click(docItem);
+
+    // The outer container must support wide viewport expansion
+    const outerContainer = container.firstChild as HTMLElement;
+    expect(outerContainer.className).toMatch(/max-w-\[1700px\]|max-w-none|max-w-full/);
   });
 });

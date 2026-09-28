@@ -673,7 +673,7 @@ export function UnifiedResearchReader({
   );
 
   const readerContent = (
-    <div className={layoutMode === 'embedded' ? `w-full h-full min-h-[600px] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl sm:rounded-3xl shadow-xs flex flex-col overflow-hidden relative ${className}` : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-6xl h-[92vh] shadow-2xl flex flex-col overflow-hidden relative"}>
+    <div className={layoutMode === 'embedded' ? `w-full h-full min-h-[650px] lg:min-h-[calc(100vh-160px)] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl sm:rounded-3xl shadow-xs flex flex-col overflow-hidden relative ${className}` : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-6xl h-[92vh] shadow-2xl flex flex-col overflow-hidden relative"}>
       {/* Toast Feedback */}
       {toastMessage && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -702,7 +702,7 @@ export function UnifiedResearchReader({
           tabIndex={-1}
           role="region"
           aria-label="Vùng hiển thị nội dung tài liệu đọc"
-          className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4 outline-none"
+          className="flex-1 relative overflow-hidden flex flex-col p-1 sm:p-2.5 outline-none"
         >
           {normalizedFormat === 'epub' ? (
             <EpubReaderAdapter

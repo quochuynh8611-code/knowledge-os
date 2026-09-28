@@ -79,7 +79,7 @@ export function ReaderSidebar({
   return (
     <aside
       data-testid="reader-sidebar-container"
-      className="w-80 sm:w-96 h-full bg-white dark:bg-stone-900 border-l border-stone-200 dark:border-stone-800 flex flex-col shrink-0 z-30 shadow-lg animate-in slide-in-from-right-4 duration-150"
+      className="w-72 sm:w-[300px] h-full bg-white dark:bg-stone-900 border-l border-stone-200 dark:border-stone-800 flex flex-col shrink-0 z-30 shadow-lg animate-in slide-in-from-right-4 duration-150"
     >
       {/* Sidebar Header & Tab Switcher */}
       <div className="p-3 border-b border-stone-200 dark:border-stone-800 space-y-2 bg-stone-50/80 dark:bg-stone-900/80">
