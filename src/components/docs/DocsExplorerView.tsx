@@ -318,10 +318,10 @@ export function DocsExplorerView({
         title={isEpubOnly ? "Thư Viện Sách" : "Tài Liệu Kiến Trúc & Đặc Tả Hệ Thống"}
         subtitle={
           isEpubOnly
-            ? "Đọc và quản lý sách EPUB trong kho tài liệu của bạn."
+            ? "Không gian đọc sách điện tử & tra cứu tài liệu nghiên cứu."
             : "Tra cứu trực tiếp quyết định kiến trúc (ADRs), đặc tả kỹ thuật (Specs), kịch bản kiểm thử (Gherkin) và sổ tay vận hành hệ thống."
         }
-        categoryLabel={isEpubOnly ? "Nguồn: Obsidian Vault & Kho lưu trữ EPUB" : "Architecture & Specifications Explorer"}
+        categoryLabel={isEpubOnly ? "Kho tài liệu EPUB • PDF • Obsidian Vault" : "Architecture & Specifications Explorer"}
         categoryIcon={BookOpen}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
@@ -352,7 +352,7 @@ export function DocsExplorerView({
       {recentDocs.length > 0 && (
         <div
           data-testid="recent-reads-shelf"
-          aria-label="Đang đọc gần đây"
+          aria-label="Đọc gần đây"
           className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200"
         >
           <div className="flex items-center gap-2 shrink-0">
@@ -360,7 +360,7 @@ export function DocsExplorerView({
               <Clock className="w-3 h-3" />
             </div>
             <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
-              Đang đọc gần đây:
+              Đọc gần đây:
             </span>
           </div>
 
@@ -387,7 +387,7 @@ export function DocsExplorerView({
           </div>
 
           <span className="text-[10px] font-mono font-semibold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0 hidden md:inline-block">
-            {recentDocs.length} tài liệu
+            {recentDocs.length} {isEpubOnly ? "cuốn sách" : "tài liệu"}
           </span>
         </div>
       )}
@@ -408,7 +408,7 @@ export function DocsExplorerView({
           <div className="flex items-center justify-between pb-1 border-b border-stone-100 dark:border-stone-800">
             <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
               <FolderOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-              <span>{isEpubOnly ? `Danh sách sách (${filteredDocs.length})` : `Danh mục (${filteredDocs.length})`}</span>
+              <span>{isEpubOnly ? `Danh mục sách (${filteredDocs.length})` : `Danh mục (${filteredDocs.length})`}</span>
             </span>
             <button
               data-testid="toggle-left-sidebar-btn"
@@ -429,7 +429,7 @@ export function DocsExplorerView({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={isEpubOnly ? "Tìm kiếm sách EPUB trong thư viện..." : "Tìm kiếm tài liệu (ADR-061, Spec, P12.2...)"}
+              placeholder={isEpubOnly ? "Tìm theo tên sách, tác giả, đường dẫn..." : "Tìm kiếm tài liệu (ADR-061, Spec, P12.2...)"}
               className="w-full pl-8.5 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 transition shadow-2xs"
             />
           </div>
@@ -570,7 +570,7 @@ export function DocsExplorerView({
               <div className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 space-y-3 bg-stone-50/50 dark:bg-stone-800/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-700">
                 <Book className="w-7 h-7 text-stone-300 dark:text-stone-600 mx-auto" />
                 <p className="font-medium text-stone-600 dark:text-stone-300 text-xs">
-                  {isEpubOnly ? "Chưa có sách EPUB nào trong danh mục." : "Không tìm thấy tài liệu phù hợp"}
+                  {isEpubOnly ? "Chưa có sách trong danh mục." : "Không tìm thấy tài liệu phù hợp"}
                 </p>
                 {isEpubOnly && (
                   <button
@@ -716,10 +716,10 @@ export function DocsExplorerView({
                       });
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 bg-amber-100/80 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 rounded-xl border border-amber-300/80 dark:border-amber-700/80 transition cursor-pointer shadow-2xs"
-                    title="Mở giao diện đọc toàn màn hình với công cụ trích dẫn và mục lục"
+                    title="Mở khung đọc nghiên cứu với công cụ trích dẫn và mục lục"
                   >
                     <Eye className="w-3.5 h-3.5 text-amber-800 dark:text-amber-400" />
-                    <span>Đọc trong Unified Reader</span>
+                    <span>Mở trong khung đọc</span>
                   </button>
 
                   <button
@@ -760,13 +760,13 @@ export function DocsExplorerView({
               <div className="max-w-lg space-y-2">
                 <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100">
                   {filteredDocs.length === 0
-                    ? "Thư viện chưa có sách EPUB"
-                    : "Chọn một cuốn sách để bắt đầu đọc"}
+                    ? "Thư viện chưa có sách"
+                    : "Chọn sách để bắt đầu đọc"}
                 </h3>
                 <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                   {filteredDocs.length === 0
-                    ? "Thêm file EPUB đầu tiên để bắt đầu đọc sách điện tử chất lượng cao trong không gian nghiên cứu."
-                    : "Nhấp vào bất kỳ cuốn sách nào từ danh sách bên trái hoặc chọn trực tiếp từ Obsidian Vault để mở giao diện đọc toàn màn hình."}
+                    ? "Thêm file EPUB/PDF đầu tiên để bắt đầu đọc sách điện tử trong không gian nghiên cứu."
+                    : "Chọn một cuốn sách từ danh mục bên trái hoặc mở từ Obsidian Vault để bắt đầu phiên nghiên cứu trong khung đọc này."}
                 </p>
               </div>
 
@@ -792,18 +792,18 @@ export function DocsExplorerView({
               <div className="w-full max-w-lg bg-stone-50 dark:bg-stone-850 border border-stone-200 dark:border-stone-700 rounded-xl p-4 text-left space-y-2 text-[11px] text-stone-600 dark:text-stone-400">
                 <div className="flex items-center gap-1.5 font-semibold text-stone-800 dark:text-stone-200">
                   <Info className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
-                  <span>Hướng dẫn vị trí lưu trữ sách EPUB:</span>
+                  <span>Vị trí nạp sách vào hệ thống:</span>
                 </div>
                 <ul className="list-disc list-inside space-y-1 text-stone-500 dark:text-stone-400 pl-1">
                   <li>
-                    Thư mục <code className="bg-stone-200/80 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-stone-800 dark:text-stone-200">docs/books</code> trong thư mục dự án.
+                    Thư mục <code className="bg-stone-200/80 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-stone-800 dark:text-stone-200">docs/books</code> trong mã nguồn dự án.
                   </li>
                   <li>
-                    Hoặc bất kỳ thư mục tài liệu nào trong <strong>Obsidian Vault</strong> đã liên kết.
+                    Các file <code className="bg-stone-200/80 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-stone-800 dark:text-stone-200">.epub</code> / <code className="bg-stone-200/80 dark:bg-stone-800 px-1 py-0.5 rounded font-mono text-stone-800 dark:text-stone-200">.pdf</code> trong <strong>Obsidian Vault</strong> đã liên kết.
                   </li>
                 </ul>
                 <p className="text-[10px] text-stone-400 dark:text-stone-500 italic pt-1 border-t border-stone-200/60 dark:border-stone-700/60">
-                  Sau khi thêm tệp .epub mới, hãy nhấn nút <strong>Làm mới</strong> hoặc chọn trực tiếp qua nút <strong>Chọn sách từ Vault</strong>.
+                  Sau khi thêm tệp sách mới, hãy nhấn nút <strong>Làm mới</strong> hoặc mở trực tiếp qua nút <strong>Chọn sách từ Vault</strong>.
                 </p>
               </div>
             </SurfaceCard>

@@ -129,10 +129,10 @@ describe("Phase P12.3: DocsExplorerView Frontend UI Integration Contract", () =>
 
     expect(screen.getByRole("heading", { name: "Thư Viện Sách", level: 1 })).toBeInTheDocument();
     expect(
-      screen.getByText(/Đọc và quản lý sách EPUB trong kho tài liệu của bạn/i)
+      screen.getByText(/Không gian đọc sách điện tử & tra cứu tài liệu nghiên cứu/i)
     ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Tìm kiếm sách EPUB trong thư viện/i)).toBeInTheDocument();
-    expect(screen.getByText(/Nguồn: Obsidian Vault & Kho lưu trữ EPUB/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Tìm theo tên sách, tác giả, đường dẫn/i)).toBeInTheDocument();
+    expect(screen.getByText(/Kho tài liệu EPUB • PDF • Obsidian Vault/i)).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Chọn sách từ Vault/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /Làm mới/i }).length).toBeGreaterThan(0);
   });
@@ -141,10 +141,10 @@ describe("Phase P12.3: DocsExplorerView Frontend UI Integration Contract", () =>
     render(<DocsExplorerView mode="epub-only" />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Thư viện chưa có sách EPUB/i)).toBeInTheDocument();
+      expect(screen.getByText(/Thư viện chưa có sách/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Thêm file EPUB đầu tiên để bắt đầu đọc/i)).toBeInTheDocument();
+    expect(screen.getByText(/Thêm file EPUB\/PDF đầu tiên để bắt đầu đọc/i)).toBeInTheDocument();
     expect(screen.queryByText(/Trung Tâm Tra Cứu Tài Liệu Kiến Trúc/i)).toBeNull();
     expect(screen.queryByText(/ADR, Kịch bản Gherkin, hoặc Đặc tả kỹ thuật/i)).toBeNull();
     expect(screen.queryByText(/Tài liệu trên đĩa/i)).toBeNull();
@@ -196,6 +196,6 @@ describe("Phase P12.3: DocsExplorerView Frontend UI Integration Contract", () =>
 
     expect(screen.queryByText("ADR-061 Architecture Decision")).toBeNull();
     expect(screen.getByText("2001 KB")).toBeInTheDocument();
-    expect(screen.getByText(/Chọn một cuốn sách để bắt đầu đọc/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chọn sách để bắt đầu đọc/i)).toBeInTheDocument();
   });
 });
