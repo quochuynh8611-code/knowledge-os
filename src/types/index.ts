@@ -31,6 +31,19 @@ export interface KnowledgeLink {
 
 export type NoteType = 'study' | 'insight' | 'question' | 'summary';
 
+export type NoteCitationFormat = 'epub' | 'pdf' | 'md';
+
+export interface NoteCitationProvenance {
+  documentId: string;
+  documentTitle: string;
+  format: NoteCitationFormat;
+  locator?: string;
+  sourceUrl?: string;
+  excerptText?: string;
+  citationFormatted?: string;
+  createdAt?: string;
+}
+
 export interface Note {
   id: string;
   topicId: string;          // Primary FK — kept for backward compatibility
@@ -42,9 +55,18 @@ export interface Note {
   type: NoteType;
   isPrivate: boolean;
   tags: string[];
+  citationProvenances?: NoteCitationProvenance[]; // Optional multi-provenance array
   createdAt: string;
   updatedAt: string;
 }
+
+export function getPrimaryNoteProvenance(note: Note): NoteCitationProvenance | undefined {
+  if (!note || !note.citationProvenances || !Array.isArray(note.citationProvenances) || note.citationProvenances.length === 0) {
+    return undefined;
+  }
+  return note.citationProvenances[0];
+}
+
 
 export type ResourceType = 'book' | 'article' | 'video' | 'audio' | 'pdf' | 'md';
 

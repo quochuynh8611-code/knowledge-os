@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { Note, NoteType } from '../../types';
-import { X, FileText, Lightbulb, HelpCircle, Bookmark, Tag as TagIcon, Folder, AlertTriangle } from 'lucide-react';
+import { Note, NoteType, NoteCitationProvenance } from '../../types';
+import { X, FileText, Lightbulb, HelpCircle, Bookmark, Tag as TagIcon, Folder, AlertTriangle, BookOpen } from 'lucide-react';
 import { normalizeFilePath, classifyPathRelativeToRoot } from '../../lib/fileLibraryAudit';
 import { safeGetLocalStorageItem } from '../../lib/storage';
 
@@ -10,9 +10,20 @@ interface NoteFormModalProps {
   onClose: () => void;
   initialNote?: Note | null;
   defaultTopicId?: string;
+  initialProvenance?: NoteCitationProvenance;
+  initialContent?: string;
+  restoreFocusRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: NoteFormModalProps) {
+export function NoteFormModal({
+  isOpen,
+  onClose,
+  initialNote,
+  defaultTopicId,
+  initialProvenance,
+  initialContent,
+  restoreFocusRef,
+}: NoteFormModalProps) {
   const { categories, topics, addNote, updateNote } = useData();
 
   const [topicId, setTopicId] = useState('');
@@ -38,13 +49,22 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
     } else {
       setTopicId(defaultTopicId || topics[0]?.id || '');
       setTitle('');
-      setContent('');
+      setContent(initialContent || (initialProvenance?.excerptText ? `> ${initialProvenance.excerptText}\n\n` : ''));
       setSourcePath('');
       setType('study');
       setTags([]);
       setIsPrivate(false);
     }
-  }, [initialNote, defaultTopicId, topics, isOpen]);
+  }, [initialNote, defaultTopicId, topics, isOpen, initialContent, initialProvenance]);
+
+  const handleCloseModal = () => {
+    onClose();
+    if (restoreFocusRef?.current) {
+      setTimeout(() => {
+        restoreFocusRef.current?.focus();
+      }, 50);
+    }
+  };
 
   const isPathOutsideRoot = Boolean(
     sourcePath.trim() &&
@@ -95,9 +115,10 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
         type,
         tags,
         isPrivate,
+        citationProvenances: initialProvenance ? [initialProvenance] : undefined,
       });
     }
-    onClose();
+    handleCloseModal();
   };
 
   if (!isOpen) return null;
@@ -125,13 +146,33 @@ export function NoteFormModal({ isOpen, onClose, initialNote, defaultTopicId }: 
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCloseModal}
             aria-label="Đóng"
             className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Provenance Badge Preview (when created from reader text selection) */}
+        {initialProvenance && (
+          <div className="px-6 py-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 border-b border-emerald-100 dark:border-emerald-900/40 flex items-center gap-2.5 text-xs">
+            <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-emerald-900 dark:text-emerald-200 truncate">
+                {initialProvenance.documentTitle}
+              </span>
+              <span className="px-1.5 py-0.5 rounded-md font-mono text-[10px] uppercase font-bold tracking-wider bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300">
+                {initialProvenance.format.toUpperCase()}
+              </span>
+              {initialProvenance.locator && (
+                <span className="text-emerald-700 dark:text-emerald-400 text-[11px]">
+                  • {initialProvenance.locator}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Search, FileText, ArrowRight } from 'lucide-react';
+import { X, Search, FileText, ArrowRight, PlusCircle } from 'lucide-react';
 import { Note } from '../../types';
 
 export interface TargetNoteSelectorModalProps {
@@ -7,6 +7,7 @@ export interface TargetNoteSelectorModalProps {
   notes: Note[];
   selectedExcerptText?: string;
   onSelectNote: (noteId: string) => void;
+  onCreateNewNote?: () => void;
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ export function TargetNoteSelectorModal({
   notes,
   selectedExcerptText,
   onSelectNote,
+  onCreateNewNote,
   onClose,
 }: TargetNoteSelectorModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,6 +101,28 @@ export function TargetNoteSelectorModal({
 
         {/* Note List */}
         <div className="max-h-72 overflow-y-auto p-3 space-y-1.5">
+          {/* Action: Create New Note from Excerpt */}
+          {onCreateNewNote && (
+            <button
+              type="button"
+              onClick={onCreateNewNote}
+              className="w-full text-left p-3 rounded-2xl border border-emerald-300/80 dark:border-emerald-800/80 hover:border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 hover:bg-emerald-100/60 dark:hover:bg-emerald-900/40 transition cursor-pointer flex items-center justify-between gap-3 group"
+              aria-label="Tạo ghi chú mới từ trích đoạn"
+            >
+              <div className="min-w-0 flex-1 flex items-center gap-2.5">
+                <PlusCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <h4 className="text-xs sm:text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                    Tạo ghi chú mới từ trích đoạn
+                  </h4>
+                  <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
+                    Khởi tạo ghi chú mới và lưu trích đoạn kèm nguồn
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-0.5 transition shrink-0" />
+            </button>
+          )}
           {filteredNotes.length === 0 ? (
             <div className="py-8 text-center text-xs text-stone-400 italic">
               Không tìm thấy ghi chú phù hợp với từ khóa.

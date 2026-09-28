@@ -9,8 +9,10 @@ import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
 import { UnifiedSelectionToolbar, SelectionToolbarAction } from './UnifiedSelectionToolbar';
 import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
+import { NoteFormModal } from '../modals/NoteFormModal';
 import { FlashcardFormModal } from '../modals/FlashcardFormModal';
 import type { FlashcardCitationProvenance, ReaderDocumentFormat } from '../../types/flashcard';
+import type { NoteCitationProvenance, NoteCitationFormat } from '../../types';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
 import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
@@ -118,6 +120,9 @@ export function UnifiedResearchReader({
     cfi?: string;
   } | null>(null);
   const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
+  const [isCreateNoteModalOpen, setIsCreateNoteModalOpen] = useState(false);
+  const [noteInitialProvenance, setNoteInitialProvenance] = useState<NoteCitationProvenance | undefined>(undefined);
+  const [noteInitialContent, setNoteInitialContent] = useState<string>('');
   const [isCreateFlashcardModalOpen, setIsCreateFlashcardModalOpen] = useState(false);
   const [flashcardProvenance, setFlashcardProvenance] = useState<FlashcardCitationProvenance | undefined>(undefined);
   const [flashcardInitialFront, setFlashcardInitialFront] = useState<string>('');
@@ -422,6 +427,41 @@ export function UnifiedResearchReader({
     }
   };
 
+  const handleOpenCreateNewNote = () => {
+    if (!activeSelection?.text) return;
+    const formatNormalized: NoteCitationFormat =
+      normalizedFormat === 'epub' ? 'epub' : normalizedFormat === 'pdf' ? 'pdf' : 'md';
+
+    let canonicalLoc: string | undefined = undefined;
+    if (formatNormalized === 'epub') {
+      canonicalLoc = activeSelection?.cfi || currentPosition;
+    } else if (formatNormalized === 'pdf') {
+      canonicalLoc = activeSelection?.page
+        ? `page=${activeSelection.page}`
+        : currentPosition
+        ? currentPosition.startsWith('page=')
+          ? currentPosition
+          : `page=${currentPosition}`
+        : undefined;
+    } else {
+      canonicalLoc = activeTocId || targetHeadingId;
+    }
+
+    const prov: NoteCitationProvenance = {
+      documentId,
+      documentTitle: title,
+      format: formatNormalized,
+      locator: canonicalLoc,
+      sourceUrl: fileUrl,
+      excerptText: activeSelection.text,
+    };
+
+    setNoteInitialProvenance(prov);
+    setNoteInitialContent(`> ${activeSelection.text}\n\n`);
+    setIsTargetNoteModalOpen(false);
+    setIsCreateNoteModalOpen(true);
+  };
+
   const handleSelectTargetNote = async (targetNoteId: string) => {
     if (!activeSelection?.text) return;
 
@@ -452,6 +492,34 @@ export function UnifiedResearchReader({
       updatedAt: now,
     };
 
+    const formatNormalized: NoteCitationFormat =
+      normalizedFormat === 'epub' ? 'epub' : normalizedFormat === 'pdf' ? 'pdf' : 'md';
+
+    let canonicalLoc: string | undefined = undefined;
+    if (formatNormalized === 'epub') {
+      canonicalLoc = activeSelection?.cfi || currentPosition;
+    } else if (formatNormalized === 'pdf') {
+      canonicalLoc = activeSelection?.page
+        ? `page=${activeSelection.page}`
+        : currentPosition
+        ? currentPosition.startsWith('page=')
+          ? currentPosition
+          : `page=${currentPosition}`
+        : undefined;
+    } else {
+      canonicalLoc = activeTocId || targetHeadingId;
+    }
+
+    const newProvenance: NoteCitationProvenance = {
+      documentId,
+      documentTitle: title,
+      format: formatNormalized,
+      locator: canonicalLoc,
+      sourceUrl: fileUrl,
+      excerptText: activeSelection.text,
+      createdAt: now,
+    };
+
     try {
       if (!dataRepository.appendExcerptToNote) {
         throw new Error('dataRepository.appendExcerptToNote is not available');
@@ -462,8 +530,23 @@ export function UnifiedResearchReader({
         throw new Error('appendExcerptToNote did not return valid updated content');
       }
 
+      const existingNote = notes.find((n) => n.id === targetNoteId);
+      const existingProvenances = existingNote?.citationProvenances || [];
+      const isDuplicate = existingProvenances.some(
+        (p) =>
+          p.documentId === newProvenance.documentId &&
+          p.locator === newProvenance.locator &&
+          p.excerptText === newProvenance.excerptText
+      );
+      const updatedProvenances = isDuplicate
+        ? existingProvenances
+        : [...existingProvenances, newProvenance];
+
       if (dataContext?.updateNote) {
-        dataContext.updateNote(targetNoteId, { content: updated.content });
+        dataContext.updateNote(targetNoteId, {
+          content: updated.content,
+          citationProvenances: updatedProvenances,
+        });
       }
 
       if (addExcerptToInbox) {
@@ -669,6 +752,7 @@ export function UnifiedResearchReader({
               notes={notes}
               selectedExcerptText={activeSelection?.text}
               onSelectNote={handleSelectTargetNote}
+              onCreateNewNote={handleOpenCreateNewNote}
               onClose={() => setIsTargetNoteModalOpen(false)}
             />
           )}
@@ -727,6 +811,20 @@ export function UnifiedResearchReader({
             setViewingBacklinkTargetCitation(undefined);
           }}
           onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+        />
+      )}
+
+      {/* Phase 3: Note Creation Modal with Provenance Handoff */}
+      {isCreateNoteModalOpen && (
+        <NoteFormModal
+          isOpen={isCreateNoteModalOpen}
+          initialContent={noteInitialContent}
+          initialProvenance={noteInitialProvenance}
+          restoreFocusRef={readerViewportRef}
+          onClose={() => {
+            setIsCreateNoteModalOpen(false);
+            setActiveSelection(null);
+          }}
         />
       )}
 

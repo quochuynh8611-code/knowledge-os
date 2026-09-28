@@ -560,9 +560,12 @@ describe("Reader Save to Note & Scoped Notes Contract (Red Stage)", () => {
     fireEvent.click(targetNoteBtn);
 
     await waitFor(() => {
-      expect(updateNoteMock).toHaveBeenCalledWith("note-reader-ok-1", {
-        content: "Nội dung ban đầu của ghi chú.\n\n> Đoạn trích khảo cứu",
-      });
+      expect(updateNoteMock).toHaveBeenCalledWith(
+        "note-reader-ok-1",
+        expect.objectContaining({
+          content: "Nội dung ban đầu của ghi chú.\n\n> Đoạn trích khảo cứu",
+        })
+      );
       expect(addExcerptToInboxMock).toHaveBeenCalled();
       expect(screen.getByText("Đã lưu trích đoạn vào ghi chú thành công")).toBeInTheDocument();
     });
