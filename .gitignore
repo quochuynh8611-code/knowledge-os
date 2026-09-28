@@ -18,3 +18,7 @@ playwright-report/
 # Local Archive Storage
 data/archive/**
 !data/archive/.gitkeep
+
+# Local Review Docs
+docs/drafts/
+docs/review/
