@@ -126,36 +126,36 @@ export function Sidebar() {
     highlight?: boolean;
   };
 
-  // Tầng 1: HỌC TẬP (Learning - Trọng tâm)
-  const learningNavItems: NavItemConfig[] = [
+  // Hub 1: KHẢO CỨU (Research & Sources)
+  const researchNavItems: NavItemConfig[] = [
+    { id: 'library', label: 'Thư Viện Sách', icon: BookOpen },
+    { id: 'resources', label: 'Tài liệu & Giáo trình', icon: Library, badge: stats.totalResourcesCount },
+  ];
+
+  // Hub 2: HỌC TẬP & ÔN TẬP (Study & Recall)
+  const studyNavItems: NavItemConfig[] = [
     { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+    { id: 'flashcards', label: 'Thẻ nhớ (Flashcards)', icon: Brain },
     {
       id: 'progress',
-      label: 'Tiến độ & Ôn tập',
+      label: 'Tiến độ & Hàng đợi',
       icon: TrendingUp,
       badge: reviewQueue.length > 0 ? `${reviewQueue.length} cần ôn` : undefined,
       highlight: reviewQueue.length > 0,
     },
-    {
-      id: 'flashcards',
-      label: 'Thẻ nhớ (Flashcards)',
-      icon: Brain,
-    },
+  ];
+
+  // Hub 3: VƯỜN TRI THỨC (Knowledge Garden)
+  const gardenNavItems: NavItemConfig[] = [
     { id: 'topics', label: 'Chủ đề học', icon: FolderTree, badge: stats.totalTopics },
-  ];
-
-  // Tầng 2: TRI THỨC (Knowledge Base)
-  const knowledgeNavItems: NavItemConfig[] = [
-    { id: 'notes', label: 'Ghi chú', icon: FileText, badge: stats.totalNotesCount },
-    { id: 'resources', label: 'Tài liệu', icon: Library, badge: stats.totalResourcesCount },
+    { id: 'notes', label: 'Ghi chú & Đúc kết', icon: FileText, badge: stats.totalNotesCount },
     { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
-    { id: 'search', label: 'Tìm kiếm', icon: Search },
   ];
 
-  // Tầng 3: CÔNG CỤ & TIỆN ÍCH
+  // Hub 4: PHÂN TÍCH & CÔNG CỤ (Insights & Tools)
   const toolsNavItems: NavItemConfig[] = [
+    { id: 'search', label: 'Tìm kiếm', icon: Search },
     { id: 'ai_studio', label: 'AI Hỗ trợ', icon: Sparkles, badge: 'AI', highlight: true },
-    { id: 'library', label: 'Thư Viện Sách', icon: BookOpen },
   ];
 
   const renderNavButton = (item: NavItemConfig) => {
@@ -205,30 +205,39 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 bg-stone-100/70 dark:bg-stone-900/60 border-r border-stone-200/80 dark:border-stone-800/90 flex flex-col shrink-0 min-h-[calc(100vh-57px)] select-none">
-      {/* Tầng 1: HỌC TẬP */}
+      {/* Hub 1: KHẢO CỨU */}
       <div className="p-3 space-y-0.5">
         <div className="text-[10px] font-bold uppercase tracking-wider text-amber-900/80 dark:text-amber-400/90 px-2.5 py-1 flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-amber-600 dark:bg-amber-400"></span>
-          <span>Học tập</span>
+          <span>Khảo Cứu</span>
         </div>
-        {learningNavItems.map(renderNavButton)}
+        {researchNavItems.map(renderNavButton)}
       </div>
 
-      {/* Tầng 2: TRI THỨC */}
+      {/* Hub 2: HỌC TẬP & ÔN TẬP */}
+      <div className="px-3 pt-2 pb-1 border-t border-stone-200/60 dark:border-stone-800/60 space-y-0.5">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300 px-2.5 py-1 flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>
+          <span>Học Tập & Ôn Tập</span>
+        </div>
+        {studyNavItems.map(renderNavButton)}
+      </div>
+
+      {/* Hub 3: VƯỜN TRI THỨC */}
       <div className="px-3 pt-2 pb-1 border-t border-stone-200/60 dark:border-stone-800/60 space-y-0.5">
         <div className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 px-2.5 py-1 flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-stone-400 dark:bg-stone-500"></span>
-          <span>Tri thức</span>
+          <span>Vườn Tri Thức</span>
         </div>
-        {knowledgeNavItems.map(renderNavButton)}
+        {gardenNavItems.map(renderNavButton)}
       </div>
 
-      {/* Tầng 3: CÔNG CỤ & TIỆN ÍCH */}
+      {/* Hub 4: PHÂN TÍCH & CÔNG CỤ */}
       <div className="px-3 pt-2 pb-2 border-t border-stone-200/60 dark:border-stone-800/60">
         <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400"></span>
-            <span>Công cụ</span>
+            <span>Phân Tích & Công Cụ</span>
           </div>
           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-semibold">
             Suite

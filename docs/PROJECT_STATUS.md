@@ -1,12 +1,42 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-09-07  
-> **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE 1–17, OBSIDIAN VAULT BRIDGE (P4.1–P4.3D), FLASHCARD SRS (F6.0–F6.12), RESEARCH DASHBOARD (F7.0), AI INSIGHTS (F7.1) & NOTEBOOKLM RESEARCH HUB v2.1 (F8.0) HOÀN TẤT & ĐƯỢC KIỂM CHỨNG TOÀN DIỆN (TAG `v0.15.0` — 297/297 SUITES PASS, 0 TSC ERRORS)**
+> **Cập nhật lần cuối:** 2026-09-27
+> **Người phụ trách:** Staff Software Engineer / Technical Architect
+> **Trạng thái tổng thể:** 🟢 **WORKFLOW-FIRST SHELL (PHASE 1) & EMBEDDED RESEARCH WORKSPACE (PHASE 2A) HOÀN TẤT & VERIFIED (428/428 TEST SUITES PASS — 3.640 TESTS, 0 TSC ERRORS)**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+
+## Phase 1 & Phase 2A — Workflow-First Shell & Embedded Research Workspace (2026-09-27)
+
+**Status**: ✅ Completed & Verified on Test Suite & Runtime
+**Tests**: 428/428 PASS (3.640 tests, 100%)
+**Typecheck**: 0 errors
+
+### Features Delivered & Verified
+
+1. ✅ **Workflow-First Navigation Hubs (Phase 1)**: Chuyển đổi thanh điều hướng sang 4 Hubs tập trung: *Khảo Cứu* (`library`, `resources`), *Học Tập & Ôn Tập* (`dashboard`, `flashcards`, `progress`), *Vườn Tri Thức* (`topics`, `notes`, `graph`), và *Phân Tích & Công Cụ* (`search`, `ai_studio`).
+2. ✅ **UnifiedResearchReader Embedded Mode (Phase 2A)**: Bổ sung prop `layoutMode="embedded" | "modal"`. Loại bỏ modal backdrop cưỡng bức khi nhúng trong không gian làm việc.
+3. ✅ **DocsExplorerView Split-View Integration (Phase 2A)**: Nhúng trực tiếp trình đọc vào panel phải, cho phép vừa đọc vừa duyệt danh sách sách/tài liệu Vault mà không bị che khuất màn hình.
+4. ✅ **Zero Regression & Full Verification**: Đảm bảo 100% backward compatibility với các deep-link hash, modal popup từ `TopicDetail`/`Navbar`, và toàn bộ hệ thống trích dẫn / highlight hiện hữu. Ban hành [Session Log 2026-09-27](docs/session-logs/2026-09-27-workflow-navigation-and-embedded-reader-phase1-phase2a.md).
+
+---
+
+## Obsidian Dynamic Vault Discovery & Markdown Image Context Architecture (2026-09-26)
+
+**Status**: ✅ Completed & Verified on UI/Runtime
+**Tests**: 100% PASS
+**Typecheck**: 0 errors
+
+### Features Delivered & Verified
+
+1. ✅ **Dynamic Multi-Source Vault Discovery**: Tự động phát hiện toàn bộ 6/6 Obsidian Vaults thực tế trên máy kết hợp cấu hình `.env`, system registry `obsidian.json`, và sibling directory scan (thay vì giới hạn tĩnh 4 vaults).
+2. ✅ **Markdown Image Context Resolution**: Tách bạch ngữ cảnh `sourceType: "docs"` (`/api/docs/raw`) và `sourceType: "vault"` (`/api/obsidian/vault/attachment`), fix preview thô trong `DocsExplorerView` sang `MarkdownReadabilityRenderer`.
+3. ✅ **Vault Physical Assets Mirroring**: Đồng bộ đầy đủ bộ screenshots vào thư mục `assets/screenshots/` của Obsidian Vault, xác thực hiển thị hình ảnh thật sắc nét trong `UnifiedResearchReader` khi mở từ cả Docs lẫn Obsidian Vault.
+4. ✅ **Architectural ADR & Runbook**: Ban hành [ADR-2026-09-25](docs/adr/ADR-2026-09-25-vault-discovery-and-markdown-image-context.md) và Session Log chi tiết [2026-09-26](docs/session-logs/2026-09-26-vault-discovery-and-markdown-images-verification.md).
+
+---
 
 ## Phase F8.0 — Google NotebookLM Research Hub v2.1 & Unified Design System (2026-09-07)
 

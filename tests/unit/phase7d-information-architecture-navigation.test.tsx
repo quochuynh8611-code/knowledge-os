@@ -22,27 +22,28 @@ describe('Phase 7D / Commercial Reset: Information Architecture & Navigation', (
         </DataProvider>
       );
 
-      // Verify 3 sections exist
-      expect(screen.getByText(/^Học tập$/i)).toBeInTheDocument();
-      expect(screen.getByText(/^Tri thức$/i)).toBeInTheDocument();
-      expect(screen.getByText(/^Công cụ$/i)).toBeInTheDocument();
+      // Verify workflow hub sections exist
+      expect(screen.getByText('Khảo Cứu')).toBeInTheDocument();
+      expect(screen.getByText('Học Tập & Ôn Tập')).toBeInTheDocument();
+      expect(screen.getByText('Vườn Tri Thức')).toBeInTheDocument();
+      expect(screen.getByText('Phân Tích & Công Cụ')).toBeInTheDocument();
 
-      // Learning items
-      expect(screen.getByText('Tổng quan')).toBeInTheDocument();
+      // Learning & Study items
+      expect(screen.getByText(/Tổng quan/i)).toBeInTheDocument();
       expect(screen.getByText(/Tiến độ/i)).toBeInTheDocument();
-      expect(screen.getByText('Chủ đề học')).toBeInTheDocument();
+      expect(screen.getByText(/Chủ đề/i)).toBeInTheDocument();
       expect(screen.getByText(/Thẻ nhớ/i)).toBeInTheDocument();
 
-      // Knowledge items
-      expect(screen.getByText('Ghi chú')).toBeInTheDocument();
-      expect(screen.getByText('Tài liệu')).toBeInTheDocument();
+      // Knowledge & Research items
+      expect(screen.getByText(/Ghi chú/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tài liệu/i)).toBeInTheDocument();
       expect(screen.getByText('Bản đồ tri thức')).toBeInTheDocument();
-      expect(screen.getByText('Tìm kiếm')).toBeInTheDocument();
+      expect(screen.getByText(/Tìm kiếm/i)).toBeInTheDocument();
     });
   });
 
   describe('2. Commercial Tools Navigation (AI Hỗ trợ & Thư Viện Sách)', () => {
-    it('2.1. Khối Công cụ chỉ hiển thị trực tiếp AI Hỗ trợ và Thư Viện Sách; không còn các công cụ cá nhân', () => {
+    it('2.1. Khối Công cụ và Khảo cứu hiển thị trực tiếp AI Hỗ trợ và Thư Viện Sách; không còn các công cụ cá nhân', () => {
       render(
         <DataProvider>
           <Sidebar />
@@ -50,10 +51,10 @@ describe('Phase 7D / Commercial Reset: Information Architecture & Navigation', (
       );
 
       // Section title for tools must exist
-      expect(screen.getByText(/^Công cụ$/i)).toBeInTheDocument();
+      expect(screen.getByText('Phân Tích & Công Cụ')).toBeInTheDocument();
 
       // Commercial tools are directly visible
-      expect(screen.getByText('AI Hỗ trợ')).toBeInTheDocument();
+      expect(screen.getByText(/AI Hỗ trợ/i)).toBeInTheDocument();
       expect(screen.getByText('Thư Viện Sách')).toBeInTheDocument();
 
       // Removed personal tools must NOT exist

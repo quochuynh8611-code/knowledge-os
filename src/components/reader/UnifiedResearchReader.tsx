@@ -42,6 +42,7 @@ export interface UnifiedResearchReaderProps {
   onClose: () => void;
   onEditResource?: () => void;
   className?: string;
+  layoutMode?: 'embedded' | 'modal';
 }
 
 export function UnifiedResearchReader({
@@ -58,6 +59,7 @@ export function UnifiedResearchReader({
   onClose,
   onEditResource,
   className = '',
+  layoutMode = 'modal',
 }: UnifiedResearchReaderProps) {
   const normalizedFormat = (format || 'md').toLowerCase();
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
@@ -518,6 +520,177 @@ export function UnifiedResearchReader({
     </div>
   );
 
+  const readerContent = (
+    <div className={layoutMode === 'embedded' ? `w-full h-full min-h-[600px] bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl sm:rounded-3xl shadow-xs flex flex-col overflow-hidden relative ${className}` : "bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-6xl h-[92vh] shadow-2xl flex flex-col overflow-hidden relative"}>
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
+          <CheckCircle className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Reader Header */}
+      <ReaderHeader
+        title={title}
+        format={normalizedFormat}
+        isTocOpen={isTocOpen}
+        onToggleToc={() => setIsTocOpen((prev) => !prev)}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        onClose={onClose}
+        extraControls={epubExtraControls}
+      />
+
+      {/* Reader Workspace: Viewport Area & Multi-Tab Sidebar */}
+      <div className="flex-1 relative overflow-hidden flex flex-row bg-stone-50 dark:bg-stone-950">
+        <div className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4">
+          {normalizedFormat === 'epub' ? (
+            <EpubReaderAdapter
+              fileUrl={fileUrl}
+              documentId={documentId}
+              initialLocation={currentPosition}
+              onLocationChanged={handlePositionChanged}
+              onTocGenerated={(items) => setTocItems(items)}
+              onTextSelection={handleTextSelection}
+              fontSize={fontSize}
+              pageMode={pageMode}
+            />
+          ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
+            <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
+              <MarkdownReaderAdapter
+                content={content}
+                fileUrl={fileUrl}
+                documentId={documentId}
+                sourceType={sourceType}
+                initialHeadingId={targetHeadingId}
+                onTocGenerated={(items) => setTocItems(items)}
+                onPositionChange={handlePositionChanged}
+                onTextSelection={handleTextSelection}
+              />
+            </div>
+          ) : normalizedFormat === 'pdf' ? (
+            <PdfReaderAdapter
+              fileUrl={fileUrl}
+              documentId={documentId}
+              title={title}
+              initialPage={pdfInitialPage}
+              onPageChanged={(newPage) => handlePositionChanged(String(newPage))}
+              initialToc={initialToc}
+              onTocGenerated={(items) => setTocItems(items)}
+              onTextSelection={handleTextSelection}
+              onEditResource={onEditResource}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
+              <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200 dark:border-amber-800">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                  Định dạng tài liệu chưa được hỗ trợ
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
+                  Trình đọc hiện hỗ trợ định dạng Markdown (.md), EPUB (.epub) và PDF (.pdf).
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Table of Contents Drawer */}
+          <ReaderTocDrawer
+            isOpen={isTocOpen}
+            onClose={() => setIsTocOpen(false)}
+            toc={tocItems}
+            activeId={activeTocId}
+            onSelectTocItem={handleSelectTocItem}
+          />
+
+          {/* Selection Toolbar */}
+          {activeSelection && (
+            <UnifiedSelectionToolbar
+              isOpen={Boolean(activeSelection)}
+              position={activeSelection.position}
+              selectedText={activeSelection.text}
+              onAction={handleToolbarAction}
+              onClose={() => setActiveSelection(null)}
+            />
+          )}
+
+          {/* Target Note Selector Modal */}
+          {isTargetNoteModalOpen && (
+            <TargetNoteSelectorModal
+              isOpen={isTargetNoteModalOpen}
+              notes={notes}
+              selectedExcerptText={activeSelection?.text}
+              onSelectNote={handleSelectTargetNote}
+              onClose={() => setIsTargetNoteModalOpen(false)}
+            />
+          )}
+        </div>
+
+        {/* Phase R1 Multi-Tab Research Sidebar */}
+        <ReaderSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          activeTab={sidebarTab}
+          onTabChange={setSidebarTab}
+          tocItems={tocItems}
+          activeTocId={activeTocId}
+          onSelectTocItem={handleSelectTocItem}
+          documentId={documentId}
+          documentTitle={title}
+          notes={scopedNotes}
+          backlinks={backlinks}
+          onOpenBacklinkNote={(noteId, locator) => {
+            const matched = notes.find((n) => n.id === noteId);
+            if (matched) {
+              setViewingBacklinkNote(matched);
+              setViewingBacklinkTargetCitation({ documentId, locator });
+            }
+          }}
+          excerpts={documentHighlights}
+          onSelectExcerpt={handleSelectExcerpt}
+          onDeleteExcerpt={(excerptId) => {
+            const matchedItem = inboxItems.find((i) => i.excerpt?.id === excerptId || i.id === excerptId);
+            if (matchedItem && deleteInboxItem) {
+              deleteInboxItem(matchedItem.id);
+            }
+          }}
+          inboxItems={documentInboxItems}
+          onDeleteInboxItem={(id) => {
+            if (deleteInboxItem) {
+              deleteInboxItem(id);
+            }
+          }}
+          onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+        />
+      </div>
+
+      {/* Phase 21A/21B: Note Context Viewer Modal from Backlink Explorer */}
+      {viewingBacklinkNote && (
+        <NoteReaderModal
+          isOpen={Boolean(viewingBacklinkNote)}
+          note={viewingBacklinkNote}
+          targetCitation={viewingBacklinkTargetCitation}
+          onClose={() => {
+            setViewingBacklinkNote(null);
+            setViewingBacklinkTargetCitation(undefined);
+          }}
+          onEdit={() => {
+            setViewingBacklinkNote(null);
+            setViewingBacklinkTargetCitation(undefined);
+          }}
+          onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
+        />
+      )}
+    </div>
+  );
+
+  if (layoutMode === 'embedded') {
+    return readerContent;
+  }
+
   return (
     <div
       role="dialog"
@@ -525,170 +698,7 @@ export function UnifiedResearchReader({
       aria-label={title}
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-150 ${className}`}
     >
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl w-full max-w-6xl h-[92vh] shadow-2xl flex flex-col overflow-hidden relative">
-        {/* Toast Feedback */}
-        {toastMessage && (
-          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 text-xs font-semibold px-4 py-2 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-150">
-            <CheckCircle className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-            <span>{toastMessage}</span>
-          </div>
-        )}
-
-        {/* Reader Header */}
-        <ReaderHeader
-          title={title}
-          format={normalizedFormat}
-          isTocOpen={isTocOpen}
-          onToggleToc={() => setIsTocOpen((prev) => !prev)}
-          isSidebarOpen={isSidebarOpen}
-          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-          onClose={onClose}
-          extraControls={epubExtraControls}
-        />
-
-        {/* Reader Workspace: Viewport Area & Multi-Tab Sidebar */}
-        <div className="flex-1 relative overflow-hidden flex flex-row bg-stone-50 dark:bg-stone-950">
-          <div className="flex-1 relative overflow-hidden flex flex-col p-2 sm:p-4">
-            {normalizedFormat === 'epub' ? (
-              <EpubReaderAdapter
-                fileUrl={fileUrl}
-                documentId={documentId}
-                initialLocation={currentPosition}
-                onLocationChanged={handlePositionChanged}
-                onTocGenerated={(items) => setTocItems(items)}
-                onTextSelection={handleTextSelection}
-                fontSize={fontSize}
-                pageMode={pageMode}
-              />
-            ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
-              <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
-                <MarkdownReaderAdapter
-                  content={content}
-                  fileUrl={fileUrl}
-                  documentId={documentId}
-                  sourceType={sourceType}
-                  initialHeadingId={targetHeadingId}
-                  onTocGenerated={(items) => setTocItems(items)}
-                  onPositionChange={handlePositionChanged}
-                  onTextSelection={handleTextSelection}
-                />
-              </div>
-            ) : normalizedFormat === 'pdf' ? (
-              <PdfReaderAdapter
-                fileUrl={fileUrl}
-                documentId={documentId}
-                title={title}
-                initialPage={pdfInitialPage}
-                onPageChanged={(newPage) => handlePositionChanged(String(newPage))}
-                initialToc={initialToc}
-                onTocGenerated={(items) => setTocItems(items)}
-                onTextSelection={handleTextSelection}
-                onEditResource={onEditResource}
-              />
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">
-                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200 dark:border-amber-800">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                    Định dạng tài liệu chưa được hỗ trợ
-                  </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm">
-                    Trình đọc hiện hỗ trợ định dạng Markdown (.md), EPUB (.epub) và PDF (.pdf).
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Table of Contents Drawer */}
-            <ReaderTocDrawer
-              isOpen={isTocOpen}
-              onClose={() => setIsTocOpen(false)}
-              toc={tocItems}
-              activeId={activeTocId}
-              onSelectTocItem={handleSelectTocItem}
-            />
-
-            {/* Selection Toolbar */}
-            {activeSelection && (
-              <UnifiedSelectionToolbar
-                isOpen={Boolean(activeSelection)}
-                position={activeSelection.position}
-                selectedText={activeSelection.text}
-                onAction={handleToolbarAction}
-                onClose={() => setActiveSelection(null)}
-              />
-            )}
-
-            {/* Target Note Selector Modal */}
-            {isTargetNoteModalOpen && (
-              <TargetNoteSelectorModal
-                isOpen={isTargetNoteModalOpen}
-                notes={notes}
-                selectedExcerptText={activeSelection?.text}
-                onSelectNote={handleSelectTargetNote}
-                onClose={() => setIsTargetNoteModalOpen(false)}
-              />
-            )}
-          </div>
-
-          {/* Phase R1 Multi-Tab Research Sidebar */}
-          <ReaderSidebar
-            isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
-            activeTab={sidebarTab}
-            onTabChange={setSidebarTab}
-            tocItems={tocItems}
-            activeTocId={activeTocId}
-            onSelectTocItem={handleSelectTocItem}
-            documentId={documentId}
-            documentTitle={title}
-            notes={scopedNotes}
-            backlinks={backlinks}
-            onOpenBacklinkNote={(noteId, locator) => {
-              const matched = notes.find((n) => n.id === noteId);
-              if (matched) {
-                setViewingBacklinkNote(matched);
-                setViewingBacklinkTargetCitation({ documentId, locator });
-              }
-            }}
-            excerpts={documentHighlights}
-            onSelectExcerpt={handleSelectExcerpt}
-            onDeleteExcerpt={(excerptId) => {
-              const matchedItem = inboxItems.find((i) => i.excerpt?.id === excerptId || i.id === excerptId);
-              if (matchedItem && deleteInboxItem) {
-                deleteInboxItem(matchedItem.id);
-              }
-            }}
-            inboxItems={documentInboxItems}
-            onDeleteInboxItem={(id) => {
-              if (deleteInboxItem) {
-                deleteInboxItem(id);
-              }
-            }}
-            onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
-          />
-        </div>
-
-        {/* Phase 21A/21B: Note Context Viewer Modal from Backlink Explorer */}
-        {viewingBacklinkNote && (
-          <NoteReaderModal
-            isOpen={Boolean(viewingBacklinkNote)}
-            note={viewingBacklinkNote}
-            targetCitation={viewingBacklinkTargetCitation}
-            onClose={() => {
-              setViewingBacklinkNote(null);
-              setViewingBacklinkTargetCitation(undefined);
-            }}
-            onEdit={() => {
-              setViewingBacklinkNote(null);
-              setViewingBacklinkTargetCitation(undefined);
-            }}
-            onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
-          />
-        )}
-      </div>
+      {readerContent}
     </div>
   );
 }

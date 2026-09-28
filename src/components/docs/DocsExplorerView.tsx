@@ -644,14 +644,25 @@ export function DocsExplorerView({
           </div>
         </SurfaceCard>
 
-        {/* Right Pane: Markdown Reader or EPUB Library Overview */}
-        <SurfaceCard variant="default" className="lg:col-span-8 flex flex-col min-h-[500px]">
-          {isLoadingContent ? (
-            <div className="flex-1 flex items-center justify-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
+        {/* Right Pane: Embedded Reader, Markdown Preview, or Overview */}
+        <div className="lg:col-span-8 flex flex-col min-h-[600px] overflow-hidden">
+          {activeReaderDoc ? (
+            <UnifiedResearchReader
+              documentId={activeReaderDoc.documentId}
+              title={activeReaderDoc.title}
+              format={activeReaderDoc.format}
+              fileUrl={activeReaderDoc.fileUrl}
+              content={activeReaderDoc.content}
+              sourceType={activeReaderDoc.sourceType}
+              layoutMode="embedded"
+              onClose={() => setActiveReaderDoc(null)}
+            />
+          ) : isLoadingContent ? (
+            <SurfaceCard variant="default" className="flex-1 flex items-center justify-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
               Đang nạp nội dung...
-            </div>
+            </SurfaceCard>
           ) : selectedDoc ? (
-            <div className="space-y-4">
+            <SurfaceCard variant="default" className="flex-1 flex flex-col space-y-4">
               {/* Document Header Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-stone-200 dark:border-stone-800 gap-2">
                 <div className="space-y-1">
@@ -713,10 +724,10 @@ export function DocsExplorerView({
                   sourceType="docs"
                 />
               </div>
-            </div>
+            </SurfaceCard>
           ) : isEpubOnly ? (
             /* EPUB Library Overview / Empty State */
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 md:p-10 space-y-5 my-auto">
+            <SurfaceCard variant="default" className="flex-1 flex flex-col items-center justify-center text-center p-6 md:p-10 space-y-5 my-auto">
               <div className="w-16 h-16 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200/60 dark:border-amber-800/60 shadow-2xs">
                 <BookOpen className="w-8 h-8" />
               </div>
@@ -770,10 +781,10 @@ export function DocsExplorerView({
                   Sau khi thêm tệp .epub mới, hãy nhấn nút <strong>Làm mới</strong> hoặc chọn trực tiếp qua nút <strong>Chọn sách từ Vault</strong>.
                 </p>
               </div>
-            </div>
+            </SurfaceCard>
           ) : (
             /* Default Documentation Overview State for mode="full" */
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
+            <SurfaceCard variant="default" className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-4 my-auto">
               <div className="w-14 h-14 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-2xl flex items-center justify-center border border-amber-200/60 dark:border-amber-800/60 shadow-2xs">
                 <BookOpen className="w-7 h-7" />
               </div>
@@ -793,9 +804,9 @@ export function DocsExplorerView({
                   Tự động đồng bộ thời gian thực
                 </span>
               </div>
-            </div>
+            </SurfaceCard>
           )}
-        </SurfaceCard>
+        </div>
       </div>
 
       {/* Obsidian Vault Browser Modal */}
@@ -804,19 +815,6 @@ export function DocsExplorerView({
           isOpen={isVaultModalOpen}
           onClose={() => setIsVaultModalOpen(false)}
           onSelectFile={handleVaultFileSelect}
-        />
-      )}
-
-      {/* Phase 18A Unified Research Reader */}
-      {activeReaderDoc && (
-        <UnifiedResearchReader
-          documentId={activeReaderDoc.documentId}
-          title={activeReaderDoc.title}
-          format={activeReaderDoc.format}
-          fileUrl={activeReaderDoc.fileUrl}
-          content={activeReaderDoc.content}
-          sourceType={activeReaderDoc.sourceType}
-          onClose={() => setActiveReaderDoc(null)}
         />
       )}
     </div>
