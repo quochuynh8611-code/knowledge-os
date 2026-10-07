@@ -16,6 +16,7 @@ import {
   X,
   ChevronRight,
   Filter,
+  Network,
 } from 'lucide-react';
 import { formatMinutesToHours } from '../../lib/spaced-repetition';
 import {
@@ -150,6 +151,7 @@ export function Sidebar() {
     { id: 'topics', label: 'Chủ đề học', icon: FolderTree, badge: stats.totalTopics },
     { id: 'notes', label: 'Ghi chú & Đúc kết', icon: FileText, badge: stats.totalNotesCount },
     { id: 'graph', label: 'Bản đồ tri thức', icon: Share2 },
+    { id: 'mindmap', label: 'Sơ đồ tư duy', icon: Network },
   ];
 
   // Hub 4: PHÂN TÍCH & CÔNG CỤ (Insights & Tools)

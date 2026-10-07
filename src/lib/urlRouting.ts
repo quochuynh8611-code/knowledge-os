@@ -14,7 +14,8 @@ export type ActiveTab =
   | "search"
   | "ai_studio"
   | "library"
-  | "flashcards";
+  | "flashcards"
+  | "mindmap";
 
 export const VALID_TABS: readonly ActiveTab[] = [
   "dashboard",
@@ -27,6 +28,7 @@ export const VALID_TABS: readonly ActiveTab[] = [
   "ai_studio",
   "library",
   "flashcards",
+  "mindmap",
 ] as const;
 
 export interface NavigationRouteState {
@@ -245,6 +247,9 @@ export function buildLocationHash(state: NavigationRouteState): string {
   }
 
   const params = new URLSearchParams();
+  if (activeTab === "mindmap" && selectedTopicId) {
+    params.set("topicId", selectedTopicId);
+  }
   if (sessionType) {
     params.set("sessionType", sessionType);
   }

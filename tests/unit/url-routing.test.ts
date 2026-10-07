@@ -146,25 +146,40 @@ describe("Phase P2.1 — URL Routing Pure Functions Contract", () => {
     });
   });
 
-  // ─── 6. Round-Trip Preservation ──────────────────────────────────────────
+  // ─── 7. Mind Map Canonical Routing ───────────────────────────────────────
 
-  describe("6. Round-Trip Preservation", () => {
-    it("6.1. preserves semantic meaning across parse -> build -> parse", () => {
-      const original: NavigationRouteState = {
-        activeTab: "topics",
-        selectedTopicId: "topic-cetana-1",
-        searchQuery: "khảo sát",
-        selectedCategoryFilter: "cat-abhidharma",
-        selectedTagFilter: "vi-dieu-phap",
+  describe("7. Mind Map Canonical Routing", () => {
+    it("7.1. parses #/mindmap?topicId=topic-tu-dieu-de into activeTab='mindmap' and selectedTopicId", () => {
+      const result = parseLocationHash("#/mindmap?topicId=topic-tu-dieu-de");
+      expect(result.activeTab).toBe("mindmap");
+      expect(result.selectedTopicId).toBe("topic-tu-dieu-de");
+    });
+
+    it("7.2. parses #/mindmap without query parameters into activeTab='mindmap' and null selectedTopicId", () => {
+      const result = parseLocationHash("#/mindmap");
+      expect(result.activeTab).toBe("mindmap");
+      expect(result.selectedTopicId).toBeNull();
+    });
+
+    it("7.3. builds canonical #/mindmap?topicId=... when activeTab is mindmap and selectedTopicId is set", () => {
+      const state: NavigationRouteState = {
+        activeTab: "mindmap",
+        selectedTopicId: "topic-bat-chanh-dao",
+        searchQuery: "",
+        selectedCategoryFilter: null,
+        selectedTagFilter: null,
       };
-
-      const hash = buildLocationHash(original);
-      const roundTripped = parseLocationHash(hash);
-
-      expect(roundTripped.activeTab).toBe(original.activeTab);
-      expect(roundTripped.selectedTopicId).toBe(original.selectedTopicId);
-      expect(roundTripped.selectedCategoryFilter).toBe(original.selectedCategoryFilter);
-      expect(roundTripped.selectedTagFilter).toBe(original.selectedTagFilter);
+      const hash = buildLocationHash(state);
+      expect(hash).toBe("#/mindmap?topicId=topic-bat-chanh-dao");
+      expect(parseLocationHash(hash)).toEqual({
+        activeTab: "mindmap",
+        selectedTopicId: "topic-bat-chanh-dao",
+        searchQuery: "",
+        selectedCategoryFilter: null,
+        selectedTagFilter: null,
+        subView: undefined,
+        sessionType: undefined,
+      });
     });
   });
 });
