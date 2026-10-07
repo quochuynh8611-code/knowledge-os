@@ -151,6 +151,22 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
         action: () => options.onNavigateTab?.("graph"),
       },
       {
+        id: "nav-mindmap",
+        title: "Sơ đồ tư duy (Mind Map)",
+        description: "Trực quan hóa cấu trúc phân cấp & cây tri thức đa tầng",
+        category: "Điều hướng",
+        icon: Share2,
+        keywords: [
+          "mindmap",
+          "so do tu duy",
+          "mind map",
+          "cay tri thuc",
+          "cay phan cap",
+          "truc quan hoa",
+        ],
+        action: () => options.onNavigateTab?.("mindmap"),
+      },
+      {
         id: "nav-progress",
         title: "Tiến độ & Ôn tập (SM-2)",
         description: "Thuật toán SuperMemo-2 và hàng đợi ôn tập hôm nay",

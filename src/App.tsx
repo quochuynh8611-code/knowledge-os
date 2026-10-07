@@ -37,6 +37,11 @@ const KnowledgeGraph = React.lazy(() =>
     default: m.KnowledgeGraph,
   }))
 );
+const MindMapView = React.lazy(() =>
+  import("./components/mindmap/MindMapView").then((m) => ({
+    default: m.MindMapView,
+  }))
+);
 const StudyProgressView = React.lazy(() =>
   import("./components/progress/StudyProgressView").then((m) => ({
     default: m.StudyProgressView,
@@ -189,8 +194,27 @@ function AppContent() {
         ],
         action: () => setActiveTab("flashcards"),
       },
+      {
+        id: "act-open-mindmap",
+        title: selectedTopicId
+          ? `Mở Sơ Đồ Tư Duy: ${topics.find((t) => t.id === selectedTopicId)?.title || "Chủ đề hiện tại"}`
+          : "Mở Sơ Đồ Tư Duy (Mind Map)",
+        description: selectedTopicId
+          ? "Trực quan hóa cấu trúc tri thức cho chủ đề đang chọn"
+          : "Khám phá sơ đồ tư duy phân cấp và xuất Markdown",
+        category: "Hành động nhanh",
+        icon: Share2,
+        keywords: [
+          "mindmap",
+          "so do tu duy",
+          "mind map",
+          "so do",
+          "xuat markdown",
+        ],
+        action: () => setActiveTab("mindmap"),
+      },
     ],
-    [setActiveTab]
+    [setActiveTab, selectedTopicId, topics]
   );
 
   // Command Palette hook
@@ -222,6 +246,12 @@ function AppContent() {
         return (
           <React.Suspense fallback={<TabLoadingFallback />}>
             <KnowledgeGraph />
+          </React.Suspense>
+        );
+      case "mindmap":
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <MindMapView />
           </React.Suspense>
         );
       case "progress":

@@ -42,6 +42,7 @@ export interface NavigationContextType {
   openStudyLauncher: (topicId?: string | null) => void;
   openFlashcardAnalytics: (topicId?: string | null) => void;
   openDuplicateDetection: (topicId?: string | null) => void;
+  openMindMap: (topicId?: string | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(
@@ -155,7 +156,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
   const setActiveTab = useCallback((tab: ActiveTab) => {
     setActiveTabState(tab);
     setSubViewState(null);
-    if (tab !== "topics" && tab !== "flashcards") {
+    if (tab !== "topics" && tab !== "flashcards" && tab !== "mindmap") {
       setSelectedTopicIdState(null);
     }
   }, []);
@@ -257,6 +258,12 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const openMindMap = useCallback((topicId?: string | null) => {
+    setSelectedTopicIdState(topicId || null);
+    setActiveTabState("mindmap");
+    setSubViewState(null);
+  }, []);
+
   const value = useMemo<NavigationContextType>(
     () => ({
       activeTab,
@@ -279,6 +286,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       openStudyLauncher,
       openFlashcardAnalytics,
       openDuplicateDetection,
+      openMindMap,
     }),
     [
       activeTab,
@@ -301,6 +309,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
       openStudyLauncher,
       openFlashcardAnalytics,
       openDuplicateDetection,
+      openMindMap,
     ],
   );
 

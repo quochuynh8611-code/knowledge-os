@@ -397,6 +397,25 @@ export function TopicDetail() {
             </span>
           </button>
 
+          {/* Mind Map CTA */}
+          <button
+            data-testid="btn-view-mindmap"
+            onClick={() => {
+              if (navigation?.openMindMap) {
+                navigation.openMindMap(topic.id);
+              } else {
+                setSelectedTopicId(topic.id);
+                if (typeof window !== "undefined") {
+                  window.location.hash = `#/mindmap?topicId=${topic.id}`;
+                }
+              }
+            }}
+            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+            title="Xem sơ đồ tư duy phân cấp của chủ đề này"
+          >
+            <Share2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" /> Sơ đồ
+          </button>
+
           {/* Research Tools dropdown (AI Scholar / Handoff / Obsidian / NotebookLM) */}
           <ResearchToolsDropdown
             onOpenAIStudio={() => setShowAIStudioModal(true)}

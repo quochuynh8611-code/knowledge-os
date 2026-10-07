@@ -297,7 +297,7 @@ export function DashboardHome() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           <button
             type="button"
             onClick={() => setActiveTab('ai_studio')}
@@ -338,6 +338,21 @@ export function DashboardHome() {
               </span>
             </div>
             <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Mạng lưới liên kết & đồ thị quan hệ chủ đề</p>
+          </button>
+
+          <button
+            type="button"
+            data-testid="dashboard-card-mindmap"
+            onClick={() => setActiveTab('mindmap')}
+            className="p-3 bg-white dark:bg-stone-900 border border-stone-200/70 dark:border-stone-800 hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/40 dark:hover:bg-amber-950/30 rounded-xl text-left transition duration-150 group cursor-pointer shadow-2xs"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Share2 className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400" />
+              <span className="font-semibold text-xs text-stone-900 dark:text-stone-100 group-hover:text-amber-900 dark:group-hover:text-amber-300">
+                Sơ đồ tư duy
+              </span>
+            </div>
+            <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-1">Trực quan hóa cấu trúc phân cấp & cây tri thức</p>
           </button>
         </div>
       </section>
