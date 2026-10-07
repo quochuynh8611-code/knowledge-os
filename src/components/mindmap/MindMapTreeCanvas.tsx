@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   MindMapTreeNode,
   MindMapLayoutMode,
+  MindMapCrossEdge,
+  MindMapCycleAnnotation,
 } from "../../lib/mindmapProjection";
+import { MindMapCrossLinksLayer } from "./MindMapCrossLinksLayer";
 import {
   BookOpen,
   FileText,
@@ -10,12 +13,16 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  Repeat,
 } from "lucide-react";
 
 interface MindMapTreeCanvasProps {
   tree: MindMapTreeNode;
   layoutMode: MindMapLayoutMode;
   collapsedNodeIds?: Set<string>;
+  crossEdges?: MindMapCrossEdge[];
+  cycleAnnotations?: MindMapCycleAnnotation[];
+  showCrossLinks?: boolean;
   onToggleCollapse?: (nodeId: string) => void;
   onSelectTopic?: (topicId: string) => void;
 }
@@ -24,10 +31,14 @@ export function MindMapTreeCanvas({
   tree,
   layoutMode,
   collapsedNodeIds,
+  crossEdges,
+  cycleAnnotations,
+  showCrossLinks,
   onToggleCollapse,
   onSelectTopic,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const renderStatusBadge = (node: MindMapTreeNode) => {
     if (node.progress !== undefined && node.progress !== null) {
@@ -128,8 +139,12 @@ export function MindMapTreeCanvas({
       }
     };
 
+    const nodeCycles =
+      cycleAnnotations?.filter((ca) => ca.nodeId === node.id) || [];
+
     return (
       <div
+        data-node-id={node.id}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-150 ${
           isTopic ? "cursor-pointer hover:shadow-md" : "cursor-default"
@@ -205,10 +220,22 @@ export function MindMapTreeCanvas({
           {node.title}
         </div>
 
-        {/* Node Footer: Relation tag & category */}
-        {(node.edgeTypeToParent || node.categoryName) && (
-          <div className="mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800/60 flex items-center justify-between gap-1">
-            {renderRelationTag(node)}
+        {/* Node Footer: Relation tag, Cycle badges & category */}
+        {(node.edgeTypeToParent || nodeCycles.length > 0 || node.categoryName) && (
+          <div className="mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800/60 flex flex-wrap items-center justify-between gap-1">
+            <div className="flex flex-wrap items-center gap-1">
+              {renderRelationTag(node)}
+              {nodeCycles.map((cycle, idx) => (
+                <span
+                  key={idx}
+                  data-testid={`cycle-badge-${node.id}`}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded border bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/80"
+                  title={`Chu trình khép kín trở về tổ tiên: ${cycle.targetAncestorTitle || cycle.targetAncestorId}`}
+                >
+                  ↻ {cycle.targetAncestorTitle || cycle.targetAncestorId}
+                </span>
+              ))}
+            </div>
             {node.categoryName && (
               <span className="text-[9px] text-stone-400 dark:text-stone-500 truncate max-w-[100px]">
                 {node.categoryName}
@@ -292,8 +319,15 @@ export function MindMapTreeCanvas({
   };
 
   return (
-    <div className="w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800">
-      <div className="inline-block">
+    <div className="relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800">
+      <div ref={containerRef} className="relative inline-block">
+        {showCrossLinks && crossEdges && crossEdges.length > 0 && (
+          <MindMapCrossLinksLayer
+            crossEdges={crossEdges}
+            collapsedNodeIds={collapsedNodeIds}
+            containerRef={containerRef}
+          />
+        )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
       </div>
     </div>

@@ -27,6 +27,26 @@ export interface MindMapTreeNode {
   children: MindMapTreeNode[];
 }
 
+export interface MindMapCrossEdge {
+  id: string;
+  sourceNodeId: string;
+  sourceTitle: string;
+  targetNodeId: string;
+  targetTitle: string;
+  type: SemanticEdgeType;
+  strength: number;
+  label: string;
+  isCycle: boolean;
+}
+
+export interface MindMapCycleAnnotation {
+  nodeId: string;
+  targetAncestorId: string;
+  targetAncestorTitle: string;
+  edgeType: SemanticEdgeType;
+  depth: number;
+}
+
 export interface MindMapTreeProjection {
   rootNodeId: string;
   rootTitle: string;
@@ -36,6 +56,8 @@ export interface MindMapTreeProjection {
   hasTruncatedBranches: boolean;
   hasCyclesDetected: boolean;
   tree: MindMapTreeNode;
+  crossEdges: MindMapCrossEdge[];
+  cycleAnnotations: MindMapCycleAnnotation[];
   generatedAt: string;
 }
 
@@ -53,6 +75,25 @@ const SEMANTIC_EDGE_PRIORITY: Record<string, number> = {
   contradicts: 2,
   has_note: 1,
   has_resource: 1,
+};
+
+export const getSemanticEdgeLabel = (type: SemanticEdgeType): string => {
+  switch (type) {
+    case "prerequisite":
+      return "Tiên quyết";
+    case "advanced":
+      return "Nâng cao";
+    case "related":
+      return "Liên quan";
+    case "contradicts":
+      return "Đối chiếu";
+    case "has_note":
+      return "Ghi chú";
+    case "has_resource":
+      return "Tài liệu";
+    default:
+      return type;
+  }
 };
 
 /**
@@ -189,7 +230,110 @@ export function projectToMindMapTree(
   rootNode.children = childrenMap.get(rootTopicId) || [];
   sortChildren(rootNode.children);
 
-  // 6. Best-effort truncation signal calculation
+  // 6. Extract cross-edges and cycle annotations from subgraph.edges
+  const treeEdgeKeys = new Set<string>();
+  for (const node of treeNodeMap.values()) {
+    if (node.parentHopId) {
+      treeEdgeKeys.add(`${node.parentHopId}->${node.id}`);
+      treeEdgeKeys.add(`${node.id}->${node.parentHopId}`);
+    }
+  }
+
+  // Pre-calculate ancestor sets for cycle detection
+  const ancestorsMap = new Map<string, Set<string>>();
+  for (const node of treeNodeMap.values()) {
+    const ancestors = new Set<string>();
+    let curr: string | undefined = node.parentHopId;
+    while (curr && treeNodeMap.has(curr) && !ancestors.has(curr)) {
+      ancestors.add(curr);
+      curr = treeNodeMap.get(curr)!.parentHopId;
+    }
+    ancestorsMap.set(node.id, ancestors);
+  }
+
+  const rawCrossEdges: MindMapCrossEdge[] = [];
+  const cycleAnnotations: MindMapCycleAnnotation[] = [];
+  const processedCycleKeys = new Set<string>();
+
+  for (const edge of subgraph.edges) {
+    if (!treeNodeMap.has(edge.source) || !treeNodeMap.has(edge.target)) {
+      continue;
+    }
+
+    const isTreeEdge =
+      treeEdgeKeys.has(`${edge.source}->${edge.target}`) ||
+      treeEdgeKeys.has(`${edge.target}->${edge.source}`);
+
+    const sourceAncestors = ancestorsMap.get(edge.source) || new Set<string>();
+    const targetAncestors = ancestorsMap.get(edge.target) || new Set<string>();
+
+    const isSourceToAncestor = sourceAncestors.has(edge.target);
+    const isTargetToAncestor = targetAncestors.has(edge.source);
+    const isCycle = isSourceToAncestor || isTargetToAncestor;
+
+    if (isCycle) {
+      const cycleNodeId = isSourceToAncestor ? edge.source : edge.target;
+      const targetAncestorId = isSourceToAncestor ? edge.target : edge.source;
+      const cycleKey = `${cycleNodeId}->${targetAncestorId}`;
+      if (!processedCycleKeys.has(cycleKey)) {
+        processedCycleKeys.add(cycleKey);
+        const nodeMeta = treeNodeMap.get(cycleNodeId)!;
+        const targetMeta = treeNodeMap.get(targetAncestorId)!;
+        cycleAnnotations.push({
+          nodeId: cycleNodeId,
+          targetAncestorId: targetAncestorId,
+          targetAncestorTitle: targetMeta.title,
+          edgeType: edge.type,
+          depth: nodeMeta.hopDistance,
+        });
+      }
+    }
+
+    if (!isTreeEdge) {
+      const sourceMeta = treeNodeMap.get(edge.source)!;
+      const targetMeta = treeNodeMap.get(edge.target)!;
+      rawCrossEdges.push({
+        id: edge.id,
+        sourceNodeId: edge.source,
+        sourceTitle: sourceMeta.title,
+        targetNodeId: edge.target,
+        targetTitle: targetMeta.title,
+        type: edge.type,
+        strength: edge.strength ?? 3,
+        label: getSemanticEdgeLabel(edge.type),
+        isCycle,
+      });
+    }
+  }
+
+  // Sort crossEdges deterministically:
+  // 1. strength desc
+  // 2. semantic edge priority desc
+  // 3. sourceNodeId asc
+  // 4. targetNodeId asc
+  // 5. id asc
+  rawCrossEdges.sort((a, b) => {
+    const strengthDiff = (b.strength || 0) - (a.strength || 0);
+    if (strengthDiff !== 0) return strengthDiff;
+
+    const priorityA = SEMANTIC_EDGE_PRIORITY[a.type] || 0;
+    const priorityB = SEMANTIC_EDGE_PRIORITY[b.type] || 0;
+    const priorityDiff = priorityB - priorityA;
+    if (priorityDiff !== 0) return priorityDiff;
+
+    const sourceComp = a.sourceNodeId.localeCompare(b.sourceNodeId);
+    if (sourceComp !== 0) return sourceComp;
+
+    const targetComp = a.targetNodeId.localeCompare(b.targetNodeId);
+    if (targetComp !== 0) return targetComp;
+
+    return a.id.localeCompare(b.id);
+  });
+
+  // Hard cap to max 15 cross-edges
+  const crossEdges = rawCrossEdges.slice(0, 15);
+
+  // 7. Best-effort truncation signal calculation
   let hasTruncatedBranches = subgraph.totalNodesCount >= safeMaxNodes;
   if (!hasTruncatedBranches && subgraph.depthReached >= safeMaxDepth) {
     // Check if any leaf node at maxDepth has unvisited outgoing/incoming edges in base graph
@@ -219,6 +363,8 @@ export function projectToMindMapTree(
     hasTruncatedBranches,
     hasCyclesDetected: subgraph.hasCycles,
     tree: rootNode,
+    crossEdges,
+    cycleAnnotations,
     generatedAt: new Date().toISOString(),
   };
 }

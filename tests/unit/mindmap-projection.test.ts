@@ -376,6 +376,8 @@ describe("Mind Map v1 Derived Read-Model Projection", () => {
         totalNodesCount: 2,
         hasTruncatedBranches: false,
         hasCyclesDetected: false,
+        crossEdges: [],
+        cycleAnnotations: [],
         generatedAt: "2026-01-01T00:00:00Z",
         tree: {
           id: "topic-orphan",

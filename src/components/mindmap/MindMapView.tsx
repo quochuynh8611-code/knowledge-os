@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   BookOpen,
   Info,
+  Share2,
 } from "lucide-react";
 
 export function MindMapView() {
@@ -30,6 +31,7 @@ export function MindMapView() {
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(
     new Set()
   );
+  const [showCrossLinks, setShowCrossLinks] = useState<boolean>(false);
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -235,6 +237,31 @@ export function MindMapView() {
             </button>
           </div>
 
+          {/* Cross-Links Overlay Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowCrossLinks((prev) => !prev)}
+            title="Bật/tắt hiển thị liên kết chéo trên sơ đồ"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+              showCrossLinks
+                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                : "bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:text-stone-900 dark:hover:text-stone-200"
+            }`}
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {showCrossLinks ? "Ẩn liên kết chéo" : "Hiện liên kết chéo"}
+            </span>
+            <span className="sm:hidden">
+              {showCrossLinks ? "Ẩn chéo" : "Hiện chéo"}
+            </span>
+            {projection?.crossEdges && projection.crossEdges.length > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 text-[10px] rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
+                {projection.crossEdges.length}
+              </span>
+            )}
+          </button>
+
           {/* Copy Markdown Outline CTA */}
           <button
             onClick={handleCopyMarkdown}
@@ -276,6 +303,14 @@ export function MindMapView() {
                 </span>
               </>
             )}
+            {projection.crossEdges.length > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-stone-600 dark:text-stone-300 font-medium">
+                  {projection.crossEdges.length} liên kết chéo
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -306,6 +341,9 @@ export function MindMapView() {
           tree={projection.tree}
           layoutMode={layoutMode}
           collapsedNodeIds={collapsedNodeIds}
+          crossEdges={projection.crossEdges}
+          cycleAnnotations={projection.cycleAnnotations}
+          showCrossLinks={showCrossLinks}
           onToggleCollapse={handleToggleCollapse}
           onSelectTopic={(topicId) => openTopicDetail(topicId)}
         />
