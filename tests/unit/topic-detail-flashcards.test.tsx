@@ -184,4 +184,75 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
     fireEvent.click(reviewHubBtn);
     expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1", "review");
   });
+
+  it("7. renders clean zero-cards empty state when topic has 0 flashcards", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/flashcards/progress")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            total: 0,
+            totalCards: 0,
+            dueToday: 0,
+            newCards: 0,
+            learningCards: 0,
+            reviewCards: 0,
+            retentionRate: 0,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<TopicDetail />);
+
+    const flashcardsTabBtn = await screen.findByTestId("tab-btn-flashcards");
+    fireEvent.click(flashcardsTabBtn);
+
+    const emptyState = await screen.findByTestId("topic-flashcard-empty-state");
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState).toHaveTextContent(/chưa có thẻ nhớ/i);
+
+    // Summary metrics grid should be omitted when 0 cards
+    expect(screen.queryByTestId("stat-due-count")).toBeNull();
+
+    // Empty state provides create & import actions
+    expect(screen.getByTestId("btn-topic-create-card")).toBeInTheDocument();
+    expect(screen.getByTestId("btn-topic-import-csv")).toBeInTheDocument();
+  });
+
+  it("8. renders all-caught-up state when totalCards > 0 and dueToday is 0", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/flashcards/progress")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            total: 10,
+            totalCards: 10,
+            dueToday: 0,
+            newCards: 2,
+            learningCards: 3,
+            reviewCards: 5,
+            retentionRate: 92,
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => [] });
+    });
+
+    render(<TopicDetail />);
+
+    const flashcardsTabBtn = await screen.findByTestId("tab-btn-flashcards");
+    fireEvent.click(flashcardsTabBtn);
+
+    const summary = await screen.findByTestId("topic-flashcard-summary");
+    expect(summary).toBeInTheDocument();
+    expect(within(summary).getByTestId("stat-due-count")).toHaveTextContent("0");
+
+    const reviewBtn = await screen.findByTestId("btn-start-topic-review");
+    expect(reviewBtn).toHaveTextContent(/Đã ôn xong hôm nay/i);
+
+    fireEvent.click(reviewBtn);
+    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1", "review");
+  });
 });

@@ -1130,7 +1130,6 @@ export function TopicDetail() {
           {/* Topic Flashcard Summary Hub */}
           <SurfaceCard
             variant="default"
-            data-testid="topic-flashcard-summary"
             className="p-6 space-y-6"
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 dark:border-stone-800 pb-5">
@@ -1148,14 +1147,23 @@ export function TopicDetail() {
                 <button
                   data-testid="btn-start-topic-review"
                   onClick={handleOpenFlashcardReview}
-                  className="px-4 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer"
+                  className={`px-4 py-2 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition cursor-pointer ${
+                    flashcardStats?.dueToday && flashcardStats.dueToday > 0
+                      ? "bg-amber-800 hover:bg-amber-900"
+                      : "bg-emerald-700 hover:bg-emerald-800"
+                  }`}
                 >
-                  <Brain className="w-4 h-4" />
-                  <span>
-                    {flashcardStats?.dueToday && flashcardStats.dueToday > 0
-                      ? `Ôn ${flashcardStats.dueToday} thẻ đến hạn`
-                      : "Không có thẻ đến hạn"}
-                  </span>
+                  {flashcardStats?.dueToday && flashcardStats.dueToday > 0 ? (
+                    <>
+                      <Brain className="w-4 h-4" />
+                      <span>Ôn {flashcardStats.dueToday} thẻ đến hạn</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Đã ôn xong hôm nay (Ôn tiếp / Cram)</span>
+                    </>
+                  )}
                 </button>
 
                 <button
@@ -1206,73 +1214,116 @@ export function TopicDetail() {
               </div>
             </div>
 
-            {/* Metric counters */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl">
-                <div className="text-[11px] font-medium text-amber-800 dark:text-amber-400 uppercase tracking-wider">
-                  Đến hạn hôm nay
+            {/* Content: Empty State vs Metrics Grid */}
+            {(!flashcardStats || ((flashcardStats.total ?? flashcardStats.totalCards ?? (flashcardStats.newCards + flashcardStats.learningCards + flashcardStats.reviewCards)) === 0)) ? (
+              <div
+                data-testid="topic-flashcard-empty-state"
+                className="py-12 px-6 flex flex-col items-center justify-center text-center space-y-4 bg-stone-50/50 dark:bg-stone-900/30 rounded-2xl border border-dashed border-stone-200 dark:border-stone-800"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-amber-100/80 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 flex items-center justify-center border border-amber-200/60 dark:border-amber-900/60 shadow-2xs">
+                  <Brain className="w-6 h-6" />
                 </div>
-                <div
-                  data-testid="stat-due-count"
-                  className="text-2xl font-bold text-amber-950 dark:text-amber-200 mt-1 font-mono"
-                >
-                  {flashcardStats?.dueToday ?? 0}
+                <div className="max-w-md space-y-1">
+                  <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                    Chưa có thẻ nhớ nào trong chủ đề này
+                  </h4>
+                  <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                    Tạo thẻ nhớ thủ công hoặc nhập danh sách từ CSV / TSV để bắt đầu ôn tập theo phương pháp ngắt quãng SRS.
+                  </p>
                 </div>
-              </div>
-
-              <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 rounded-xl">
-                <div className="text-[11px] font-medium text-blue-800 dark:text-blue-400 uppercase tracking-wider">
-                  Thẻ mới (New)
-                </div>
-                <div
-                  data-testid="stat-new-count"
-                  className="text-2xl font-bold text-blue-950 dark:text-blue-200 mt-1 font-mono"
-                >
-                  {flashcardStats?.newCards ?? 0}
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/60 rounded-xl">
-                <div className="text-[11px] font-medium text-orange-800 dark:text-orange-400 uppercase tracking-wider">
-                  Đang học (Learning)
-                </div>
-                <div
-                  data-testid="stat-learning-count"
-                  className="text-2xl font-bold text-orange-950 dark:text-orange-200 mt-1 font-mono"
-                >
-                  {flashcardStats?.learningCards ?? 0}
-                </div>
-              </div>
-
-              <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
-                <div className="text-[11px] font-medium text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
-                  Đang ôn (Review)
-                </div>
-                <div
-                  data-testid="stat-review-count"
-                  className="text-2xl font-bold text-emerald-950 dark:text-emerald-200 mt-1 font-mono"
-                >
-                  {flashcardStats?.reviewCards ?? 0}
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    data-testid="btn-topic-create-card"
+                    onClick={() => setShowCreateFlashcardModal(true)}
+                    className="px-3.5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tạo thẻ mới</span>
+                  </button>
+                  <button
+                    data-testid="btn-topic-import-csv"
+                    onClick={() => setShowImportFlashcardModal(true)}
+                    className="px-3.5 py-2 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer border border-stone-200 dark:border-stone-700"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Nhập CSV / TSV</span>
+                  </button>
                 </div>
               </div>
-
-              <div className="p-3.5 bg-stone-50/70 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-800 rounded-xl col-span-2 sm:col-span-1">
-                <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300 uppercase tracking-wider">
-                  Tỷ lệ ghi nhớ
-                </div>
+            ) : (
+              <>
+                {/* Metric counters */}
                 <div
-                  data-testid="stat-retention-rate"
-                  className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono"
+                  data-testid="topic-flashcard-summary"
+                  className="grid grid-cols-2 sm:grid-cols-5 gap-3"
                 >
-                  {flashcardStats?.retentionRate !== undefined ? `${flashcardStats.retentionRate}%` : "0%"}
-                </div>
-              </div>
-            </div>
+                  <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl">
+                    <div className="text-[11px] font-medium text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+                      Đến hạn hôm nay
+                    </div>
+                    <div
+                      data-testid="stat-due-count"
+                      className="text-2xl font-bold text-amber-950 dark:text-amber-200 mt-1 font-mono"
+                    >
+                      {flashcardStats?.dueToday ?? 0}
+                    </div>
+                  </div>
 
-            {/* Embedded Analytics for this topic */}
-            <div className="pt-2">
-              <FlashcardAnalyticsWidget topicId={topic.id} />
-            </div>
+                  <div className="p-3.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 rounded-xl">
+                    <div className="text-[11px] font-medium text-blue-800 dark:text-blue-400 uppercase tracking-wider">
+                      Thẻ mới (New)
+                    </div>
+                    <div
+                      data-testid="stat-new-count"
+                      className="text-2xl font-bold text-blue-950 dark:text-blue-200 mt-1 font-mono"
+                    >
+                      {flashcardStats?.newCards ?? 0}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-orange-50/70 dark:bg-orange-950/30 border border-orange-200/80 dark:border-orange-800/60 rounded-xl">
+                    <div className="text-[11px] font-medium text-orange-800 dark:text-orange-400 uppercase tracking-wider">
+                      Đang học (Learning)
+                    </div>
+                    <div
+                      data-testid="stat-learning-count"
+                      className="text-2xl font-bold text-orange-950 dark:text-orange-200 mt-1 font-mono"
+                    >
+                      {flashcardStats?.learningCards ?? 0}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl">
+                    <div className="text-[11px] font-medium text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+                      Đang ôn (Review)
+                    </div>
+                    <div
+                      data-testid="stat-review-count"
+                      className="text-2xl font-bold text-emerald-950 dark:text-emerald-200 mt-1 font-mono"
+                    >
+                      {flashcardStats?.reviewCards ?? 0}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-stone-50/70 dark:bg-stone-900/60 border border-stone-200/80 dark:border-stone-800 rounded-xl col-span-2 sm:col-span-1">
+                    <div className="text-[11px] font-medium text-stone-700 dark:text-stone-300 uppercase tracking-wider">
+                      Tỷ lệ ghi nhớ
+                    </div>
+                    <div
+                      data-testid="stat-retention-rate"
+                      className="text-2xl font-bold text-stone-900 dark:text-stone-100 mt-1 font-mono"
+                    >
+                      {flashcardStats?.retentionRate !== undefined ? `${flashcardStats.retentionRate}%` : "0%"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Embedded Analytics for this topic */}
+                <div className="pt-2">
+                  <FlashcardAnalyticsWidget topicId={topic.id} />
+                </div>
+              </>
+            )}
           </SurfaceCard>
         </div>
       )}
