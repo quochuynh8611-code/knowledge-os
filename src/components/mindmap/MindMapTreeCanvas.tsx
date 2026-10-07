@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import {
   MindMapTreeNode,
   MindMapLayoutMode,
@@ -43,6 +43,23 @@ export function MindMapTreeCanvas({
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const containerRef = useRef<HTMLDivElement>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+
+  const peerNodeIds = useMemo(() => {
+    if (!showCrossLinks || !hoveredNodeId || !crossEdges) return new Set<string>();
+    const peers = new Set<string>();
+    for (const edge of crossEdges) {
+      if (
+        collapsedNodeIds?.has(edge.sourceNodeId) ||
+        collapsedNodeIds?.has(edge.targetNodeId)
+      ) {
+        continue;
+      }
+      if (edge.sourceNodeId === hoveredNodeId) peers.add(edge.targetNodeId);
+      if (edge.targetNodeId === hoveredNodeId) peers.add(edge.sourceNodeId);
+    }
+    return peers;
+  }, [showCrossLinks, hoveredNodeId, crossEdges, collapsedNodeIds]);
 
   const renderStatusBadge = (node: MindMapTreeNode) => {
     if (node.progress !== undefined && node.progress !== null) {
@@ -130,6 +147,7 @@ export function MindMapTreeCanvas({
     const hasChildren = node.children.length > 0;
     const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
     const isHighlighted = highlightedNodeId === node.id;
+    const isPeerHighlighted = peerNodeIds.has(node.id);
 
     const handleClick = () => {
       if (isTopic && onSelectTopic) {
@@ -151,15 +169,20 @@ export function MindMapTreeCanvas({
       <div
         data-node-id={node.id}
         data-highlighted={isHighlighted ? "true" : undefined}
+        data-peer-highlighted={isPeerHighlighted ? "true" : undefined}
+        onMouseEnter={() => setHoveredNodeId(node.id)}
+        onMouseLeave={() => setHoveredNodeId(null)}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
           isHighlighted
             ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
-            : isRoot
-              ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-              : isTopic
-                ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+            : isPeerHighlighted
+              ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
+              : isRoot
+                ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+                : isTopic
+                  ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                  : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
         } ${
           isTopic ? "cursor-pointer hover:shadow-md" : "cursor-default"
         } min-w-[180px] max-w-[260px]`}
@@ -341,6 +364,7 @@ export function MindMapTreeCanvas({
             crossEdges={crossEdges}
             collapsedNodeIds={collapsedNodeIds}
             containerRef={containerRef}
+            hoveredNodeId={hoveredNodeId}
           />
         )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}

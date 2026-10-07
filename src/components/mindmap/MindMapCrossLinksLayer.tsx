@@ -5,10 +5,13 @@ interface MindMapCrossLinksLayerProps {
   crossEdges: MindMapCrossEdge[];
   collapsedNodeIds?: Set<string>;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  hoveredNodeId?: string | null;
 }
 
 interface ComputedPath {
   id: string;
+  sourceNodeId: string;
+  targetNodeId: string;
   d: string;
   strength: number;
 }
@@ -17,6 +20,7 @@ export function MindMapCrossLinksLayer({
   crossEdges,
   collapsedNodeIds,
   containerRef,
+  hoveredNodeId,
 }: MindMapCrossLinksLayerProps) {
   const [paths, setPaths] = useState<ComputedPath[]>([]);
 
@@ -71,6 +75,8 @@ export function MindMapCrossLinksLayer({
 
       newPaths.push({
         id: edge.id,
+        sourceNodeId: edge.sourceNodeId,
+        targetNodeId: edge.targetNodeId,
         d,
         strength: edge.strength,
       });
@@ -112,19 +118,43 @@ export function MindMapCrossLinksLayer({
           />
         </marker>
       </defs>
-      {paths.map((p) => (
-        <g key={p.id}>
-          <path
-            d={p.d}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={p.strength >= 4 ? 2 : 1.5}
-            strokeDasharray="4 4"
-            markerEnd="url(#crosslink-arrow)"
-            className="text-amber-500/70 dark:text-amber-400/70 pointer-events-none"
-          />
-        </g>
-      ))}
+      {paths.map((p) => {
+        const isConnected =
+          Boolean(hoveredNodeId) &&
+          (p.sourceNodeId === hoveredNodeId || p.targetNodeId === hoveredNodeId);
+        const isDimmed = Boolean(hoveredNodeId) && !isConnected;
+
+        return (
+          <g key={p.id}>
+            <path
+              data-edge-id={p.id}
+              data-highlighted={isConnected ? "true" : undefined}
+              data-dimmed={isDimmed ? "true" : undefined}
+              d={p.d}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={
+                isConnected
+                  ? p.strength >= 4
+                    ? 3
+                    : 2.5
+                  : p.strength >= 4
+                    ? 2
+                    : 1.5
+              }
+              strokeDasharray={isConnected ? "6 3" : "4 4"}
+              markerEnd="url(#crosslink-arrow)"
+              className={`transition-all duration-150 pointer-events-none ${
+                isConnected
+                  ? "text-amber-600 dark:text-amber-300 opacity-100"
+                  : isDimmed
+                    ? "text-amber-500/30 dark:text-amber-400/30 opacity-20"
+                    : "text-amber-500/70 dark:text-amber-400/70 opacity-70"
+              }`}
+            />
+          </g>
+        );
+      })}
     </svg>
   );
 }
