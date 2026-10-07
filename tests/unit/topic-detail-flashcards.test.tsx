@@ -124,7 +124,7 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
     expect(within(summary).getAllByTestId("stat-retention-rate")[0]).toHaveTextContent("85%");
   });
 
-  it("3. clicking 'Ôn N thẻ đến hạn' button triggers topic-scoped review session", async () => {
+  it("3. clicking 'Ôn N thẻ đến hạn' button triggers topic-scoped review session with 'review' mode", async () => {
     render(<TopicDetail />);
 
     const flashcardsTabBtn = await screen.findByTestId("tab-btn-flashcards");
@@ -135,18 +135,23 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
 
     fireEvent.click(reviewBtn);
 
-    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1");
+    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1", "review");
   });
 
-  it("4. header toolbar features quick flashcard due button", async () => {
+  it("4. header toolbar features unified review CTA, calls openFlashcardReview with 'review', and removes legacy SM-2 modal button", async () => {
     render(<TopicDetail />);
 
-    const quickDueBtn = await screen.findByTestId("btn-quick-topic-flashcards");
-    expect(quickDueBtn).toBeInTheDocument();
-    expect(quickDueBtn).toHaveTextContent(/12/);
+    // Legacy SM-2 modal CTA must be removed from TopicDetail header
+    expect(screen.queryByText(/Ôn tập SM-2/i)).toBeNull();
+    expect(screen.queryByTestId("review-btn")).toBeNull();
 
-    fireEvent.click(quickDueBtn);
-    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1");
+    // Unified Review CTA must be present
+    const reviewHubBtn = await screen.findByTestId("btn-topic-review-hub");
+    expect(reviewHubBtn).toBeInTheDocument();
+    expect(reviewHubBtn).toHaveTextContent(/12/);
+
+    fireEvent.click(reviewHubBtn);
+    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1", "review");
   });
 
   it("5. renders 'Tạo thẻ mới' and 'Nhập CSV / TSV' buttons inside Topic Flashcard Hub", async () => {
@@ -157,5 +162,26 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
 
     expect(await screen.findByTestId("btn-topic-create-card")).toBeInTheDocument();
     expect(screen.getByTestId("btn-topic-import-csv")).toBeInTheDocument();
+  });
+
+  it("6. renders safely when dueToday is 0 without crashing", async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/flashcards/progress")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ ...mockFlashcardStats, dueToday: 0 }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+
+    render(<TopicDetail />);
+
+    const reviewHubBtn = await screen.findByTestId("btn-topic-review-hub");
+    expect(reviewHubBtn).toBeInTheDocument();
+    expect(reviewHubBtn).toHaveTextContent(/0/);
+
+    fireEvent.click(reviewHubBtn);
+    expect(mockOpenFlashcardReview).toHaveBeenCalledWith("topic-dong-y-1", "review");
   });
 });

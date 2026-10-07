@@ -33,7 +33,6 @@ import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { resolveCitationTargetDocument, ActiveReaderDocument } from "../../lib/readerDocumentResolver";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
-import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { ResourceViewerModal } from "../modals/ResourceViewerModal";
 import { ObsidianTopicResourceLinkModal } from "../modals/ObsidianTopicResourceLinkModal";
@@ -129,7 +128,6 @@ export function TopicDetail() {
   const [showObsidianLinkModal, setShowObsidianLinkModal] = useState(false);
   const [showObsidianBrowserModal, setShowObsidianBrowserModal] = useState(false);
   const [showEditTopicModal, setShowEditTopicModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
@@ -271,7 +269,7 @@ export function TopicDetail() {
   const handleOpenFlashcardReview = () => {
     if (!topic?.id) return;
     if (navigation?.openFlashcardReview) {
-      navigation.openFlashcardReview(topic.id);
+      navigation.openFlashcardReview(topic.id, "review");
     } else {
       window.location.hash = `#/flashcards/${encodeURIComponent(topic.id)}`;
     }
@@ -374,24 +372,15 @@ export function TopicDetail() {
             onResumeStudy={() => resumeStudyTimer()}
           />
 
-          {/* SM-2 Spaced Review */}
+          {/* Smart Unified Flashcard Review CTA */}
           <button
-            data-testid="review-btn"
-            onClick={() => setShowReviewModal(true)}
-            className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
-          >
-            <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" /> Ôn tập SM-2
-          </button>
-
-          {/* Quick Topic Flashcard Due Button */}
-          <button
-            data-testid="btn-quick-topic-flashcards"
+            data-testid="btn-topic-review-hub"
             onClick={handleOpenFlashcardReview}
             className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/70 dark:hover:bg-amber-900/80 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             title={`Ôn ${flashcardStats?.dueToday ?? 0} thẻ đến hạn của chủ đề này`}
           >
             <Brain className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-            <span>Thẻ nhớ</span>
+            <span>Ôn tập</span>
             <span className="px-1.5 py-0.2 rounded-full bg-amber-200/70 dark:bg-amber-800/60 text-amber-900 dark:text-amber-200 text-[10px] font-bold font-mono">
               {flashcardStats?.dueToday ?? 0}
             </span>
@@ -1435,11 +1424,6 @@ export function TopicDetail() {
       <TopicFormModal
         isOpen={showEditTopicModal}
         onClose={() => setShowEditTopicModal(false)}
-        initialTopic={topic}
-      />
-      <SpacedReviewModal
-        isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
         initialTopic={topic}
       />
       <StudyTimerModal
