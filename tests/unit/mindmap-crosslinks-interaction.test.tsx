@@ -432,4 +432,92 @@ describe("Mind Map Phase B2b1: Cross-Link Mutual Highlight on Node Hover", () =>
     // Persistent focus on node B must NOT be cleared by backdrop click
     expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
   });
+
+  it("Scenario 13: Midpoint relationship label appears when edge is highlighted by hover", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    fireEvent.mouseEnter(nodeB);
+
+    const labelBC = document.querySelector('[data-edge-label-id="edge-b-c"]');
+    expect(labelBC).not.toBeNull();
+    expect(labelBC?.textContent).toContain("Liên quan");
+  });
+
+  it("Scenario 14: Midpoint relationship label appears when edge is highlighted by persistent focus", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeD = document.querySelector('[data-node-id="topic-d"]')!;
+    fireEvent.click(nodeD);
+    fireEvent.mouseLeave(nodeD);
+
+    const labelDE = document.querySelector('[data-edge-label-id="edge-d-e"]');
+    expect(labelDE).not.toBeNull();
+    expect(labelDE?.textContent).toContain("Tiên quyết");
+  });
+
+  it("Scenario 15: Midpoint relationship label disappears when highlight or focus is cleared", () => {
+    const { container } = render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+
+    // 1. Hover then mouse leave
+    fireEvent.mouseEnter(nodeB);
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).not.toBeNull();
+    fireEvent.mouseLeave(nodeB);
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).toBeNull();
+
+    // 2. Click focus then backdrop click
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).not.toBeNull();
+
+    const backdrop = container.querySelector('[data-testid="mindmap-canvas-backdrop"]') || container.firstElementChild!;
+    fireEvent.click(backdrop);
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).toBeNull();
+  });
+
+  it("Scenario 16: Unrelated dimmed edge does not show relationship label", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    fireEvent.mouseEnter(nodeB);
+
+    // edge-b-c is connected/highlighted -> label shown
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).not.toBeNull();
+    // edge-d-e is dimmed -> label NOT shown
+    expect(document.querySelector('[data-edge-label-id="edge-d-e"]')).toBeNull();
+  });
 });

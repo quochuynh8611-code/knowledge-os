@@ -14,6 +14,9 @@ interface ComputedPath {
   targetNodeId: string;
   d: string;
   strength: number;
+  label?: string;
+  midX: number;
+  midY: number;
 }
 
 export function MindMapCrossLinksLayer({
@@ -73,12 +76,18 @@ export function MindMapCrossLinksLayer({
 
       const d = `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`;
 
+      const midX = (x1 + 3 * cx1 + 3 * cx2 + x2) / 8;
+      const midY = (y1 + 3 * cy1 + 3 * cy2 + y2) / 8;
+
       newPaths.push({
         id: edge.id,
         sourceNodeId: edge.sourceNodeId,
         targetNodeId: edge.targetNodeId,
         d,
         strength: edge.strength,
+        label: edge.label,
+        midX,
+        midY,
       });
     }
 
@@ -152,6 +161,29 @@ export function MindMapCrossLinksLayer({
                     : "text-amber-500/70 dark:text-amber-400/70 opacity-70"
               }`}
             />
+            {isConnected && p.label && (
+              <g
+                data-edge-label-id={p.id}
+                transform={`translate(${p.midX}, ${p.midY})`}
+                className="pointer-events-none select-none transition-opacity duration-150"
+              >
+                <rect
+                  x={-(p.label.length * 5 + 6)}
+                  y={-9}
+                  width={(p.label.length * 5 + 6) * 2}
+                  height={18}
+                  rx={9}
+                  className="fill-amber-50/95 dark:fill-amber-950/95 stroke-amber-400 dark:stroke-amber-600 stroke-1"
+                />
+                <text
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="fill-amber-900 dark:fill-amber-200 text-[10px] font-semibold"
+                >
+                  {p.label}
+                </text>
+              </g>
+            )}
           </g>
         );
       })}
