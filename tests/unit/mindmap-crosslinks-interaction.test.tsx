@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
 import type { MindMapTreeNode, MindMapCrossEdge } from "../../src/lib/mindmapProjection";
@@ -336,5 +336,100 @@ describe("Mind Map Phase B2b1: Cross-Link Mutual Highlight on Node Hover", () =>
     expect(edgeDE?.getAttribute("data-dimmed")).toBe("true");
     expect(nodeC?.getAttribute("data-peer-highlighted")).toBe("true");
     expect(nodeE?.getAttribute("data-peer-highlighted")).toBeNull();
+  });
+
+  it("Scenario 10: Clicking empty canvas backdrop clears persistent cross-link focus", () => {
+    const { container } = render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    expect(nodeB).not.toBeNull();
+
+    // Focus node B
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    const nodeC = document.querySelector('[data-node-id="topic-c"]');
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBe("true");
+
+    // Click canvas backdrop
+    const backdrop = container.querySelector('[data-testid="mindmap-canvas-backdrop"]') || container.firstElementChild!;
+    fireEvent.click(backdrop);
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBeNull();
+    expect(edgeBC?.getAttribute("data-dimmed")).toBeNull();
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBeNull();
+  });
+
+  it("Scenario 11: Clicking inside node card does not accidentally dismiss focus via backdrop bubbling", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    const nodeD = document.querySelector('[data-node-id="topic-d"]')!;
+
+    // Focus node B
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+
+    // Clicking node D switches focus to node D, rather than dismissing everything to null
+    fireEvent.click(nodeD);
+    fireEvent.mouseLeave(nodeD);
+
+    const edgeDE = document.querySelector('[data-edge-id="edge-d-e"]');
+    const nodeE = document.querySelector('[data-node-id="topic-e"]');
+
+    expect(edgeDE?.getAttribute("data-highlighted")).toBe("true");
+    expect(nodeE?.getAttribute("data-peer-highlighted")).toBe("true");
+    expect(edgeBC?.getAttribute("data-highlighted")).toBeNull();
+  });
+
+  it("Scenario 12: Clicking collapse toggle does not clear persistent cross-link focus via bubbling", () => {
+    const onToggleCollapse = vi.fn();
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+        onToggleCollapse={onToggleCollapse}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+
+    // Collapse toggle on root node A
+    const collapseBtn = document.querySelector('button[title*="Thu gọn"]')!;
+    expect(collapseBtn).not.toBeNull();
+    fireEvent.click(collapseBtn);
+
+    expect(onToggleCollapse).toHaveBeenCalledWith("topic-a");
+    // Persistent focus on node B must NOT be cleared by backdrop click
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
   });
 });

@@ -152,7 +152,8 @@ export function MindMapTreeCanvas({
     const isHighlighted = highlightedNodeId === node.id;
     const isPeerHighlighted = peerNodeIds.has(node.id);
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
       setFocusedCrossLinkNodeId((prev) => (prev === node.id ? null : node.id));
       if (isTopic && onSelectTopic) {
         onSelectTopic(node.id);
@@ -361,7 +362,11 @@ export function MindMapTreeCanvas({
   };
 
   return (
-    <div className="relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800">
+    <div
+      data-testid="mindmap-canvas-backdrop"
+      onClick={() => setFocusedCrossLinkNodeId(null)}
+      className="relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800"
+    >
       <div ref={containerRef} className="relative inline-block">
         {showCrossLinks && crossEdges && crossEdges.length > 0 && (
           <MindMapCrossLinksLayer
