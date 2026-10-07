@@ -23,8 +23,10 @@ interface MindMapTreeCanvasProps {
   crossEdges?: MindMapCrossEdge[];
   cycleAnnotations?: MindMapCycleAnnotation[];
   showCrossLinks?: boolean;
+  highlightedNodeId?: string | null;
   onToggleCollapse?: (nodeId: string) => void;
   onSelectTopic?: (topicId: string) => void;
+  onFocusNode?: (nodeId: string) => void;
 }
 
 export function MindMapTreeCanvas({
@@ -34,8 +36,10 @@ export function MindMapTreeCanvas({
   crossEdges,
   cycleAnnotations,
   showCrossLinks,
+  highlightedNodeId,
   onToggleCollapse,
   onSelectTopic,
+  onFocusNode,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const containerRef = useRef<HTMLDivElement>(null);
@@ -125,6 +129,7 @@ export function MindMapTreeCanvas({
     const isTopic = node.type === "topic";
     const hasChildren = node.children.length > 0;
     const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
+    const isHighlighted = highlightedNodeId === node.id;
 
     const handleClick = () => {
       if (isTopic && onSelectTopic) {
@@ -145,15 +150,18 @@ export function MindMapTreeCanvas({
     return (
       <div
         data-node-id={node.id}
+        data-highlighted={isHighlighted ? "true" : undefined}
         onClick={handleClick}
-        className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-150 ${
-          isTopic ? "cursor-pointer hover:shadow-md" : "cursor-default"
+        className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
+          isHighlighted
+            ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
+            : isRoot
+              ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+              : isTopic
+                ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
         } ${
-          isRoot
-            ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-            : isTopic
-              ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-              : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+          isTopic ? "cursor-pointer hover:shadow-md" : "cursor-default"
         } min-w-[180px] max-w-[260px]`}
       >
         {/* Node Header */}
@@ -226,14 +234,21 @@ export function MindMapTreeCanvas({
             <div className="flex flex-wrap items-center gap-1">
               {renderRelationTag(node)}
               {nodeCycles.map((cycle, idx) => (
-                <span
+                <button
+                  type="button"
                   key={idx}
                   data-testid={`cycle-badge-${node.id}`}
-                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded border bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/80"
-                  title={`Chu trình khép kín trở về tổ tiên: ${cycle.targetAncestorTitle || cycle.targetAncestorId}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onFocusNode) {
+                      onFocusNode(cycle.targetAncestorId);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-medium rounded border bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/80 hover:bg-amber-100 dark:hover:bg-amber-900/60 hover:border-amber-400 dark:hover:border-amber-600 transition cursor-pointer"
+                  title={`Chu trình khép kín trở về tổ tiên: ${cycle.targetAncestorTitle || cycle.targetAncestorId} (Nhấp để chuyển đến)`}
                 >
                   ↻ {cycle.targetAncestorTitle || cycle.targetAncestorId}
-                </span>
+                </button>
               ))}
             </div>
             {node.categoryName && (

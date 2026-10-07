@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useData } from "../../context/DataContext";
 import {
   projectToMindMapTree,
@@ -23,6 +23,16 @@ import {
   Share2,
 } from "lucide-react";
 
+function findAncestorIds(root: MindMapTreeNode, targetId: string): string[] | null {
+  if (root.id === targetId) return [];
+  for (const child of root.children) {
+    if (child.id === targetId) return [root.id];
+    const sub = findAncestorIds(child, targetId);
+    if (sub) return [root.id, ...sub];
+  }
+  return null;
+}
+
 export function MindMapView() {
   const { topics, notes, resources, selectedTopicId, openTopicDetail } = useData();
 
@@ -32,8 +42,10 @@ export function MindMapView() {
     new Set()
   );
   const [showCrossLinks, setShowCrossLinks] = useState<boolean>(false);
+  const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Active topic ID: prefer selectedTopicId if available, fallback to internal or first active topic
   const activeRootTopicId = useMemo(() => {
@@ -187,6 +199,81 @@ export function MindMapView() {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [projection, topicMap]);
+
+  // Cleanup highlight timer on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Focus on a target node: uncollapse ancestors, highlight temporarily, and scroll into view
+  const handleFocusNode = useCallback(
+    (targetNodeId: string) => {
+      if (!targetNodeId) return;
+
+      // 1. Uncollapse any parent nodes along the target's path so target is visible in DOM
+      if (projection?.tree) {
+        const ancestorIds = findAncestorIds(projection.tree, targetNodeId);
+        if (ancestorIds && ancestorIds.length > 0) {
+          setCollapsedNodeIds((prev) => {
+            const next = new Set(prev);
+            let changed = false;
+            for (const aId of ancestorIds) {
+              if (next.has(aId)) {
+                next.delete(aId);
+                changed = true;
+              }
+            }
+            if (changed && activeRootTopicId) {
+              saveMindMapViewState(
+                {
+                  version: 1,
+                  topicId: activeRootTopicId,
+                  layoutMode,
+                  collapsedNodeIds: Array.from(next),
+                  showCrossLinks,
+                  updatedAt: new Date().toISOString(),
+                },
+                validNodeIds
+              );
+            }
+            return changed ? next : prev;
+          });
+        }
+      }
+
+      // 2. Set temporary highlight on target node
+      setHighlightedNodeId(targetNodeId);
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = setTimeout(() => {
+        setHighlightedNodeId(null);
+      }, 2000);
+
+      // 3. Scroll to target DOM element if it exists
+      setTimeout(() => {
+        try {
+          const targetEl = document.querySelector(
+            `[data-node-id="${targetNodeId}"]`
+          ) as HTMLElement | null;
+          if (targetEl && typeof targetEl.scrollIntoView === "function") {
+            targetEl.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+              inline: "center",
+            });
+          }
+        } catch {
+          // Graceful fallback if DOM or scrollIntoView is unavailable
+        }
+      }, 0);
+    },
+    [projection, activeRootTopicId, layoutMode, showCrossLinks, validNodeIds]
+  );
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -369,8 +456,10 @@ export function MindMapView() {
           crossEdges={projection.crossEdges}
           cycleAnnotations={projection.cycleAnnotations}
           showCrossLinks={showCrossLinks}
+          highlightedNodeId={highlightedNodeId}
           onToggleCollapse={handleToggleCollapse}
           onSelectTopic={(topicId) => openTopicDetail(topicId)}
+          onFocusNode={handleFocusNode}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
