@@ -146,6 +146,7 @@ describe("Mind Map Track A - Component & View State Tests", () => {
         topicId,
         layoutMode: "tree_vertical",
         collapsedNodeIds: ["topic-branch-1"],
+        showCrossLinks: true,
         updatedAt: new Date().toISOString(),
       });
 
@@ -155,6 +156,11 @@ describe("Mind Map Track A - Component & View State Tests", () => {
       expect(loaded.version).toBe(1);
       expect(loaded.layoutMode).toBe("tree_vertical");
       expect(loaded.collapsedNodeIds).toEqual(["topic-branch-1"]);
+      expect(loaded.showCrossLinks).toBe(true);
+
+      // Verify raw storage payload contains boolean showCrossLinks
+      const raw = JSON.parse(mockStore[getMindMapStorageKey(topicId)]);
+      expect(raw.showCrossLinks).toBe(true);
     });
 
     it("matches canonical key in local storage", () => {

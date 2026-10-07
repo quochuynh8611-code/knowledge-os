@@ -14,6 +14,7 @@ export interface MindMapLocalViewState {
   topicId: string;
   layoutMode: "tree_horizontal" | "tree_vertical";
   collapsedNodeIds: string[];
+  showCrossLinks?: boolean;
   updatedAt: string;
 }
 
@@ -35,6 +36,7 @@ export function getDefaultMindMapViewState(
     topicId,
     layoutMode: "tree_horizontal",
     collapsedNodeIds: [],
+    showCrossLinks: false,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -87,6 +89,10 @@ export function loadMindMapViewState(topicId: string): MindMapLocalViewState {
             ? "tree_vertical"
             : "tree_horizontal",
         collapsedNodeIds: sanitizeCollapsedIds(parsed.collapsedNodeIds),
+        showCrossLinks:
+          typeof parsed.showCrossLinks === "boolean"
+            ? parsed.showCrossLinks
+            : false,
         updatedAt:
           typeof parsed.updatedAt === "string"
             ? parsed.updatedAt
@@ -128,6 +134,7 @@ export function saveMindMapViewState(
           ? "tree_vertical"
           : "tree_horizontal",
       collapsedNodeIds: sanitizedIds,
+      showCrossLinks: Boolean(state.showCrossLinks),
       updatedAt: new Date().toISOString(),
     };
     window.localStorage.setItem(

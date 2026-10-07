@@ -55,6 +55,7 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
       expect(state.topicId).toBe("topic-123");
       expect(state.layoutMode).toBe("tree_horizontal");
       expect(state.collapsedNodeIds).toEqual([]);
+      expect(state.showCrossLinks).toBe(false);
       expect(typeof state.updatedAt).toBe("string");
     });
   });
@@ -84,12 +85,13 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
   });
 
   describe("3. Load & Save Operations", () => {
-    it("saves and loads valid view state successfully", () => {
+    it("saves and loads valid view state successfully with showCrossLinks", () => {
       const stateToSave: MindMapLocalViewState = {
         version: 1,
         topicId: "topic-tu-dieu-de",
         layoutMode: "tree_vertical",
         collapsedNodeIds: ["node-bat-chanh-dao", "node-tam-tuong"],
+        showCrossLinks: true,
         updatedAt: "2026-10-07T00:00:00.000Z",
       };
 
@@ -101,14 +103,16 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
       expect(loaded.topicId).toBe("topic-tu-dieu-de");
       expect(loaded.layoutMode).toBe("tree_vertical");
       expect(loaded.collapsedNodeIds).toEqual(["node-bat-chanh-dao", "node-tam-tuong"]);
+      expect(loaded.showCrossLinks).toBe(true);
     });
 
-    it("isolates storage state between distinct topics", () => {
+    it("isolates storage state between distinct topics including showCrossLinks", () => {
       saveMindMapViewState({
         version: 1,
         topicId: "topic-A",
         layoutMode: "tree_horizontal",
         collapsedNodeIds: ["node-A1"],
+        showCrossLinks: true,
         updatedAt: new Date().toISOString(),
       });
 
@@ -117,6 +121,7 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
         topicId: "topic-B",
         layoutMode: "tree_vertical",
         collapsedNodeIds: ["node-B1", "node-B2"],
+        showCrossLinks: false,
         updatedAt: new Date().toISOString(),
       });
 
@@ -126,10 +131,30 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
       expect(loadedA.topicId).toBe("topic-A");
       expect(loadedA.layoutMode).toBe("tree_horizontal");
       expect(loadedA.collapsedNodeIds).toEqual(["node-A1"]);
+      expect(loadedA.showCrossLinks).toBe(true);
 
       expect(loadedB.topicId).toBe("topic-B");
       expect(loadedB.layoutMode).toBe("tree_vertical");
       expect(loadedB.collapsedNodeIds).toEqual(["node-B1", "node-B2"]);
+      expect(loadedB.showCrossLinks).toBe(false);
+    });
+
+    it("handles backward compatibility when legacy payload lacks showCrossLinks", () => {
+      // Legacy payload format from Track A without showCrossLinks property
+      mockStore[getMindMapStorageKey("topic-legacy")] = JSON.stringify({
+        version: 1,
+        topicId: "topic-legacy",
+        layoutMode: "tree_vertical",
+        collapsedNodeIds: ["node-legacy-1"],
+        updatedAt: "2026-01-01T00:00:00Z",
+      });
+
+      const loaded = loadMindMapViewState("topic-legacy");
+      expect(loaded.topicId).toBe("topic-legacy");
+      expect(loaded.layoutMode).toBe("tree_vertical");
+      expect(loaded.collapsedNodeIds).toEqual(["node-legacy-1"]);
+      // Must fallback to false safely
+      expect(loaded.showCrossLinks).toBe(false);
     });
 
     it("sanitizes stale IDs upon save when validNodeIds is provided", () => {
@@ -140,6 +165,7 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
           topicId: "topic-prune",
           layoutMode: "tree_horizontal",
           collapsedNodeIds: ["node-valid-1", "node-stale-2"],
+          showCrossLinks: false,
           updatedAt: new Date().toISOString(),
         },
         validNodes
@@ -147,6 +173,7 @@ describe("Mind Map Track A - mindmapStorage Helper", () => {
 
       const loaded = loadMindMapViewState("topic-prune");
       expect(loaded.collapsedNodeIds).toEqual(["node-valid-1"]);
+      expect(loaded.showCrossLinks).toBe(false);
     });
   });
 

@@ -57,11 +57,13 @@ export function MindMapView() {
     if (!activeRootTopicId) {
       setCollapsedNodeIds(new Set());
       setLayoutMode("tree_horizontal");
+      setShowCrossLinks(false);
       return;
     }
     const savedState = loadMindMapViewState(activeRootTopicId);
     setLayoutMode(savedState.layoutMode);
     setCollapsedNodeIds(new Set(savedState.collapsedNodeIds));
+    setShowCrossLinks(Boolean(savedState.showCrossLinks));
   }, [activeRootTopicId]);
 
   // Derive mind map projection
@@ -103,13 +105,14 @@ export function MindMapView() {
             topicId: activeRootTopicId,
             layoutMode: newMode,
             collapsedNodeIds: Array.from(collapsedNodeIds),
+            showCrossLinks,
             updatedAt: new Date().toISOString(),
           },
           validNodeIds
         );
       }
     },
-    [activeRootTopicId, collapsedNodeIds, validNodeIds]
+    [activeRootTopicId, collapsedNodeIds, showCrossLinks, validNodeIds]
   );
 
   // Toggle branch collapse/expand state and persist per topic
@@ -130,6 +133,7 @@ export function MindMapView() {
               topicId: activeRootTopicId,
               layoutMode,
               collapsedNodeIds: Array.from(next),
+              showCrossLinks,
               updatedAt: new Date().toISOString(),
             },
             validNodeIds
@@ -139,8 +143,29 @@ export function MindMapView() {
         return next;
       });
     },
-    [activeRootTopicId, layoutMode, validNodeIds]
+    [activeRootTopicId, layoutMode, showCrossLinks, validNodeIds]
   );
+
+  // Toggle cross-links overlay visibility and persist per topic
+  const handleToggleCrossLinks = useCallback(() => {
+    setShowCrossLinks((prev) => {
+      const next = !prev;
+      if (activeRootTopicId) {
+        saveMindMapViewState(
+          {
+            version: 1,
+            topicId: activeRootTopicId,
+            layoutMode,
+            collapsedNodeIds: Array.from(collapsedNodeIds),
+            showCrossLinks: next,
+            updatedAt: new Date().toISOString(),
+          },
+          validNodeIds
+        );
+      }
+      return next;
+    });
+  }, [activeRootTopicId, layoutMode, collapsedNodeIds, validNodeIds]);
 
   // Copy Markdown outline to clipboard
   const handleCopyMarkdown = useCallback(async () => {
@@ -240,7 +265,7 @@ export function MindMapView() {
           {/* Cross-Links Overlay Toggle */}
           <button
             type="button"
-            onClick={() => setShowCrossLinks((prev) => !prev)}
+            onClick={handleToggleCrossLinks}
             title="Bật/tắt hiển thị liên kết chéo trên sơ đồ"
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
               showCrossLinks
