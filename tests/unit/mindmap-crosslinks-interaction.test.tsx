@@ -244,4 +244,97 @@ describe("Mind Map Phase B2b1: Cross-Link Mutual Highlight on Node Hover", () =>
     const nodeC = document.querySelector('[data-node-id="topic-c"]');
     expect(nodeC?.getAttribute("data-peer-highlighted")).toBeNull();
   });
+
+  it("Scenario 7: Clicking node persists connected cross-link highlight after mouse leave", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    expect(nodeB).not.toBeNull();
+
+    // Click node B to focus
+    fireEvent.click(nodeB);
+    // Mouse leaves node B
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    const edgeDE = document.querySelector('[data-edge-id="edge-d-e"]');
+    const nodeC = document.querySelector('[data-node-id="topic-c"]');
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(edgeDE?.getAttribute("data-dimmed")).toBe("true");
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBe("true");
+  });
+
+  it("Scenario 8: Clicking the same node again clears persistent cross-link focus", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+
+    // First click: focus
+    fireEvent.click(nodeB);
+    expect(document.querySelector('[data-edge-id="edge-b-c"]')?.getAttribute("data-highlighted")).toBe("true");
+
+    // Second click: toggle off focus
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    const edgeDE = document.querySelector('[data-edge-id="edge-d-e"]');
+    const nodeC = document.querySelector('[data-node-id="topic-c"]');
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBeNull();
+    expect(edgeBC?.getAttribute("data-dimmed")).toBeNull();
+    expect(edgeDE?.getAttribute("data-highlighted")).toBeNull();
+    expect(edgeDE?.getAttribute("data-dimmed")).toBeNull();
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBeNull();
+  });
+
+  it("Scenario 9: Hovering another node does not clear or override explicit focus", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+    const nodeD = document.querySelector('[data-node-id="topic-d"]')!;
+
+    // Explicitly click node B
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    // Hover over unrelated node D
+    fireEvent.mouseEnter(nodeD);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    const edgeDE = document.querySelector('[data-edge-id="edge-d-e"]');
+    const nodeC = document.querySelector('[data-node-id="topic-c"]');
+    const nodeE = document.querySelector('[data-node-id="topic-e"]');
+
+    // Node B's cross-links remain explicitly focused
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(edgeDE?.getAttribute("data-dimmed")).toBe("true");
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBe("true");
+    expect(nodeE?.getAttribute("data-peer-highlighted")).toBeNull();
+  });
 });

@@ -44,9 +44,12 @@ export function MindMapTreeCanvas({
   const isHorizontal = layoutMode === "tree_horizontal";
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
+
+  const activeCrossLinkNodeId = focusedCrossLinkNodeId ?? hoveredNodeId;
 
   const peerNodeIds = useMemo(() => {
-    if (!showCrossLinks || !hoveredNodeId || !crossEdges) return new Set<string>();
+    if (!showCrossLinks || !activeCrossLinkNodeId || !crossEdges) return new Set<string>();
     const peers = new Set<string>();
     for (const edge of crossEdges) {
       if (
@@ -55,11 +58,11 @@ export function MindMapTreeCanvas({
       ) {
         continue;
       }
-      if (edge.sourceNodeId === hoveredNodeId) peers.add(edge.targetNodeId);
-      if (edge.targetNodeId === hoveredNodeId) peers.add(edge.sourceNodeId);
+      if (edge.sourceNodeId === activeCrossLinkNodeId) peers.add(edge.targetNodeId);
+      if (edge.targetNodeId === activeCrossLinkNodeId) peers.add(edge.sourceNodeId);
     }
     return peers;
-  }, [showCrossLinks, hoveredNodeId, crossEdges, collapsedNodeIds]);
+  }, [showCrossLinks, activeCrossLinkNodeId, crossEdges, collapsedNodeIds]);
 
   const renderStatusBadge = (node: MindMapTreeNode) => {
     if (node.progress !== undefined && node.progress !== null) {
@@ -150,6 +153,7 @@ export function MindMapTreeCanvas({
     const isPeerHighlighted = peerNodeIds.has(node.id);
 
     const handleClick = () => {
+      setFocusedCrossLinkNodeId((prev) => (prev === node.id ? null : node.id));
       if (isTopic && onSelectTopic) {
         onSelectTopic(node.id);
       }
@@ -364,7 +368,7 @@ export function MindMapTreeCanvas({
             crossEdges={crossEdges}
             collapsedNodeIds={collapsedNodeIds}
             containerRef={containerRef}
-            hoveredNodeId={hoveredNodeId}
+            hoveredNodeId={activeCrossLinkNodeId}
           />
         )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
