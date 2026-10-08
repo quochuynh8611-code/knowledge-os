@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
 import { MindMapTreeNode } from "../../src/lib/mindmapProjection";
@@ -7,6 +7,8 @@ import {
   saveMindMapViewState,
   loadMindMapViewState,
   getMindMapStorageKey,
+  sanitizeCollapsedIds,
+  getDefaultMindMapViewState,
 } from "../../src/lib/mindmapStorage";
 
 describe("Mind Map Track A - Component & View State Tests", () => {
@@ -167,6 +169,114 @@ describe("Mind Map Track A - Component & View State Tests", () => {
       expect(getMindMapStorageKey("topic-xyz")).toBe(
         "knowledge_os_mindmap_view_state_v1:topic-xyz"
       );
+    });
+  });
+
+  describe("3. Storage Resilience & Sanitization Hardening", () => {
+    it("loadMindMapViewState gracefully falls back to default state when storage data is malformed JSON or has wrong version", () => {
+      const topicId = "topic-corrupted";
+      const storageKey = getMindMapStorageKey(topicId);
+
+      // Case 1: Corrupted/Malformed JSON string
+      mockStore[storageKey] = "{malformed-json-payload-without-closing";
+      const fallbackFromMalformed = loadMindMapViewState(topicId);
+      expect(fallbackFromMalformed.version).toBe(1);
+      expect(fallbackFromMalformed.topicId).toBe(topicId);
+      expect(fallbackFromMalformed.layoutMode).toBe("tree_horizontal");
+      expect(fallbackFromMalformed.collapsedNodeIds).toEqual([]);
+      expect(fallbackFromMalformed.showCrossLinks).toBe(false);
+
+      // Case 2: Incompatible schema version
+      mockStore[storageKey] = JSON.stringify({
+        version: 99,
+        topicId,
+        layoutMode: "tree_vertical",
+        collapsedNodeIds: ["node-1"],
+      });
+      const fallbackFromWrongVersion = loadMindMapViewState(topicId);
+      expect(fallbackFromWrongVersion.version).toBe(1);
+      expect(fallbackFromWrongVersion.layoutMode).toBe("tree_horizontal");
+      expect(fallbackFromWrongVersion.collapsedNodeIds).toEqual([]);
+
+      // Case 3: Invalid collapsedNodeIds type (not an array)
+      mockStore[storageKey] = JSON.stringify({
+        version: 1,
+        topicId,
+        collapsedNodeIds: "invalid_string_not_array",
+      });
+      const fallbackFromInvalidField = loadMindMapViewState(topicId);
+      expect(fallbackFromInvalidField.version).toBe(1);
+      expect(fallbackFromInvalidField.layoutMode).toBe("tree_horizontal");
+      expect(fallbackFromInvalidField.collapsedNodeIds).toEqual([]);
+    });
+
+    it("saveMindMapViewState returns false and handles QuotaExceededError without throwing uncaught exceptions", () => {
+      const topicId = "topic-quota-test";
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      // Mock localStorage.setItem to throw QuotaExceededError
+      window.localStorage.setItem = () => {
+        throw new DOMException("Quota exceeded", "QuotaExceededError");
+      };
+
+      let saveResult = false;
+      expect(() => {
+        saveResult = saveMindMapViewState({
+          version: 1,
+          topicId,
+          layoutMode: "tree_horizontal",
+          collapsedNodeIds: ["node-1"],
+          showCrossLinks: false,
+          updatedAt: new Date().toISOString(),
+        });
+      }).not.toThrow();
+
+      expect(saveResult).toBe(false);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("sanitizeCollapsedIds prunes duplicate, non-string, and stale IDs not present in validNodeIds", () => {
+      // 1. Non-array input
+      expect(sanitizeCollapsedIds(null)).toEqual([]);
+      expect(sanitizeCollapsedIds(undefined)).toEqual([]);
+      expect(sanitizeCollapsedIds({ foo: "bar" })).toEqual([]);
+
+      // 2. Duplicates, empty strings, and non-string types
+      const dirtyIds = [
+        "node-a",
+        "node-b",
+        "node-a", // duplicate
+        123, // number
+        null, // null
+        "", // empty
+        "   ", // whitespace only
+        "node-c",
+      ];
+      expect(sanitizeCollapsedIds(dirtyIds)).toEqual(["node-a", "node-b", "node-c"]);
+
+      // 3. Pruning stale/orphan IDs against validNodeIds
+      const validNodes = new Set(["node-a", "node-c", "node-active"]);
+      const pruned = sanitizeCollapsedIds(["node-a", "node-b", "node-c", "node-orphan"], validNodes);
+      expect(pruned).toEqual(["node-a", "node-c"]);
+
+      // 4. Persistence roundtrip with validNodeIds pruning
+      const topicId = "topic-prune-test";
+      const ok = saveMindMapViewState(
+        {
+          version: 1,
+          topicId,
+          layoutMode: "tree_horizontal",
+          collapsedNodeIds: ["node-a", "node-orphan"],
+          showCrossLinks: false,
+          updatedAt: new Date().toISOString(),
+        },
+        validNodes
+      );
+      expect(ok).toBe(true);
+
+      const saved = loadMindMapViewState(topicId);
+      expect(saved.collapsedNodeIds).toEqual(["node-a"]);
     });
   });
 });

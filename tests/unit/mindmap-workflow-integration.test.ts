@@ -1,4 +1,6 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { parseLocationHash, buildLocationHash } from "../../src/lib/urlRouting";
 import {
   CATEGORY_ORDER,
@@ -6,8 +8,160 @@ import {
   type UseCommandPaletteOptions,
 } from "../../src/hooks/useCommandPalette";
 import { normalizeScholarText } from "../../src/lib/scholarSearch";
+import { TopicDetail } from "../../src/components/topics/TopicDetail";
+
+let mockSelectedTopicId: string | null = "topic-phat-hoc-123";
+let mockOpenMindMap = vi.fn();
+let mockSetSelectedTopicId = vi.fn();
+let mockNavigation: Record<string, any> = {
+  openMindMap: mockOpenMindMap,
+};
+
+vi.mock("../../src/context/DataContext", () => ({
+  useData: () => ({
+    categories: [{ id: "cat-1", name: "Phật Học", slug: "phat-hoc", type: "phat-hoc" }],
+    selectedTopicId: mockSelectedTopicId,
+    setSelectedTopicId: (id: string | null) => {
+      mockSetSelectedTopicId(id);
+      mockSelectedTopicId = id;
+    },
+    topics: [
+      {
+        id: "topic-phat-hoc-123",
+        title: "Bát Chánh Đạo",
+        slug: "bat-chanh-dao",
+        categoryId: "cat-1",
+        categoryName: "Phật Học",
+        type: "phat-hoc",
+        description: "Mô tả Bát Chánh Đạo",
+        content: "Nội dung",
+        tags: [],
+        links: [],
+        studyProgress: {
+          topicId: "topic-phat-hoc-123",
+          status: "in_progress",
+          progress: 50,
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          totalNotes: 0,
+          timeSpent: 60,
+          lastStudied: new Date().toISOString(),
+        },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ],
+    notes: [],
+    resources: [],
+    tags: [],
+    updateTopicProgress: vi.fn(),
+    deleteNote: vi.fn(),
+    addResource: vi.fn(),
+    deleteResource: vi.fn(),
+    openTopicDetail: vi.fn(),
+    addKnowledgeLink: vi.fn(),
+    removeKnowledgeLink: vi.fn(),
+  }),
+}));
+
+vi.mock("../../src/context/NavigationContext", () => ({
+  useNavigation: () => mockNavigation,
+}));
+
+vi.mock("../../src/components/reader/UnifiedResearchReader", () => ({
+  UnifiedResearchReader: () => null,
+}));
+
+vi.mock("../../src/components/research", () => ({
+  TopicDashboard: () => null,
+  ResearchTimeline: () => null,
+  ResearchSearchModal: () => null,
+  ExportReportModal: () => null,
+  AIResearchStudio: () => null,
+}));
+
+vi.mock("../../src/components/flashcards", () => ({
+  FlashcardAnalyticsDashboard: () => null,
+  CardBrowser: () => null,
+  StudyLauncher: () => null,
+  DuplicateDetectionDashboard: () => null,
+}));
+
+vi.mock("../../src/components/flashcards/FlashcardAnalyticsWidget", () => ({
+  FlashcardAnalyticsWidget: () => null,
+}));
+
+vi.mock("../../src/components/modals/NoteReaderModal", () => ({
+  NoteReaderModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/ObsidianDocumentViewerModal", () => ({
+  ObsidianDocumentViewerModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/ObsidianVaultBrowserModal", () => ({
+  ObsidianVaultBrowserModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/ObsidianTopicResourceLinkModal", () => ({
+  ObsidianTopicResourceLinkModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/ResourceViewerModal", () => ({
+  ResourceViewerModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/NoteFormModal", () => ({
+  NoteFormModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/TopicFormModal", () => ({
+  TopicFormModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/ResourceFormModal", () => ({
+  ResourceFormModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/StudyTimerModal", () => ({
+  StudyTimerModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/FlashcardFormModal", () => ({
+  FlashcardFormModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/FlashcardImportModal", () => ({
+  FlashcardImportModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/NotebookLMStudioModal", () => ({
+  NotebookLMStudioModal: () => null,
+}));
+
+vi.mock("../../src/components/modals/AntigravityHandoffModal", () => ({
+  AntigravityHandoffModal: () => null,
+}));
 
 describe("Mind Map Track C: Workflow Integration Test Suite", () => {
+  beforeEach(() => {
+    mockSelectedTopicId = "topic-phat-hoc-123";
+    mockOpenMindMap = vi.fn();
+    mockSetSelectedTopicId = vi.fn();
+    mockNavigation = {
+      openMindMap: mockOpenMindMap,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({}),
+      } as any;
+    });
+  });
+
   describe("Scenario 1: TopicDetail CTA & URL Routing", () => {
     it("Given a selected topic, When navigating to mindmap, Then builds canonical hash #/mindmap?topicId=<id>", () => {
       const topicId = "topic-phat-hoc-123";
@@ -114,6 +268,33 @@ describe("Mind Map Track C: Workflow Integration Test Suite", () => {
 
       quickAction?.action();
       expect(customAction).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Scenario 4: TopicDetail CTA Deep-Link Integration", () => {
+    it("TopicDetail mindmap button triggers navigation.openMindMap with topic.id", () => {
+      render(React.createElement(TopicDetail));
+
+      const mindmapBtn = screen.getByTestId("btn-view-mindmap");
+      expect(mindmapBtn).toBeInTheDocument();
+      expect(mindmapBtn).toHaveTextContent(/Sơ đồ/i);
+
+      fireEvent.click(mindmapBtn);
+      expect(mockOpenMindMap).toHaveBeenCalledTimes(1);
+      expect(mockOpenMindMap).toHaveBeenCalledWith("topic-phat-hoc-123");
+    });
+
+    it("TopicDetail mindmap button falls back to canonical hash when navigation.openMindMap is unavailable", () => {
+      mockNavigation = {};
+      window.location.hash = "";
+
+      render(React.createElement(TopicDetail));
+
+      const mindmapBtn = screen.getByTestId("btn-view-mindmap");
+      fireEvent.click(mindmapBtn);
+
+      expect(mockSetSelectedTopicId).toHaveBeenCalledWith("topic-phat-hoc-123");
+      expect(window.location.hash).toBe("#/mindmap?topicId=topic-phat-hoc-123");
     });
   });
 });
