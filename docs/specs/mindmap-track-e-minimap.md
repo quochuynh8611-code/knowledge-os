@@ -2,7 +2,7 @@
 
 > **Tài liệu đặc tả (Architecture Decision Record & Feature Specification)**<br>
 > **Mã định danh**: SPEC-MINDMAP-TRACK-E<br>
-> **Trạng thái**: FORMALLY CLOSED & VERIFIED BASELINE (Phase E1 MVP, E1d Drag Indicator, E2a Mobile Toggle, E3 Docs Reconciliation — Track E Formally Closed)<br>
+> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Phase E1 MVP, E1d Drag Indicator, E2a Mobile Toggle, E3 Docs Reconciliation, E4 Docs Closure, E5 Touch Target Hardening — 18 unit tests passing)<br>
 > **Phạm vi**: Giao diện Mind Map Canvas — Điều hướng, định vị không gian và trải nghiệm radar thu nhỏ trên desktop & mobile.
 
 ---
@@ -29,7 +29,7 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 5. **Ephemeral State Policy**: Không lưu trữ trạng thái tọa độ minimap hoặc vị trí thu phóng vào `localStorage`/database trong phase này nhằm tuân thủ nguyên tắc Zero Persisted State Overhead.
 6. **Graceful Degradation & Responsive Toggle**:
    - **Desktop ($\ge 640\text{px}$)**: Minimap luôn hiển thị tại góc `bottom-4 left-4` (`hidden sm:block`).
-   - **Mobile ($< 640\text{px}$)**: Minimap mặc định thu gọn (collapsed), cung cấp nút toggle accessible `mindmap-minimap-toggle` (`sm:hidden`) mở panel radar nổi `mindmap-minimap-panel` khi cần.
+   - **Mobile ($< 640\text{px}$)**: Minimap mặc định thu gọn (collapsed), cung cấp nút toggle accessible `mindmap-minimap-toggle` (`sm:hidden`, touch target tối thiểu $44\times 44\text{px}$) mở panel radar nổi `mindmap-minimap-panel` khi cần.
 
 ### 2.3. Hệ Quả & Tác Động (Consequences)
 - **Tích cực**:
@@ -71,7 +71,7 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 - **Kết quả**: Vượt qua Scenarios 6 – 10 trong `tests/unit/mindmap-minimap.test.tsx`.
 
 ### 3.3. Phase E2a — Accessible Mobile Minimap Toggle [COMPLETE & VERIFIED]
-- **Mục tiêu**: Nút bấm bật/tắt radar trên màn hình di động ($< 640\text{px}$), hỗ trợ phím `Escape`, thuộc tính accessibility (`aria-expanded`, `aria-controls`), touch target $40\times 40\text{px}$, và panel nổi `mindmap-minimap-panel`.
+- **Mục tiêu**: Nút bấm bật/tắt radar trên màn hình di động ($< 640\text{px}$), hỗ trợ phím `Escape`, thuộc tính accessibility (`aria-expanded`, `aria-controls`), touch target ban đầu $40\times 40\text{px}$, và panel nổi `mindmap-minimap-panel`.
 - **Commit**:
   - `452a1f0 feat(mindmap): add accessible mobile toggle for minimap overview radar`
 - **Kết quả**: Vượt qua Scenarios 11 – 17 trong `tests/unit/mindmap-minimap.test.tsx`.
@@ -82,7 +82,13 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
   - `2cfd55a docs(mindmap): reconcile Track E minimap and Track D export parity specs`
 
 ### 3.5. Phase E4 — Documentation-Only Closure [FORMALLY CLOSED]
-- **Mục tiêu**: Đóng chính thức vòng đời của Track E (Minimap Overview Radar) mà không bổ sung runtime feature hay sửa code logic. Toàn bộ 17 unit test scenarios trong `tests/unit/mindmap-minimap.test.tsx` cùng 12 test suites / 145 unit tests toàn hệ thống Mind Map đã đạt chuẩn verified baseline.
+- **Mục tiêu**: Đóng chính thức mốc baseline ban đầu của Track E (Minimap Overview Radar) mà không bổ sung runtime feature hay sửa code logic.
+- **Commit**:
+  - `b06c8c9 docs(mindmap): formally close Track E and v2.0 baseline`
+
+### 3.6. Phase E5 — Mobile Minimap Toggle Touch Target Hardening [COMPLETE & VERIFIED]
+- **Mục tiêu**: Nâng cấp kích thước vùng chạm của nút mobile toggle từ $40\times 40\text{px}$ (`w-10 h-10 min-w-[40px] min-h-[40px]`) lên tối thiểu $44\times 44\text{px}$ (`w-11 h-11 min-w-[44px] min-h-[44px]`), enhanced touch-target hardening theo accessibility baseline của dự án mà không làm thay đổi hành vi hay API contract.
+- **Kết quả**: Vượt qua Scenario 18 trong `tests/unit/mindmap-minimap.test.tsx` (18/18 tests passed).
 
 ---
 
@@ -92,7 +98,7 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 - `data-testid="mindmap-minimap"`: Container bao bọc toàn bộ widget minimap radar trên desktop.
 - `data-testid="minimap-radar-svg"`: Thẻ `<svg>` chứa các micro-node markers và viewport indicator.
 - `data-testid="minimap-viewport-rect"`: Hình chữ nhật đại diện cho khung nhìn hiển thị hiện tại.
-- `data-testid="mindmap-minimap-toggle"`: Nút bấm accessible bật/tắt radar trên mobile (`sm:hidden`).
+- `data-testid="mindmap-minimap-toggle"`: Nút bấm accessible bật/tắt radar trên mobile (`sm:hidden`, touch target $\ge 44\times 44\text{px}$).
 - `data-testid="mindmap-minimap-panel"`: Floating panel hiển thị radar khi mobile toggle đang mở.
 - `data-testid="minimap-node-{nodeId}"`: (Tùy chọn) Marker đại diện cho từng node hiển thị trong radar.
 
@@ -122,6 +128,7 @@ export interface MindMapMinimapProps {
   - Callback `onPanChange` được gọi với tọa độ mới khi `fireEvent.click` vào radar hoặc khi drag indicator.
   - `pointerDown` trên minimap không kích hoạt sự kiện drag của canvas backdrop.
   - Trạng thái `aria-expanded` và `aria-controls` của mobile toggle khi mở/đóng hoặc nhấn phím `Escape`.
+  - Kích thước vùng chạm tối thiểu $\ge 44\times 44\text{px}$ của mobile toggle thông qua classes `w-11 h-11 min-w-[44px] min-h-[44px]`.
 - **Tránh assert (Implementation Details)**:
   - Không assert chuỗi SVG path nội bộ chính xác từng pixel.
   - Không assert mã màu CSS hex nếu không liên quan logic điều hướng.
@@ -168,13 +175,14 @@ Feature: Mind Map Minimap Overview Radar (Track E)
     And pointer release should stop further pan updates
     And dragging should not trigger SVG click-to-center navigation
 
-  # --- Mobile Responsive Toggle (Phase E2a) ---
+  # --- Mobile Responsive Toggle & Touch Target Hardening (Phase E2a & E5) ---
 
-  Scenario: Mobile toggle is collapsed by default and expandable
+  Scenario: Mobile toggle is collapsed by default, expandable, and has minimum 44px touch target
     Given the viewport width is < 640px (Mobile view)
     And the tree has multiple nodes
     When the canvas is loaded
     Then the mobile toggle button "mindmap-minimap-toggle" should be rendered with aria-expanded "false"
+    And the mobile toggle should have width >= 44px and height >= 44px (w-11 h-11 min-w-[44px] min-h-[44px])
     And the radar panel "mindmap-minimap-panel" should not be visible
     When the user activates the mobile toggle
     Then the radar panel "mindmap-minimap-panel" should open
@@ -226,7 +234,7 @@ Feature: Mind Map Minimap Overview Radar (Track E)
 
 ## 6. Test Contract & Verification Suite (`tests/unit/mindmap-minimap.test.tsx`)
 
-Bao gồm 17 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
+Bao gồm 18 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 
 1. **Scenario 1**: Renders minimap container and radar SVG for non-trivial tree on desktop.
 2. **Scenario 2**: Gracefully hides or no-ops minimap for single-node root tree.
@@ -245,6 +253,7 @@ Bao gồm 17 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 15. **Scenario 15**: Single-node tree hides both mobile toggle and minimap radar.
 16. **Scenario 16**: Desktop keeps minimap visible and does not render mobile-only toggle.
 17. **Scenario 17**: Open mobile minimap preserves viewport indicator drag contract.
+18. **Scenario 18**: Mobile toggle provides minimum 44x44px touch target.
 
 ---
 
@@ -257,14 +266,14 @@ Bao gồm 17 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 3. **Màu sắc node đại diện trong radar**:
    - *Quyết định*: Micro-dots dùng màu `fill-amber-500/80` cho topic và `fill-stone-400/60` cho các nút lá; Viewport Indicator dùng `stroke-amber-600 dark:stroke-amber-400 fill-amber-500/10`.
 4. **Touch Target Mobile Toggle**:
-   - *Quyết định*: $40\times 40\text{px}$ (`w-10 h-10`) với `p-2` phù hợp với viewport nhỏ, hỗ trợ keyboard accessibility và focus outline rõ ràng.
+   - *Quyết định*: Tối thiểu $44\times 44\text{px}$ (`w-11 h-11 min-w-[44px] min-h-[44px]`) với `p-2`, đáp ứng mục tiêu touch target tối thiểu 44×44px theo accessibility baseline của dự án, hỗ trợ keyboard accessibility và focus outline rõ ràng.
 
 ---
 
 ## 8. Tổng Kết Quality Gates
 
-- **Unit Tests**: `tests/unit/mindmap-minimap.test.tsx` đạt **17/17 passed**.
-- **Full Mind Map Regression**: Toàn bộ **12 test suites / 145 unit tests** đạt **100% passed**.
+- **Unit Tests**: `tests/unit/mindmap-minimap.test.tsx` đạt **18/18 passed**.
+- **Full Mind Map Regression**: Toàn bộ **12 test suites / 146 unit tests** đạt **100% passed**.
 - **Typecheck**: `npm run typecheck` (`tsc --noEmit`) đạt **0 errors**.
 - **Git State**: Clean working tree.
 
@@ -277,4 +286,3 @@ Bao gồm 17 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 
 1. **Candidate 1: Micro-Node Radar Dots**: Duyệt cấu trúc cây phân cấp và render các chấm micro-dots thu nhỏ (`<circle>` / `<rect>`) phản ánh vị trí các node con trực tiếp bên trong SVG radar.
 2. **Candidate 2: Dynamic ResizeObserver for Minimap Bounds**: Tích hợp `ResizeObserver` trên `backdropRef` để tự động cập nhật bounding rect khi viewport thay đổi kích thước mà không cần chờ tương tác người dùng.
-3. **Candidate 3: Touch Target $44\times 44\text{px}$ Hardening (WCAG AAA)**: Nâng cấp kích thước vùng chạm của mobile toggle từ $40\times 40\text{px}$ (`w-10 h-10`) lên $44\times 44\text{px}$ (`w-11 h-11`) nhằm đạt chuẩn WCAG Target Size (Enhanced).

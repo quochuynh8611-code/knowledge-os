@@ -524,4 +524,33 @@ describe("Mind Map Phase E1: Minimap Overview Radar", () => {
     // Then: Canvas transform updates accordingly via E1d drag delta mapping
     expect(canvasContent.style.transform).not.toContain("translate(0px, 0px)");
   });
+
+  // --- Phase E5: Mobile Minimap Toggle Touch Target Hardening ---
+
+  it("Scenario 18: Mobile toggle provides minimum 44x44px touch target", () => {
+    // Given: Multi-node tree rendered inside MindMapTreeCanvas
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    // When: Querying mobile toggle button
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    expect(toggle).toBeInTheDocument();
+
+    // Then: Toggle has 44x44px minimum sizing classes
+    expect(toggle.className).toContain("w-11");
+    expect(toggle.className).toContain("h-11");
+    expect(toggle.className).toContain("min-w-[44px]");
+    expect(toggle.className).toContain("min-h-[44px]");
+
+    // And: No longer contains 40px sizing classes
+    expect(toggle.className).not.toContain("w-10");
+    expect(toggle.className).not.toContain("h-10");
+    expect(toggle.className).not.toContain("min-w-[40px]");
+    expect(toggle.className).not.toContain("min-h-[40px]");
+  });
 });

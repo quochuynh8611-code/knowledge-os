@@ -300,7 +300,7 @@ export function MindMapMinimap({
           e.stopPropagation();
           setIsMobileOpen((prev) => !prev);
         }}
-        className="sm:hidden absolute bottom-4 left-4 z-20 flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 cursor-pointer"
+        className="sm:hidden absolute bottom-4 left-4 z-20 flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 cursor-pointer"
       >
         <Map className="w-5 h-5" />
       </button>
