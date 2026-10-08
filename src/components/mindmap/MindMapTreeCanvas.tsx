@@ -14,6 +14,8 @@ import {
   ChevronDown,
   ChevronRight,
   Repeat,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 interface MindMapTreeCanvasProps {
@@ -45,6 +47,22 @@ export function MindMapTreeCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<number>(1.0);
+
+  const handleZoomIn = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setZoom((prev) => Math.min(2.0, +(prev + 0.1).toFixed(2)));
+  };
+
+  const handleZoomOut = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setZoom((prev) => Math.max(0.5, +(prev - 0.1).toFixed(2)));
+  };
+
+  const handleZoomReset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setZoom(1.0);
+  };
 
   const activeCrossLinkNodeId = focusedCrossLinkNodeId ?? hoveredNodeId;
 
@@ -382,7 +400,15 @@ export function MindMapTreeCanvas({
       onClick={() => setFocusedCrossLinkNodeId(null)}
       className="relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800"
     >
-      <div ref={containerRef} className="relative inline-block">
+      <div
+        ref={containerRef}
+        data-testid="mindmap-canvas-content"
+        style={{
+          transform: `scale(${zoom})`,
+          transformOrigin: "center center",
+        }}
+        className="relative inline-block transition-transform duration-150"
+      >
         {showCrossLinks && crossEdges && crossEdges.length > 0 && (
           <MindMapCrossLinksLayer
             crossEdges={crossEdges}
@@ -392,6 +418,48 @@ export function MindMapTreeCanvas({
           />
         )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
+      </div>
+
+      {/* Floating Zoom Controls Widget */}
+      <div
+        data-testid="mindmap-zoom-controls"
+        onClick={(e) => e.stopPropagation()}
+        className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-lg p-1 shadow-sm"
+      >
+        <button
+          type="button"
+          data-testid="btn-zoom-out"
+          disabled={zoom <= 0.5}
+          onClick={handleZoomOut}
+          title="Thu nhỏ (-10%)"
+          aria-label="Thu nhỏ (-10%)"
+          className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-stone-600 dark:text-stone-300"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          data-testid="btn-zoom-reset"
+          onClick={handleZoomReset}
+          title="Khôi phục 100%"
+          aria-label="Khôi phục tỷ lệ 100%"
+          className="px-2 py-1 text-xs font-mono font-medium rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer text-stone-700 dark:text-stone-200"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+
+        <button
+          type="button"
+          data-testid="btn-zoom-in"
+          disabled={zoom >= 2.0}
+          onClick={handleZoomIn}
+          title="Phóng to (+10%)"
+          aria-label="Phóng to (+10%)"
+          className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-stone-600 dark:text-stone-300"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );
