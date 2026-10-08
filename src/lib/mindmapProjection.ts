@@ -37,6 +37,7 @@ export interface MindMapCrossEdge {
   strength: number;
   label: string;
   isCycle: boolean;
+  isMultiParent?: boolean;
 }
 
 export interface MindMapCycleAnnotation {
@@ -292,6 +293,9 @@ export function projectToMindMapTree(
     if (!isTreeEdge) {
       const sourceMeta = treeNodeMap.get(edge.source)!;
       const targetMeta = treeNodeMap.get(edge.target)!;
+      const isStructuralType = edge.type === "prerequisite" || edge.type === "advanced";
+      const isMultiParent = !isCycle && isStructuralType;
+
       rawCrossEdges.push({
         id: edge.id,
         sourceNodeId: edge.source,
@@ -302,6 +306,7 @@ export function projectToMindMapTree(
         strength: edge.strength ?? 3,
         label: getSemanticEdgeLabel(edge.type),
         isCycle,
+        isMultiParent,
       });
     }
   }

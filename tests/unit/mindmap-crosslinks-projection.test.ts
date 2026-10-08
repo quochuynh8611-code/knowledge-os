@@ -207,4 +207,124 @@ describe("Mind Map Track B1a: Projection Enrichment Test Suite", () => {
       expect(current.strength).toBeGreaterThanOrEqual(next.strength);
     }
   });
+
+  describe("Phase D2a: Multi-Parent Structural Edge Classification", () => {
+    it("Scenario 5: Prerequisite cross-edge across branches is classified with isMultiParent: true", () => {
+      // Root -> B (prerequisite), Root -> C (prerequisite)
+      // B -> D (prerequisite, D is child of B)
+      // C -> D (prerequisite secondary parent link)
+      const topics: Topic[] = [
+        createTopic("topic-a", "Root A", [
+          { id: "link-a-b", targetId: "topic-b", linkType: "prerequisite", strength: 5 },
+          { id: "link-a-c", targetId: "topic-c", linkType: "prerequisite", strength: 5 },
+        ]),
+        createTopic("topic-b", "Topic B", [
+          { id: "link-b-d", targetId: "topic-d", linkType: "prerequisite", strength: 5 },
+        ]),
+        createTopic("topic-c", "Topic C", [
+          { id: "link-c-d", targetId: "topic-d", linkType: "prerequisite", strength: 4 },
+        ]),
+        createTopic("topic-d", "Topic D", []),
+      ];
+
+      const projection = projectToMindMapTree({ topics }, "topic-a");
+      expect(projection).not.toBeNull();
+
+      // In primary spanning tree, D is child of B
+      const nodeB = projection!.tree.children.find((c) => c.id === "topic-b");
+      expect(nodeB?.children.map((c) => c.id)).toContain("topic-d");
+
+      // C -> D is in crossEdges and marked as isMultiParent: true
+      const edgeCD = projection!.crossEdges.find(
+        (e) => e.sourceNodeId === "topic-c" && e.targetNodeId === "topic-d"
+      );
+      expect(edgeCD).toBeDefined();
+      expect(edgeCD?.type).toBe("prerequisite");
+      expect(edgeCD?.isMultiParent).toBe(true);
+      expect(edgeCD?.isCycle).toBe(false);
+    });
+
+    it("Scenario 6: Advanced cross-edge across branches is classified with isMultiParent: true", () => {
+      const topics: Topic[] = [
+        createTopic("topic-a", "Root A", [
+          { id: "link-a-b", targetId: "topic-b", linkType: "prerequisite", strength: 5 },
+          { id: "link-a-c", targetId: "topic-c", linkType: "prerequisite", strength: 5 },
+        ]),
+        createTopic("topic-b", "Topic B", [
+          { id: "link-b-c", targetId: "topic-c", linkType: "advanced", strength: 4 },
+        ]),
+        createTopic("topic-c", "Topic C", []),
+      ];
+
+      const projection = projectToMindMapTree({ topics }, "topic-a");
+      expect(projection).not.toBeNull();
+
+      const edgeBC = projection!.crossEdges.find(
+        (e) => e.sourceNodeId === "topic-b" && e.targetNodeId === "topic-c"
+      );
+      expect(edgeBC).toBeDefined();
+      expect(edgeBC?.type).toBe("advanced");
+      expect(edgeBC?.isMultiParent).toBe(true);
+      expect(edgeBC?.isCycle).toBe(false);
+    });
+
+    it("Scenario 7: Related and Contradicts cross-edges are classified with isMultiParent: false", () => {
+      const topics: Topic[] = [
+        createTopic("topic-a", "Root A", [
+          { id: "link-a-b", targetId: "topic-b", linkType: "prerequisite", strength: 5 },
+          { id: "link-a-c", targetId: "topic-c", linkType: "prerequisite", strength: 5 },
+          { id: "link-a-d", targetId: "topic-d", linkType: "prerequisite", strength: 5 },
+        ]),
+        createTopic("topic-b", "Topic B", [
+          { id: "link-b-c", targetId: "topic-c", linkType: "related", strength: 4 },
+          { id: "link-b-d", targetId: "topic-d", linkType: "contradicts", strength: 3 },
+        ]),
+        createTopic("topic-c", "Topic C", []),
+        createTopic("topic-d", "Topic D", []),
+      ];
+
+      const projection = projectToMindMapTree({ topics }, "topic-a");
+      expect(projection).not.toBeNull();
+
+      const edgeRelated = projection!.crossEdges.find((e) => e.type === "related");
+      const edgeContradicts = projection!.crossEdges.find((e) => e.type === "contradicts");
+
+      expect(edgeRelated).toBeDefined();
+      expect(edgeRelated?.isMultiParent).toBe(false);
+
+      expect(edgeContradicts).toBeDefined();
+      expect(edgeContradicts?.isMultiParent).toBe(false);
+    });
+
+    it("Scenario 8: Cyclic graphs detect cycles and ensure all crossEdges have valid boolean isMultiParent", () => {
+      // A -> B (strength 5) -> C (strength 4) -> A (strength 3)
+      const topics: Topic[] = [
+        createTopic("topic-a", "Root A", [
+          { id: "link-a-b", targetId: "topic-b", linkType: "prerequisite", strength: 5 },
+        ]),
+        createTopic("topic-b", "Topic B", [
+          { id: "link-b-c", targetId: "topic-c", linkType: "advanced", strength: 4 },
+        ]),
+        createTopic("topic-c", "Topic C", [
+          { id: "link-c-a", targetId: "topic-a", linkType: "related", strength: 3 },
+        ]),
+      ];
+
+      const projection = projectToMindMapTree({ topics }, "topic-a");
+      expect(projection).not.toBeNull();
+      expect(projection!.hasCyclesDetected).toBe(true);
+      expect(projection!.cycleAnnotations.length).toBeGreaterThan(0);
+
+      // Verify that every crossEdge has a defined boolean isMultiParent
+      expect(projection!.crossEdges.length).toBeGreaterThan(0);
+      for (const edge of projection!.crossEdges) {
+        expect(typeof edge.isMultiParent).toBe("boolean");
+        if (edge.isCycle || (edge.type !== "prerequisite" && edge.type !== "advanced")) {
+          expect(edge.isMultiParent).toBe(false);
+        } else {
+          expect(edge.isMultiParent).toBe(true);
+        }
+      }
+    });
+  });
 });
