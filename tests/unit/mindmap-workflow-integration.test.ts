@@ -9,10 +9,12 @@ import {
 } from "../../src/hooks/useCommandPalette";
 import { normalizeScholarText } from "../../src/lib/scholarSearch";
 import { TopicDetail } from "../../src/components/topics/TopicDetail";
+import { DashboardHome } from "../../src/components/dashboard/DashboardHome";
 
 let mockSelectedTopicId: string | null = "topic-phat-hoc-123";
 let mockOpenMindMap = vi.fn();
 let mockSetSelectedTopicId = vi.fn();
+let mockSetActiveTab = vi.fn();
 let mockNavigation: Record<string, any> = {
   openMindMap: mockOpenMindMap,
 };
@@ -25,6 +27,13 @@ vi.mock("../../src/context/DataContext", () => ({
       mockSetSelectedTopicId(id);
       mockSelectedTopicId = id;
     },
+    setActiveTab: (tab: string) => {
+      mockSetActiveTab(tab);
+    },
+    focusDomainId: null,
+    setFocusDomainId: vi.fn(),
+    setSelectedCategoryFilter: vi.fn(),
+    addCategory: vi.fn(),
     topics: [
       {
         id: "topic-phat-hoc-123",
@@ -52,6 +61,7 @@ vi.mock("../../src/context/DataContext", () => ({
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ],
+    reviewQueue: [],
     notes: [],
     resources: [],
     tags: [],
@@ -63,6 +73,10 @@ vi.mock("../../src/context/DataContext", () => ({
     addKnowledgeLink: vi.fn(),
     removeKnowledgeLink: vi.fn(),
   }),
+}));
+
+vi.mock("../../src/components/modals/SpacedReviewModal", () => ({
+  SpacedReviewModal: () => null,
 }));
 
 vi.mock("../../src/context/NavigationContext", () => ({
@@ -149,6 +163,7 @@ describe("Mind Map Track C: Workflow Integration Test Suite", () => {
     mockSelectedTopicId = "topic-phat-hoc-123";
     mockOpenMindMap = vi.fn();
     mockSetSelectedTopicId = vi.fn();
+    mockSetActiveTab = vi.fn();
     mockNavigation = {
       openMindMap: mockOpenMindMap,
     };
@@ -207,6 +222,36 @@ describe("Mind Map Track C: Workflow Integration Test Suite", () => {
       const parsed = parseLocationHash("#/unknown_route");
       expect(parsed.activeTab).toBe("dashboard");
       expect(parsed.selectedTopicId).toBeNull();
+    });
+
+    it("DashboardHome renders lightweight mindmap card with correct title and description without embedding canvas", () => {
+      render(React.createElement(DashboardHome));
+
+      const card = screen.getByTestId("dashboard-card-mindmap");
+      expect(card).toBeInTheDocument();
+      expect(card).toHaveTextContent("Sơ đồ tư duy");
+      expect(card).toHaveTextContent("Trực quan hóa cấu trúc phân cấp & cây tri thức");
+
+      // Verify strict invariant: zero heavy canvas or cross-link layers in dashboard path
+      expect(screen.queryByTestId("mindmap-tree-canvas")).toBeNull();
+      expect(screen.queryByTestId("mindmap-crosslinks-layer")).toBeNull();
+    });
+
+    it("Clicking mindmap card on DashboardHome triggers setActiveTab('mindmap') and syncs canonical route", () => {
+      render(React.createElement(DashboardHome));
+
+      const card = screen.getByTestId("dashboard-card-mindmap");
+      fireEvent.click(card);
+
+      expect(mockSetActiveTab).toHaveBeenCalledTimes(1);
+      expect(mockSetActiveTab).toHaveBeenCalledWith("mindmap");
+
+      // Verify canonical routing contract when activeTab is mindmap with no topicId
+      const canonicalRoute = buildLocationHash({
+        activeTab: "mindmap",
+        selectedTopicId: null,
+      });
+      expect(canonicalRoute).toBe("#/mindmap");
     });
   });
 
