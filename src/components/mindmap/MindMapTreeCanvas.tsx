@@ -16,6 +16,7 @@ import {
   Repeat,
   ZoomIn,
   ZoomOut,
+  Maximize2,
 } from "lucide-react";
 
 interface MindMapTreeCanvasProps {
@@ -44,6 +45,7 @@ export function MindMapTreeCanvas({
   onFocusNode,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
+  const backdropRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
@@ -105,6 +107,43 @@ export function MindMapTreeCanvas({
   const handleZoomReset = (e: React.MouseEvent) => {
     e.stopPropagation();
     setZoom(1.0);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleFitToViewport = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const backdrop = backdropRef.current;
+    const content = containerRef.current;
+    if (!backdrop || !content) return;
+
+    const backdropRect = backdrop.getBoundingClientRect();
+    const contentRect = content.getBoundingClientRect();
+
+    if (
+      backdropRect.width === 0 ||
+      backdropRect.height === 0 ||
+      contentRect.width === 0 ||
+      contentRect.height === 0
+    ) {
+      setZoom(1.0);
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const unscaledWidth = contentRect.width / zoom;
+    const unscaledHeight = contentRect.height / zoom;
+
+    const padding = 64;
+    const availableWidth = Math.max(100, backdropRect.width - padding);
+    const availableHeight = Math.max(100, backdropRect.height - padding);
+
+    const scaleX = availableWidth / unscaledWidth;
+    const scaleY = availableHeight / unscaledHeight;
+    const computedScale = Math.min(scaleX, scaleY);
+
+    const clampedScale = Math.min(2.0, Math.max(0.5, +computedScale.toFixed(2)));
+
+    setZoom(clampedScale);
     setPan({ x: 0, y: 0 });
   };
 
@@ -440,6 +479,7 @@ export function MindMapTreeCanvas({
 
   return (
     <div
+      ref={backdropRef}
       data-testid="mindmap-canvas-backdrop"
       onClick={() => setFocusedCrossLinkNodeId(null)}
       onPointerDown={handlePointerDown}
@@ -510,6 +550,19 @@ export function MindMapTreeCanvas({
           className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer text-stone-600 dark:text-stone-300"
         >
           <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-px h-4 bg-stone-200 dark:bg-stone-800 my-auto" />
+
+        <button
+          type="button"
+          data-testid="btn-zoom-fit"
+          onClick={handleFitToViewport}
+          title="Vừa khung nhìn (Fit to Viewport)"
+          aria-label="Vừa khung nhìn"
+          className="p-1.5 rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer text-stone-600 dark:text-stone-300"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>

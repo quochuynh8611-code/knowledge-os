@@ -1,5 +1,5 @@
 import React from "react";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, fireEvent, cleanup, screen } from "@testing-library/react";
 import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
 import type { MindMapTreeNode } from "../../src/lib/mindmapProjection";
@@ -256,6 +256,148 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
 
       expect(selectedTopicId).toBe("topic-b");
       expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+    });
+  });
+
+  describe("Phase B3: Fit-to-Viewport Viewport Controls", () => {
+    it("Scenario 10: Backdrop smaller than content calculates fitting scale and centers pan", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+      const btnFit = screen.getByTestId("btn-zoom-fit");
+
+      expect(btnFit).toBeInTheDocument();
+
+      // Mock geometry: backdrop (600 x 400), content (1000 x 800)
+      vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+        width: 600,
+        height: 400,
+        top: 0,
+        left: 0,
+        bottom: 400,
+        right: 600,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      vi.spyOn(canvasContent, "getBoundingClientRect").mockReturnValue({
+        width: 1000,
+        height: 800,
+        top: 0,
+        left: 0,
+        bottom: 800,
+        right: 1000,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      fireEvent.click(btnFit);
+
+      // (400 - 64) / 800 = 336 / 800 = 0.42 -> clamped at 0.5
+      // or (600 - 64) / 1000 = 536 / 1000 = 0.54
+      expect(canvasContent.style.transform).toMatch(/translate\(0px, 0px\) scale\(0\.[5-9]\d*\)/);
+    });
+
+    it("Scenario 11: Very large content with computed scale < 0.5 clamps at minimum 0.5", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+      const btnFit = screen.getByTestId("btn-zoom-fit");
+      const btnZoomReset = screen.getByTestId("btn-zoom-reset");
+
+      // Mock geometry: backdrop (400 x 300), content (2000 x 2000)
+      vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+        width: 400,
+        height: 300,
+        top: 0,
+        left: 0,
+        bottom: 300,
+        right: 400,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      vi.spyOn(canvasContent, "getBoundingClientRect").mockReturnValue({
+        width: 2000,
+        height: 2000,
+        top: 0,
+        left: 0,
+        bottom: 2000,
+        right: 2000,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      fireEvent.click(btnFit);
+
+      expect(btnZoomReset).toHaveTextContent("50%");
+      expect(canvasContent.style.transform).toContain("scale(0.5)");
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+    });
+
+    it("Scenario 12: Reset button restores transform back to translate(0px, 0px) scale(1) after fit", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+      const btnFit = screen.getByTestId("btn-zoom-fit");
+      const btnZoomReset = screen.getByTestId("btn-zoom-reset");
+
+      vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+        width: 800,
+        height: 600,
+        top: 0,
+        left: 0,
+        bottom: 600,
+        right: 800,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      vi.spyOn(canvasContent, "getBoundingClientRect").mockReturnValue({
+        width: 1200,
+        height: 900,
+        top: 0,
+        left: 0,
+        bottom: 900,
+        right: 1200,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      fireEvent.click(btnFit);
+      expect(canvasContent.style.transform).not.toContain("scale(1)");
+
+      fireEvent.click(btnZoomReset);
+      expect(btnZoomReset).toHaveTextContent("100%");
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+      expect(canvasContent.style.transform).toContain("scale(1)");
     });
   });
 });
