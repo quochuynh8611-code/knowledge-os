@@ -7,6 +7,10 @@ import {
   MindMapLayoutMode,
   MindMapTreeNode,
 } from "../../lib/mindmapProjection";
+import {
+  exportMindMapToSvg,
+  getMindMapExportFilename,
+} from "../../lib/mindmapExport";
 import { LinkType } from "../../types";
 import {
   loadMindMapViewState,
@@ -23,6 +27,7 @@ import {
   BookOpen,
   Info,
   Share2,
+  Download,
 } from "lucide-react";
 
 export type MindMapEdgeTypeFilter = "all" | LinkType;
@@ -231,6 +236,37 @@ export function MindMapView() {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [projection, topicMap]);
+
+  // Export Mind Map to standalone SVG file
+  const handleExportSvg = useCallback(() => {
+    if (!projection) return;
+    try {
+      const svgString = exportMindMapToSvg(projection, {
+        layoutMode,
+        collapsedNodeIds,
+        showCrossLinks,
+        crossEdges: filteredCrossEdges,
+      });
+
+      const blob = new Blob([svgString], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = getMindMapExportFilename(
+        projection.rootTitle,
+        layoutMode,
+        "svg"
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export mind map SVG:", err);
+    }
+  }, [projection, layoutMode, collapsedNodeIds, showCrossLinks, filteredCrossEdges]);
 
   // Cleanup highlight timer on unmount
   useEffect(() => {
@@ -456,6 +492,19 @@ export function MindMapView() {
               })}
             </div>
           )}
+
+          {/* Export SVG Action */}
+          <button
+            type="button"
+            data-testid="btn-export-svg"
+            onClick={handleExportSvg}
+            disabled={!projection}
+            title="Xuất sơ đồ tư duy ra file vector SVG độc lập"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Xuất SVG</span>
+          </button>
 
           {/* Copy Markdown Outline CTA */}
           <button
