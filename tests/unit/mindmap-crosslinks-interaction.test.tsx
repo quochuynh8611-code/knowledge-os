@@ -520,4 +520,96 @@ describe("Mind Map Phase B2b1: Cross-Link Mutual Highlight on Node Hover", () =>
     // edge-d-e is dimmed -> label NOT shown
     expect(document.querySelector('[data-edge-label-id="edge-d-e"]')).toBeNull();
   });
+
+  it("Scenario 17: Pressing Escape key clears persistent cross-link focus and relationship labels", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+
+    // Focus node B
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    const nodeC = document.querySelector('[data-node-id="topic-c"]');
+    const labelBC = document.querySelector('[data-edge-label-id="edge-b-c"]');
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBe("true");
+    expect(labelBC).not.toBeNull();
+
+    // Press Escape
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBeNull();
+    expect(edgeBC?.getAttribute("data-dimmed")).toBeNull();
+    expect(nodeC?.getAttribute("data-peer-highlighted")).toBeNull();
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).toBeNull();
+  });
+
+  it("Scenario 18: Pressing other keys does not clear persistent cross-link focus", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+
+    // Focus node B
+    fireEvent.click(nodeB);
+    fireEvent.mouseLeave(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+
+    // Press non-Escape keys
+    fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.keyDown(window, { key: "ArrowDown" });
+    fireEvent.keyDown(window, { key: "Tab" });
+
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(document.querySelector('[data-node-id="topic-c"]')?.getAttribute("data-peer-highlighted")).toBe("true");
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).not.toBeNull();
+  });
+
+  it("Scenario 19: Pressing Escape when no persistent focus exists causes no side effect on active hover", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const nodeB = document.querySelector('[data-node-id="topic-b"]')!;
+
+    // Active hover on node B (no click/persistent focus)
+    fireEvent.mouseEnter(nodeB);
+
+    const edgeBC = document.querySelector('[data-edge-id="edge-b-c"]');
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+
+    // Press Escape
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    // Active hover highlight is preserved because mouse is still on node B
+    expect(edgeBC?.getAttribute("data-highlighted")).toBe("true");
+    expect(document.querySelector('[data-node-id="topic-c"]')?.getAttribute("data-peer-highlighted")).toBe("true");
+    expect(document.querySelector('[data-edge-label-id="edge-b-c"]')).not.toBeNull();
+  });
 });

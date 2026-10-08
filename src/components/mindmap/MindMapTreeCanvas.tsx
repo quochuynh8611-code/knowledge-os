@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
   MindMapTreeNode,
   MindMapLayoutMode,
@@ -47,6 +47,21 @@ export function MindMapTreeCanvas({
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
 
   const activeCrossLinkNodeId = focusedCrossLinkNodeId ?? hoveredNodeId;
+
+  useEffect(() => {
+    if (!focusedCrossLinkNodeId) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFocusedCrossLinkNodeId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [focusedCrossLinkNodeId]);
 
   const peerNodeIds = useMemo(() => {
     if (!showCrossLinks || !activeCrossLinkNodeId || !crossEdges) return new Set<string>();
