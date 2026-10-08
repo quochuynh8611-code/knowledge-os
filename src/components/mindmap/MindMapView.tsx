@@ -10,6 +10,7 @@ import {
 import {
   exportMindMapToSvg,
   getMindMapExportFilename,
+  rasterizeSvgToPng,
 } from "../../lib/mindmapExport";
 import { LinkType } from "../../types";
 import {
@@ -63,6 +64,7 @@ export function MindMapView() {
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
+  const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Active topic ID: prefer user-selected internalTopicId if set, fallback to selectedTopicId or first active topic
@@ -265,6 +267,38 @@ export function MindMapView() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Failed to export mind map SVG:", err);
+    }
+  }, [projection, layoutMode, collapsedNodeIds, showCrossLinks, filteredCrossEdges]);
+
+  // Export Mind Map to rasterized PNG file
+  const handleExportPng = useCallback(async () => {
+    if (!projection) return;
+    try {
+      setIsExportingPng(true);
+      const svgString = exportMindMapToSvg(projection, {
+        layoutMode,
+        collapsedNodeIds,
+        showCrossLinks,
+        crossEdges: filteredCrossEdges,
+      });
+
+      const pngBlob = await rasterizeSvgToPng(svgString, { scale: 2 });
+      const url = URL.createObjectURL(pngBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = getMindMapExportFilename(
+        projection.rootTitle,
+        layoutMode,
+        "png"
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Failed to export mind map PNG:", err);
+    } finally {
+      setIsExportingPng(false);
     }
   }, [projection, layoutMode, collapsedNodeIds, showCrossLinks, filteredCrossEdges]);
 
@@ -504,6 +538,22 @@ export function MindMapView() {
           >
             <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span className="hidden sm:inline">Xuất SVG</span>
+          </button>
+
+          {/* Export PNG Action */}
+          <button
+            type="button"
+            data-testid="btn-export-png"
+            onClick={handleExportPng}
+            disabled={!projection || isExportingPng}
+            title="Xuất sơ đồ tư duy ra file ảnh PNG độ nét cao (2x)"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">
+              {isExportingPng ? "Đang xuất PNG..." : "Xuất PNG"}
+            </span>
+            <span className="sm:hidden">PNG</span>
           </button>
 
           {/* Copy Markdown Outline CTA */}

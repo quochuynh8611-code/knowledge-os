@@ -13,6 +13,10 @@ export interface MindMapSvgExportOptions {
   crossEdges?: MindMapCrossEdge[];
 }
 
+export interface MindMapPngExportOptions {
+  scale?: number;
+}
+
 interface SvgLayoutNode {
   node: MindMapTreeNode;
   x: number;
@@ -362,4 +366,69 @@ export function exportMindMapToSvg(
     )} • Pure Derived Read-Model</text>
   </g>
 </svg>`;
+}
+
+/**
+ * Asynchronously rasterizes a standalone XML SVG string into a high-DPI PNG Blob.
+ * Uses browser-native HTMLImageElement and HTMLCanvasElement without external libraries.
+ * Cleans up temporary object URLs in all execution paths.
+ */
+export function rasterizeSvgToPng(
+  svgString: string,
+  options?: MindMapPngExportOptions
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    let url = "";
+    try {
+      const svgBlob = new Blob([svgString], {
+        type: "image/svg+xml;charset=utf-8",
+      });
+      url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+
+      img.onload = () => {
+        try {
+          const scale = options?.scale ?? 2;
+          const canvas = document.createElement("canvas");
+          const naturalW = img.naturalWidth || img.width || 800;
+          const naturalH = img.naturalHeight || img.height || 500;
+
+          canvas.width = naturalW * scale;
+          canvas.height = naturalH * scale;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            reject(new Error("Canvas 2D context is unavailable"));
+            return;
+          }
+
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0);
+
+          canvas.toBlob((blob) => {
+            URL.revokeObjectURL(url);
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error("Failed to create PNG blob from canvas"));
+            }
+          }, "image/png");
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+
+      img.onerror = (err) => {
+        URL.revokeObjectURL(url);
+        reject(err instanceof Error ? err : new Error("Image decode failed"));
+      };
+
+      img.src = url;
+    } catch (err) {
+      if (url) URL.revokeObjectURL(url);
+      reject(err);
+    }
+  });
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   projectToMindMapTree,
   MindMapTreeProjection,
@@ -6,10 +6,11 @@ import {
 import {
   exportMindMapToSvg,
   getMindMapExportFilename,
+  rasterizeSvgToPng,
 } from "../../src/lib/mindmapExport";
 import { Topic, Note, Resource } from "../../src/types";
 
-describe("MindMap Standalone SVG Export (Phase C1)", () => {
+describe("MindMap Standalone SVG & PNG Export (Phase C)", () => {
   const sampleTopics: Topic[] = [
     {
       id: "topic-root",
@@ -129,7 +130,7 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
     return proj;
   };
 
-  describe("exportMindMapToSvg generation", () => {
+  describe("exportMindMapToSvg generation (Phase C1)", () => {
     it("should export a valid XML SVG structure with proper header and viewBox", () => {
       const projection = getProjection();
       const svg = exportMindMapToSvg(projection, {
@@ -163,7 +164,6 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
 
     it("should respect collapsedNodeIds and hide collapsed children", () => {
       const projection = getProjection();
-      // Collapse topic-dukkha which has note-1 child
       const svg = exportMindMapToSvg(projection, {
         layoutMode: "tree_horizontal",
         collapsedNodeIds: new Set(["topic-dukkha"]),
@@ -171,7 +171,6 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
 
       expect(svg).toContain("Khổ Đế");
       expect(svg).not.toContain("Ghi chú Tam Khổ");
-      // Should show a collapse indicator badge (+1)
       expect(svg).toContain("+1");
     });
 
@@ -193,13 +192,11 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
         showCrossLinks: false,
       });
 
-      // Without cross-links, crosslink edge group should not be rendered
       expect(svgWithoutCross).not.toContain('class="crosslink-edge"');
     });
 
     it("should omit cross-links if either endpoint is collapsed", () => {
       const projection = getProjection();
-      // The cross edge is between topic-dukkha and topic-samudaya
       const svg = exportMindMapToSvg(projection, {
         layoutMode: "tree_horizontal",
         showCrossLinks: true,
@@ -220,7 +217,7 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
   });
 
   describe("getMindMapExportFilename utility", () => {
-    it("should generate a sanitized filename with topic title, layout mode and date", () => {
+    it("should generate a sanitized filename with topic title, layout mode and date for SVG", () => {
       const filename = getMindMapExportFilename(
         "Tứ Diệu Đế & Bát Chánh Đạo!",
         "tree_horizontal",
@@ -230,9 +227,157 @@ describe("MindMap Standalone SVG Export (Phase C1)", () => {
       expect(filename).toMatch(/^MindMap-Tu_Dieu_De_Bat_Chanh_Dao-tree_horizontal-\d{4}-\d{2}-\d{2}\.svg$/);
     });
 
+    it("should generate a sanitized filename with topic title, layout mode and date for PNG", () => {
+      const filename = getMindMapExportFilename(
+        "Tứ Diệu Đế & Bát Chánh Đạo!",
+        "tree_vertical",
+        "png"
+      );
+
+      expect(filename).toMatch(/^MindMap-Tu_Dieu_De_Bat_Chanh_Dao-tree_vertical-\d{4}-\d{2}-\d{2}\.png$/);
+    });
+
     it("should handle empty or special character titles gracefully", () => {
       const filename = getMindMapExportFilename("", "tree_vertical", "svg");
       expect(filename).toMatch(/^MindMap-Topic-tree_vertical-\d{4}-\d{2}-\d{2}\.svg$/);
+    });
+  });
+
+  describe("rasterizeSvgToPng orchestration (Phase C2)", () => {
+    let originalImage: typeof Image;
+    let originalCreateObjectURL: typeof URL.createObjectURL;
+    let originalRevokeObjectURL: typeof URL.revokeObjectURL;
+
+    beforeEach(() => {
+      originalImage = globalThis.Image;
+      originalCreateObjectURL = URL.createObjectURL;
+      originalRevokeObjectURL = URL.revokeObjectURL;
+    });
+
+    afterEach(() => {
+      globalThis.Image = originalImage;
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+      vi.restoreAllMocks();
+    });
+
+    it("should successfully rasterize SVG to PNG Blob and cleanup ObjectURLs", async () => {
+      const createObjectURLMock = vi.fn().mockReturnValue("blob:mock-svg-url");
+      const revokeObjectURLMock = vi.fn();
+      URL.createObjectURL = createObjectURLMock;
+      URL.revokeObjectURL = revokeObjectURLMock;
+
+      // Mock Image constructor
+      class MockImage {
+        width = 800;
+        height = 500;
+        onload: (() => void) | null = null;
+        onerror: ((err: unknown) => void) | null = null;
+        private _src = "";
+
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+        get src() {
+          return this._src;
+        }
+      }
+      globalThis.Image = MockImage as unknown as typeof Image;
+
+      // Mock Canvas 2D
+      const mockCtx = {
+        scale: vi.fn(),
+        drawImage: vi.fn(),
+      };
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+        mockCtx as unknown as CanvasRenderingContext2D
+      );
+      vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+        (cb) => {
+          cb(new Blob(["fake-png-data"], { type: "image/png" }));
+        }
+      );
+
+      const projection = getProjection();
+      const svg = exportMindMapToSvg(projection);
+
+      const pngBlob = await rasterizeSvgToPng(svg, { scale: 2 });
+
+      expect(pngBlob).toBeInstanceOf(Blob);
+      expect(pngBlob.type).toBe("image/png");
+      expect(createObjectURLMock).toHaveBeenCalled();
+      expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:mock-svg-url");
+      expect(mockCtx.scale).toHaveBeenCalledWith(2, 2);
+      expect(mockCtx.drawImage).toHaveBeenCalled();
+    });
+
+    it("should reject and cleanup ObjectURLs if Image loading fails", async () => {
+      const createObjectURLMock = vi.fn().mockReturnValue("blob:mock-error-svg");
+      const revokeObjectURLMock = vi.fn();
+      URL.createObjectURL = createObjectURLMock;
+      URL.revokeObjectURL = revokeObjectURLMock;
+
+      class MockFailingImage {
+        width = 0;
+        height = 0;
+        onload: (() => void) | null = null;
+        onerror: ((err: unknown) => void) | null = null;
+        private _src = "";
+
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (this.onerror) this.onerror(new Error("Image decode failed"));
+          }, 0);
+        }
+        get src() {
+          return this._src;
+        }
+      }
+      globalThis.Image = MockFailingImage as unknown as typeof Image;
+
+      const projection = getProjection();
+      const svg = exportMindMapToSvg(projection);
+
+      await expect(rasterizeSvgToPng(svg)).rejects.toThrow("Image decode failed");
+      expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:mock-error-svg");
+    });
+
+    it("should reject and cleanup if 2D canvas context is unavailable", async () => {
+      const createObjectURLMock = vi.fn().mockReturnValue("blob:mock-no-ctx-svg");
+      const revokeObjectURLMock = vi.fn();
+      URL.createObjectURL = createObjectURLMock;
+      URL.revokeObjectURL = revokeObjectURLMock;
+
+      class MockImage {
+        width = 800;
+        height = 500;
+        onload: (() => void) | null = null;
+        onerror: ((err: unknown) => void) | null = null;
+        private _src = "";
+
+        set src(val: string) {
+          this._src = val;
+          setTimeout(() => {
+            if (this.onload) this.onload();
+          }, 0);
+        }
+        get src() {
+          return this._src;
+        }
+      }
+      globalThis.Image = MockImage as unknown as typeof Image;
+
+      vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
+
+      const projection = getProjection();
+      const svg = exportMindMapToSvg(projection);
+
+      await expect(rasterizeSvgToPng(svg)).rejects.toThrow(/context|canvas/i);
+      expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:mock-no-ctx-svg");
     });
   });
 });
