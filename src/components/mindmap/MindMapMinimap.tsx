@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import type {
   MindMapTreeNode,
   MindMapLayoutMode,
@@ -32,6 +32,19 @@ export function MindMapMinimap({
   containerRef,
   onPanChange,
 }: MindMapMinimapProps) {
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{
+    clientX: number;
+    clientY: number;
+    panX: number;
+    panY: number;
+  }>({
+    clientX: 0,
+    clientY: 0,
+    panX: 0,
+    panY: 0,
+  });
+
   // Only render for non-trivial tree with children
   const isNonTrivial = Boolean(tree.children && tree.children.length > 0);
   if (!isNonTrivial) {
@@ -129,7 +142,68 @@ export function MindMapMinimap({
     });
   };
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePointerDownContainer = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+  };
+
+  const handleIndicatorPointerDown = (
+    e: React.PointerEvent<SVGRectElement>
+  ) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Safe fallback for environments lacking pointer capture
+    }
+
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      panX: pan.x || 0,
+      panY: pan.y || 0,
+    };
+  };
+
+  const handleIndicatorPointerMove = (
+    e: React.PointerEvent<SVGRectElement>
+  ) => {
+    if (!isDraggingRef.current) return;
+    e.stopPropagation();
+
+    const dx = e.clientX - dragStartRef.current.clientX;
+    const dy = e.clientY - dragStartRef.current.clientY;
+
+    const targetPanX = Math.round(
+      dragStartRef.current.panX - dx / scaleRatio
+    );
+    const targetPanY = Math.round(
+      dragStartRef.current.panY - dy / scaleRatio
+    );
+
+    onPanChange({
+      x: isNaN(targetPanX) ? 0 : targetPanX,
+      y: isNaN(targetPanY) ? 0 : targetPanY,
+    });
+  };
+
+  const handleIndicatorPointerUp = (
+    e: React.PointerEvent<SVGRectElement>
+  ) => {
+    if (isDraggingRef.current) {
+      e.stopPropagation();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // Safe fallback
+      }
+      isDraggingRef.current = false;
+    }
+  };
+
+  const handleIndicatorClick = (e: React.MouseEvent<SVGRectElement>) => {
     e.stopPropagation();
   };
 
@@ -138,7 +212,7 @@ export function MindMapMinimap({
       role="region"
       aria-label="Sơ đồ tổng quan thu nhỏ"
       data-testid="mindmap-minimap"
-      onPointerDown={handlePointerDown}
+      onPointerDown={handlePointerDownContainer}
       onClick={(e) => e.stopPropagation()}
       className="hidden sm:block absolute bottom-4 left-4 z-20 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto select-none"
     >
@@ -179,7 +253,13 @@ export function MindMapMinimap({
           width={rectWidth}
           height={rectHeight}
           rx={4}
-          className="fill-amber-500/15 stroke-amber-500/80 dark:stroke-amber-400/80 stroke-1.5 transition-all duration-75"
+          onPointerDown={handleIndicatorPointerDown}
+          onPointerMove={handleIndicatorPointerMove}
+          onPointerUp={handleIndicatorPointerUp}
+          onPointerCancel={handleIndicatorPointerUp}
+          onLostPointerCapture={handleIndicatorPointerUp}
+          onClick={handleIndicatorClick}
+          className="fill-amber-500/15 stroke-amber-500/80 dark:stroke-amber-400/80 stroke-1.5 transition-all duration-75 cursor-grab active:cursor-grabbing pointer-events-auto"
         />
       </svg>
     </div>
