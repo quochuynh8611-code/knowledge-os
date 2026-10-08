@@ -1,6 +1,6 @@
 # Đặc Tả Kiến Trúc & Lộ Trình Nâng Cấp: Mind Map v1.1 / v1.2 / v2.0
 > **Tài liệu đặc tả (Architecture Specification & Meta-Roadmap)**<br>
-> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Mind Map v1.0, v1.1, v1.2)<br>
+> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Mind Map v1.0, v1.1, v1.2, v2.0 — 11 test suites / 122 unit tests passing)<br>
 > **Tác giả**: Antigravity AI Scholar / Reasoning Agent<br>
 > **Phạm vi**: Định hình kiến trúc tổng thể, ghi nhận trạng thái hoàn tất của v1.x và điều phối lộ trình nâng cấp v2.0.<br>
 > **Tài liệu đặc tả chi tiết theo từng Track**:<br>
@@ -212,7 +212,51 @@ Feature: Workflow Integration and Deep Linking
 
 ---
 
-## 6. Milestone Status & Implementation Summary
+## 6. Mind Map v2.0 Advanced Feature Suite (Tracks A, B, C, D) — [STATUS: COMPLETE & VERIFIED]
+
+Chu kỳ v2.0 mở rộng Mind Map từ mô hình Spanning Tree cơ bản thành một công cụ khám phá đồ thị tri thức tương tác, đa chiều và hỗ trợ xuất bản chuyên nghiệp:
+
+### Track A (v2.0) — Edge-Type Semantic Filter Dropdown
+- **Mục tiêu**: Cho phép người dùng lọc trực quan các loại quan hệ chéo trên thanh công cụ sơ đồ tư duy.
+- **Nội dung kỹ thuật**:
+  1. Hỗ trợ hiển thị và lọc theo các nhóm quan hệ: Tất cả quan hệ, `prerequisite` (tiên quyết), `related` (liên quan), `advanced` (nâng cao), `contradicts` (mâu thuẫn/đối nghịch).
+  2. Dropdown UI tích hợp trực tiếp trên toolbar `MindMapView.tsx` với accessibility và state persistence per-topic.
+  3. Khi đổi filter, canvas tự động recalculate và chỉ render các cross edges khớp với type đã chọn mà không ảnh hưởng Spanning Tree gốc.
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-edge-filter.test.tsx` (6 tests).
+
+---
+
+### Track B (v2.0) — Viewport Zoom, Pan & Fit-to-Viewport
+- **Mục tiêu**: Cung cấp trải nghiệm tương tác trực quan mượt mà cho các cây phân cấp kích thước lớn.
+- **Nội dung kỹ thuật**:
+  1. **Zoom Controls**: Bổ sung bộ điều khiển Zoom In (+), Zoom Out (-), Reset Zoom (1.0x) trong phạm vi an toàn [0.5x, 2.0x].
+  2. **Drag Pan**: Cho phép kéo rê (pan) canvas bằng chuột với cursor grabbing, debounce và transition mượt mà.
+  3. **Fit to Viewport**: Nút tự động căn chỉnh và scale toàn bộ cây sơ đồ vừa khít khung nhìn hiển thị dựa trên bounding box thực tế.
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-viewport-zoom.test.tsx` (12 tests).
+
+---
+
+### Track C (v2.0) — Standalone Canvas Image Export (SVG & PNG)
+- **Mục tiêu**: Xuất bản sơ đồ tư duy thành ảnh vector SVG độc lập và ảnh raster PNG độ phân giải cao phục vụ lưu trữ và chia sẻ.
+- **Nội dung kỹ thuật**:
+  1. **Pure SVG Serializer (`mindmapExport.ts`)**: Render cây phân cấp SVG độc lập có kèm nhúng inline CSS, background, node cards, tree connectors, cross-links layer và marker defs.
+  2. **PNG Rasterization (`mindmapExport.ts`)**: Sử dụng HTML Canvas renderer chuyển đổi SVG data URI sang định dạng PNG blob chất lượng cao.
+  3. Tích hợp trực tiếp trên thanh công cụ Mind Map với modal tùy chọn xuất bản (Markdown / SVG / PNG).
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-svg-export.test.ts` (16 tests).
+
+---
+
+### Track D (v2.0) — Multi-Parent DAG Cross Edges
+- **Mục tiêu**: Phân loại, tạo kiểu thị giác chuyên biệt và đảm bảo tính nhất quán xuất bản (export parity) cho các cạnh đa phụ huynh (multi-parent structural relations) trong đồ thị tri thức DAG.
+- **Nội dung kỹ thuật**:
+  1. **Phase D2a (Classification)**: Adapter `projectToMindMapTree` trong `mindmapProjection.ts` tự động phát hiện target node có bậc vào (in-degree > 1) và gán cờ `isMultiParent: true` cho structural cross edges tương ứng.
+  2. **Phase D3 (Visual Styling)**: `MindMapCrossLinksLayer.tsx` áp dụng bảng màu Indigo (`stroke-indigo-400` / `#6366f1`), marker mũi tên `#multiparent-arrow` và thuộc tính `data-multi-parent="true"` để phân biệt rõ ràng với standard Amber cross-links.
+  3. **Phase D4 (Export Parity)**: `mindmapExport.ts` bổ sung marker def `#multiparent-arrow` và styling Indigo đồng bộ trong cả SVG và PNG export, bảo toàn 100% độ trung thực giữa UI view và file xuất bản.
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-crosslinks-projection.test.ts` (8 tests), `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9 tests), và `tests/unit/mindmap-svg-export.test.ts` (16 tests).
+
+---
+
+## 7. Milestone Status & Implementation Summary
 
 Tổng kết trạng thái thực tế các phiên bản Mind Map:
 
@@ -221,35 +265,39 @@ Tổng kết trạng thái thực tế các phiên bản Mind Map:
 | **v1.0** | **Core Engine** | - In-memory Spanning Tree projection (`mindmapProjection.ts`).<br>- Vector Tree Canvas (`MindMapTreeCanvas.tsx`).<br>- Canonical hash routing `#/mindmap?topicId=...`.<br>- Markdown outline export. | **COMPLETE & VERIFIED** |
 | **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`collapsedNodeIds`) per-topic.<br>- Lưu `layoutMode` per-topic trong `mindmapStorage.ts`.<br>- Nút "Sơ đồ" CTA trong `TopicDetail.tsx`. | **COMPLETE & VERIFIED** |
 | **v1.2** | **Track B + Track C.2 + C.3** | - SVG Cross-Links overlay với Bézier curves (`MindMapCrossLinksLayer.tsx`).<br>- Deterministic sort & hard cap 15 edges.<br>- Interactive cycle badge focus navigation.<br>- Dashboard Home entry card & Command Palette `Cmd+K`. | **COMPLETE & VERIFIED** |
-| **v2.0** | **Future Enhancements** | - Interactive Zoom & Pan viewport engine.<br>- Edge-type filter dropdown.<br>- Multi-parent DAG layout engine.<br>- Export sơ đồ sang hình ảnh PNG/SVG. | **DEFERRED BACKLOG** |
+| **v2.0** | **Tracks A, B, C, D (v2.0 Suite)** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG.<br>- Multi-parent DAG classification, styling, and export parity. | **COMPLETE & VERIFIED** |
+| **v3.0** | **Future Enhancements** | - Full Layered DAG layout engine (Sugiyama).<br>- Real-time collaborative node positioning & editing.<br>- Inline node markdown editing drawer.<br>- Multi-touch gesture optimization for mobile/tablets. | **DEFERRED BACKLOG** |
 
 ---
 
-## 7. Implementation Checklist Summary
+## 8. Implementation Checklist Summary
 
-Trạng thái kiểm thử và nghiệm thu:
+Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (11 test suites / 122 unit tests):
 
-- [x] **Track A (Persisted View State)**:
+- [x] **Core Engine**:
+  - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
+- [x] **v1.x Foundations (Tracks A, B, C)**:
   - [x] `tests/unit/mindmap-storage.test.ts` (14/14 tests pass).
   - [x] `tests/unit/mindmap-view-state.test.tsx` (8/8 tests pass).
-- [x] **Track B (Graph Richness)**:
-  - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (4/4 tests pass).
-  - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (5/5 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-interaction.test.tsx` (19/19 tests pass).
   - [x] `tests/unit/mindmap-cycle-navigation.test.tsx` (7/7 tests pass).
-- [x] **Track C (Workflow Integration)**:
   - [x] `tests/unit/mindmap-workflow-integration.test.ts` (13/13 tests pass).
-- [x] **Core Engine & Regression Suite**:
-  - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
-  - [x] Toàn bộ 80/80 unit/integration tests cho Mind Map đạt 100% pass.
+- [x] **v2.0 Advanced Suite (Tracks A, B, C, D)**:
+  - [x] `tests/unit/mindmap-edge-filter.test.tsx` (6/6 tests pass).
+  - [x] `tests/unit/mindmap-viewport-zoom.test.tsx` (12/12 tests pass).
+  - [x] `tests/unit/mindmap-svg-export.test.ts` (16/16 tests pass).
+  - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (8/8 tests pass).
+  - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9/9 tests pass).
+- [x] **Quality Gates & Static Analysis**:
+  - [x] Toàn bộ **11 test files / 122 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
   - [x] `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
 
 ---
 
-## 8. Mind Map v2.0 Deferred Backlog (Future Roadmap)
+## 9. Mind Map v3.0 Deferred Backlog (Future Roadmap)
 
-Các hạng mục kiến trúc được bảo lưu cho chu kỳ nâng cấp lớn tiếp theo:
-1. **Interactive Zoom & Pan Viewport**: Hỗ trợ bánh xe chuột phóng to/thu nhỏ (pinch-to-zoom), kéo rê khung nhìn (drag-to-pan), và nút "Fit to Viewport".
-2. **Edge Type Filter Dropdown**: Cho phép người dùng bật/tắt hiển thị riêng từng loại quan hệ chéo (`prerequisite`, `related`, `advanced`, `contradicts`) trên Toolbar.
-3. **Multi-Parent DAG Layout Engine**: Chuyển đổi từ mô hình Spanning Tree sang đồ thị DAG đa phân cấp có thuật toán phân tầng (Sugiyama / Layered layout).
-4. **Canvas Image Export**: Cho phép kết xuất (export) toàn bộ sơ đồ tư duy ra file ảnh PNG chất lượng cao hoặc vector SVG độc lập.
+Các hạng mục kiến trúc được bảo lưu cho chu kỳ nâng cấp v3.0:
+1. **Full Layered DAG Layout Engine**: Chuyển đổi hoàn toàn sang đồ thị DAG đa phân cấp có thuật toán phân tầng (Sugiyama / Layered layout) để hiển thị trực tiếp các node có nhiều phụ huynh mà không cần phụ thuộc Spanning Tree + Cross-link overlay.
+2. **Real-time Collaborative Mindmap**: Hỗ trợ đồng bộ đa người dùng trực tiếp qua WebSocket/CRDT.
+3. **Inline Node Markdown Editing Drawer**: Mở drawer chỉnh sửa trực tiếp nội dung ghi chú và tài liệu tham khảo ngay trên canvas.
+4. **Touch Gesture Optimization**: Hỗ trợ cảm ứng đa điểm (multi-touch pinch-to-zoom và spread-to-expand) trên thiết bị di động và máy tính bảng.
