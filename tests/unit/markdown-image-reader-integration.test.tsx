@@ -217,7 +217,7 @@ describe("Markdown Image Rendering & Library Folder Breadth Integration", () => 
       docItem.click();
 
       // Click "Đọc trong Unified Reader"
-      const readBtn = await screen.findByTitle("Mở giao diện đọc toàn màn hình với công cụ trích dẫn và mục lục");
+      const readBtn = await screen.findByTitle("Mở khung đọc nghiên cứu với công cụ trích dẫn và mục lục");
       readBtn.click();
 
       // Ensure Unified Reader rendered the image using docs raw API

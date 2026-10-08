@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { DocsExplorerView } from '../../src/components/docs/DocsExplorerView';
 import { globalReadingPositionStore } from '../../src/lib/readingPositionUnified';
 
@@ -156,13 +156,10 @@ describe('Phase R1: Research Library View & Filtering Contract', () => {
 
       render(<DocsExplorerView mode="full" />);
 
-      await waitFor(() => {
-        expect(screen.getByText('Giáo Trình Vi Diệu Pháp Khóa 1')).toBeInTheDocument();
-      });
-
-      const recentShelf = screen.getByTestId('recent-reads-shelf');
+      const recentShelf = await screen.findByTestId('recent-reads-shelf');
       expect(recentShelf).toBeInTheDocument();
-      expect(screen.getByText(/Đang đọc gần đây/i)).toBeInTheDocument();
+      expect(recentShelf).toHaveAttribute('aria-label', 'Đọc gần đây');
+      expect(within(recentShelf).getByText('Giáo Trình Vi Diệu Pháp Khóa 1')).toBeInTheDocument();
     });
   });
 });

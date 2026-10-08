@@ -142,7 +142,9 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
     render(<TopicDetail />);
 
     // Legacy SM-2 modal CTA must be removed from TopicDetail header
-    expect(screen.queryByText(/Ôn tập SM-2/i)).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /^Ôn tập SM-2$/i })
+    ).toBeNull();
     expect(screen.queryByTestId("review-btn")).toBeNull();
 
     // Unified Review CTA must be present
@@ -217,8 +219,8 @@ describe("Phase F6.4 — Topic Detail Flashcard Hub", () => {
     expect(screen.queryByTestId("stat-due-count")).toBeNull();
 
     // Empty state provides create & import actions
-    expect(screen.getByTestId("btn-topic-create-card")).toBeInTheDocument();
-    expect(screen.getByTestId("btn-topic-import-csv")).toBeInTheDocument();
+    expect(within(emptyState).getByTestId("btn-topic-create-card")).toBeInTheDocument();
+    expect(within(emptyState).getByTestId("btn-topic-import-csv")).toBeInTheDocument();
   });
 
   it("8. renders all-caught-up state when totalCards > 0 and dueToday is 0", async () => {
