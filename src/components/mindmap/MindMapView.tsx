@@ -3,9 +3,11 @@ import { useData } from "../../context/DataContext";
 import {
   projectToMindMapTree,
   exportMindMapToMarkdown,
+  getSemanticEdgeLabel,
   MindMapLayoutMode,
   MindMapTreeNode,
 } from "../../lib/mindmapProjection";
+import { LinkType } from "../../types";
 import {
   loadMindMapViewState,
   saveMindMapViewState,
@@ -22,6 +24,15 @@ import {
   Info,
   Share2,
 } from "lucide-react";
+
+export type MindMapEdgeTypeFilter = "all" | LinkType;
+
+const ORDERED_EDGE_TYPES: LinkType[] = [
+  "prerequisite",
+  "advanced",
+  "related",
+  "contradicts",
+];
 
 function findAncestorIds(root: MindMapTreeNode, targetId: string): string[] | null {
   if (root.id === targetId) return [];
@@ -42,30 +53,33 @@ export function MindMapView() {
     new Set()
   );
   const [showCrossLinks, setShowCrossLinks] = useState<boolean>(false);
+  const [activeEdgeTypeFilter, setActiveEdgeTypeFilter] =
+    useState<MindMapEdgeTypeFilter>("all");
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Active topic ID: prefer selectedTopicId if available, fallback to internal or first active topic
+  // Active topic ID: prefer user-selected internalTopicId if set, fallback to selectedTopicId or first active topic
   const activeRootTopicId = useMemo(() => {
-    if (selectedTopicId && topics.some((t) => t.id === selectedTopicId)) {
-      return selectedTopicId;
-    }
     if (internalTopicId && topics.some((t) => t.id === internalTopicId)) {
       return internalTopicId;
     }
+    if (selectedTopicId && topics.some((t) => t.id === selectedTopicId)) {
+      return selectedTopicId;
+    }
     const firstActive = topics.find((t) => t.visibility !== "hidden");
     return firstActive?.id || topics[0]?.id || "";
-  }, [selectedTopicId, internalTopicId, topics]);
+  }, [internalTopicId, selectedTopicId, topics]);
 
   // Topic Map for fast metadata lookup
   const topicMap = useMemo(() => {
     return new Map(topics.map((t) => [t.id, t]));
   }, [topics]);
 
-  // Load persisted view state when active topic changes
+  // Load persisted view state and reset ephemeral filter when active topic changes
   useEffect(() => {
+    setActiveEdgeTypeFilter("all");
     if (!activeRootTopicId) {
       setCollapsedNodeIds(new Set());
       setLayoutMode("tree_horizontal");
@@ -91,6 +105,24 @@ export function MindMapView() {
       }
     );
   }, [topics, notes, resources, activeRootTopicId, layoutMode]);
+
+  // Compute counts for each LinkType present in projection.crossEdges
+  const edgeTypeCounts = useMemo(() => {
+    if (!projection?.crossEdges) return new Map<LinkType, number>();
+    const counts = new Map<LinkType, number>();
+    for (const edge of projection.crossEdges) {
+      const type = edge.type as LinkType;
+      counts.set(type, (counts.get(type) || 0) + 1);
+    }
+    return counts;
+  }, [projection?.crossEdges]);
+
+  // Filter cross edges based on active semantic edge type filter
+  const filteredCrossEdges = useMemo(() => {
+    if (!projection?.crossEdges) return [];
+    if (activeEdgeTypeFilter === "all") return projection.crossEdges;
+    return projection.crossEdges.filter((e) => e.type === activeEdgeTypeFilter);
+  }, [projection?.crossEdges, activeEdgeTypeFilter]);
 
   // Collect all active node IDs in tree for stale ID sanitization
   const validNodeIds = useMemo(() => {
@@ -374,6 +406,57 @@ export function MindMapView() {
             )}
           </button>
 
+          {/* Edge-Type Filter Pills (Rendered only when showCrossLinks is active and crossEdges exist) */}
+          {showCrossLinks && projection?.crossEdges && projection.crossEdges.length > 0 && (
+            <div
+              data-testid="mindmap-edge-filter-bar"
+              className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-0.5 rounded-xl border border-stone-200 dark:border-stone-700 overflow-x-auto"
+            >
+              <button
+                type="button"
+                data-testid="edge-filter-pill-all"
+                aria-pressed={activeEdgeTypeFilter === "all"}
+                onClick={() => setActiveEdgeTypeFilter("all")}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                  activeEdgeTypeFilter === "all"
+                    ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-300 shadow-2xs"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                }`}
+              >
+                <span>Tất cả</span>
+                <span className="px-1 py-0.2 text-[9px] rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
+                  {projection.crossEdges.length}
+                </span>
+              </button>
+
+              {ORDERED_EDGE_TYPES.map((type) => {
+                const count = edgeTypeCounts.get(type) || 0;
+                if (count === 0) return null;
+                const isSelected = activeEdgeTypeFilter === type;
+
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    data-testid={`edge-filter-pill-${type}`}
+                    aria-pressed={isSelected}
+                    onClick={() => setActiveEdgeTypeFilter(type)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                      isSelected
+                        ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-300 shadow-2xs"
+                        : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                    }`}
+                  >
+                    <span>{getSemanticEdgeLabel(type)}</span>
+                    <span className="px-1 py-0.2 text-[9px] rounded-full bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Copy Markdown Outline CTA */}
           <button
             onClick={handleCopyMarkdown}
@@ -419,7 +502,7 @@ export function MindMapView() {
               <>
                 <span>•</span>
                 <span className="text-stone-600 dark:text-stone-300 font-medium">
-                  {projection.crossEdges.length} liên kết chéo
+                  {filteredCrossEdges.length}/{projection.crossEdges.length} liên kết chéo
                 </span>
               </>
             )}
@@ -453,7 +536,7 @@ export function MindMapView() {
           tree={projection.tree}
           layoutMode={layoutMode}
           collapsedNodeIds={collapsedNodeIds}
-          crossEdges={projection.crossEdges}
+          crossEdges={filteredCrossEdges}
           cycleAnnotations={projection.cycleAnnotations}
           showCrossLinks={showCrossLinks}
           highlightedNodeId={highlightedNodeId}
