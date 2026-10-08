@@ -214,6 +214,103 @@ describe("MindMap Standalone SVG & PNG Export (Phase C)", () => {
       expect(svg).toContain("Knowledge OS");
       expect(svg).toContain("Tứ Diệu Đế");
     });
+
+    it("should include both standard and multi-parent arrow markers in SVG defs when cross-links are enabled", () => {
+      const projection = getProjection();
+      const svg = exportMindMapToSvg(projection, {
+        showCrossLinks: true,
+      });
+
+      expect(svg).toContain('<marker id="crosslink-arrow"');
+      expect(svg).toContain('fill="#f59e0b"');
+      expect(svg).toContain('<marker id="multiparent-arrow"');
+      expect(svg).toContain('fill="#6366f1"');
+    });
+
+    it("should export multi-parent cross-links with indigo stroke, dedicated marker, and indigo badge styling", () => {
+      const projection = getProjection();
+      const multiParentEdge = {
+        id: "edge-multi",
+        sourceNodeId: "topic-dukkha",
+        sourceTitle: "Khổ Đế",
+        targetNodeId: "topic-samudaya",
+        targetTitle: "Tập Đế",
+        type: "prerequisite" as const,
+        strength: 5,
+        label: "Tiên quyết",
+        isCycle: false,
+        isMultiParent: true,
+      };
+
+      const svg = exportMindMapToSvg(projection, {
+        showCrossLinks: true,
+        crossEdges: [multiParentEdge],
+      });
+
+      expect(svg).toContain('class="crosslink-edge multiparent-edge"');
+      expect(svg).toContain('stroke="#6366f1"');
+      expect(svg).toContain('marker-end="url(#multiparent-arrow)"');
+      expect(svg).toContain('fill="#eef2ff"');
+      expect(svg).toContain('stroke="#6366f1"');
+      expect(svg).toContain('fill="#3730a3"');
+    });
+
+    it("should preserve amber styling for standard cross-links in SVG export", () => {
+      const projection = getProjection();
+      const standardEdge = {
+        id: "edge-std",
+        sourceNodeId: "topic-dukkha",
+        sourceTitle: "Khổ Đế",
+        targetNodeId: "topic-samudaya",
+        targetTitle: "Tập Đế",
+        type: "related" as const,
+        strength: 4,
+        label: "Liên quan",
+        isCycle: false,
+        isMultiParent: false,
+      };
+
+      const svg = exportMindMapToSvg(projection, {
+        showCrossLinks: true,
+        crossEdges: [standardEdge],
+      });
+
+      expect(svg).toContain('class="crosslink-edge"');
+      expect(svg).not.toContain('class="crosslink-edge multiparent-edge"');
+      expect(svg).toContain('stroke="#f59e0b"');
+      expect(svg).toContain('marker-end="url(#crosslink-arrow)"');
+      expect(svg).toContain('fill="#fffbeb"');
+      expect(svg).toContain('stroke="#f59e0b"');
+      expect(svg).toContain('fill="#92400e"');
+    });
+
+    it("should safely fall back to standard amber export styling when isMultiParent is omitted", () => {
+      const projection = getProjection();
+      const legacyEdge = {
+        id: "edge-legacy",
+        sourceNodeId: "topic-dukkha",
+        sourceTitle: "Khổ Đế",
+        targetNodeId: "topic-samudaya",
+        targetTitle: "Tập Đế",
+        type: "related" as const,
+        strength: 3,
+        label: "Liên quan",
+        isCycle: false,
+      };
+
+      const svg = exportMindMapToSvg(projection, {
+        showCrossLinks: true,
+        crossEdges: [legacyEdge],
+      });
+
+      expect(svg).toContain('class="crosslink-edge"');
+      expect(svg).not.toContain('class="crosslink-edge multiparent-edge"');
+      expect(svg).toContain('stroke="#f59e0b"');
+      expect(svg).toContain('marker-end="url(#crosslink-arrow)"');
+      expect(svg).toContain('fill="#fffbeb"');
+      expect(svg).toContain('stroke="#f59e0b"');
+      expect(svg).toContain('fill="#92400e"');
+    });
   });
 
   describe("getMindMapExportFilename utility", () => {

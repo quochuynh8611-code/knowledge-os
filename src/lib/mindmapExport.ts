@@ -235,12 +235,22 @@ export function exportMindMapToSvg(
       const midX = (x1 + 3 * cx1 + 3 * cx2 + x2) / 8;
       const midY = (y1 + 3 * cy1 + 3 * cy2 + y2) / 8;
 
+      const isMultiParent = edge.isMultiParent === true;
+      const groupClass = isMultiParent
+        ? "crosslink-edge multiparent-edge"
+        : "crosslink-edge";
+      const strokeColor = isMultiParent ? "#6366f1" : "#f59e0b";
+      const markerId = isMultiParent ? "multiparent-arrow" : "crosslink-arrow";
+      const rectFill = isMultiParent ? "#eef2ff" : "#fffbeb";
+      const rectStroke = isMultiParent ? "#6366f1" : "#f59e0b";
+      const textFill = isMultiParent ? "#3730a3" : "#92400e";
+
       crossLinkElements.push(`
-        <g class="crosslink-edge">
-          <path d="${d}" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#crosslink-arrow)" opacity="0.85" />
+        <g class="${groupClass}">
+          <path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#${markerId})" opacity="0.85" />
           <g transform="translate(${midX}, ${midY})">
-            <rect x="-35" y="-10" width="70" height="20" rx="10" fill="#fffbeb" stroke="#f59e0b" stroke-width="1" />
-            <text text-anchor="middle" dominant-baseline="central" fill="#92400e" font-size="9" font-weight="600">${escapeXml(
+            <rect x="-35" y="-10" width="70" height="20" rx="10" fill="${rectFill}" stroke="${rectStroke}" stroke-width="1" />
+            <text text-anchor="middle" dominant-baseline="central" fill="${textFill}" font-size="9" font-weight="600">${escapeXml(
               edge.label || getSemanticEdgeLabel(edge.type)
             )}</text>
           </g>
@@ -331,6 +341,9 @@ export function exportMindMapToSvg(
     </filter>
     <marker id="crosslink-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 1 L 8 5 L 0 9 z" fill="#f59e0b" />
+    </marker>
+    <marker id="multiparent-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#6366f1" />
     </marker>
   </defs>
 
