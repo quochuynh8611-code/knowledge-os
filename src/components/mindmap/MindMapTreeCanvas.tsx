@@ -48,6 +48,49 @@ export function MindMapTreeCanvas({
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1.0);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const dragStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number }>({
+    clientX: 0,
+    clientY: 0,
+    panX: 0,
+    panY: 0,
+  });
+  const isDraggingRef = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement | null;
+    if (target?.closest?.('[data-node-id], button, input, [data-testid="mindmap-zoom-controls"]')) {
+      return;
+    }
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    dragStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      panX: pan.x,
+      panY: pan.y,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - dragStartRef.current.clientX;
+    const dy = e.clientY - dragStartRef.current.clientY;
+    setPan({
+      x: dragStartRef.current.panX + dx,
+      y: dragStartRef.current.panY + dy,
+    });
+  };
+
+  const handlePointerUp = () => {
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setIsDragging(false);
+    }
+  };
 
   const handleZoomIn = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -62,6 +105,7 @@ export function MindMapTreeCanvas({
   const handleZoomReset = (e: React.MouseEvent) => {
     e.stopPropagation();
     setZoom(1.0);
+    setPan({ x: 0, y: 0 });
   };
 
   const activeCrossLinkNodeId = focusedCrossLinkNodeId ?? hoveredNodeId;
@@ -398,13 +442,20 @@ export function MindMapTreeCanvas({
     <div
       data-testid="mindmap-canvas-backdrop"
       onClick={() => setFocusedCrossLinkNodeId(null)}
-      className="relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className={`relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800 ${
+        isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+      }`}
     >
       <div
         ref={containerRef}
         data-testid="mindmap-canvas-content"
         style={{
-          transform: `scale(${zoom})`,
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
           transformOrigin: "center center",
         }}
         className="relative inline-block transition-transform duration-150"
