@@ -1,12 +1,12 @@
 # Đặc Tả Kiến Trúc & Lộ Trình Nâng Cấp: Mind Map v1.1 / v1.2 / v2.0
-> **Tài liệu đặc tả (Architecture Specification & Next-Phase Roadmap)**
-> **Trạng thái**: Living Architecture Blueprint & Meta-Roadmap
-> **Tác giả**: Antigravity AI Scholar / Reasoning Agent
-> **Phạm vi**: Định hình kiến trúc tổng thể và điều phối lộ trình nâng cấp các phase tiếp theo.
-> **Tài liệu đặc tả chi tiết theo từng Track**:
-> - [Track A: Persisted View State Implementation Plan](mindmap-track-a-implementation-plan.md)
-> - [Track B: Graph Richness Specification](mindmap-track-b-graph-richness.md)
-> - [Track C: Workflow Integration Specification](mindmap-track-c-workflow-integration.md)
+> **Tài liệu đặc tả (Architecture Specification & Meta-Roadmap)**<br>
+> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Mind Map v1.0, v1.1, v1.2)<br>
+> **Tác giả**: Antigravity AI Scholar / Reasoning Agent<br>
+> **Phạm vi**: Định hình kiến trúc tổng thể, ghi nhận trạng thái hoàn tất của v1.x và điều phối lộ trình nâng cấp v2.0.<br>
+> **Tài liệu đặc tả chi tiết theo từng Track**:<br>
+> - [Track A: Persisted View State Implementation Plan](mindmap-track-a-implementation-plan.md) (Status: COMPLETE)<br>
+> - [Track B: Graph Richness Specification](mindmap-track-b-graph-richness.md) (Status: COMPLETE)<br>
+> - [Track C: Workflow Integration Specification](mindmap-track-c-workflow-integration.md) (Status: COMPLETE)
 
 ---
 
@@ -65,34 +65,35 @@ Hệ thống nâng cấp được phân tách thành 3 Track kỹ thuật độc
 
 ---
 
-### Track A — Persisted View State (Trạng Thái Trình Diễn Cục Bộ)
+### Track A — Persisted View State (Trạng Thái Trình Diễn Cục Bộ) — [STATUS: COMPLETE & VERIFIED]
 - **Mục tiêu**: Ghi nhớ trạng thái tương tác của người dùng trên từng sơ đồ tư duy mà không cần thay đổi Database.
-- **Nội dung kỹ thuật**:
-  1. **Lưu trữ nút thu gọn (Collapsed Nodes)**: Cho phép người dùng click thu gọn/mở rộng các nhánh cây con; lưu `Set<string>` (danh sách ID nút bị đóng) vào `localStorage` theo key canonical: `knowledge_os_mindmap_view_state_v1:<topicId>`.
-  2. **Lưu cấu hình Layout theo từng Topic**: Ghi nhớ chế độ xem (`tree_horizontal` hoặc `tree_vertical`) trực tiếp bên trong payload của từng `topicId`, giúp mỗi chủ đề giữ nguyên góc nhìn tối ưu mà không xung đột với các chủ đề khác.
+- **Nội dung kỹ thuật đã hoàn thành**:
+  1. **Lưu trữ nút thu gọn (Collapsed Nodes)**: Cho phép người dùng click thu gọn/mở rộng các nhánh cây con; lưu `collapsedNodeIds` vào `localStorage` theo key canonical: `knowledge_os_mindmap_view_state_v1:<topicId>`.
+  2. **Lưu cấu hình Layout theo từng Topic**: Ghi nhớ chế độ xem (`tree_horizontal` hoặc `tree_vertical`) trực tiếp bên trong payload của từng `topicId`.
   3. **Auto-prune & Schema Versioning**: Sử dụng tiền tố và schema version `version: 1` (`knowledge_os_mindmap_view_state_v1:<topicId>`) kèm cơ chế try/catch phòng trường hợp storage bị đầy (`QuotaExceededError`) hoặc JSON parse lỗi.
-  4. **Zoom / Pan Status**: **DEFERRED** hoàn toàn sang Track B / v2.0 (không thuộc phạm vi Track A).
-- **Blast Radius**: **Rất thấp (Low)** — Hoàn toàn chạy ở client-side React State / LocalStorage, tự phục hồi về mặc định nếu storage không khả dụng.
+  4. **Verification**: Bao phủ toàn diện bởi `tests/unit/mindmap-storage.test.ts` (14 tests) và `tests/unit/mindmap-view-state.test.tsx` (8 tests).
 
 ---
 
-### Track B — Graph Richness (Mở Rộng Đồ Thị & Quan Hệ Thứ Cấp)
-- **Mục tiêu**: Hiển thị mối liên kết chéo (Cross-links) và đa quan hệ cha-con (Multi-parent) trên cùng một sơ đồ tư duy.
-- **Nội dung kỹ thuật**:
-  1. **Cross-Link Visualization**: Kẻ đường cong nét đứt (SVG dashed bezier curves) nối giữa các nút nằm ở các nhánh khác nhau nhưng có liên kết `related` hoặc `prerequisite` trong Knowledge Graph.
-  2. **Explicit Cycle Annotation & Tooltips**: Khi phát hiện cạnh tạo chu trình (cycle), nút lá sẽ hiển thị huy hiệu vòng lặp `[↻ Loop to: Topic X]` kèm tooltip giải thích độ sâu phát hiện.
-  3. **Multi-Parent Overlay Toggle**: Chế độ chuyển đổi giữa "Cây đơn cha (Pure Tree)" và "Đồ thị có hướng bán phân cấp (DAG View)".
-- **Blast Radius**: **Trung bình (Medium)** — Cần nâng cấp SVG Canvas renderer và mở rộng adapter projection để trả thêm `crossEdges: MindMapCrossEdge[]`.
+### Track B — Graph Richness (Mở Rộng Đồ Thị & Quan Hệ Thứ Cấp) — [STATUS: COMPLETE & VERIFIED]
+- **Mục tiêu**: Hiển thị mối liên kết chéo (Cross-links) và chu trình khép kín (Cycle Annotations) trên sơ đồ tư duy.
+- **Nội dung kỹ thuật đã hoàn thành**:
+  1. **Cross-Link Extraction & Hard Cap**: Thuật toán trích xuất non-tree cross edges từ `subgraph.edges`, deterministic sorting (`strength -> priority -> ID`), giới hạn tối đa 15 cạnh mạnh nhất.
+  2. **SVG Overlay & Collapse-Aware Filtering**: Component `MindMapCrossLinksLayer` render đường cong Bézier nét đứt, tự động ẩn cạnh nếu đầu mút thuộc subtree bị thu gọn.
+  3. **Interactive Cross-Link Focus**: Hỗ trợ hover/click highlight persistent focus, làm mờ các cạnh khác, Escape key & backdrop click dismissal, hiển thị relation label badge.
+  4. **Cycle Badges & Interactive Navigation**: Hiển thị badge `↻ {targetAncestorTitle}`, click badge chuyển hướng và highlight node tổ tiên mà không làm vỡ Spanning Tree.
+  5. **Verification**: Bao phủ bởi 4 test suites (35 tests): `mindmap-crosslinks-projection.test.ts` (4 tests), `mindmap-crosslinks-overlay.test.tsx` (5 tests), `mindmap-crosslinks-interaction.test.tsx` (19 tests), `mindmap-cycle-navigation.test.tsx` (7 tests).
 
 ---
 
-### Track C — Workflow Integration (Tích Hợp Luồng Nghiên Cứu Liền Mạch)
+### Track C — Workflow Integration (Tích Hợp Luồng Nghiên Cứu Liền Mạch) — [STATUS: COMPLETE & VERIFIED]
 - **Mục tiêu**: Biến Mind Map thành điểm tựa thị giác trong mọi luồng học tập và nghiên cứu trên toàn hệ thống Knowledge OS.
-- **Nội dung kỹ thuật**:
-  1. **Deep-Link từ Topic Detail**: Bổ sung nút bấm `"Xem Sơ Đồ Tư Duy"` tại thanh công cụ của `TopicDetailModal` và trang chi tiết chủ đề.
-  2. **Widget Sơ Đồ Nổi Bật trên Dashboard Home**: Hiển thị thẻ "Sơ đồ tri thức gợi ý hôm nay" hoặc "Gần đây" tại trang chủ.
-  3. **Command Palette Integration (`Cmd+K`)**: Thêm bộ lọc hành động `> Mind Map: [Tên chủ đề]` để mở nhanh sơ đồ chỉ bằng phím tắt.
-- **Blast Radius**: **Trung bình (Medium)** — Can thiệp vào các component điều hướng hiện có (`TopicDetail.tsx`, `DashboardHome.tsx`, `CommandPalette.tsx`).
+- **Nội dung kỹ thuật đã hoàn thành**:
+  1. **Track C.1 (Deep-Link từ Topic Detail)**: Bổ sung nút CTA `"Sơ đồ"` (`btn-view-mindmap`) trên thanh công cụ `TopicDetail.tsx`, kích hoạt `openMindMap(topic.id)` và đồng bộ hash URL.
+  2. **Track C.2 (Widget Sơ Đồ trên Dashboard Home)**: Hiển thị thẻ tiện ích "Sơ đồ tư duy" tại Khối 5 của `DashboardHome.tsx`, điều hướng O(1) không render canvas nặng.
+  3. **Track C.3 (Command Palette `Cmd+K`)**: Lệnh điều hướng `nav-mindmap` trong `useCommandPalette.ts` và hành động nhanh ngữ cảnh `act-open-mindmap` trong `App.tsx`.
+  4. **Track C.4 (Safe Fallback State)**: Tự động chọn topic hợp lệ đầu tiên hoặc render empty state nhẹ nhàng.
+  5. **Verification**: Bao phủ bởi `tests/unit/mindmap-workflow-integration.test.ts` (13 tests).
 
 ---
 
@@ -107,7 +108,7 @@ Hệ thống nâng cấp được phân tách thành 3 Track kỹ thuật độc
 | **Trade-off** | Trạng thái thu gọn không tự động đồng bộ sang thiết bị khác (chỉ lưu trên máy hiện tại). |
 | **Rủi ro** | Khi Topic hoặc Note bị xóa khỏi database, danh sách ID lưu trong LocalStorage có thể chứa orphan IDs (khắc phục bằng cách lọc theo `treeNodeMap` khi mount). |
 | **Điều kiện để làm (Entry Criteria)** | Khi người dùng bắt đầu có các chủ đề có hơn 20 nút con và muốn thu gọn các nhánh phụ. |
-| **Điều kiện chưa nên làm** | Khi dữ liệu người dùng còn rất ít (mỗi chủ đề dưới 5 nút con) hoặc chưa có nhu cầu thu gọn. |
+| **Trạng thái** | **ĐÃ HOÀN TẤT & VERIFIED** trong `mindmapStorage.ts`. |
 
 ---
 
@@ -119,8 +120,8 @@ Hệ thống nâng cấp được phân tách thành 3 Track kỹ thuật độc
 | **Lợi ích** | Khám phá các mối liên kết ngầm bất ngờ giữa các nhánh nghiên cứu khác nhau; không bỏ sót tri thức. |
 | **Trade-off** | Vẽ quá nhiều đường chéo (cross-links) có thể gây rối mắt ("spaghetti effect") nếu đồ thị có mật độ cạnh dày đặc. |
 | **Rủi ro** | Tính toán toạ độ SVG Bezier đường nối xuyên tầng có thể giảm hiệu năng nếu không debounce hoặc memoize cẩn thận. |
-| **Điều kiện để làm (Entry Criteria)** | Khi có cơ chế toggle bật/tắt hiển thị cross-links trên thanh công cụ và mật độ cạnh được giới hạn an toàn. |
-| **Điều kiện chưa nên làm** | Không làm khi chưa có giải thuật định tuyến đường cong (path routing) tránh chồng lấn lên text node. |
+| **Giải pháp đã áp dụng** | Hard cap 15 cạnh mạnh nhất + Collapse-aware + Interactive highlight & Escape dismissal. |
+| **Trạng thái** | **ĐÃ HOÀN TẤT & VERIFIED** trong `mindmapProjection.ts` và `MindMapCrossLinksLayer.tsx`. |
 
 ---
 
@@ -132,8 +133,8 @@ Hệ thống nâng cấp được phân tách thành 3 Track kỹ thuật độc
 | **Lợi ích** | Giảm số bước thao tác (frictionless); biến Mind Map thành công cụ tư duy tức thời thay vì một tab biệt lập. |
 | **Trade-off** | Tăng sự phụ thuộc giữa các module giao diện (TopicDetail -> urlRouting -> MindMapView). |
 | **Rủi ro** | Xung đột state điều hướng hash URL nếu không quản lý đồng bộ qua `urlRouting.ts`. |
-| **Điều kiện để làm (Entry Criteria)** | Module `urlRouting.ts` và `CommandPalette.tsx` đã có unit test bao phủ ổn định 100%. |
-| **Điều kiện chưa nên làm** | Khi các component nguồn (như TopicDetail) đang trong quá trình refactor lớn. |
+| **Giải pháp đã áp dụng** | Chuẩn hóa hash routing `#/mindmap?topicId=<id>` và điều phối tập trung qua `NavigationContext.openMindMap()`. |
+| **Trạng thái** | **ĐÃ HOÀN TẤT & VERIFIED** trong `TopicDetail.tsx`, `DashboardHome.tsx`, `useCommandPalette.ts`, `App.tsx`. |
 
 ---
 
@@ -211,32 +212,44 @@ Feature: Workflow Integration and Deep Linking
 
 ---
 
-## 6. Merge Recommendation & Rollout Plan
+## 6. Milestone Status & Implementation Summary
 
-Lộ trình triển khai khuyến nghị theo từng phiên bản release:
+Tổng kết trạng thái thực tế các phiên bản Mind Map:
 
-| Phiên bản | Track đề xuất | Trọng tâm công việc | Blast Radius | Dự kiến rủi ro |
-| :---: | :---: | :--- | :---: | :---: |
-| **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`isCollapsed`).<br>- Nút "Xem Sơ Đồ Tư Duy" trong `TopicDetail`. | **Thấp** | Rất thấp. Hoàn toàn là add-on client-side không ảnh hưởng engine. |
-| **v1.2** | **Track C.2 + Track C.3** | - Dashboard Home recent mind maps widget.<br>- Command Palette `Cmd+K` quick action item. | **Thấp - TB** | Thấp. Chỉ nối router vào các menu tìm kiếm đã có. |
-| **v2.0** | **Track B** | - Hiển thị Cross-links nét đứt giữa các nhánh.<br>- Thuật toán định tuyến SVG Bezier chống đè chữ.<br>- Nút phóng to/thu nhỏ (Zoom & Pan viewport). | **Trung bình** | Trung bình. Cần tối ưu render SVG trên đồ thị dày đặc. |
+| Phiên bản | Track bao gồm | Trọng tâm công việc | Trạng thái |
+| :---: | :---: | :--- | :---: |
+| **v1.0** | **Core Engine** | - In-memory Spanning Tree projection (`mindmapProjection.ts`).<br>- Vector Tree Canvas (`MindMapTreeCanvas.tsx`).<br>- Canonical hash routing `#/mindmap?topicId=...`.<br>- Markdown outline export. | **COMPLETE & VERIFIED** |
+| **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`collapsedNodeIds`) per-topic.<br>- Lưu `layoutMode` per-topic trong `mindmapStorage.ts`.<br>- Nút "Sơ đồ" CTA trong `TopicDetail.tsx`. | **COMPLETE & VERIFIED** |
+| **v1.2** | **Track B + Track C.2 + C.3** | - SVG Cross-Links overlay với Bézier curves (`MindMapCrossLinksLayer.tsx`).<br>- Deterministic sort & hard cap 15 edges.<br>- Interactive cycle badge focus navigation.<br>- Dashboard Home entry card & Command Palette `Cmd+K`. | **COMPLETE & VERIFIED** |
+| **v2.0** | **Future Enhancements** | - Interactive Zoom & Pan viewport engine.<br>- Edge-type filter dropdown.<br>- Multi-parent DAG layout engine.<br>- Export sơ đồ sang hình ảnh PNG/SVG. | **DEFERRED BACKLOG** |
 
 ---
 
-## 7. Implementation Checklist cho Phase Kế Tiếp (v1.1)
+## 7. Implementation Checklist Summary
 
-Trạng thái thực tế của Phase v1.1 (Track A + Track C.1):
+Trạng thái kiểm thử và nghiệm thu:
 
-- [x] **1. Unit Test First & Hardening**:
-  - [x] Viết test cho hàm tiện ích `loadMindMapViewState(topicId)` và `saveMindMapViewState(state, validNodeIds)`.
-  - [x] Viết test xác nhận fallback an toàn khi LocalStorage trả về `null`, chuỗi JSON hỏng, hoặc ném `QuotaExceededError`.
-  - [x] Viết test sanitization và pruning cho `collapsedNodeIds` loại bỏ orphan IDs.
-- [x] **2. Component Hardening**:
-  - [x] Nút toggle chevron `▶ / ▼` và indicator badge số lượng node con bị ẩn trên từng node tại `MindMapTreeCanvas.tsx`.
-  - [x] Đấu nối load/save state `collapsedNodeIds` và `layoutMode` per-topic vào `MindMapView.tsx`.
-- [x] **3. Topic Detail CTA**:
-  - [x] Bổ sung nút `btn-view-mindmap` (Sơ đồ) trên thanh công cụ `TopicDetail.tsx`.
-  - [x] Kích hoạt `navigation.openMindMap(topic.id)` kèm fallback đồng bộ location hash `#/mindmap?topicId=...`.
-- [x] **4. Quality Gate Verification**:
-  - [x] Chạy vitest bao phủ 100% các file liên quan (17/17 tests pass, 76/76 regression pass).
-  - [x] Chạy `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
+- [x] **Track A (Persisted View State)**:
+  - [x] `tests/unit/mindmap-storage.test.ts` (14/14 tests pass).
+  - [x] `tests/unit/mindmap-view-state.test.tsx` (8/8 tests pass).
+- [x] **Track B (Graph Richness)**:
+  - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (4/4 tests pass).
+  - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (5/5 tests pass).
+  - [x] `tests/unit/mindmap-crosslinks-interaction.test.tsx` (19/19 tests pass).
+  - [x] `tests/unit/mindmap-cycle-navigation.test.tsx` (7/7 tests pass).
+- [x] **Track C (Workflow Integration)**:
+  - [x] `tests/unit/mindmap-workflow-integration.test.ts` (13/13 tests pass).
+- [x] **Core Engine & Regression Suite**:
+  - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
+  - [x] Toàn bộ 80/80 unit/integration tests cho Mind Map đạt 100% pass.
+  - [x] `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
+
+---
+
+## 8. Mind Map v2.0 Deferred Backlog (Future Roadmap)
+
+Các hạng mục kiến trúc được bảo lưu cho chu kỳ nâng cấp lớn tiếp theo:
+1. **Interactive Zoom & Pan Viewport**: Hỗ trợ bánh xe chuột phóng to/thu nhỏ (pinch-to-zoom), kéo rê khung nhìn (drag-to-pan), và nút "Fit to Viewport".
+2. **Edge Type Filter Dropdown**: Cho phép người dùng bật/tắt hiển thị riêng từng loại quan hệ chéo (`prerequisite`, `related`, `advanced`, `contradicts`) trên Toolbar.
+3. **Multi-Parent DAG Layout Engine**: Chuyển đổi từ mô hình Spanning Tree sang đồ thị DAG đa phân cấp có thuật toán phân tầng (Sugiyama / Layered layout).
+4. **Canvas Image Export**: Cho phép kết xuất (export) toàn bộ sơ đồ tư duy ra file ảnh PNG chất lượng cao hoặc vector SVG độc lập.

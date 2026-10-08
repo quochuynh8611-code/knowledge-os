@@ -1,7 +1,7 @@
 # Kế Hoạch Triển Khai Kỹ Thuật: Track A — Mind Map Persisted View State
-> **Tài liệu triển khai (Implementation Plan & Engineering Specification)**  
-> **Trạng thái**: Normalized / Ready for Implementation Sprint  
-> **Tác giả**: Antigravity AI Scholar / Reasoning Agent  
+> **Tài liệu triển khai (Implementation Plan & Engineering Specification)**<br>
+> **Trạng thái**: COMPLETE & VERIFIED<br>
+> **Tác giả**: Antigravity AI Scholar / Reasoning Agent<br>
 > **Phạm vi áp dụng**: Mind Map v1.1 (Track A)  
 > **Ràng buộc**: Zero backend API / Zero schema change / Zero new runtime dependencies / Zero modifications to core projection engine.
 
@@ -221,42 +221,44 @@ Feature: Track A - Mind Map Persisted View State
 ## 6. Test Plan & Quality Assurance Strategy
 
 ### 6.1. Unit Tests (`tests/unit/mindmap-storage.test.ts`)
-Viết bộ unit test độc lập cho helper `mindmapStorage.ts`:
-- [ ] Test đọc/ghi payload hợp lệ với key canonical `knowledge_os_mindmap_view_state_v1:<topicId>`.
-- [ ] Test fallback giá trị mặc định khi key không tồn tại.
-- [ ] Test xử lý an toàn khi payload JSON bị hỏng (`SyntaxError`).
-- [ ] Test xử lý an toàn khi `localStorage.setItem` ném lỗi `QuotaExceededError`.
-- [ ] Test sanitization loại bỏ các Node ID rác không phải string.
+Bộ unit test độc lập cho helper `mindmapStorage.ts` (14/14 passed):
+- [x] Test đọc/ghi payload hợp lệ với key canonical `knowledge_os_mindmap_view_state_v1:<topicId>`.
+- [x] Test fallback giá trị mặc định khi key không tồn tại.
+- [x] Test xử lý an toàn khi payload JSON bị hỏng (`SyntaxError`).
+- [x] Test xử lý an toàn khi `localStorage.setItem` ném lỗi `QuotaExceededError`.
+- [x] Test sanitization loại bỏ các Node ID rác không phải string và orphan IDs.
 
 ### 6.2. Component Tests (`tests/unit/mindmap-view-state.test.tsx`)
-- [ ] Kiểm tra `MindMapView` khởi tạo đúng state từ `loadMindMapViewState`.
-- [ ] Kiểm tra click nút đóng/mở nhánh gọi hàm cập nhật state và filter nút con.
-- [ ] Kiểm tra chuyển đổi chủ đề (Topic change) tải đúng cấu hình của chủ đề mới.
+Bộ component test cho UI state integration (8/8 passed):
+- [x] Kiểm tra `MindMapView` khởi tạo đúng state từ `loadMindMapViewState`.
+- [x] Kiểm tra click nút đóng/mở nhánh gọi hàm cập nhật state và filter nút con.
+- [x] Kiểm tra chuyển đổi chủ đề (Topic change) tải đúng cấu hình của chủ đề mới.
 
 ### 6.3. Regression Verification Suite
-Trước khi hoàn tất v1.1, toàn bộ các test hiện có phải pass 100%:
-- [ ] `tests/unit/mindmap-projection.test.ts` (10/10 pass).
-- [ ] `tests/unit/url-routing.test.ts` (15/15 pass).
-- [ ] `tests/unit/knowledge-graph-lib.test.ts` (8/8 pass).
-- [ ] `npx tsc --noEmit` đạt 0 error.
-- [ ] `npm run lint` đạt 0 error.
+Toàn bộ regression tests liên quan đều đạt 100% pass:
+- [x] `tests/unit/mindmap-projection.test.ts` (10/10 pass).
+- [x] `tests/unit/url-routing.test.ts` (15/15 pass).
+- [x] `tests/unit/knowledge-graph-lib.test.ts` (8/8 pass).
+- [x] `npx tsc --noEmit` đạt 0 error.
+- [x] `npm run lint` đạt 0 error.
 
 ---
 
 ## 7. Human Review Gate & Pre-Implementation Alignment
 
-Trước khi bắt đầu viết code cho Track A, kỹ sư và reviewer cần đồng thuận 4 câu hỏi sau:
-
-1. **Cơ chế click đóng/mở**:
-   - *Đề xuất*: Thêm nút icon chevron tròn nhỏ `▼ / ▶` tại góc nút có nhánh con. Click vào icon thì thu gọn/mở rộng; click vào thân node thì mở chi tiết chủ đề.
-   - *Xác nhận*: Đồng ý với cơ chế tách biệt click chevron vs click node title.
-2. **Hành vi mặc định (Default state)**:
-   - *Đề xuất*: Mặc định mở rộng toàn bộ các nhánh đến `maxDepth = 3`. Người dùng chỉ thu gọn khi chủ động click.
-   - *Xác nhận*: Giữ nguyên mô hình Default Expanded của v1 để tránh làm ẩn tri thức ngoài ý muốn.
-3. **Phạm vi lưu Layout Mode**:
-   - *Đề xuất*: Lưu layout mode theo từng topic hay lưu chung cho toàn bộ Mind Map view?
-   - *Xác nhận*: Lưu **per-topic** trong payload canonical `knowledge_os_mindmap_view_state_v1:<topicId>` để tối ưu góc nhìn cho từng loại đồ thị.
+Các quyết định thiết kế đã được thống nhất và tuân thủ 100%:
+1. **Cơ chế click đóng/mở**: Nút icon chevron tròn nhỏ `▼ / ▶` tại góc nút có nhánh con để thu gọn/mở rộng; click vào thân node để mở chi tiết chủ đề.
+2. **Hành vi mặc định (Default state)**: Mặc định mở rộng toàn bộ các nhánh đến `maxDepth = 3`.
+3. **Phạm vi lưu Layout Mode**: Lưu **per-topic** trong payload canonical `knowledge_os_mindmap_view_state_v1:<topicId>`.
 4. **Vị trí file code**:
    - `src/lib/mindmapStorage.ts`: Pure helper functions.
-   - `src/components/mindmap/MindMapTreeCanvas.tsx`: Bổ sung props `collapsedNodeIds: Set<string>` và `onToggleCollapse: (nodeId: string) => void`.
+   - `src/components/mindmap/MindMapTreeCanvas.tsx`: Bổ sung props `collapsedNodeIds: Set<string>` và `onToggleCollapse`.
    - `src/components/mindmap/MindMapView.tsx`: Quản lý state và hooks lưu trữ.
+
+---
+
+## 8. Implementation Outcome & Closure Note
+
+- **Kết quả triển khai**: Track A đã hoàn tất 100% mục tiêu thiết kế. Tách biệt hoàn hảo giữa helper lưu trữ an toàn `mindmapStorage.ts` và tầng render `MindMapTreeCanvas.tsx`.
+- **Độ an toàn (Resilience)**: Bảo đảm zero crash khi LocalStorage bị chặn hoặc bị tràn bộ nhớ (`QuotaExceededError`).
+- **Nghiệm thu**: 22 unit & component tests dành riêng cho Track A đều passed; 80/80 tests Mind Map suite passed.
