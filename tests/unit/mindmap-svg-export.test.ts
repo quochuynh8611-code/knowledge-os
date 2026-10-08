@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   projectToMindMapTree,
   MindMapTreeProjection,
+  MindMapCrossEdge,
 } from "../../src/lib/mindmapProjection";
 import {
   exportMindMapToSvg,
@@ -310,6 +311,197 @@ describe("MindMap Standalone SVG & PNG Export (Phase C)", () => {
       expect(svg).toContain('fill="#fffbeb"');
       expect(svg).toContain('stroke="#f59e0b"');
       expect(svg).toContain('fill="#92400e"');
+    });
+
+    describe("Phase D4: Multi-Parent Structural Cross-Edge SVG Export Parity", () => {
+      const mockStandardEdge: MindMapCrossEdge = {
+        id: "edge-std",
+        sourceNodeId: "topic-dukkha",
+        sourceTitle: "Khổ Đế",
+        targetNodeId: "topic-samudaya",
+        targetTitle: "Tập Đế",
+        type: "related",
+        strength: 3,
+        label: "Liên quan",
+        isCycle: false,
+        isMultiParent: false,
+      };
+
+      const mockMultiParentEdge: MindMapCrossEdge = {
+        id: "edge-multi",
+        sourceNodeId: "topic-dukkha",
+        sourceTitle: "Khổ Đế",
+        targetNodeId: "topic-samudaya",
+        targetTitle: "Tập Đế",
+        type: "prerequisite",
+        strength: 5,
+        label: "Tiên quyết",
+        isCycle: false,
+        isMultiParent: true,
+      };
+
+      it("Scenario D4.1: Standard cross-edge export retains semantic standard markers", () => {
+        // Given: Projection with a standard cross-edge and both endpoints visible
+        const projection = getProjection();
+
+        // When: Exported to SVG with showCrossLinks: true
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: true,
+          crossEdges: [mockStandardEdge],
+        });
+
+        // Then: SVG is valid and standard crosslink is rendered with standard semantic marker
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("undefined");
+        expect(svg).not.toContain("NaN");
+        expect(svg).toContain('class="crosslink-edge"');
+        expect(svg).not.toContain("multiparent-edge");
+        expect(svg).toContain('marker-end="url(#crosslink-arrow)"');
+        expect(svg).toContain("Liên quan");
+      });
+
+      it("Scenario D4.2: Multi-parent cross-edge export renders with distinct multi-parent semantic marker", () => {
+        // Given: Projection with a multi-parent cross-edge and both endpoints visible
+        const projection = getProjection();
+
+        // When: Exported to SVG with showCrossLinks: true
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: true,
+          crossEdges: [mockMultiParentEdge],
+        });
+
+        // Then: SVG is valid and renders machine-detectable multiparent semantic marker
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("undefined");
+        expect(svg).not.toContain("NaN");
+        expect(svg).toContain('class="crosslink-edge multiparent-edge"');
+        expect(svg).toContain('marker-end="url(#multiparent-arrow)"');
+        expect(svg).toContain("Tiên quyết");
+      });
+
+      it("Scenario D4.3: Mixed edge parity exports both edges with distinct semantic identities", () => {
+        // Given: One standard cross-edge and one multi-parent cross-edge
+        const projection = getProjection();
+        const mixedEdges: MindMapCrossEdge[] = [
+          mockStandardEdge,
+          {
+            ...mockMultiParentEdge,
+            id: "edge-multi-2",
+            sourceNodeId: "topic-root",
+            targetNodeId: "topic-samudaya",
+          },
+        ];
+
+        // When: Exported to SVG with showCrossLinks: true
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: true,
+          crossEdges: mixedEdges,
+        });
+
+        // Then: Both cross-edges are serialized and distinct from one another
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("undefined");
+        expect(svg).not.toContain("NaN");
+
+        // Verify presence of standard edge and multi-parent edge markers
+        expect(svg).toContain('marker-end="url(#crosslink-arrow)"');
+        expect(svg).toContain('marker-end="url(#multiparent-arrow)"');
+        expect(svg).toContain('class="crosslink-edge multiparent-edge"');
+
+        // Count occurrences of crosslink-edge classes
+        const standardMatches = (svg.match(/class="crosslink-edge"/g) || []).length;
+        const multiParentMatches = (svg.match(/class="crosslink-edge multiparent-edge"/g) || []).length;
+        expect(standardMatches).toBe(1);
+        expect(multiParentMatches).toBe(1);
+      });
+
+      it("Scenario D4.4: Global cross-link disable omits all cross-edges while preserving tree", () => {
+        // Given: Projection with mixed cross-edges
+        const projection = getProjection();
+        const mixedEdges = [mockStandardEdge, mockMultiParentEdge];
+
+        // When: Exported to SVG with showCrossLinks: false
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: false,
+          crossEdges: mixedEdges,
+        });
+
+        // Then: No cross-link elements are rendered in SVG
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("crosslink-edge");
+        expect(svg).not.toContain("multiparent-edge");
+        expect(svg).not.toContain("url(#crosslink-arrow)");
+        expect(svg).not.toContain("url(#multiparent-arrow)");
+
+        // And: Tree nodes and connectors remain intact
+        expect(svg).toContain("class=\"tree-nodes\"");
+        expect(svg).toContain("class=\"tree-connectors\"");
+        expect(svg).toContain("Tứ Diệu Đế");
+        expect(svg).toContain("Khổ Đế");
+      });
+
+      it("Scenario D4.5: Collapsed endpoint safety omits dangling cross-edges without NaN or error", () => {
+        // Given: Target node "topic-samudaya" is hidden under a collapsed ancestor or collapsed directly
+        const projection = getProjection();
+
+        // When: Exported to SVG with collapsedNodeIds containing the endpoint
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: true,
+          crossEdges: [mockStandardEdge, mockMultiParentEdge],
+          collapsedNodeIds: new Set(["topic-samudaya"]),
+        });
+
+        // Then: SVG output remains well-formed without NaN or undefined
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("undefined");
+        expect(svg).not.toContain("NaN");
+
+        // And: Dangling cross-links pointing to collapsed node are safely omitted
+        expect(svg).not.toContain("crosslink-edge");
+        expect(svg).not.toContain("multiparent-edge");
+      });
+
+      it("Scenario D4.6: Missing endpoint safety gracefully ignores non-existent node IDs", () => {
+        // Given: Cross-edge references a node ID that does not exist in the projected tree
+        const projection = getProjection();
+        const edgeWithGhostNode: MindMapCrossEdge = {
+          id: "edge-ghost",
+          sourceNodeId: "topic-dukkha",
+          sourceTitle: "Khổ Đế",
+          targetNodeId: "ghost-node-404",
+          targetTitle: "Non-existent Node",
+          type: "prerequisite",
+          strength: 5,
+          label: "Tiên quyết",
+          isCycle: false,
+          isMultiParent: true,
+        };
+
+        // When: Exported to SVG with the ghost edge
+        const svg = exportMindMapToSvg(projection, {
+          layoutMode: "tree_horizontal",
+          showCrossLinks: true,
+          crossEdges: [edgeWithGhostNode, mockStandardEdge],
+        });
+
+        // Then: Export succeeds without throwing, ignores ghost edge, and renders existing edge
+        expect(svg).toMatch(/^<svg\b/);
+        expect(svg).toContain("</svg>");
+        expect(svg).not.toContain("undefined");
+        expect(svg).not.toContain("NaN");
+        expect(svg).toContain('class="crosslink-edge"');
+        expect(svg).not.toContain("ghost-node-404");
+      });
     });
   });
 
