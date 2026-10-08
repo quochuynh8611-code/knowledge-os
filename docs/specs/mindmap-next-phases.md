@@ -1,12 +1,13 @@
 # Đặc Tả Kiến Trúc & Lộ Trình Nâng Cấp: Mind Map v1.1 / v1.2 / v2.0
 > **Tài liệu đặc tả (Architecture Specification & Meta-Roadmap)**<br>
-> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Mind Map v1.0, v1.1, v1.2, v2.0 — 11 test suites / 122 unit tests passing)<br>
+> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Mind Map v1.0, v1.1, v1.2, v2.0 + Track E — 12 test suites / 145 unit tests passing)<br>
 > **Tác giả**: Antigravity AI Scholar / Reasoning Agent<br>
-> **Phạm vi**: Định hình kiến trúc tổng thể, ghi nhận trạng thái hoàn tất của v1.x và điều phối lộ trình nâng cấp v2.0.<br>
+> **Phạm vi**: Định hình kiến trúc tổng thể, ghi nhận trạng thái hoàn tất của v1.x, v2.0 và điều phối lộ trình nâng cấp.<br>
 > **Tài liệu đặc tả chi tiết theo từng Track**:<br>
 > - [Track A: Persisted View State Implementation Plan](mindmap-track-a-implementation-plan.md) (Status: COMPLETE)<br>
 > - [Track B: Graph Richness Specification](mindmap-track-b-graph-richness.md) (Status: COMPLETE)<br>
-> - [Track C: Workflow Integration Specification](mindmap-track-c-workflow-integration.md) (Status: COMPLETE)
+> - [Track C: Workflow Integration Specification](mindmap-track-c-workflow-integration.md) (Status: COMPLETE)<br>
+> - [Track E: Minimap Overview Radar](mindmap-track-e-minimap.md) (Status: COMPLETE)
 
 ---
 
@@ -46,7 +47,7 @@ Mind Map v1 đã hoàn tất implementation review và sẵn sàng merge (là ba
 
 ## 3. Upgrade Tracks
 
-Hệ thống nâng cấp được phân tách thành 3 Track kỹ thuật độc lập:
+Hệ thống nâng cấp được phân tách thành các Track kỹ thuật độc lập:
 
 ```
                       ┌────────────────────────────────────────┐
@@ -212,7 +213,7 @@ Feature: Workflow Integration and Deep Linking
 
 ---
 
-## 6. Mind Map v2.0 Advanced Feature Suite (Tracks A, B, C, D) — [STATUS: COMPLETE & VERIFIED]
+## 6. Mind Map v2.0 Advanced Feature Suite (Tracks A, B, C, D, E) — [STATUS: COMPLETE & VERIFIED]
 
 Chu kỳ v2.0 mở rộng Mind Map từ mô hình Spanning Tree cơ bản thành một công cụ khám phá đồ thị tri thức tương tác, đa chiều và hỗ trợ xuất bản chuyên nghiệp:
 
@@ -242,7 +243,7 @@ Chu kỳ v2.0 mở rộng Mind Map từ mô hình Spanning Tree cơ bản thành
   1. **Pure SVG Serializer (`mindmapExport.ts`)**: Render cây phân cấp SVG độc lập có kèm nhúng inline CSS, background, node cards, tree connectors, cross-links layer và marker defs.
   2. **PNG Rasterization (`mindmapExport.ts`)**: Sử dụng HTML Canvas renderer chuyển đổi SVG data URI sang định dạng PNG blob chất lượng cao.
   3. Tích hợp trực tiếp trên thanh công cụ Mind Map với modal tùy chọn xuất bản (Markdown / SVG / PNG).
-- **Verification**: Bao phủ bởi `tests/unit/mindmap-svg-export.test.ts` (16 tests).
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-svg-export.test.ts` (22 tests bao gồm multi-parent export parity).
 
 ---
 
@@ -252,7 +253,18 @@ Chu kỳ v2.0 mở rộng Mind Map từ mô hình Spanning Tree cơ bản thành
   1. **Phase D2a (Classification)**: Adapter `projectToMindMapTree` trong `mindmapProjection.ts` tự động phát hiện target node có bậc vào (in-degree > 1) và gán cờ `isMultiParent: true` cho structural cross edges tương ứng.
   2. **Phase D3 (Visual Styling)**: `MindMapCrossLinksLayer.tsx` áp dụng bảng màu Indigo (`stroke-indigo-400` / `#6366f1`), marker mũi tên `#multiparent-arrow` và thuộc tính `data-multi-parent="true"` để phân biệt rõ ràng với standard Amber cross-links.
   3. **Phase D4 (Export Parity)**: `mindmapExport.ts` bổ sung marker def `#multiparent-arrow` và styling Indigo đồng bộ trong cả SVG và PNG export, bảo toàn 100% độ trung thực giữa UI view và file xuất bản.
-- **Verification**: Bao phủ bởi `tests/unit/mindmap-crosslinks-projection.test.ts` (8 tests), `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9 tests), và `tests/unit/mindmap-svg-export.test.ts` (16 tests).
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-crosslinks-projection.test.ts` (8 tests), `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9 tests), và `tests/unit/mindmap-svg-export.test.ts` (22 tests).
+
+---
+
+### Track E (v2.0) — Minimap Overview Radar
+- **Mục tiêu**: Cung cấp radar thu nhỏ (spatial overview radar) giúp người dùng định vị không gian và điều hướng nhanh trên các cây phân cấp phức tạp.
+- **Nội dung kỹ thuật**:
+  1. **Phase E1 (Overview Radar MVP)**: Component `MindMapMinimap.tsx` hiển thị micro-radar vector tại góc `bottom-4 left-4`, indicator đồng bộ tỷ lệ thu phóng, click-to-center pan navigation và cô lập sự kiện nền.
+  2. **Phase E1d (Drag Viewport Indicator)**: Kéo rê trực tiếp indicator trong radar để pan canvas mượt mà, hỗ trợ pointer capture và bounds clamping.
+  3. **Phase E2a (Accessible Mobile Toggle)**: Nút bật/tắt radar trên di động (`sm:hidden`, touch target $40\times 40\text{px}$, `aria-expanded`, `aria-controls`), phím `Escape` đóng panel nổi `mindmap-minimap-panel`.
+- **Đặc tả chi tiết**: [mindmap-track-e-minimap.md](mindmap-track-e-minimap.md).
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-minimap.test.tsx` (17 tests).
 
 ---
 
@@ -265,14 +277,14 @@ Tổng kết trạng thái thực tế các phiên bản Mind Map:
 | **v1.0** | **Core Engine** | - In-memory Spanning Tree projection (`mindmapProjection.ts`).<br>- Vector Tree Canvas (`MindMapTreeCanvas.tsx`).<br>- Canonical hash routing `#/mindmap?topicId=...`.<br>- Markdown outline export. | **COMPLETE & VERIFIED** |
 | **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`collapsedNodeIds`) per-topic.<br>- Lưu `layoutMode` per-topic trong `mindmapStorage.ts`.<br>- Nút "Sơ đồ" CTA trong `TopicDetail.tsx`. | **COMPLETE & VERIFIED** |
 | **v1.2** | **Track B + Track C.2 + C.3** | - SVG Cross-Links overlay với Bézier curves (`MindMapCrossLinksLayer.tsx`).<br>- Deterministic sort & hard cap 15 edges.<br>- Interactive cycle badge focus navigation.<br>- Dashboard Home entry card & Command Palette `Cmd+K`. | **COMPLETE & VERIFIED** |
-| **v2.0** | **Tracks A, B, C, D (v2.0 Suite)** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG.<br>- Multi-parent DAG classification, styling, and export parity. | **COMPLETE & VERIFIED** |
+| **v2.0** | **Tracks A, B, C, D, E** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG (kèm multi-parent parity).<br>- Multi-parent DAG classification, styling, and export parity.<br>- Minimap overview radar (desktop radar, drag indicator, mobile toggle). | **COMPLETE & VERIFIED** |
 | **v3.0** | **Future Enhancements** | - Full Layered DAG layout engine (Sugiyama).<br>- Real-time collaborative node positioning & editing.<br>- Inline node markdown editing drawer.<br>- Multi-touch gesture optimization for mobile/tablets. | **DEFERRED BACKLOG** |
 
 ---
 
 ## 8. Implementation Checklist Summary
 
-Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (11 test suites / 122 unit tests):
+Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12 test suites / 145 unit tests):
 
 - [x] **Core Engine**:
   - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
@@ -282,14 +294,15 @@ Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (11
   - [x] `tests/unit/mindmap-crosslinks-interaction.test.tsx` (19/19 tests pass).
   - [x] `tests/unit/mindmap-cycle-navigation.test.tsx` (7/7 tests pass).
   - [x] `tests/unit/mindmap-workflow-integration.test.ts` (13/13 tests pass).
-- [x] **v2.0 Advanced Suite (Tracks A, B, C, D)**:
+- [x] **v2.0 Advanced Suite (Tracks A, B, C, D, E)**:
   - [x] `tests/unit/mindmap-edge-filter.test.tsx` (6/6 tests pass).
   - [x] `tests/unit/mindmap-viewport-zoom.test.tsx` (12/12 tests pass).
-  - [x] `tests/unit/mindmap-svg-export.test.ts` (16/16 tests pass).
+  - [x] `tests/unit/mindmap-svg-export.test.ts` (22/22 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (8/8 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9/9 tests pass).
+  - [x] `tests/unit/mindmap-minimap.test.tsx` (17/17 tests pass).
 - [x] **Quality Gates & Static Analysis**:
-  - [x] Toàn bộ **11 test files / 122 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
+  - [x] Toàn bộ **12 test files / 145 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
   - [x] `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
 
 ---
