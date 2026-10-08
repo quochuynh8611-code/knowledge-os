@@ -2,7 +2,7 @@
 
 > **Tài liệu đặc tả (Architecture Decision Record & Feature Specification)**<br>
 > **Mã định danh**: SPEC-MINDMAP-TRACK-E<br>
-> **Trạng thái**: COMPLETE & VERIFIED BASELINE (Phase E1 MVP, E1d Drag Indicator, E2a Mobile Toggle — 17 unit tests passing)<br>
+> **Trạng thái**: FORMALLY CLOSED & VERIFIED BASELINE (Phase E1 MVP, E1d Drag Indicator, E2a Mobile Toggle, E3 Docs Reconciliation — Track E Formally Closed)<br>
 > **Phạm vi**: Giao diện Mind Map Canvas — Điều hướng, định vị không gian và trải nghiệm radar thu nhỏ trên desktop & mobile.
 
 ---
@@ -54,27 +54,35 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 
 ---
 
-## 3. Quá Trình Triển Khai & Các Giai Đoạn Hoàn Thành (Implementation Milestones)
+## 3. Quá Trình Triển Khai & Vòng Đời Hoàn Thành (Lifecycle & Milestones)
 
-### 3.1. Phase E1 — Minimap Overview Radar MVP
+### 3.1. Phase E1 — Minimap Overview Radar MVP [COMPLETE & VERIFIED]
 - **Mục tiêu**: Shell cơ bản của radar tổng quan, khung hiển thị indicator đồng bộ với zoom/pan, click-to-center navigation, và cô lập sự kiện.
 - **Commits**:
   - `e0a2dca docs(mindmap): add minimap track spec and failing test contract`
   - `7f55ddc feat(mindmap): add minimal overview radar for tree canvas`
 - **Kết quả**: Vượt qua Scenarios 1 – 5 trong `tests/unit/mindmap-minimap.test.tsx`.
 
-### 3.2. Phase E1d — Drag Viewport Indicator
+### 3.2. Phase E1d — Drag Viewport Indicator [COMPLETE & VERIFIED]
 - **Mục tiêu**: Kéo rê trực tiếp hình chữ nhật indicator trong radar để pan canvas, hỗ trợ pointer capture, bounds clamping và click isolation.
 - **Delta Math**: $\Delta\text{pan} = -\Delta\text{mouse} / \text{scaleRatio}$.
 - **Commit**:
   - `349e75e feat(mindmap): add drag viewport indicator for minimap radar`
 - **Kết quả**: Vượt qua Scenarios 6 – 10 trong `tests/unit/mindmap-minimap.test.tsx`.
 
-### 3.3. Phase E2a — Accessible Mobile Minimap Toggle
+### 3.3. Phase E2a — Accessible Mobile Minimap Toggle [COMPLETE & VERIFIED]
 - **Mục tiêu**: Nút bấm bật/tắt radar trên màn hình di động ($< 640\text{px}$), hỗ trợ phím `Escape`, thuộc tính accessibility (`aria-expanded`, `aria-controls`), touch target $40\times 40\text{px}$, và panel nổi `mindmap-minimap-panel`.
 - **Commit**:
   - `452a1f0 feat(mindmap): add accessible mobile toggle for minimap overview radar`
 - **Kết quả**: Vượt qua Scenarios 11 – 17 trong `tests/unit/mindmap-minimap.test.tsx`.
+
+### 3.4. Phase E3 — Track E Documentation Reconciliation [COMPLETE & VERIFIED]
+- **Mục tiêu**: Đối chiếu, khôi phục và bảo toàn toàn bộ tri thức đặc tả, test contract, và Gherkin scenarios từ baseline thực tế.
+- **Commit**:
+  - `2cfd55a docs(mindmap): reconcile Track E minimap and Track D export parity specs`
+
+### 3.5. Phase E4 — Documentation-Only Closure [FORMALLY CLOSED]
+- **Mục tiêu**: Đóng chính thức vòng đời của Track E (Minimap Overview Radar) mà không bổ sung runtime feature hay sửa code logic. Toàn bộ 17 unit test scenarios trong `tests/unit/mindmap-minimap.test.tsx` cùng 12 test suites / 145 unit tests toàn hệ thống Mind Map đã đạt chuẩn verified baseline.
 
 ---
 
@@ -92,19 +100,19 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 ```typescript
 export interface MindMapMinimapProps {
   tree: MindMapTreeNode;
-  layoutMode: MindMapLayoutMode;
+  layoutMode?: MindMapLayoutMode;
   collapsedNodeIds?: Set<string>;
   zoom: number;
   pan: { x: number; y: number };
-  backdropRect?: { width: number; height: number } | null;
-  contentRect?: { width: number; height: number } | null;
+  backdropRef: React.RefObject<HTMLDivElement | null>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onPanChange: (newPan: { x: number; y: number }) => void;
 }
 ```
 
 ### 4.3. Mock Measurements Cần Thiết Trong Test Suite
-- `backdropRect`: Mock kích thước khung nhìn ngoài (ví dụ: `width: 800, height: 600`).
-- `contentRect`: Mock kích thước nội dung cây (ví dụ: `width: 1600, height: 1200` tại `zoom = 1.0`).
+- `backdropRef`: Mock kích thước khung nhìn ngoài (ví dụ: `width: 800, height: 600`).
+- `contentRef` / `containerRef`: Mock kích thước nội dung cây (ví dụ: `width: 1600, height: 1200` tại `zoom = 1.0`).
 - `minimapRect`: Kích thước cố định của widget radar (ví dụ: `width: 160, height: 120`).
 
 ### 4.4. Tiêu Chuẩn Assertion (Behavioral vs Implementation Details)
@@ -259,3 +267,14 @@ Bao gồm 17 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 - **Full Mind Map Regression**: Toàn bộ **12 test suites / 145 unit tests** đạt **100% passed**.
 - **Typecheck**: `npm run typecheck` (`tsc --noEmit`) đạt **0 errors**.
 - **Git State**: Clean working tree.
+
+---
+
+## 9. Future Enhancement Candidates (Uncommitted Backlog)
+
+> [!NOTE]
+> Các hạng mục dưới đây thuần túy là ý tưởng kỹ thuật được ghi nhận lại cho các chu kỳ nâng cấp tương lai. Chúng **KHÔNG** thuộc phạm vi baseline hiện tại của Track E và **KHÔNG** được cam kết triển khai trong phase này.
+
+1. **Candidate 1: Micro-Node Radar Dots**: Duyệt cấu trúc cây phân cấp và render các chấm micro-dots thu nhỏ (`<circle>` / `<rect>`) phản ánh vị trí các node con trực tiếp bên trong SVG radar.
+2. **Candidate 2: Dynamic ResizeObserver for Minimap Bounds**: Tích hợp `ResizeObserver` trên `backdropRef` để tự động cập nhật bounding rect khi viewport thay đổi kích thước mà không cần chờ tương tác người dùng.
+3. **Candidate 3: Touch Target $44\times 44\text{px}$ Hardening (WCAG AAA)**: Nâng cấp kích thước vùng chạm của mobile toggle từ $40\times 40\text{px}$ (`w-10 h-10`) lên $44\times 44\text{px}$ (`w-11 h-11`) nhằm đạt chuẩn WCAG Target Size (Enhanced).

@@ -8,6 +8,24 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
+## Mind Map v2.0 Advanced Feature Suite & Track E Minimap Closure (2026-10-08)
+
+**Status**: ✅ Complete & Verified Baseline (Track E Formally Closed)
+**Tests**: 12/12 Mind Map suites PASS (145 tests, 100%)
+**Typecheck**: 0 errors
+**Database & Schema**: Zero schema migration, zero backend API mutation (Pure derived read-model & UI overlay)
+
+### Features Delivered & Verified
+
+1. ✅ **Track A (Semantic Filter Dropdown)**: Lọc quan hệ chéo (`prerequisite`, `related`, `advanced`, `contradicts`) per-topic trên canvas toolbar.
+2. ✅ **Track B (Viewport Zoom & Pan)**: Bộ điều khiển Zoom In/Out [0.5x, 2.0x], Drag Pan mượt mà và Fit-to-Viewport tự động.
+3. ✅ **Track C (Canvas Export SVG/PNG)**: Xuất bản vector SVG độc lập kèm CSS inline và rasterize PNG blob chất lượng cao.
+4. ✅ **Track D (Multi-Parent DAG Cross Edges & Export Parity)**: Phân loại quan hệ đa phụ huynh (`isMultiParent`), styling Indigo riêng biệt và bảo toàn 100% SVG/PNG export parity (Phase D4).
+5. ✅ **Track E (Minimap Overview Radar & Mobile Toggle)**: Micro-radar vector (`bottom-4 left-4`), drag viewport indicator (Phase E1d), responsive mobile toggle button & panel nổi (Phase E2a).
+6. ✅ **Documentation-Only Closure (Phase E3/E4)**: Đối chiếu và đồng bộ trọn vẹn đặc tả kỹ thuật, Mini-ADR và test contract; chính thức đóng Track E.
+
+---
+
 ## Phase 1 & Phase 2A — Workflow-First Shell & Embedded Research Workspace (2026-09-27)
 
 **Status**: ✅ Completed & Verified on Test Suite & Runtime
