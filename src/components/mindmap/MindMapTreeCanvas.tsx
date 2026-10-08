@@ -6,6 +6,7 @@ import {
   MindMapCycleAnnotation,
 } from "../../lib/mindmapProjection";
 import { MindMapCrossLinksLayer } from "./MindMapCrossLinksLayer";
+import { MindMapMinimap } from "./MindMapMinimap";
 import {
   BookOpen,
   FileText,
@@ -64,7 +65,11 @@ export function MindMapTreeCanvas({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement | null;
-    if (target?.closest?.('[data-node-id], button, input, [data-testid="mindmap-zoom-controls"]')) {
+    if (
+      target?.closest?.(
+        '[data-node-id], button, input, [data-testid="mindmap-zoom-controls"], [data-testid="mindmap-minimap"]'
+      )
+    ) {
       return;
     }
     isDraggingRef.current = true;
@@ -510,6 +515,18 @@ export function MindMapTreeCanvas({
         )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
       </div>
+
+      {/* Floating Minimap Overview Radar */}
+      <MindMapMinimap
+        tree={tree}
+        layoutMode={layoutMode}
+        collapsedNodeIds={collapsedNodeIds}
+        zoom={zoom}
+        pan={pan}
+        backdropRef={backdropRef}
+        containerRef={containerRef}
+        onPanChange={setPan}
+      />
 
       {/* Floating Zoom Controls Widget */}
       <div
