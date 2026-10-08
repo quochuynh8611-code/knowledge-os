@@ -17,6 +17,7 @@ interface ComputedPath {
   label?: string;
   midX: number;
   midY: number;
+  isMultiParent: boolean;
 }
 
 export function MindMapCrossLinksLayer({
@@ -88,6 +89,7 @@ export function MindMapCrossLinksLayer({
         label: edge.label,
         midX,
         midY,
+        isMultiParent: edge.isMultiParent === true,
       });
     }
 
@@ -126,6 +128,21 @@ export function MindMapCrossLinksLayer({
             className="text-amber-500/80 dark:text-amber-400/80"
           />
         </marker>
+        <marker
+          id="multiparent-arrow"
+          viewBox="0 0 10 10"
+          refX="6"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path
+            d="M 0 1 L 8 5 L 0 9 z"
+            fill="currentColor"
+            className="text-indigo-500/80 dark:text-indigo-400/80"
+          />
+        </marker>
       </defs>
       {paths.map((p) => {
         const isConnected =
@@ -133,10 +150,23 @@ export function MindMapCrossLinksLayer({
           (p.sourceNodeId === hoveredNodeId || p.targetNodeId === hoveredNodeId);
         const isDimmed = Boolean(hoveredNodeId) && !isConnected;
 
+        const colorClasses = p.isMultiParent
+          ? isConnected
+            ? "text-indigo-600 dark:text-indigo-300 opacity-100"
+            : isDimmed
+              ? "text-indigo-500/30 dark:text-indigo-400/30 opacity-20"
+              : "text-indigo-500/70 dark:text-indigo-400/70 opacity-70"
+          : isConnected
+            ? "text-amber-600 dark:text-amber-300 opacity-100"
+            : isDimmed
+              ? "text-amber-500/30 dark:text-amber-400/30 opacity-20"
+              : "text-amber-500/70 dark:text-amber-400/70 opacity-70";
+
         return (
           <g key={p.id}>
             <path
               data-edge-id={p.id}
+              data-multi-parent={p.isMultiParent ? "true" : "false"}
               data-highlighted={isConnected ? "true" : undefined}
               data-dimmed={isDimmed ? "true" : undefined}
               d={p.d}
@@ -152,14 +182,12 @@ export function MindMapCrossLinksLayer({
                     : 1.5
               }
               strokeDasharray={isConnected ? "6 3" : "4 4"}
-              markerEnd="url(#crosslink-arrow)"
-              className={`transition-all duration-150 pointer-events-none ${
-                isConnected
-                  ? "text-amber-600 dark:text-amber-300 opacity-100"
-                  : isDimmed
-                    ? "text-amber-500/30 dark:text-amber-400/30 opacity-20"
-                    : "text-amber-500/70 dark:text-amber-400/70 opacity-70"
-              }`}
+              markerEnd={
+                p.isMultiParent
+                  ? "url(#multiparent-arrow)"
+                  : "url(#crosslink-arrow)"
+              }
+              className={`transition-all duration-150 pointer-events-none ${colorClasses}`}
             />
             {isConnected && p.label && (
               <g
@@ -173,12 +201,20 @@ export function MindMapCrossLinksLayer({
                   width={(p.label.length * 5 + 6) * 2}
                   height={18}
                   rx={9}
-                  className="fill-amber-50/95 dark:fill-amber-950/95 stroke-amber-400 dark:stroke-amber-600 stroke-1"
+                  className={
+                    p.isMultiParent
+                      ? "fill-indigo-50/95 dark:fill-indigo-950/95 stroke-indigo-400 dark:stroke-indigo-600 stroke-1"
+                      : "fill-amber-50/95 dark:fill-amber-950/95 stroke-amber-400 dark:stroke-amber-600 stroke-1"
+                  }
                 />
                 <text
                   textAnchor="middle"
                   dominantBaseline="central"
-                  className="fill-amber-900 dark:fill-amber-200 text-[10px] font-semibold"
+                  className={
+                    p.isMultiParent
+                      ? "fill-indigo-900 dark:fill-indigo-200 text-[10px] font-semibold"
+                      : "fill-amber-900 dark:fill-amber-200 text-[10px] font-semibold"
+                  }
                 >
                   {p.label}
                 </text>

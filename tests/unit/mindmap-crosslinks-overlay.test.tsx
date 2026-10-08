@@ -1,6 +1,7 @@
 import React from "react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { render, cleanup } from "@testing-library/react";
 import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
 import {
   MindMapTreeNode,
@@ -9,6 +10,10 @@ import {
 } from "../../src/lib/mindmapProjection";
 
 describe("Mind Map Track B1b: Minimal SVG Overlay & Cycle Badges", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   const mockTree: MindMapTreeNode = {
     id: "topic-a",
     title: "Tứ Diệu Đế",
@@ -144,5 +149,118 @@ describe("Mind Map Track B1b: Minimal SVG Overlay & Cycle Badges", () => {
     );
 
     expect(html).not.toContain('data-testid="mindmap-crosslinks-layer"');
+  });
+
+  it("Scenario 6: SVG defs declare both marker crosslink-arrow and multiparent-arrow", () => {
+    const html = renderToStaticMarkup(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={mockCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    expect(html).toContain('id="crosslink-arrow"');
+    expect(html).toContain('id="multiparent-arrow"');
+  });
+
+  it("Scenario 7: Multi-parent edge (isMultiParent: true) renders data-multi-parent='true', multiparent marker, and indigo styling", () => {
+    const multiParentCrossEdges: MindMapCrossEdge[] = [
+      {
+        id: "edge-multi-parent",
+        sourceNodeId: "topic-b",
+        sourceTitle: "Bát Chánh Đạo",
+        targetNodeId: "topic-c",
+        targetTitle: "Duyên Khởi",
+        type: "prerequisite",
+        strength: 5,
+        label: "Tiên quyết",
+        isCycle: false,
+        isMultiParent: true,
+      },
+    ];
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={multiParentCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const edgeEl = document.querySelector('[data-edge-id="edge-multi-parent"]');
+    expect(edgeEl).not.toBeNull();
+    expect(edgeEl?.getAttribute("data-multi-parent")).toBe("true");
+    expect(edgeEl?.getAttribute("marker-end")).toBe("url(#multiparent-arrow)");
+    expect(edgeEl?.getAttribute("class")).toContain("indigo");
+  });
+
+  it("Scenario 8: Standard cross-link (isMultiParent: false) renders data-multi-parent='false', crosslink marker, and amber styling", () => {
+    const standardCrossEdges: MindMapCrossEdge[] = [
+      {
+        id: "edge-standard",
+        sourceNodeId: "topic-b",
+        sourceTitle: "Bát Chánh Đạo",
+        targetNodeId: "topic-c",
+        targetTitle: "Duyên Khởi",
+        type: "related",
+        strength: 4,
+        label: "Liên quan",
+        isCycle: false,
+        isMultiParent: false,
+      },
+    ];
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={standardCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const edgeEl = document.querySelector('[data-edge-id="edge-standard"]');
+    expect(edgeEl).not.toBeNull();
+    expect(edgeEl?.getAttribute("data-multi-parent")).toBe("false");
+    expect(edgeEl?.getAttribute("marker-end")).toBe("url(#crosslink-arrow)");
+    expect(edgeEl?.getAttribute("class")).toContain("amber");
+  });
+
+  it("Scenario 9: Cross-edge without isMultiParent specified defaults safely to data-multi-parent='false'", () => {
+    const legacyCrossEdges: MindMapCrossEdge[] = [
+      {
+        id: "edge-legacy",
+        sourceNodeId: "topic-b",
+        sourceTitle: "Bát Chánh Đạo",
+        targetNodeId: "topic-c",
+        targetTitle: "Duyên Khởi",
+        type: "related",
+        strength: 3,
+        label: "Liên quan",
+        isCycle: false,
+      },
+    ];
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={legacyCrossEdges}
+        showCrossLinks={true}
+      />
+    );
+
+    const edgeEl = document.querySelector('[data-edge-id="edge-legacy"]');
+    expect(edgeEl).not.toBeNull();
+    expect(edgeEl?.getAttribute("data-multi-parent")).toBe("false");
+    expect(edgeEl?.getAttribute("marker-end")).toBe("url(#crosslink-arrow)");
+    expect(edgeEl?.getAttribute("class")).toContain("amber");
   });
 });
