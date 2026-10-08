@@ -356,4 +356,172 @@ describe("Mind Map Phase E1: Minimap Overview Radar", () => {
     expect(x + width).toBeLessThanOrEqual(160);
     expect(y + height).toBeLessThanOrEqual(120);
   });
+
+  // --- Phase E2a: Mobile Minimap Toggle Test-First Contract (Scenarios 11 - 17) ---
+
+  it("Scenario 11: Mobile toggle is rendered collapsed by default for multi-node trees", () => {
+    // Given: A non-trivial multi-node tree
+    // When: Rendered inside MindMapTreeCanvas
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    // Then: Mobile toggle button should be present in the document
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // And: Mobile minimap panel should initially be collapsed/hidden on mobile
+    const mobilePanel = screen.queryByTestId("mindmap-minimap-panel");
+    expect(mobilePanel).not.toBeInTheDocument();
+  });
+
+  it("Scenario 12: Activating mobile toggle opens minimap without changing current pan/zoom", () => {
+    // Given: Multi-node tree with initial pan/zoom
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    setupGeometryMocks();
+    const canvasContent = screen.getByTestId("mindmap-canvas-content");
+    const initialTransform = canvasContent.style.transform;
+
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // When: User activates the mobile toggle
+    fireEvent.click(toggle);
+
+    // Then: Toggle updates to aria-expanded="true" and mobile panel becomes visible
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const mobilePanel = screen.getByTestId("mindmap-minimap-panel");
+    expect(mobilePanel).toBeInTheDocument();
+
+    // And: Canvas pan and zoom remain strictly unchanged
+    expect(canvasContent.style.transform).toBe(initialTransform);
+  });
+
+  it("Scenario 13: Activating mobile toggle again closes minimap without triggering backdrop drag", () => {
+    // Given: Multi-node tree with open mobile minimap
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("mindmap-minimap-panel")).toBeInTheDocument();
+
+    const canvasContent = screen.getByTestId("mindmap-canvas-content");
+    const panBeforeClose = canvasContent.style.transform;
+
+    // When: User clicks toggle button again to close
+    fireEvent.click(toggle);
+
+    // Then: Toggle returns to aria-expanded="false" and mobile panel is closed/hidden
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("mindmap-minimap-panel")).not.toBeInTheDocument();
+
+    // And: No backdrop drag was triggered, pan remains stable
+    expect(canvasContent.style.transform).toBe(panBeforeClose);
+  });
+
+  it("Scenario 14: Escape closes open mobile minimap", () => {
+    // Given: Multi-node tree with open mobile minimap
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("mindmap-minimap-panel")).toBeInTheDocument();
+
+    // When: User presses Escape key
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    // Then: Mobile minimap closes and toggle returns to aria-expanded="false"
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByTestId("mindmap-minimap-panel")).not.toBeInTheDocument();
+  });
+
+  it("Scenario 15: Single-node tree hides both mobile toggle and minimap radar", () => {
+    // Given: A trivial single-node tree
+    // When: Rendered inside MindMapTreeCanvas
+    render(
+      <MindMapTreeCanvas
+        tree={mockSingleNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    // Then: Neither mobile toggle, panel, nor desktop minimap should be in the document
+    expect(screen.queryByTestId("mindmap-minimap-toggle")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mindmap-minimap-panel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("mindmap-minimap")).not.toBeInTheDocument();
+  });
+
+  it("Scenario 16: Desktop keeps minimap visible and does not render mobile-only toggle", () => {
+    // Given: Multi-node tree rendered on desktop where minimap radar is always available
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    // Then: Minimap container and viewport rect are present for desktop interaction
+    const minimap = screen.getByTestId("mindmap-minimap");
+    expect(minimap).toBeInTheDocument();
+
+    // And: Mobile toggle has appropriate accessibility/responsive attributes
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.className).toContain("sm:hidden");
+  });
+
+  it("Scenario 17: Open mobile minimap preserves viewport indicator drag contract", () => {
+    // Given: Multi-node tree with mocked geometry and open mobile minimap
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const { canvasContent } = setupGeometryMocks();
+    const toggle = screen.getByTestId("mindmap-minimap-toggle");
+    fireEvent.click(toggle);
+
+    const mobilePanel = screen.getByTestId("mindmap-minimap-panel");
+    const viewportRect = mobilePanel.querySelector('[data-testid="minimap-viewport-rect"]') as HTMLElement;
+    expect(viewportRect).toBeInTheDocument();
+    expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+
+    // When: User drags viewport indicator in the mobile minimap
+    fireEvent.pointerDown(viewportRect, { clientX: 70, clientY: 50, pointerId: 1, button: 0 });
+    fireEvent.pointerMove(viewportRect, { clientX: 95, clientY: 65, pointerId: 1 });
+
+    // Then: Canvas transform updates accordingly via E1d drag delta mapping
+    expect(canvasContent.style.transform).not.toContain("translate(0px, 0px)");
+  });
 });

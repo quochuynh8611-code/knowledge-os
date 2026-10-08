@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
+import { Map } from "lucide-react";
 import type {
   MindMapTreeNode,
   MindMapLayoutMode,
@@ -32,6 +33,7 @@ export function MindMapMinimap({
   containerRef,
   onPanChange,
 }: MindMapMinimapProps) {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<{
     clientX: number;
@@ -44,6 +46,21 @@ export function MindMapMinimap({
     panX: 0,
     panY: 0,
   });
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileOpen]);
 
   // Only render for non-trivial tree with children
   const isNonTrivial = Boolean(tree.children && tree.children.length > 0);
@@ -207,61 +224,101 @@ export function MindMapMinimap({
     e.stopPropagation();
   };
 
-  return (
-    <div
-      role="region"
-      aria-label="Sơ đồ tổng quan thu nhỏ"
-      data-testid="mindmap-minimap"
-      onPointerDown={handlePointerDownContainer}
-      onClick={(e) => e.stopPropagation()}
-      className="hidden sm:block absolute bottom-4 left-4 z-20 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto select-none"
+  const renderRadarSvg = () => (
+    <svg
+      role="img"
+      aria-label="Khung nhìn sơ đồ radar"
+      data-testid="minimap-radar-svg"
+      width={MINIMAP_WIDTH}
+      height={MINIMAP_HEIGHT}
+      onClick={handleClickRadar}
+      className="w-[160px] h-[120px] bg-stone-100/60 dark:bg-stone-950/60 rounded-lg overflow-hidden cursor-crosshair"
     >
-      <svg
-        role="img"
-        aria-label="Khung nhìn sơ đồ radar"
-        data-testid="minimap-radar-svg"
-        width={MINIMAP_WIDTH}
-        height={MINIMAP_HEIGHT}
-        onClick={handleClickRadar}
-        className="w-[160px] h-[120px] bg-stone-100/60 dark:bg-stone-950/60 rounded-lg overflow-hidden cursor-crosshair"
-      >
-        {/* Subtle center crosshair lines */}
-        <line
-          x1={MINIMAP_WIDTH / 2}
-          y1={0}
-          x2={MINIMAP_WIDTH / 2}
-          y2={MINIMAP_HEIGHT}
-          stroke="currentColor"
-          strokeDasharray="2 2"
-          className="text-stone-300/50 dark:text-stone-700/50"
-        />
-        <line
-          x1={0}
-          y1={MINIMAP_HEIGHT / 2}
-          x2={MINIMAP_WIDTH}
-          y2={MINIMAP_HEIGHT / 2}
-          stroke="currentColor"
-          strokeDasharray="2 2"
-          className="text-stone-300/50 dark:text-stone-700/50"
-        />
+      {/* Subtle center crosshair lines */}
+      <line
+        x1={MINIMAP_WIDTH / 2}
+        y1={0}
+        x2={MINIMAP_WIDTH / 2}
+        y2={MINIMAP_HEIGHT}
+        stroke="currentColor"
+        strokeDasharray="2 2"
+        className="text-stone-300/50 dark:text-stone-700/50"
+      />
+      <line
+        x1={0}
+        y1={MINIMAP_HEIGHT / 2}
+        x2={MINIMAP_WIDTH}
+        y2={MINIMAP_HEIGHT / 2}
+        stroke="currentColor"
+        strokeDasharray="2 2"
+        className="text-stone-300/50 dark:text-stone-700/50"
+      />
 
-        {/* Viewport Indicator Rectangle */}
-        <rect
-          data-testid="minimap-viewport-rect"
-          x={rectX}
-          y={rectY}
-          width={rectWidth}
-          height={rectHeight}
-          rx={4}
-          onPointerDown={handleIndicatorPointerDown}
-          onPointerMove={handleIndicatorPointerMove}
-          onPointerUp={handleIndicatorPointerUp}
-          onPointerCancel={handleIndicatorPointerUp}
-          onLostPointerCapture={handleIndicatorPointerUp}
-          onClick={handleIndicatorClick}
-          className="fill-amber-500/15 stroke-amber-500/80 dark:stroke-amber-400/80 stroke-1.5 transition-all duration-75 cursor-grab active:cursor-grabbing pointer-events-auto"
-        />
-      </svg>
-    </div>
+      {/* Viewport Indicator Rectangle */}
+      <rect
+        data-testid="minimap-viewport-rect"
+        x={rectX}
+        y={rectY}
+        width={rectWidth}
+        height={rectHeight}
+        rx={4}
+        onPointerDown={handleIndicatorPointerDown}
+        onPointerMove={handleIndicatorPointerMove}
+        onPointerUp={handleIndicatorPointerUp}
+        onPointerCancel={handleIndicatorPointerUp}
+        onLostPointerCapture={handleIndicatorPointerUp}
+        onClick={handleIndicatorClick}
+        className="fill-amber-500/15 stroke-amber-500/80 dark:stroke-amber-400/80 stroke-1.5 transition-all duration-75 cursor-grab active:cursor-grabbing pointer-events-auto"
+      />
+    </svg>
+  );
+
+  return (
+    <>
+      {/* Desktop Minimap (Always visible on sm breakpoint and up) */}
+      <div
+        role="region"
+        aria-label="Sơ đồ tổng quan thu nhỏ"
+        data-testid="mindmap-minimap"
+        onPointerDown={handlePointerDownContainer}
+        onClick={(e) => e.stopPropagation()}
+        className="hidden sm:block absolute bottom-4 left-4 z-20 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto select-none"
+      >
+        {renderRadarSvg()}
+      </div>
+
+      {/* Mobile Minimap Toggle Button (Visible only below sm) */}
+      <button
+        type="button"
+        data-testid="mindmap-minimap-toggle"
+        aria-expanded={isMobileOpen}
+        aria-controls="mindmap-minimap-panel"
+        aria-label={isMobileOpen ? "Thu gọn sơ đồ thu nhỏ" : "Mở sơ đồ thu nhỏ"}
+        title={isMobileOpen ? "Thu gọn sơ đồ thu nhỏ" : "Mở sơ đồ thu nhỏ"}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsMobileOpen((prev) => !prev);
+        }}
+        className="sm:hidden absolute bottom-4 left-4 z-20 flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-sm pointer-events-auto text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 cursor-pointer"
+      >
+        <Map className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Minimap Panel (Conditionally rendered when open) */}
+      {isMobileOpen && (
+        <div
+          id="mindmap-minimap-panel"
+          data-testid="mindmap-minimap-panel"
+          role="region"
+          aria-label="Sơ đồ tổng quan thu nhỏ di động"
+          onPointerDown={handlePointerDownContainer}
+          onClick={(e) => e.stopPropagation()}
+          className="sm:hidden absolute bottom-16 left-4 z-20 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-xl p-2 shadow-md pointer-events-auto select-none"
+        >
+          {renderRadarSvg()}
+        </div>
+      )}
+    </>
   );
 }
