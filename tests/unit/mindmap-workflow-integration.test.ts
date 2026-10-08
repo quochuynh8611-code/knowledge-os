@@ -1,8 +1,9 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, renderHook, act } from "@testing-library/react";
 import { parseLocationHash, buildLocationHash } from "../../src/lib/urlRouting";
 import {
+  useCommandPalette,
   CATEGORY_ORDER,
   type CommandPaletteItem,
   type UseCommandPaletteOptions,
@@ -256,63 +257,152 @@ describe("Mind Map Track C: Workflow Integration Test Suite", () => {
   });
 
   describe("Scenario 3: Command Palette Navigation & Quick Action Integration", () => {
-    it("Given Command Palette items definition, Then 'nav-mindmap' is properly configured under 'Điều hướng'", () => {
+    it("useCommandPalette provides 'nav-mindmap' under 'Điều hướng' and executes onNavigateTab('mindmap')", () => {
       const onNavigateTab = vi.fn();
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          onNavigateTab,
+        })
+      );
 
-      const baseItems: CommandPaletteItem[] = [
+      const mindmapNav = result.current.filteredItems.find(
+        (it) => it.id === "nav-mindmap"
+      );
+      expect(mindmapNav).toBeDefined();
+      expect(mindmapNav?.category).toBe("Điều hướng");
+      expect(mindmapNav?.title).toBe("Sơ đồ tư duy (Mind Map)");
+      expect(mindmapNav?.description).toBe(
+        "Trực quan hóa cấu trúc phân cấp & cây tri thức đa tầng"
+      );
+
+      // Execute navigation action
+      mindmapNav?.action();
+      expect(onNavigateTab).toHaveBeenCalledTimes(1);
+      expect(onNavigateTab).toHaveBeenCalledWith("mindmap");
+    });
+
+    it("useCommandPalette ranks and returns 'nav-mindmap' for search queries ('mindmap', 'so do tu duy', 'cay tri thuc', 'truc quan hoa')", () => {
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          onNavigateTab: vi.fn(),
+        })
+      );
+
+      const searchQueries = [
+        "mindmap",
+        "so do tu duy",
+        "cay tri thuc",
+        "truc quan hoa",
+      ];
+
+      for (const query of searchQueries) {
+        act(() => {
+          result.current.setQuery(query);
+        });
+
+        const matched = result.current.filteredItems.find(
+          (it) => it.id === "nav-mindmap"
+        );
+        expect(matched, `Expected to find 'nav-mindmap' for query: "${query}"`).toBeDefined();
+        expect(matched?.id).toBe("nav-mindmap");
+      }
+    });
+
+    it("Contextual custom item 'act-open-mindmap' when a topic is selected displays topic title and routes to mindmap", () => {
+      const onNavigateTab = vi.fn();
+      const selectedTopicId = "topic-phat-hoc-123";
+      const topics = [{ id: "topic-phat-hoc-123", title: "Bát Chánh Đạo" }];
+
+      // Construct customPaletteItems strictly conforming to App.tsx contract
+      const customPaletteItems: CommandPaletteItem[] = [
         {
-          id: "nav-mindmap",
-          title: "Sơ đồ tư duy (Mind Map)",
-          description: "Trực quan hóa cấu trúc phân cấp & cây tri thức đa tầng",
-          category: "Điều hướng",
+          id: "act-open-mindmap",
+          title: selectedTopicId
+            ? `Mở Sơ Đồ Tư Duy: ${topics.find((t) => t.id === selectedTopicId)?.title || "Chủ đề hiện tại"}`
+            : "Mở Sơ Đồ Tư Duy (Mind Map)",
+          description: selectedTopicId
+            ? "Trực quan hóa cấu trúc tri thức cho chủ đề đang chọn"
+            : "Khám phá sơ đồ tư duy phân cấp và xuất Markdown",
+          category: "Hành động nhanh",
           keywords: [
             "mindmap",
             "so do tu duy",
             "mind map",
-            "cay tri thuc",
-            "cay phan cap",
-            "truc quan hoa",
+            "so do",
+            "xuat markdown",
           ],
           action: () => onNavigateTab("mindmap"),
         },
       ];
 
-      const mindmapNav = baseItems.find((it) => it.id === "nav-mindmap");
-      expect(mindmapNav).toBeDefined();
-      expect(mindmapNav?.category).toBe("Điều hướng");
-      expect(mindmapNav?.title).toContain("Sơ đồ tư duy");
-
-      // Verify keywords match queries
-      const query = normalizeScholarText("mindmap");
-      const matched = mindmapNav?.keywords?.some((k) =>
-        normalizeScholarText(k).includes(query)
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: customPaletteItems,
+          onNavigateTab,
+        })
       );
-      expect(matched).toBe(true);
 
-      // Verify execute
-      mindmapNav?.action();
+      const quickAction = result.current.filteredItems.find(
+        (it) => it.id === "act-open-mindmap"
+      );
+      expect(quickAction).toBeDefined();
+      expect(quickAction?.category).toBe("Hành động nhanh");
+      expect(quickAction?.title).toBe("Mở Sơ Đồ Tư Duy: Bát Chánh Đạo");
+      expect(quickAction?.description).toBe(
+        "Trực quan hóa cấu trúc tri thức cho chủ đề đang chọn"
+      );
+
+      quickAction?.action();
+      expect(onNavigateTab).toHaveBeenCalledTimes(1);
       expect(onNavigateTab).toHaveBeenCalledWith("mindmap");
     });
 
-    it("Given custom contextual action for active topic, Then executes quick action", () => {
-      const customAction = vi.fn();
-      const customItems: CommandPaletteItem[] = [
+    it("Contextual custom item 'act-open-mindmap' when no topic is selected falls back to safe generic title", () => {
+      const onNavigateTab = vi.fn();
+      const selectedTopicId = null;
+      const topics = [{ id: "topic-phat-hoc-123", title: "Bát Chánh Đạo" }];
+
+      const customPaletteItems: CommandPaletteItem[] = [
         {
           id: "act-open-mindmap",
-          title: "Mở Sơ Đồ Tư Duy: Bát Chánh Đạo",
-          description: "Trực quan hóa cấu trúc tri thức cho chủ đề đang chọn",
+          title: selectedTopicId
+            ? `Mở Sơ Đồ Tư Duy: ${topics.find((t: any) => t.id === selectedTopicId)?.title || "Chủ đề hiện tại"}`
+            : "Mở Sơ Đồ Tư Duy (Mind Map)",
+          description: selectedTopicId
+            ? "Trực quan hóa cấu trúc tri thức cho chủ đề đang chọn"
+            : "Khám phá sơ đồ tư duy phân cấp và xuất Markdown",
           category: "Hành động nhanh",
-          action: customAction,
-          keywords: ["mindmap", "so do tu duy", "bat chanh dao"],
+          keywords: [
+            "mindmap",
+            "so do tu duy",
+            "mind map",
+            "so do",
+            "xuat markdown",
+          ],
+          action: () => onNavigateTab("mindmap"),
         },
       ];
 
-      const quickAction = customItems.find((it) => it.id === "act-open-mindmap");
+      const { result } = renderHook(() =>
+        useCommandPalette({
+          customItems: customPaletteItems,
+          onNavigateTab,
+        })
+      );
+
+      const quickAction = result.current.filteredItems.find(
+        (it) => it.id === "act-open-mindmap"
+      );
       expect(quickAction).toBeDefined();
-      expect(quickAction?.title).toBe("Mở Sơ Đồ Tư Duy: Bát Chánh Đạo");
+      expect(quickAction?.category).toBe("Hành động nhanh");
+      expect(quickAction?.title).toBe("Mở Sơ Đồ Tư Duy (Mind Map)");
+      expect(quickAction?.description).toBe(
+        "Khám phá sơ đồ tư duy phân cấp và xuất Markdown"
+      );
 
       quickAction?.action();
-      expect(customAction).toHaveBeenCalledTimes(1);
+      expect(onNavigateTab).toHaveBeenCalledTimes(1);
+      expect(onNavigateTab).toHaveBeenCalledWith("mindmap");
     });
   });
 
