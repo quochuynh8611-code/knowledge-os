@@ -265,8 +265,9 @@ Chu kỳ v2.0 mở rộng Mind Map từ mô hình Spanning Tree cơ bản thành
   3. **Phase E2a (Accessible Mobile Toggle)**: Nút bật/tắt radar trên di động (`sm:hidden`), phím `Escape` đóng panel nổi `mindmap-minimap-panel`.
   4. **Phase E3 & E4 (Documentation Reconciliation & Closure)**: Hoàn tất đối chiếu đặc tả và đóng mốc baseline ban đầu của Track E.
   5. **Phase E5 (Touch Target Hardening)**: Nâng cấp vùng chạm nút toggle mobile lên tối thiểu $44\times 44\text{px}$ (`w-11 h-11 min-w-[44px] min-h-[44px]`), đáp ứng mục tiêu touch target tối thiểu 44×44px theo accessibility baseline của dự án.
+  6. **Phase E6 (Dynamic ResizeObserver)**: Tích hợp native `ResizeObserver` trên backdrop và container để cập nhật geometry phản ứng khi container thay đổi kích thước kèm equality guard bảo đảm tính ổn định hình học đầu ra.
 - **Đặc tả chi tiết**: [mindmap-track-e-minimap.md](mindmap-track-e-minimap.md).
-- **Verification**: Bao phủ bởi `tests/unit/mindmap-minimap.test.tsx` (18 tests).
+- **Verification**: Bao phủ bởi `tests/unit/mindmap-minimap.test.tsx` (25 tests).
 
 ---
 
@@ -279,14 +280,14 @@ Tổng kết trạng thái thực tế các phiên bản Mind Map:
 | **v1.0** | **Core Engine** | - In-memory Spanning Tree projection (`mindmapProjection.ts`).<br>- Vector Tree Canvas (`MindMapTreeCanvas.tsx`).<br>- Canonical hash routing `#/mindmap?topicId=...`.<br>- Markdown outline export. | **COMPLETE & VERIFIED** |
 | **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`collapsedNodeIds`) per-topic.<br>- Lưu `layoutMode` per-topic trong `mindmapStorage.ts`.<br>- Nút "Sơ đồ" CTA trong `TopicDetail.tsx`. | **COMPLETE & VERIFIED** |
 | **v1.2** | **Track B + Track C.2 + C.3** | - SVG Cross-Links overlay với Bézier curves (`MindMapCrossLinksLayer.tsx`).<br>- Deterministic sort & hard cap 15 edges.<br>- Interactive cycle badge focus navigation.<br>- Dashboard Home entry card & Command Palette `Cmd+K`. | **COMPLETE & VERIFIED** |
-| **v2.0** | **Tracks A, B, C, D, E** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG (kèm multi-parent parity).<br>- Multi-parent DAG classification, styling, and export parity.<br>- Minimap overview radar (desktop radar, drag indicator, mobile toggle $\ge 44\text{px}$). | **COMPLETE & VERIFIED** |
+| **v2.0** | **Tracks A, B, C, D, E** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG (kèm multi-parent parity).<br>- Multi-parent DAG classification, styling, and export parity.<br>- Minimap overview radar (desktop radar, drag indicator, mobile toggle $\ge 44\text{px}$, dynamic ResizeObserver). | **COMPLETE & VERIFIED** |
 | **v3.0** | **Future Enhancements** | - Full Layered DAG layout engine (Sugiyama).<br>- Real-time collaborative node positioning & editing.<br>- Inline node markdown editing drawer.<br>- Multi-touch gesture optimization for mobile/tablets. | **DEFERRED BACKLOG** |
 
 ---
 
 ## 8. Implementation Checklist Summary
 
-Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12 test suites / 146 unit tests):
+Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12 test suites / 153 unit tests):
 
 - [x] **Core Engine**:
   - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
@@ -302,9 +303,9 @@ Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12
   - [x] `tests/unit/mindmap-svg-export.test.ts` (22/22 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (8/8 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9/9 tests pass).
-  - [x] `tests/unit/mindmap-minimap.test.tsx` (18/18 tests pass).
+  - [x] `tests/unit/mindmap-minimap.test.tsx` (25/25 tests pass).
 - [x] **Quality Gates & Static Analysis**:
-  - [x] Toàn bộ **12 test files / 146 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
+  - [x] Toàn bộ **12 test files / 153 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
   - [x] `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
 
 ---
@@ -320,4 +321,3 @@ Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12
 ### 9.2. Ý Tưởng Ứng Viên Chưa Cam Kết (Uncommitted Candidates)
 > *Lưu ý*: Các mục dưới đây là ứng viên kỹ thuật được ghi nhận, không thuộc baseline Track E và không được cam kết trong kế hoạch hiện hành.
 - **Micro-Node Radar Dots**: Chấm hiển thị thu nhỏ các node con trên radar.
-- **Dynamic ResizeObserver**: Cập nhật reactive kích thước container/backdrop.

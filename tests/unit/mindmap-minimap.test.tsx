@@ -1,13 +1,48 @@
 import React from "react";
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, fireEvent, cleanup, screen } from "@testing-library/react";
+import { render, fireEvent, cleanup, screen, act } from "@testing-library/react";
 import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
 import type { MindMapTreeNode } from "../../src/lib/mindmapProjection";
+
+class MockResizeObserver {
+  callback: ResizeObserverCallback;
+  observedElements: Element[] = [];
+  isDisconnected: boolean = false;
+  triggerCount: number = 0;
+  static instances: MockResizeObserver[] = [];
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    MockResizeObserver.instances.push(this);
+  }
+
+  observe = vi.fn((element: Element) => {
+    if (this.isDisconnected) return;
+    this.observedElements.push(element);
+  });
+
+  unobserve = vi.fn((element: Element) => {
+    this.observedElements = this.observedElements.filter((el) => el !== element);
+  });
+
+  disconnect = vi.fn(() => {
+    this.isDisconnected = true;
+    this.observedElements = [];
+  });
+
+  trigger(entries: Partial<ResizeObserverEntry>[] = []) {
+    if (this.isDisconnected) return;
+    this.triggerCount++;
+    this.callback(entries as ResizeObserverEntry[], this as unknown as ResizeObserver);
+  }
+}
 
 describe("Mind Map Phase E1: Minimap Overview Radar", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    delete (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver;
+    MockResizeObserver.instances = [];
   });
 
   const mockMultiNodeTree: MindMapTreeNode = {
@@ -552,5 +587,298 @@ describe("Mind Map Phase E1: Minimap Overview Radar", () => {
     expect(toggle.className).not.toContain("h-10");
     expect(toggle.className).not.toContain("min-w-[40px]");
     expect(toggle.className).not.toContain("min-h-[40px]");
+  });
+
+  // --- Phase E6: Dynamic ResizeObserver for Minimap Bounds ---
+
+  it("Scenario 19: Component initializes with ResizeObserver observing geometry elements without throwing", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    expect(MockResizeObserver.instances.length).toBeGreaterThan(0);
+    const observer = MockResizeObserver.instances[0];
+    expect(observer.observe).toHaveBeenCalled();
+    expect(observer.isDisconnected).toBe(false);
+    expect(observer.observedElements.length).toBeGreaterThanOrEqual(1);
+
+    const minimap = screen.getByTestId("mindmap-minimap");
+    expect(minimap).toBeInTheDocument();
+  });
+
+  it("Scenario 20: ResizeObserver callback on backdrop dimension change updates viewport indicator with bounded geometry", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+    const viewportRect = screen.getByTestId("minimap-viewport-rect");
+
+    // Capture baseline geometry before resize (800x600 backdrop on 1600x1200 content => scaleRatio 0.1, rect 80x60)
+    const beforeWidth = Number(viewportRect.getAttribute("width"));
+    const beforeHeight = Number(viewportRect.getAttribute("height"));
+    const beforeX = Number(viewportRect.getAttribute("x"));
+    const beforeY = Number(viewportRect.getAttribute("y"));
+
+    expect(beforeWidth).toBe(80);
+    expect(beforeHeight).toBe(60);
+    expect(beforeX).toBe(40);
+    expect(beforeY).toBe(30);
+
+    // Mock enlarged backdrop dimension (1200x900 viewport on 1600x1200 content => scaleRatio 0.1, rect 120x90)
+    vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+      width: 1200,
+      height: 900,
+      top: 0,
+      left: 0,
+      bottom: 900,
+      right: 1200,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    const observer = MockResizeObserver.instances[0];
+    act(() => {
+      observer.trigger();
+    });
+
+    const afterWidth = Number(viewportRect.getAttribute("width"));
+    const afterHeight = Number(viewportRect.getAttribute("height"));
+    const afterX = Number(viewportRect.getAttribute("x"));
+    const afterY = Number(viewportRect.getAttribute("y"));
+
+    // Assert reactive change: dimension must differ from pre-trigger baseline
+    expect(afterWidth).not.toBe(beforeWidth);
+    expect(afterHeight).not.toBe(beforeHeight);
+    expect(afterX).not.toBe(beforeX);
+    expect(afterY).not.toBe(beforeY);
+
+    // Assert mathematically exact derived geometry
+    expect(afterWidth).toBe(120);
+    expect(afterHeight).toBe(90);
+    expect(afterX).toBe(20);
+    expect(afterY).toBe(15);
+    expect(Number.isFinite(afterWidth)).toBe(true);
+    expect(Number.isFinite(afterHeight)).toBe(true);
+  });
+
+  it("Scenario 21: ResizeObserver callback on content container change updates geometry without NaN or Infinity", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const canvasContent = screen.getByTestId("mindmap-canvas-content");
+    const viewportRect = screen.getByTestId("minimap-viewport-rect");
+
+    // Capture baseline geometry before content resize
+    const beforeWidth = Number(viewportRect.getAttribute("width"));
+    const beforeHeight = Number(viewportRect.getAttribute("height"));
+    expect(beforeWidth).toBe(80);
+    expect(beforeHeight).toBe(60);
+
+    // Mock enlarged tree content size (3200x2400 content on 800x600 backdrop => scaleRatio 0.05, rect 40x30)
+    vi.spyOn(canvasContent, "getBoundingClientRect").mockReturnValue({
+      width: 3200,
+      height: 2400,
+      top: 0,
+      left: 0,
+      bottom: 2400,
+      right: 3200,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    const observer = MockResizeObserver.instances[0];
+    act(() => {
+      observer.trigger();
+    });
+
+    const afterWidth = Number(viewportRect.getAttribute("width"));
+    const afterHeight = Number(viewportRect.getAttribute("height"));
+    const afterX = Number(viewportRect.getAttribute("x"));
+    const afterY = Number(viewportRect.getAttribute("y"));
+
+    // Assert reactive change
+    expect(afterWidth).toBe(40);
+    expect(afterHeight).toBe(30);
+    expect(afterX).toBe(60);
+    expect(afterY).toBe(45);
+
+    // Assert valid finite numbers
+    expect(viewportRect.getAttribute("width")).not.toBe("NaN");
+    expect(viewportRect.getAttribute("width")).not.toBe("Infinity");
+    expect(viewportRect.getAttribute("height")).not.toBe("NaN");
+    expect(viewportRect.getAttribute("height")).not.toBe("Infinity");
+    expect(viewportRect.getAttribute("x")).not.toBe("NaN");
+    expect(viewportRect.getAttribute("x")).not.toBe("Infinity");
+    expect(viewportRect.getAttribute("y")).not.toBe("NaN");
+    expect(viewportRect.getAttribute("y")).not.toBe("Infinity");
+  });
+
+  it("Scenario 22: ResizeObserver callback reporting zero or invalid dimensions preserves safe fallback", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+    const viewportRect = screen.getByTestId("minimap-viewport-rect");
+
+    // Capture valid baseline before invalid trigger
+    const baselineWidth = Number(viewportRect.getAttribute("width"));
+    const baselineHeight = Number(viewportRect.getAttribute("height"));
+    const baselineX = Number(viewportRect.getAttribute("x"));
+    const baselineY = Number(viewportRect.getAttribute("y"));
+    expect(baselineWidth).toBe(80);
+    expect(baselineHeight).toBe(60);
+
+    // Mock zero / non-finite dimensions
+    vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+      width: 0,
+      height: -100,
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    });
+
+    const observer = MockResizeObserver.instances[0];
+    expect(() => {
+      act(() => {
+        observer.trigger();
+      });
+    }).not.toThrow();
+
+    // Sane geometry must not be corrupted by invalid measurements
+    const currentWidth = Number(viewportRect.getAttribute("width"));
+    const currentHeight = Number(viewportRect.getAttribute("height"));
+    const currentX = Number(viewportRect.getAttribute("x"));
+    const currentY = Number(viewportRect.getAttribute("y"));
+
+    expect(currentWidth).toBe(baselineWidth);
+    expect(currentHeight).toBe(baselineHeight);
+    expect(currentX).toBe(baselineX);
+    expect(currentY).toBe(baselineY);
+    expect(Number.isFinite(currentWidth)).toBe(true);
+    expect(Number.isFinite(currentHeight)).toBe(true);
+  });
+
+  it("Scenario 23: Unmounting component calls disconnect and subsequent callbacks do not throw", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    const { unmount } = render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const observer = MockResizeObserver.instances[0];
+    expect(observer.disconnect).not.toHaveBeenCalled();
+    expect(observer.isDisconnected).toBe(false);
+
+    unmount();
+
+    expect(observer.disconnect).toHaveBeenCalled();
+    expect(observer.isDisconnected).toBe(true);
+    expect(observer.observedElements.length).toBe(0);
+
+    const countBefore = observer.triggerCount;
+
+    // Post-unmount synthetic trigger is suppressed by disconnected observer
+    expect(() => {
+      act(() => {
+        observer.trigger();
+      });
+    }).not.toThrow();
+    expect(observer.triggerCount).toBe(countBefore);
+
+    // Even if callback is invoked directly bypassing observer, component's isMounted guard ensures safety
+    expect(() => {
+      act(() => {
+        observer.callback([], observer as unknown as ResizeObserver);
+      });
+    }).not.toThrow();
+  });
+
+  it("Scenario 24: Repeated callbacks with identical dimensions maintain stable derived geometry output (equality guard)", () => {
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = MockResizeObserver;
+
+    render(
+      <MindMapTreeCanvas
+        tree={mockMultiNodeTree}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+      />
+    );
+
+    const viewportRect = screen.getByTestId("minimap-viewport-rect");
+    const initialWidth = viewportRect.getAttribute("width");
+    const initialHeight = viewportRect.getAttribute("height");
+    const initialX = viewportRect.getAttribute("x");
+    const initialY = viewportRect.getAttribute("y");
+
+    const observer = MockResizeObserver.instances[0];
+
+    // Trigger multiple identical measurement cycles
+    act(() => {
+      observer.trigger();
+      observer.trigger();
+      observer.trigger();
+    });
+
+    // Derived geometry remains strictly unchanged across all trigger cycles
+    expect(viewportRect.getAttribute("width")).toBe(initialWidth);
+    expect(viewportRect.getAttribute("height")).toBe(initialHeight);
+    expect(viewportRect.getAttribute("x")).toBe(initialX);
+    expect(viewportRect.getAttribute("y")).toBe(initialY);
+  });
+
+  it("Scenario 25: Environment without ResizeObserver renders seamlessly with fallback dimensions", () => {
+    delete (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver;
+
+    expect(() => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockMultiNodeTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+    }).not.toThrow();
+
+    const minimap = screen.getByTestId("mindmap-minimap");
+    expect(minimap).toBeInTheDocument();
+    const viewportRect = screen.getByTestId("minimap-viewport-rect");
+    expect(viewportRect).toBeInTheDocument();
   });
 });

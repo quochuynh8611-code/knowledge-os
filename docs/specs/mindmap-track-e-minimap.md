@@ -88,7 +88,17 @@ Mind Map v2.0 đã hỗ trợ phóng to/thu nhỏ (`zoom` từ `0.5x` đến `2.
 
 ### 3.6. Phase E5 — Mobile Minimap Toggle Touch Target Hardening [COMPLETE & VERIFIED]
 - **Mục tiêu**: Nâng cấp kích thước vùng chạm của nút mobile toggle từ $40\times 40\text{px}$ (`w-10 h-10 min-w-[40px] min-h-[40px]`) lên tối thiểu $44\times 44\text{px}$ (`w-11 h-11 min-w-[44px] min-h-[44px]`), enhanced touch-target hardening theo accessibility baseline của dự án mà không làm thay đổi hành vi hay API contract.
-- **Kết quả**: Vượt qua Scenario 18 trong `tests/unit/mindmap-minimap.test.tsx` (18/18 tests passed).
+- **Commit**:
+  - `427e9cb feat(mindmap): harden mobile minimap touch target`
+
+### 3.7. Phase E6 — Dynamic ResizeObserver for Minimap Bounds [COMPLETE & VERIFIED]
+- **Mục tiêu**: Tích hợp native `ResizeObserver` để theo dõi và cập nhật kích thước khung nhìn (`backdropRef`) và nội dung cây (`containerRef`) một cách phản ứng (reactive), loại bỏ nguy cơ lệch kích thước khi container thay đổi diện tích mà không có tương tác người dùng.
+- **Thiết kế**:
+  - Tự động phát hiện môi trường hỗ trợ `ResizeObserver` (an toàn tuyệt đối khi chạy trong môi trường không có observer).
+  - Equality guard so sánh kích thước đo được (`width`, `height`) để bảo đảm tính ổn định hình học đầu ra và ngăn chặn cập nhật state thừa.
+  - Ngắt kết nối (`observer.disconnect()`) và kiểm soát cờ `isMounted` khi unmount để phòng chống rò rỉ bộ nhớ và cảnh báo unmounted state update.
+  - Bảo toàn giá trị mặc định phòng thủ (`DEFAULT_BACKDROP_WIDTH: 800`, `DEFAULT_BACKDROP_HEIGHT: 600`, `DEFAULT_CONTENT_WIDTH: 1600`, `DEFAULT_CONTENT_HEIGHT: 1200`) khi dữ liệu đo không hợp lệ hoặc bằng 0.
+- **Kết quả**: Vượt qua Scenarios 19–25 trong `tests/unit/mindmap-minimap.test.tsx` (25/25 tests passed).
 
 ---
 
@@ -254,6 +264,13 @@ Bao gồm 18 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 16. **Scenario 16**: Desktop keeps minimap visible and does not render mobile-only toggle.
 17. **Scenario 17**: Open mobile minimap preserves viewport indicator drag contract.
 18. **Scenario 18**: Mobile toggle provides minimum 44x44px touch target.
+19. **Scenario 19**: Component initializes with ResizeObserver observing geometry elements without throwing.
+20. **Scenario 20**: ResizeObserver callback on backdrop dimension change updates viewport indicator with bounded geometry.
+21. **Scenario 21**: ResizeObserver callback on content container change updates geometry without NaN or Infinity.
+22. **Scenario 22**: ResizeObserver callback reporting zero or invalid dimensions preserves safe fallback.
+23. **Scenario 23**: Unmounting component calls disconnect and subsequent callbacks do not throw.
+24. **Scenario 24**: Repeated callbacks with identical dimensions maintain stable derived geometry output (equality guard).
+25. **Scenario 25**: Environment without ResizeObserver renders seamlessly with fallback dimensions.
 
 ---
 
@@ -267,13 +284,15 @@ Bao gồm 18 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
    - *Quyết định*: Micro-dots dùng màu `fill-amber-500/80` cho topic và `fill-stone-400/60` cho các nút lá; Viewport Indicator dùng `stroke-amber-600 dark:stroke-amber-400 fill-amber-500/10`.
 4. **Touch Target Mobile Toggle**:
    - *Quyết định*: Tối thiểu $44\times 44\text{px}$ (`w-11 h-11 min-w-[44px] min-h-[44px]`) với `p-2`, đáp ứng mục tiêu touch target tối thiểu 44×44px theo accessibility baseline của dự án, hỗ trợ keyboard accessibility và focus outline rõ ràng.
+5. **Reactive Measurement qua ResizeObserver**:
+   - *Quyết định*: Quan sát cả `backdropRef` và `containerRef` bằng native `ResizeObserver` với cơ chế equality guard kích thước, giải phóng observer khi unmount.
 
 ---
 
 ## 8. Tổng Kết Quality Gates
 
-- **Unit Tests**: `tests/unit/mindmap-minimap.test.tsx` đạt **18/18 passed**.
-- **Full Mind Map Regression**: Toàn bộ **12 test suites / 146 unit tests** đạt **100% passed**.
+- **Unit Tests**: `tests/unit/mindmap-minimap.test.tsx` đạt **25/25 passed**.
+- **Full Mind Map Regression**: Toàn bộ **12 test suites / 153 unit tests** đạt **100% passed**.
 - **Typecheck**: `npm run typecheck` (`tsc --noEmit`) đạt **0 errors**.
 - **Git State**: Clean working tree.
 
@@ -285,4 +304,3 @@ Bao gồm 18 kịch bản kiểm thử tự động đạt tỷ lệ pass 100%:
 > Các hạng mục dưới đây thuần túy là ý tưởng kỹ thuật được ghi nhận lại cho các chu kỳ nâng cấp tương lai. Chúng **KHÔNG** thuộc phạm vi baseline hiện tại của Track E và **KHÔNG** được cam kết triển khai trong phase này.
 
 1. **Candidate 1: Micro-Node Radar Dots**: Duyệt cấu trúc cây phân cấp và render các chấm micro-dots thu nhỏ (`<circle>` / `<rect>`) phản ánh vị trí các node con trực tiếp bên trong SVG radar.
-2. **Candidate 2: Dynamic ResizeObserver for Minimap Bounds**: Tích hợp `ResizeObserver` trên `backdropRef` để tự động cập nhật bounding rect khi viewport thay đổi kích thước mà không cần chờ tương tác người dùng.

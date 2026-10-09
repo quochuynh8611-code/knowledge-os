@@ -34,6 +34,13 @@ export function MindMapMinimap({
   onPanChange,
 }: MindMapMinimapProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [observedDimensions, setObservedDimensions] = useState<{
+    backdropWidth?: number;
+    backdropHeight?: number;
+    contentWidth?: number;
+    contentHeight?: number;
+  }>({});
+
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<{
     clientX: number;
@@ -46,6 +53,8 @@ export function MindMapMinimap({
     panX: 0,
     panY: 0,
   });
+
+  const safeZoom = Math.max(0.1, zoom || 1.0);
 
   useEffect(() => {
     if (!isMobileOpen) return;
@@ -62,34 +71,121 @@ export function MindMapMinimap({
     };
   }, [isMobileOpen]);
 
+  // Dynamic ResizeObserver for reactive geometry measurement
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+
+    const backdropEl = backdropRef.current;
+    const contentEl = containerRef.current;
+    if (!backdropEl && !contentEl) return;
+
+    let isMounted = true;
+
+    const measureElements = () => {
+      if (!isMounted) return;
+
+      let newBackdropW: number | undefined;
+      let newBackdropH: number | undefined;
+      let newContentW: number | undefined;
+      let newContentH: number | undefined;
+
+      if (backdropRef.current) {
+        const rect = backdropRef.current.getBoundingClientRect();
+        if (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          Number.isFinite(rect.width) &&
+          Number.isFinite(rect.height)
+        ) {
+          newBackdropW = rect.width;
+          newBackdropH = rect.height;
+        }
+      }
+
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          Number.isFinite(rect.width) &&
+          Number.isFinite(rect.height)
+        ) {
+          newContentW = rect.width / safeZoom;
+          newContentH = rect.height / safeZoom;
+        }
+      }
+
+      setObservedDimensions((prev) => {
+        const sameBackdropW = prev.backdropWidth === newBackdropW;
+        const sameBackdropH = prev.backdropHeight === newBackdropH;
+        const sameContentW = prev.contentWidth === newContentW;
+        const sameContentH = prev.contentHeight === newContentH;
+
+        if (sameBackdropW && sameBackdropH && sameContentW && sameContentH) {
+          return prev;
+        }
+
+        return {
+          backdropWidth: newBackdropW ?? prev.backdropWidth,
+          backdropHeight: newBackdropH ?? prev.backdropHeight,
+          contentWidth: newContentW ?? prev.contentWidth,
+          contentHeight: newContentH ?? prev.contentHeight,
+        };
+      });
+    };
+
+    const observer = new ResizeObserver(() => {
+      measureElements();
+    });
+
+    if (backdropEl) observer.observe(backdropEl);
+    if (contentEl) observer.observe(contentEl);
+
+    // Initial measurement on mount
+    measureElements();
+
+    return () => {
+      isMounted = false;
+      observer.disconnect();
+    };
+  }, [backdropRef, containerRef, safeZoom]);
+
   // Only render for non-trivial tree with children
   const isNonTrivial = Boolean(tree.children && tree.children.length > 0);
   if (!isNonTrivial) {
     return null;
   }
 
-  const safeZoom = Math.max(0.1, zoom || 1.0);
-
   // Measure backdrop & content geometry with defensive fallbacks
   const backdropEl = backdropRef.current;
   const contentEl = containerRef.current;
 
-  let backdropWidth = DEFAULT_BACKDROP_WIDTH;
-  let backdropHeight = DEFAULT_BACKDROP_HEIGHT;
-  let contentWidth = DEFAULT_CONTENT_WIDTH;
-  let contentHeight = DEFAULT_CONTENT_HEIGHT;
+  let backdropWidth = observedDimensions.backdropWidth ?? DEFAULT_BACKDROP_WIDTH;
+  let backdropHeight = observedDimensions.backdropHeight ?? DEFAULT_BACKDROP_HEIGHT;
+  let contentWidth = observedDimensions.contentWidth ?? DEFAULT_CONTENT_WIDTH;
+  let contentHeight = observedDimensions.contentHeight ?? DEFAULT_CONTENT_HEIGHT;
 
-  if (backdropEl) {
+  if (observedDimensions.backdropWidth === undefined && backdropEl) {
     const rect = backdropEl.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
+    if (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      Number.isFinite(rect.width) &&
+      Number.isFinite(rect.height)
+    ) {
       backdropWidth = rect.width;
       backdropHeight = rect.height;
     }
   }
 
-  if (contentEl) {
+  if (observedDimensions.contentWidth === undefined && contentEl) {
     const rect = contentEl.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
+    if (
+      rect.width > 0 &&
+      rect.height > 0 &&
+      Number.isFinite(rect.width) &&
+      Number.isFinite(rect.height)
+    ) {
       contentWidth = rect.width / safeZoom;
       contentHeight = rect.height / safeZoom;
     }

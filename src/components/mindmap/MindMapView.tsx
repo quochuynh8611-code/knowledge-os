@@ -6,6 +6,7 @@ import {
   getSemanticEdgeLabel,
   MindMapLayoutMode,
   MindMapTreeNode,
+  MindMapTreeProjection,
 } from "../../lib/mindmapProjection";
 import {
   exportMindMapToSvg,
@@ -17,8 +18,22 @@ import {
   loadMindMapViewState,
   saveMindMapViewState,
 } from "../../lib/mindmapStorage";
+import {
+  listMindMapDocuments,
+  getMindMapDocumentSummary,
+  getMindMapVersion,
+  createMindMapDocument,
+  appendMindMapVersion,
+  renameMindMapDocument,
+  archiveMindMapDocument,
+  projectedTreeToDocumentTree,
+  documentTreeToProjectedTree,
+} from "../../lib/mindmapDocumentStorage";
+import { MindMapDocumentSummary } from "../../types/mindmapDocument";
 import { MindMapTreeCanvas } from "./MindMapTreeCanvas";
 import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
+import { MindMapSaveModal } from "./MindMapSaveModal";
+import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
 import {
   Network,
   Copy,
@@ -33,7 +48,24 @@ import {
   FileCode,
   Search,
   X,
+  Save,
+  FolderOpen,
+  ArrowLeft,
+  FileText,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
+import {
+  renameNodeTitle,
+  insertChildNode,
+  deleteNode,
+  moveNodeWithinParent,
+  findNodeById,
+  countTreeNodes,
+  insertBatchChildNodes,
+} from "../../lib/mindmapTreeMutations";
+import { MindMapAiExpansionModal } from "./MindMapAiExpansionModal";
+import { AiExpansionContext, AiCandidateNode } from "../../types/mindmapAi";
 
 export type MindMapEdgeTypeFilter = "all" | LinkType;
 
@@ -73,6 +105,63 @@ export function MindMapView() {
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Persistence State (Phase P1)
+  const [activeMode, setActiveMode] =
+    useState<"live-topic" | "saved-document">("live-topic");
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState<boolean>(false);
+  const [isBrowserModalOpen, setIsBrowserModalOpen] = useState<boolean>(false);
+  const [isVolatileStorage, setIsVolatileStorage] = useState<boolean>(false);
+  const [savedDocsRevision, setSavedDocsRevision] = useState<number>(0);
+
+  // Working Copy State (Phase P2 Interactive Canvas Editing)
+  const [workingDocumentTree, setWorkingDocumentTree] =
+    useState<MindMapTreeNode | null>(null);
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [pendingDeleteNodeId, setPendingDeleteNodeId] = useState<string | null>(
+    null
+  );
+  const [pendingLeaveTarget, setPendingLeaveTarget] = useState<
+    "live-topic" | { type: "open-document"; documentId: string } | null
+  >(null);
+
+  // AI Expansion State (Phase P3)
+  const [aiExpansionTargetNodeId, setAiExpansionTargetNodeId] = useState<
+    string | null
+  >(null);
+
+  const savedDocuments = useMemo(() => {
+    return listMindMapDocuments();
+  }, [savedDocsRevision]);
+
+  const activeDocumentSummary = useMemo(() => {
+    if (!activeDocumentId) return null;
+    return getMindMapDocumentSummary(activeDocumentId);
+  }, [activeDocumentId, savedDocsRevision]);
+
+  const activeDocumentVersion = useMemo(() => {
+    if (!activeDocumentId) return null;
+    return getMindMapVersion(activeDocumentId);
+  }, [activeDocumentId, savedDocsRevision]);
+
+  // Synchronize working tree when active saved document version changes
+  useEffect(() => {
+    if (activeMode === "saved-document" && activeDocumentVersion) {
+      const initial = documentTreeToProjectedTree(
+        activeDocumentVersion.treeData,
+        layoutMode
+      );
+      setWorkingDocumentTree(initial);
+      setIsDirty(false);
+      setEditingNodeId(null);
+    } else {
+      setWorkingDocumentTree(null);
+      setIsDirty(false);
+      setEditingNodeId(null);
+    }
+  }, [activeDocumentId, activeDocumentVersion, activeMode]);
+
   // Active topic ID: prefer user-selected internalTopicId if set, fallback to selectedTopicId or first active topic
   const activeRootTopicId = useMemo(() => {
     if (internalTopicId && topics.some((t) => t.id === internalTopicId)) {
@@ -92,6 +181,7 @@ export function MindMapView() {
 
   // Load persisted view state and reset ephemeral filter when active topic changes
   useEffect(() => {
+    if (activeMode === "saved-document") return;
     setActiveEdgeTypeFilter("all");
     setSearchQuery("");
     if (!activeRootTopicId) {
@@ -104,10 +194,39 @@ export function MindMapView() {
     setLayoutMode(savedState.layoutMode);
     setCollapsedNodeIds(new Set(savedState.collapsedNodeIds));
     setShowCrossLinks(Boolean(savedState.showCrossLinks));
-  }, [activeRootTopicId]);
+  }, [activeRootTopicId, activeMode]);
 
-  // Derive mind map projection
-  const projection = useMemo(() => {
+  // Derive mind map projection (supports both Live Topic and Saved Document working copy)
+  const projection: MindMapTreeProjection | null = useMemo(() => {
+    if (activeMode === "saved-document" && activeDocumentVersion) {
+      const tree =
+        workingDocumentTree ||
+        documentTreeToProjectedTree(activeDocumentVersion.treeData, layoutMode);
+      return {
+        rootNodeId: tree.id,
+        rootTitle: tree.title,
+        layoutMode,
+        maxDepthReached: 3,
+        totalNodesCount: countTreeNodes(tree),
+        hasTruncatedBranches: false,
+        hasCyclesDetected: false,
+        generatedAt: activeDocumentVersion.createdAt || new Date().toISOString(),
+        tree,
+        crossEdges: (activeDocumentVersion.crossLinks || []).map((edge) => ({
+          id: edge.id,
+          sourceNodeId: edge.sourceNodeId,
+          sourceTitle: edge.sourceNodeId,
+          targetNodeId: edge.targetNodeId,
+          targetTitle: edge.targetNodeId,
+          type: edge.edgeType,
+          strength: 3,
+          label: edge.label || getSemanticEdgeLabel(edge.edgeType),
+          isCycle: false,
+        })),
+        cycleAnnotations: [],
+      };
+    }
+
     if (!activeRootTopicId) return null;
     return projectToMindMapTree(
       { topics, notes, resources },
@@ -118,7 +237,16 @@ export function MindMapView() {
         maxNodesLimit: 80,
       }
     );
-  }, [topics, notes, resources, activeRootTopicId, layoutMode]);
+  }, [
+    activeMode,
+    activeDocumentVersion,
+    activeDocumentSummary,
+    topics,
+    notes,
+    resources,
+    activeRootTopicId,
+    layoutMode,
+  ]);
 
   // Compute counts for each LinkType present in projection.crossEdges
   const edgeTypeCounts = useMemo(() => {
@@ -431,13 +559,360 @@ export function MindMapView() {
         } catch {
           // Graceful fallback if DOM or scrollIntoView is unavailable
         }
-      }, 0);
+      }, 50);
     },
     [projection, activeRootTopicId, layoutMode, showCrossLinks, validNodeIds]
   );
 
+  const defaultSaveTitle = useMemo(() => {
+    if (activeMode === "saved-document" && activeDocumentSummary) {
+      return activeDocumentSummary.title;
+    }
+    if (projection?.rootTitle) {
+      return `Sơ đồ tư duy - ${projection.rootTitle}`;
+    }
+    return "Sơ đồ tư duy mới";
+  }, [activeMode, activeDocumentSummary, projection?.rootTitle]);
+
+  // Interactive Canvas Editing Actions (Phase P2)
+  const handleStartRename = useCallback((nodeId: string) => {
+    setEditingNodeId(nodeId);
+  }, []);
+
+  const handleCommitRename = useCallback(
+    (nodeId: string, nextTitle: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = renameNodeTitle(currentTree, nodeId, nextTitle);
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+        setEditingNodeId(null);
+      }
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleCancelRename = useCallback(() => {
+    setEditingNodeId(null);
+  }, []);
+
+  const handleAddChild = useCallback(
+    (parentNodeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = insertChildNode(currentTree, parentNodeId);
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+        const parent = findNodeById(res.tree, parentNodeId);
+        if (parent && parent.children.length > 0) {
+          const newChild = parent.children[parent.children.length - 1];
+          setEditingNodeId(newChild.id);
+        }
+      }
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleRequestDelete = useCallback(
+    (nodeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      if (nodeId === currentTree.id) return; // Protect root node
+      setPendingDeleteNodeId(nodeId);
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleConfirmDelete = useCallback(() => {
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree || !pendingDeleteNodeId) return;
+    const res = deleteNode(currentTree, pendingDeleteNodeId);
+    if (res.ok && res.tree) {
+      setWorkingDocumentTree(res.tree);
+      setIsDirty(true);
+      setPendingDeleteNodeId(null);
+    }
+  }, [workingDocumentTree, projection?.tree, pendingDeleteNodeId]);
+
+  const handleCancelDelete = useCallback(() => {
+    setPendingDeleteNodeId(null);
+  }, []);
+
+  const handleMoveUp = useCallback(
+    (nodeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = moveNodeWithinParent(currentTree, nodeId, "up");
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+      }
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleMoveDown = useCallback(
+    (nodeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = moveNodeWithinParent(currentTree, nodeId, "down");
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+      }
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleDiscardChanges = useCallback(() => {
+    if (activeDocumentVersion) {
+      const initial = documentTreeToProjectedTree(
+        activeDocumentVersion.treeData,
+        layoutMode
+      );
+      setWorkingDocumentTree(initial);
+      setIsDirty(false);
+      setEditingNodeId(null);
+    }
+  }, [activeDocumentVersion, layoutMode]);
+
+  // AI Node Expansion Actions (Phase P3)
+  const handleRequestAiExpand = useCallback((nodeId: string) => {
+    setAiExpansionTargetNodeId(nodeId);
+  }, []);
+
+  const handleInsertAiCandidates = useCallback(
+    (candidates: AiCandidateNode[]) => {
+      if (!aiExpansionTargetNodeId) return;
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const res = insertBatchChildNodes(
+        currentTree,
+        aiExpansionTargetNodeId,
+        candidates.map((c) => ({
+          title: c.title,
+          type: c.nodeType,
+        }))
+      );
+
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+        // Automatically uncollapse target node so newly inserted children are visible
+        setCollapsedNodeIds((prev) => {
+          if (!prev.has(aiExpansionTargetNodeId)) return prev;
+          const next = new Set(prev);
+          next.delete(aiExpansionTargetNodeId);
+          return next;
+        });
+        setAiExpansionTargetNodeId(null);
+      }
+    },
+    [aiExpansionTargetNodeId, workingDocumentTree, projection?.tree]
+  );
+
+  const aiExpansionContext = useMemo((): AiExpansionContext | null => {
+    if (!aiExpansionTargetNodeId) return null;
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree) return null;
+
+    const target = findNodeById(currentTree, aiExpansionTargetNodeId);
+    if (!target) return null;
+
+    const ancestorIds = findAncestorIds(currentTree, aiExpansionTargetNodeId) || [];
+    const ancestorTitles = ancestorIds
+      .map((id) => findNodeById(currentTree, id)?.title)
+      .filter((t): t is string => Boolean(t));
+
+    // Candidates will be inserted as children of target, so target's current children are the siblings
+    const existingSiblingTitles = target.children.map((c) => c.title);
+
+    return {
+      targetNodeId: target.id,
+      targetNodeTitle: target.title,
+      rootTopicTitle: currentTree.title,
+      ancestorTitles,
+      existingSiblingTitles,
+      preset: "sub_components",
+      language: "vi",
+    };
+  }, [aiExpansionTargetNodeId, workingDocumentTree, projection?.tree]);
+
+  // Persistence Actions (Phase P1 & P2)
+  const handleSaveNewDocument = useCallback(
+    (title: string, description?: string, changeSummary?: string) => {
+      if (!projection?.tree) return;
+      const docTree = projectedTreeToDocumentTree(projection.tree);
+      const crossLinks = (projection.crossEdges || []).map((e) => ({
+        id: e.id,
+        sourceNodeId: e.sourceNodeId,
+        targetNodeId: e.targetNodeId,
+        edgeType: (e.type === "prerequisite" ||
+        e.type === "advanced" ||
+        e.type === "contradicts"
+          ? e.type
+          : "related") as LinkType,
+        label: e.label,
+      }));
+
+      const result = createMindMapDocument({
+        title,
+        description,
+        rootTopicId: activeRootTopicId || undefined,
+        treeData: docTree,
+        crossLinks,
+        changeSummary,
+        viewState: {
+          layoutMode,
+          collapsedNodeIds: Array.from(collapsedNodeIds),
+          showCrossLinks,
+        },
+      });
+
+      if (result.success && result.data) {
+        setActiveDocumentId(result.data.document.id);
+        setActiveMode("saved-document");
+        setIsVolatileStorage(result.isVolatile);
+        setIsDirty(false);
+        setSavedDocsRevision((r) => r + 1);
+        setIsSaveModalOpen(false);
+      }
+    },
+    [projection, activeRootTopicId, layoutMode, collapsedNodeIds, showCrossLinks]
+  );
+
+  const handleSaveVersion = useCallback(
+    (changeSummary: string) => {
+      if (!activeDocumentId || !projection?.tree) return;
+      const docTree = projectedTreeToDocumentTree(projection.tree);
+      const crossLinks = (projection.crossEdges || []).map((e) => ({
+        id: e.id,
+        sourceNodeId: e.sourceNodeId,
+        targetNodeId: e.targetNodeId,
+        edgeType: (e.type === "prerequisite" ||
+        e.type === "advanced" ||
+        e.type === "contradicts"
+          ? e.type
+          : "related") as LinkType,
+        label: e.label,
+      }));
+
+      const result = appendMindMapVersion({
+        documentId: activeDocumentId,
+        changeSummary,
+        treeData: docTree,
+        crossLinks,
+        viewState: {
+          layoutMode,
+          collapsedNodeIds: Array.from(collapsedNodeIds),
+          showCrossLinks,
+        },
+      });
+
+      if (result.success) {
+        setIsVolatileStorage(result.isVolatile);
+        setIsDirty(false);
+        setSavedDocsRevision((r) => r + 1);
+        setIsSaveModalOpen(false);
+      }
+    },
+    [activeDocumentId, projection, layoutMode, collapsedNodeIds, showCrossLinks]
+  );
+
+  const handleOpenSavedDocument = useCallback(
+    (documentId: string) => {
+      if (isDirty && activeDocumentId !== documentId) {
+        setPendingLeaveTarget({ type: "open-document", documentId });
+        return;
+      }
+      const version = getMindMapVersion(documentId);
+      if (version) {
+        setActiveDocumentId(documentId);
+        setActiveMode("saved-document");
+        setLayoutMode(version.viewState.layoutMode);
+        setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
+        setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
+        setIsBrowserModalOpen(false);
+      }
+    },
+    [isDirty, activeDocumentId]
+  );
+
+  const handleRenameDocument = useCallback((documentId: string, newTitle: string) => {
+    renameMindMapDocument(documentId, newTitle);
+    setSavedDocsRevision((r) => r + 1);
+  }, []);
+
+  const handleArchiveDocument = useCallback(
+    (documentId: string) => {
+      archiveMindMapDocument(documentId);
+      setSavedDocsRevision((r) => r + 1);
+      if (activeDocumentId === documentId) {
+        setActiveMode("live-topic");
+        setActiveDocumentId(null);
+        setWorkingDocumentTree(null);
+        setIsDirty(false);
+      }
+    },
+    [activeDocumentId]
+  );
+
+  const handleReturnToLiveMode = useCallback(() => {
+    if (isDirty) {
+      setPendingLeaveTarget("live-topic");
+      return;
+    }
+    setActiveMode("live-topic");
+    setActiveDocumentId(null);
+    setWorkingDocumentTree(null);
+    setIsDirty(false);
+  }, [isDirty]);
+
+  const handleConfirmDiscardAndLeave = useCallback(() => {
+    if (pendingLeaveTarget === "live-topic") {
+      setActiveMode("live-topic");
+      setActiveDocumentId(null);
+      setWorkingDocumentTree(null);
+      setIsDirty(false);
+      setPendingLeaveTarget(null);
+    } else if (
+      pendingLeaveTarget &&
+      typeof pendingLeaveTarget === "object" &&
+      pendingLeaveTarget.type === "open-document"
+    ) {
+      const docId = pendingLeaveTarget.documentId;
+      setPendingLeaveTarget(null);
+      setIsDirty(false);
+      const version = getMindMapVersion(docId);
+      if (version) {
+        setActiveDocumentId(docId);
+        setActiveMode("saved-document");
+        setLayoutMode(version.viewState.layoutMode);
+        setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
+        setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
+        setIsBrowserModalOpen(false);
+      }
+    }
+  }, [pendingLeaveTarget]);
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+      {/* Volatile Storage Warning Banner */}
+      {isVolatileStorage && (
+        <div
+          data-testid="volatile-storage-banner"
+          className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 rounded-xl text-xs text-amber-900 dark:text-amber-200"
+        >
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>
+            <strong>Lưu trữ tạm thời:</strong> Trình duyệt không cấp quyền truy cập localStorage (Private Mode hoặc Storage Disabled). Dữ liệu sơ đồ đang được lưu trong bộ nhớ tạm thời (RAM) và sẽ mất khi tải lại trang.
+          </span>
+        </div>
+      )}
+
       {/* Top Header & Toolbar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-stone-900 p-5 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs">
         <div className="flex items-center gap-3">
@@ -664,6 +1139,90 @@ export function MindMapView() {
             <span className="sm:hidden">Xem trước</span>
           </button>
 
+          {/* Save Document / Save Version CTA */}
+          <button
+            type="button"
+            data-testid="btn-save-mindmap"
+            onClick={() => setIsSaveModalOpen(true)}
+            disabled={!projection}
+            title={
+              activeMode === "saved-document"
+                ? "Lưu phiên bản mới cho sơ đồ hiện tại"
+                : "Lưu sơ đồ tư duy thành tài liệu độc lập"
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+          >
+            <Save className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">
+              {activeMode === "saved-document" ? "Lưu phiên bản" : "Lưu sơ đồ"}
+            </span>
+            <span className="sm:hidden">Lưu</span>
+          </button>
+
+          {/* Saved Documents Browser Modal Opener */}
+          <button
+            type="button"
+            data-testid="btn-open-mindmap-browser"
+            onClick={() => setIsBrowserModalOpen(true)}
+            title="Duyệt và mở các sơ đồ tư duy đã lưu"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Sơ đồ đã lưu</span>
+            <span className="sm:hidden">Đã lưu</span>
+            {savedDocuments.length > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 text-[10px] rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 font-mono font-bold">
+                {savedDocuments.length}
+              </span>
+            )}
+          </button>
+
+          {/* Active Saved Document Badge & Back to Live Button */}
+          {activeMode === "saved-document" && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-xl text-xs">
+              <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold text-amber-900 dark:text-amber-200 truncate max-w-[150px]">
+                {activeDocumentSummary?.title || "Sơ đồ đã lưu"}
+              </span>
+              <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-md">
+                v{activeDocumentSummary?.currentVersionNumber || 1}
+              </span>
+              <button
+                type="button"
+                data-testid="btn-return-live-mode"
+                onClick={handleReturnToLiveMode}
+                title="Quay lại chế độ xem Topic từ đồ thị"
+                className="ml-1 p-1 hover:bg-amber-200/80 dark:hover:bg-amber-900 rounded text-amber-800 dark:text-amber-300 cursor-pointer transition flex items-center gap-1 text-[11px]"
+              >
+                <ArrowLeft className="w-3 h-3" />
+                <span className="hidden sm:inline">Xem Topic</span>
+              </button>
+            </div>
+          )}
+
+          {/* Unsaved Changes Warning Badge & Discard CTA */}
+          {activeMode === "saved-document" && isDirty && (
+            <div className="flex items-center gap-1.5">
+              <div
+                data-testid="unsaved-changes-badge"
+                className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-950/80 border border-amber-400 dark:border-amber-600 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>Có thay đổi chưa lưu</span>
+              </div>
+              <button
+                type="button"
+                data-testid="btn-discard-changes"
+                onClick={handleDiscardChanges}
+                title="Hủy bỏ thay đổi chưa lưu và khôi phục bản đã lưu"
+                className="flex items-center gap-1 px-2.5 py-1 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer border border-stone-200 dark:border-stone-700 shadow-2xs"
+              >
+                <RotateCcw className="w-3 h-3 text-stone-500" />
+                <span className="hidden sm:inline">Hủy thay đổi</span>
+              </button>
+            </div>
+          )}
+
           {/* Copy Markdown Outline CTA */}
           <button
             onClick={handleCopyMarkdown}
@@ -751,6 +1310,16 @@ export function MindMapView() {
           onToggleCollapse={handleToggleCollapse}
           onSelectTopic={(topicId) => openTopicDetail(topicId)}
           onFocusNode={handleFocusNode}
+          isEditable={activeMode === "saved-document"}
+          editingNodeId={editingNodeId}
+          onStartRename={handleStartRename}
+          onCommitRename={handleCommitRename}
+          onCancelRename={handleCancelRename}
+          onAddChild={handleAddChild}
+          onRequestDelete={handleRequestDelete}
+          onMoveUp={handleMoveUp}
+          onMoveDown={handleMoveDown}
+          onRequestAiExpand={handleRequestAiExpand}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
@@ -769,6 +1338,146 @@ export function MindMapView() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />
+
+      {/* Save Document / Version Modal */}
+      <MindMapSaveModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSaveNew={handleSaveNewDocument}
+        onSaveVersion={handleSaveVersion}
+        activeDocument={activeMode === "saved-document" ? activeDocumentSummary : null}
+        defaultTitle={defaultSaveTitle}
+        isVolatile={isVolatileStorage}
+        nodesCount={projection?.totalNodesCount || 1}
+        layoutMode={layoutMode}
+      />
+
+      {/* Saved Documents Browser Modal */}
+      <MindMapDocumentBrowserModal
+        isOpen={isBrowserModalOpen}
+        onClose={() => setIsBrowserModalOpen(false)}
+        documents={savedDocuments}
+        activeDocumentId={activeDocumentId}
+        onOpenDocument={handleOpenSavedDocument}
+        onRenameDocument={handleRenameDocument}
+        onArchiveDocument={handleArchiveDocument}
+      />
+
+      {/* Delete Node Confirmation Modal */}
+      {pendingDeleteNodeId && (
+        <div
+          data-testid="confirm-delete-node-modal"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              handleCancelDelete();
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
+        >
+          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
+              <div className="p-2.5 bg-rose-100 dark:bg-rose-950/80 rounded-xl">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                Xác nhận xóa nhánh sơ đồ
+              </h3>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+              Bạn có chắc chắn muốn xóa nút{" "}
+              <strong className="text-stone-900 dark:text-stone-100">
+                "{findNodeById(workingDocumentTree || projection?.tree!, pendingDeleteNodeId)?.title}"
+              </strong>{" "}
+              {(() => {
+                const target = findNodeById(
+                  workingDocumentTree || projection?.tree!,
+                  pendingDeleteNodeId
+                );
+                return target && target.children.length > 0
+                  ? `và toàn bộ ${target.children.length} nhánh con bên dưới?`
+                  : "khỏi sơ đồ hiện tại?";
+              })()}
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                data-testid="btn-cancel-delete-node"
+                onClick={handleCancelDelete}
+                className="px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                data-testid="btn-confirm-delete-node"
+                onClick={handleConfirmDelete}
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved Changes Leave Guard Confirmation Dialog */}
+      {pendingLeaveTarget && (
+        <div
+          data-testid="unsaved-changes-confirm-dialog"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              setPendingLeaveTarget(null);
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
+        >
+          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="p-2.5 bg-amber-100 dark:bg-amber-950/80 rounded-xl">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                Thay đổi chưa được lưu
+              </h3>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+              Sơ đồ đang có các chỉnh sửa chưa lưu thành phiên bản mới. Nếu rời đi bây giờ, mọi thay đổi chưa lưu sẽ bị hủy bỏ.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                data-testid="btn-cancel-leave"
+                onClick={() => setPendingLeaveTarget(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+              >
+                Ở lại chỉnh sửa
+              </button>
+              <button
+                type="button"
+                data-testid="btn-confirm-discard-and-leave"
+                onClick={handleConfirmDiscardAndLeave}
+                className="px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+              >
+                Hủy thay đổi & Rời đi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Node Expansion Modal (Phase P3) */}
+      {aiExpansionContext && (
+        <MindMapAiExpansionModal
+          isOpen={Boolean(aiExpansionTargetNodeId)}
+          context={aiExpansionContext}
+          onClose={() => setAiExpansionTargetNodeId(null)}
+          onInsertCandidates={handleInsertAiCandidates}
+        />
+      )}
     </div>
   );
 }

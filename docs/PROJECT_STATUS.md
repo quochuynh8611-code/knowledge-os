@@ -8,10 +8,51 @@
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
+## Mind Map Keyboard Navigation & A11y Tree Traversal — Phase K2 Closure (2026-10-09)
+
+**Status**: ✅ Complete & Verified Locally (Commit `09b84b9`, NOT PUSHED)
+**Tests**: 9/9 Mind Map suites PASS (99 unit tests, 100%)
+**Typecheck**: 0 errors
+**Database & Architecture**: Pure ephemeral internal state on Canvas (`focusedNodeId`), layout-aware arrow navigation (`tree_horizontal` & `tree_vertical`), space collapse toggle, enter topic selection, home/escape bindings, boundary clamping, and form input event isolation.
+
+### Features Delivered & Verified
+1. ✅ **Phase K1 (Red Tests First)**: `tests/unit/mindmap-keyboard-nav.test.tsx` — Xây dựng 7 kịch bản kiểm thử toàn diện cho arrow keys ngang/dọc, action keys (`Space`, `Enter`, `Home`, `Escape`), boundary clamping và input isolation.
+2. ✅ **Phase K2 (Green Implementation)**: `src/components/mindmap/MindMapTreeCanvas.tsx` — Bổ sung focus ring styling (`data-focused="true"`), layout-aware navigation, và bộ lắng nghe sự kiện trên canvas backdrop (`tabIndex={0}`).
+
+---
+
+## Mind Map In-Canvas Search & Node Highlight Filter — Phase S2 Closure (2026-10-09)
+
+**Status**: ✅ Complete & Verified Locally (Commit `e2c7a6f`, NOT PUSHED)
+**Tests**: 92/92 tests PASS (100%)
+**Typecheck**: 0 errors
+**Database & Architecture**: Ephemeral search query (`searchQuery`), case-insensitive title substring match, in-memory dynamic ancestor expansion override for matching nodes in collapsed branches, visual match counter, and Escape/Clear restoration.
+
+### Features Delivered & Verified
+1. ✅ **Phase S1 (Red Tests First)**: `tests/unit/mindmap-search-filter.test.tsx` — 8 scenarios kiểm thử chu trình search/highlight/dim và auto-expansion.
+2. ✅ **Phase S2 (Green Implementation)**: `MindMapView.tsx` (toolbar search input + match counter + auto-expand override) & `MindMapTreeCanvas.tsx` (`matchingNodeIds` prop + `data-search-match` / `data-search-dim` styling).
+
+---
+
+## Mind Map Markdown Import Track — Phase I1, I2, I3 Closure (2026-10-09)
+
+**Status**: ✅ Complete & Verified Locally (Commits `e915179` & `f779e3e`, NOT PUSHED)
+**Tests**: 15/15 Mind Map suites PASS (178 tests, 100%)
+**Typecheck**: 0 errors
+**Database & Architecture**: Pure parser, RAM preview sandbox, & controlled ingestion with topological batch creation, deduplication strategies, and compensation rollback.
+
+### Features Delivered & Verified
+
+1. ✅ **Phase I1 (Pure Markdown Outline Parser & Validator)**: `src/lib/mindmapImportParser.ts` — Phân tích cú pháp outline sang `MindMapImportNode` AST, nhận diện bullets (`-`, `*`, `+`), badges ngữ nghĩa (`[tiên quyết]`, `[nâng cao]`, v.v.), links markdown, và chẩn đoán nhảy cóc thụt lề (`JUMP_INDENTATION`).
+2. ✅ **Phase I2 (Preview Sandbox Modal & Adapter)**: `src/lib/mindmapImportPreviewAdapter.ts` & `MindMapImportPreviewModal.tsx` — Split-view modal xem trước trên RAM với Live Canvas, layout ngang/dọc, và cam kết Zero-Write / Zero-Navigation.
+3. ✅ **Phase I3 (Controlled Ingestion & Confirmation Workflow)**: `src/lib/mindmapImportIngestion.ts` — Nhập có kiểm soát vào DataContext, bắt buộc chọn Category đích, 3 chiến lược dedupe (`skip-and-reuse`, `create-with-suffix`, `strict-abort`), hộp thoại xác nhận tường minh, và cơ chế Compensation Action Rollback khi xảy ra lỗi.
+
+---
+
 ## Mind Map v2.0 Advanced Feature Suite & Track E Minimap Closure (2026-10-08)
 
 **Status**: ✅ Complete & Verified Baseline (Track E Formally Closed)
-**Tests**: 12/12 Mind Map suites PASS (146 tests, 100%)
+**Tests**: 12/12 Mind Map suites PASS (153 tests, 100%)
 **Typecheck**: 0 errors
 **Database & Schema**: Zero schema migration, zero backend API mutation (Pure derived read-model & UI overlay)
 
@@ -21,7 +62,7 @@
 2. ✅ **Track B (Viewport Zoom & Pan)**: Bộ điều khiển Zoom In/Out [0.5x, 2.0x], Drag Pan mượt mà và Fit-to-Viewport tự động.
 3. ✅ **Track C (Canvas Export SVG/PNG)**: Xuất bản vector SVG độc lập kèm CSS inline và rasterize PNG blob chất lượng cao.
 4. ✅ **Track D (Multi-Parent DAG Cross Edges & Export Parity)**: Phân loại quan hệ đa phụ huynh (`isMultiParent`), styling Indigo riêng biệt và bảo toàn 100% SVG/PNG export parity (Phase D4).
-5. ✅ **Track E (Minimap Overview Radar & Mobile Toggle)**: Micro-radar vector (`bottom-4 left-4`), drag viewport indicator (Phase E1d), responsive mobile toggle button & panel nổi (Phase E2a), và touch target hardening $\ge 44\times 44\text{px}$ (Phase E5).
+5. ✅ **Track E (Minimap Overview Radar, Mobile Toggle & Dynamic ResizeObserver)**: Micro-radar vector (`bottom-4 left-4`), drag viewport indicator (Phase E1d), responsive mobile toggle button & panel nổi (Phase E2a), touch target hardening $\ge 44\times 44\text{px}$ (Phase E5), và reactive geometry measurement qua native ResizeObserver (Phase E6).
 6. ✅ **Documentation-Only Closure (Phase E3/E4)**: Đối chiếu và đồng bộ trọn vẹn đặc tả kỹ thuật, Mini-ADR và test contract; chính thức đóng Track E.
 
 ---

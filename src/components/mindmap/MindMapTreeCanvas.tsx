@@ -14,10 +14,17 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Repeat,
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Edit3,
+  Plus,
+  Trash2,
+  Check,
+  X,
+  Sparkles,
 } from "lucide-react";
 
 interface MindMapTreeCanvasProps {
@@ -32,6 +39,104 @@ interface MindMapTreeCanvasProps {
   onToggleCollapse?: (nodeId: string) => void;
   onSelectTopic?: (topicId: string) => void;
   onFocusNode?: (nodeId: string) => void;
+
+  // Phase P2: Interactive Editing Props
+  isEditable?: boolean;
+  editingNodeId?: string | null;
+  onStartRename?: (nodeId: string) => void;
+  onCommitRename?: (nodeId: string, newTitle: string) => void;
+  onCancelRename?: () => void;
+  onAddChild?: (parentNodeId: string) => void;
+  onRequestDelete?: (nodeId: string) => void;
+  onMoveUp?: (nodeId: string) => void;
+  onMoveDown?: (nodeId: string) => void;
+
+  // Phase P3: AI Expansion Props
+  onRequestAiExpand?: (nodeId: string) => void;
+}
+
+interface InlineNodeEditorProps {
+  nodeId: string;
+  initialTitle: string;
+  onCommit?: (nodeId: string, title: string) => void;
+  onCancel?: () => void;
+}
+
+function InlineNodeEditor({
+  nodeId,
+  initialTitle,
+  onCommit,
+  onCancel,
+}: InlineNodeEditorProps) {
+  const [val, setVal] = useState(initialTitle);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setVal(initialTitle);
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [initialTitle]);
+
+  const handleCommit = () => {
+    const trimmed = val.trim();
+    if (trimmed && onCommit) {
+      onCommit(nodeId, trimmed);
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center gap-1 my-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        ref={inputRef}
+        type="text"
+        autoFocus
+        data-testid={`input-inline-rename-${nodeId}`}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            handleCommit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (onCancel) onCancel();
+          }
+        }}
+        className="w-full px-2 py-1 text-xs font-semibold bg-white dark:bg-stone-900 border border-amber-500 rounded-lg text-stone-900 dark:text-stone-100 focus:outline-hidden ring-2 ring-amber-500/30"
+      />
+      <button
+        type="button"
+        data-testid={`btn-confirm-inline-rename-${nodeId}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleCommit();
+        }}
+        className="p-1 bg-amber-600 hover:bg-amber-700 text-white rounded cursor-pointer transition shrink-0"
+        title="Lưu tiêu đề (Enter)"
+      >
+        <Check className="w-3 h-3" />
+      </button>
+      <button
+        type="button"
+        data-testid={`btn-cancel-inline-rename-${nodeId}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onCancel) onCancel();
+        }}
+        className="p-1 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 text-stone-700 dark:text-stone-300 rounded cursor-pointer transition shrink-0"
+        title="Hủy bỏ (Esc)"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </div>
+  );
 }
 
 export function MindMapTreeCanvas({
@@ -46,6 +151,16 @@ export function MindMapTreeCanvas({
   onToggleCollapse,
   onSelectTopic,
   onFocusNode,
+  isEditable,
+  editingNodeId,
+  onStartRename,
+  onCommitRename,
+  onCancelRename,
+  onAddChild,
+  onRequestDelete,
+  onMoveUp,
+  onMoveDown,
+  onRequestAiExpand,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -115,6 +230,45 @@ export function MindMapTreeCanvas({
         onSelectTopic(focusedNodeId);
       }
       return;
+    }
+
+    // Phase P2.x: Keyboard shortcuts for editing mode
+    if (isEditable) {
+      if (e.key === "F2") {
+        e.preventDefault();
+        if (currentId && onStartRename) {
+          onStartRename(currentId);
+        }
+        return;
+      }
+
+      if (e.key === "Tab" || e.key === "Insert") {
+        e.preventDefault();
+        if (currentId && onAddChild) {
+          onAddChild(currentId);
+        }
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (currentId && currentId !== tree.id && onRequestDelete) {
+          e.preventDefault();
+          onRequestDelete(currentId);
+          return;
+        }
+      }
+
+      if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        if (currentId && currentId !== tree.id) {
+          e.preventDefault();
+          if (e.key === "ArrowUp" && onMoveUp) {
+            onMoveUp(currentId);
+          } else if (e.key === "ArrowDown" && onMoveDown) {
+            onMoveDown(currentId);
+          }
+          return;
+        }
+      }
     }
 
     // Helper functions for arrow navigation
@@ -535,10 +689,19 @@ export function MindMapTreeCanvas({
           </div>
         </div>
 
-        {/* Node Title */}
-        <div className="font-semibold text-xs text-stone-800 dark:text-stone-200 line-clamp-2 leading-snug">
-          {node.title}
-        </div>
+        {/* Node Title / Inline Editor */}
+        {isEditable && editingNodeId === node.id ? (
+          <InlineNodeEditor
+            nodeId={node.id}
+            initialTitle={node.title}
+            onCommit={onCommitRename}
+            onCancel={onCancelRename}
+          />
+        ) : (
+          <div className="font-semibold text-xs text-stone-800 dark:text-stone-200 line-clamp-2 leading-snug">
+            {node.title}
+          </div>
+        )}
 
         {/* Node Footer: Relation tag, Cycle badges & category */}
         {(node.edgeTypeToParent || nodeCycles.length > 0 || node.categoryName) && (
@@ -567,6 +730,91 @@ export function MindMapTreeCanvas({
               <span className="text-[9px] text-stone-400 dark:text-stone-500 truncate max-w-[100px]">
                 {node.categoryName}
               </span>
+            )}
+          </div>
+        )}
+
+        {/* Phase P2: Interactive Node Editing Toolbar */}
+        {isEditable && editingNodeId !== node.id && (
+          <div
+            className="mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800/60 flex items-center justify-end gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              data-testid={`btn-edit-node-${node.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onStartRename) onStartRename(node.id);
+              }}
+              title="Đổi tên nút"
+              className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition cursor-pointer"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              data-testid={`btn-add-child-${node.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onAddChild) onAddChild(node.id);
+              }}
+              title="Thêm nút con"
+              className="p-1 text-stone-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded transition cursor-pointer"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              data-testid={`btn-ai-expand-node-${node.id}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onRequestAiExpand) onRequestAiExpand(node.id);
+              }}
+              title="Mở rộng nhánh bằng AI"
+              className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition cursor-pointer"
+            >
+              <Sparkles className="w-3 h-3" />
+            </button>
+            {!isRoot && (
+              <>
+                <button
+                  type="button"
+                  data-testid={`btn-move-up-${node.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onMoveUp) onMoveUp(node.id);
+                  }}
+                  title="Di chuyển lên"
+                  className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition cursor-pointer"
+                >
+                  <ChevronUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`btn-move-down-${node.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onMoveDown) onMoveDown(node.id);
+                  }}
+                  title="Di chuyển xuống"
+                  className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition cursor-pointer"
+                >
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  data-testid={`btn-delete-node-${node.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onRequestDelete) onRequestDelete(node.id);
+                  }}
+                  title="Xóa nút"
+                  className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </>
             )}
           </div>
         )}
