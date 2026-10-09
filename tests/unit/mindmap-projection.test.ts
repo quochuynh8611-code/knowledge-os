@@ -4,6 +4,7 @@ import {
   exportMindMapToMarkdown,
   MindMapTreeProjection,
 } from "../../src/lib/mindmapProjection";
+import { parseMindMapMarkdownOutline } from "../../src/lib/mindmapImportParser";
 import { buildAdjacencyGraph } from "../../src/lib/knowledgeGraph";
 import { Topic, Note, Resource } from "../../src/types";
 
@@ -361,7 +362,7 @@ describe("Mind Map v1 Derived Read-Model Projection", () => {
 
       const markdown = exportMindMapToMarkdown(projection!, topicMap);
 
-      expect(markdown).toContain("# 🗺️ Sơ Đồ Tư Duy: Tứ Diệu Đế");
+      expect(markdown).toContain("> 🗺️ Sơ Đồ Tư Duy: Tứ Diệu Đế");
       expect(markdown).toContain("- 📚 **[Tứ Diệu Đế](#/topics/topic-tu-dieu-de)** `[Hoàn thành: 100%]`");
       expect(markdown).toContain("[tiên quyết] 📚 **[Bát Chánh Đạo](#/topics/topic-bat-chanh-dao)** `[Tiến độ: 50%]`");
       expect(markdown).toContain("[ghi chú] 📝 [Tóm Lược 4 Chân Lý](#/topics/topic-tu-dieu-de)");
@@ -408,6 +409,224 @@ describe("Mind Map v1 Derived Read-Model Projection", () => {
       expect(markdown).toContain("- 📝 Unresolved Floating Note");
       expect(markdown).not.toContain("](#/topics/undefined)");
       expect(markdown).not.toContain("](#/notes/");
+    });
+  });
+
+  // ─── 5. Export -> Parse Roundtrip Parity Suite ──────────────────────────────
+
+  describe("5. Export -> Parse Roundtrip Parity Suite", () => {
+    it("Roundtrip Parity 1: exports and parses multi-tier tree hierarchy with semantic relations and icons", () => {
+      const topicMap = new Map<string, Topic>(mockTopics.map((t) => [t.id, t]));
+      const projection = projectToMindMapTree(
+        { topics: mockTopics, notes: mockNotes, resources: mockResources },
+        "topic-tu-dieu-de"
+      );
+      expect(projection).not.toBeNull();
+
+      const exportedMarkdown = exportMindMapToMarkdown(projection!, topicMap);
+      const parseResult = parseMindMapMarkdownOutline(exportedMarkdown);
+
+      expect(parseResult.status).not.toBe("EMPTY_OR_INVALID");
+      expect(parseResult.root).not.toBeNull();
+
+      const root = parseResult.root!;
+      expect(root.title).toBe("Tứ Diệu Đế");
+      expect(root.nodeType).toBe("topic");
+      expect(root.sourceIdReference).toBe("topic-tu-dieu-de");
+      expect(root.progressPercent).toBe(100);
+
+      // Verify children count and relations
+      expect(root.children.length).toBe(5);
+
+      const childBatChanhDao = root.children.find((c) => c.title === "Bát Chánh Đạo");
+      expect(childBatChanhDao).toBeDefined();
+      expect(childBatChanhDao!.nodeType).toBe("topic");
+      expect(childBatChanhDao!.edgeTypeToParent).toBe("prerequisite");
+      expect(childBatChanhDao!.sourceIdReference).toBe("topic-bat-chanh-dao");
+      expect(childBatChanhDao!.progressPercent).toBe(50);
+
+      const childTamTuong = root.children.find((c) => c.title === "Tam Tướng");
+      expect(childTamTuong).toBeDefined();
+      expect(childTamTuong!.nodeType).toBe("topic");
+      expect(childTamTuong!.edgeTypeToParent).toBe("related");
+      expect(childTamTuong!.sourceIdReference).toBe("topic-tam-tuong");
+
+      const childNote = root.children.find((c) => c.title === "Tóm Lược 4 Chân Lý");
+      expect(childNote).toBeDefined();
+      expect(childNote!.nodeType).toBe("note");
+      expect(childNote!.edgeTypeToParent).toBe("has_note");
+
+      const childResource = root.children.find((c) =>
+        c.title.includes("Kinh Chuyển Pháp Luân")
+      );
+      expect(childResource).toBeDefined();
+      expect(childResource!.nodeType).toBe("resource");
+      expect(childResource!.edgeTypeToParent).toBe("has_resource");
+    });
+
+    it("Roundtrip Parity 2: preserves study status badges and numeric progress values", () => {
+      const syntheticProjection: MindMapTreeProjection = {
+        rootNodeId: "topic-root",
+        rootTitle: "Root Topic",
+        layoutMode: "tree_horizontal",
+        maxDepthReached: 1,
+        totalNodesCount: 5,
+        hasTruncatedBranches: false,
+        hasCyclesDetected: false,
+        crossEdges: [],
+        cycleAnnotations: [],
+        generatedAt: "2026-01-01T00:00:00Z",
+        tree: {
+          id: "topic-root",
+          title: "Root Topic",
+          type: "topic",
+          domain: "general",
+          progress: 100,
+          studyStatus: "completed",
+          hopDistance: 0,
+          tags: [],
+          children: [
+            {
+              id: "topic-75",
+              title: "75 Percent Topic",
+              type: "topic",
+              domain: "general",
+              progress: 75,
+              studyStatus: "in_progress",
+              edgeTypeToParent: "prerequisite",
+              hopDistance: 1,
+              tags: [],
+              children: [],
+            },
+            {
+              id: "topic-0",
+              title: "0 Percent Topic",
+              type: "topic",
+              domain: "general",
+              progress: 0,
+              studyStatus: "not_started",
+              edgeTypeToParent: "related",
+              hopDistance: 1,
+              tags: [],
+              children: [],
+            },
+            {
+              id: "topic-studying",
+              title: "Studying Without Numeric Progress",
+              type: "topic",
+              domain: "general",
+              studyStatus: "in_progress",
+              edgeTypeToParent: "related",
+              hopDistance: 1,
+              tags: [],
+              children: [],
+            },
+            {
+              id: "topic-reviewing",
+              title: "Reviewing Topic",
+              type: "topic",
+              domain: "general",
+              studyStatus: "reviewing",
+              edgeTypeToParent: "advanced",
+              hopDistance: 1,
+              tags: [],
+              children: [],
+            },
+          ],
+        },
+      };
+
+      const markdown = exportMindMapToMarkdown(syntheticProjection);
+      const parsed = parseMindMapMarkdownOutline(markdown);
+
+      expect(parsed.root).not.toBeNull();
+      const root = parsed.root!;
+      expect(root.progressPercent).toBe(100);
+      expect(root.studyStatusText).toBe("Hoàn thành: 100%");
+
+      const node75 = root.children.find((c) => c.title === "75 Percent Topic");
+      expect(node75?.progressPercent).toBe(75);
+      expect(node75?.studyStatusText).toBe("Tiến độ: 75%");
+
+      const node0 = root.children.find((c) => c.title === "0 Percent Topic");
+      expect(node0?.progressPercent).toBe(0);
+      expect(node0?.studyStatusText).toBe("Tiến độ: 0%");
+
+      const nodeStudying = root.children.find(
+        (c) => c.title === "Studying Without Numeric Progress"
+      );
+      expect(nodeStudying?.studyStatusText).toBe("Đang học");
+      expect(nodeStudying?.progressPercent).toBeUndefined();
+
+      const nodeReviewing = root.children.find((c) => c.title === "Reviewing Topic");
+      expect(nodeReviewing?.studyStatusText).toBe("Đang ôn tập");
+    });
+
+    it("Roundtrip Parity 3: strips link formatting and preserves sourceIdReference cleanly", () => {
+      const syntheticProjection: MindMapTreeProjection = {
+        rootNodeId: "topic-with-special-chars-123",
+        rootTitle: "Triết Học Phật Giáo & Nhận Thức Luận",
+        layoutMode: "tree_horizontal",
+        maxDepthReached: 1,
+        totalNodesCount: 2,
+        hasTruncatedBranches: false,
+        hasCyclesDetected: false,
+        crossEdges: [],
+        cycleAnnotations: [],
+        generatedAt: "2026-01-01T00:00:00Z",
+        tree: {
+          id: "topic-with-special-chars-123",
+          title: "Triết Học Phật Giáo & Nhận Thức Luận",
+          type: "topic",
+          domain: "general",
+          hopDistance: 0,
+          tags: [],
+          children: [
+            {
+              id: "topic-child-456",
+              title: "Lý Duyên Khởi (Paticcasamuppada)",
+              type: "topic",
+              domain: "general",
+              edgeTypeToParent: "prerequisite",
+              hopDistance: 1,
+              tags: [],
+              children: [],
+            },
+          ],
+        },
+      };
+
+      const markdown = exportMindMapToMarkdown(syntheticProjection);
+      const parsed = parseMindMapMarkdownOutline(markdown);
+
+      expect(parsed.root).not.toBeNull();
+      expect(parsed.root!.title).toBe("Triết Học Phật Giáo & Nhận Thức Luận");
+      expect(parsed.root!.sourceIdReference).toBe("topic-with-special-chars-123");
+
+      const child = parsed.root!.children[0];
+      expect(child.title).toBe("Lý Duyên Khởi (Paticcasamuppada)");
+      expect(child.sourceIdReference).toBe("topic-child-456");
+      expect(child.edgeTypeToParent).toBe("prerequisite");
+    });
+
+    it("Roundtrip Parity 4: deterministic serialization output for identical inputs", () => {
+      const projection1 = projectToMindMapTree(
+        { topics: mockTopics, notes: mockNotes, resources: mockResources },
+        "topic-tu-dieu-de"
+      );
+      const projection2 = projectToMindMapTree(
+        { topics: mockTopics, notes: mockNotes, resources: mockResources },
+        "topic-tu-dieu-de"
+      );
+
+      // Fix generatedAt for strict byte-for-byte equality assertion
+      projection1!.generatedAt = "2026-01-01T00:00:00.000Z";
+      projection2!.generatedAt = "2026-01-01T00:00:00.000Z";
+
+      const out1 = exportMindMapToMarkdown(projection1!);
+      const out2 = exportMindMapToMarkdown(projection2!);
+
+      expect(out1).toBe(out2);
     });
   });
 });

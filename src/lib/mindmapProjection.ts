@@ -384,7 +384,7 @@ export function exportMindMapToMarkdown(
   const { tree, generatedAt } = projection;
 
   const lines: string[] = [
-    `# 🗺️ Sơ Đồ Tư Duy: ${tree.title}`,
+    `> 🗺️ Sơ Đồ Tư Duy: ${tree.title}`,
     `> Nguồn: Knowledge OS • Xuất bản lúc: ${generatedAt}`,
     "",
   ];
