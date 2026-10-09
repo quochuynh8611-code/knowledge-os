@@ -28,6 +28,7 @@ interface MindMapTreeCanvasProps {
   cycleAnnotations?: MindMapCycleAnnotation[];
   showCrossLinks?: boolean;
   highlightedNodeId?: string | null;
+  matchingNodeIds?: Set<string> | null;
   onToggleCollapse?: (nodeId: string) => void;
   onSelectTopic?: (topicId: string) => void;
   onFocusNode?: (nodeId: string) => void;
@@ -41,6 +42,7 @@ export function MindMapTreeCanvas({
   cycleAnnotations,
   showCrossLinks,
   highlightedNodeId,
+  matchingNodeIds,
   onToggleCollapse,
   onSelectTopic,
   onFocusNode,
@@ -272,6 +274,9 @@ export function MindMapTreeCanvas({
     const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
     const isHighlighted = highlightedNodeId === node.id;
     const isPeerHighlighted = peerNodeIds.has(node.id);
+    const isSearchActive = matchingNodeIds !== null && matchingNodeIds !== undefined;
+    const isSearchMatch = isSearchActive && matchingNodeIds.has(node.id);
+    const isSearchDimmed = isSearchActive && !isSearchMatch;
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -296,19 +301,25 @@ export function MindMapTreeCanvas({
         data-node-id={node.id}
         data-highlighted={isHighlighted ? "true" : undefined}
         data-peer-highlighted={isPeerHighlighted ? "true" : undefined}
+        data-search-match={isSearchMatch ? "true" : undefined}
+        data-search-dim={isSearchDimmed ? "true" : undefined}
         onMouseEnter={() => setHoveredNodeId(node.id)}
         onMouseLeave={() => setHoveredNodeId(null)}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
           isHighlighted
             ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
-            : isPeerHighlighted
-              ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
-              : isRoot
-                ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-                : isTopic
-                  ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                  : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+            : isSearchMatch
+              ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
+              : isPeerHighlighted
+                ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
+                : isRoot
+                  ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+                  : isTopic
+                    ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                    : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+        } ${
+          isSearchDimmed ? "opacity-35" : ""
         } ${
           isTopic ? "cursor-pointer hover:shadow-md" : "cursor-default"
         } min-w-[180px] max-w-[260px]`}

@@ -31,6 +31,8 @@ import {
   Share2,
   Download,
   FileCode,
+  Search,
+  X,
 } from "lucide-react";
 
 export type MindMapEdgeTypeFilter = "all" | LinkType;
@@ -64,6 +66,7 @@ export function MindMapView() {
   const [activeEdgeTypeFilter, setActiveEdgeTypeFilter] =
     useState<MindMapEdgeTypeFilter>("all");
   const [highlightedNodeId, setHighlightedNodeId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
@@ -90,6 +93,7 @@ export function MindMapView() {
   // Load persisted view state and reset ephemeral filter when active topic changes
   useEffect(() => {
     setActiveEdgeTypeFilter("all");
+    setSearchQuery("");
     if (!activeRootTopicId) {
       setCollapsedNodeIds(new Set());
       setLayoutMode("tree_horizontal");
@@ -147,6 +151,58 @@ export function MindMapView() {
     traverse(projection.tree);
     return ids;
   }, [projection]);
+
+  // Compute search matching nodes and their ancestor paths
+  const searchResults = useMemo(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || !projection?.tree) {
+      return null;
+    }
+
+    const lowerQuery = trimmed.toLowerCase();
+    const matchingIds = new Set<string>();
+    const neededAncestorIds = new Set<string>();
+
+    const traverse = (node: MindMapTreeNode) => {
+      if (node.title.toLowerCase().includes(lowerQuery)) {
+        matchingIds.add(node.id);
+        const ancestors = findAncestorIds(projection.tree, node.id);
+        if (ancestors) {
+          for (const aId of ancestors) {
+            neededAncestorIds.add(aId);
+          }
+        }
+      }
+      for (const child of node.children) {
+        traverse(child);
+      }
+    };
+
+    traverse(projection.tree);
+
+    return {
+      matchingIds,
+      neededAncestorIds,
+    };
+  }, [searchQuery, projection?.tree]);
+
+  const matchingNodeIds = useMemo(() => {
+    return searchResults ? searchResults.matchingIds : null;
+  }, [searchResults]);
+
+  // Ephemeral effective collapsed node IDs: uncollapses ancestors of matching nodes without persisting
+  const effectiveCollapsedNodeIds = useMemo(() => {
+    if (!searchResults) {
+      return collapsedNodeIds;
+    }
+    const next = new Set<string>();
+    for (const id of collapsedNodeIds) {
+      if (!searchResults.neededAncestorIds.has(id)) {
+        next.add(id);
+      }
+    }
+    return next;
+  }, [collapsedNodeIds, searchResults]);
 
   // Toggle layout mode and persist per topic
   const handleSetLayoutMode = useCallback(
@@ -403,6 +459,42 @@ export function MindMapView() {
 
         {/* Toolbar Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* In-Canvas Search Bar */}
+          <div className="relative flex items-center bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-amber-500/50">
+            <Search className="w-3.5 h-3.5 text-stone-400 shrink-0 mr-1.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setSearchQuery("");
+                }
+              }}
+              placeholder="Tìm nút trong sơ đồ..."
+              aria-label="Tìm kiếm nút trong sơ đồ"
+              className="bg-transparent text-xs font-medium text-stone-800 dark:text-stone-200 placeholder-stone-400 dark:placeholder-stone-500 focus:outline-hidden w-28 sm:w-36 md:w-44"
+            />
+            {searchQuery.trim() && (
+              <span className="ml-1 text-[10px] font-medium font-mono text-stone-500 dark:text-stone-400 shrink-0">
+                {matchingNodeIds && matchingNodeIds.size > 0
+                  ? `${matchingNodeIds.size} khớp`
+                  : "0 kết quả"}
+              </span>
+            )}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Xóa tìm kiếm"
+                className="ml-1 p-0.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded cursor-pointer transition"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
           {/* Topic Selector Dropdown */}
           <div className="flex items-center gap-1.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl px-2.5 py-1.5">
             <BookOpen className="w-3.5 h-3.5 text-stone-400" />
@@ -650,7 +742,8 @@ export function MindMapView() {
         <MindMapTreeCanvas
           tree={projection.tree}
           layoutMode={layoutMode}
-          collapsedNodeIds={collapsedNodeIds}
+          collapsedNodeIds={effectiveCollapsedNodeIds}
+          matchingNodeIds={matchingNodeIds}
           crossEdges={filteredCrossEdges}
           cycleAnnotations={projection.cycleAnnotations}
           showCrossLinks={showCrossLinks}
