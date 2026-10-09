@@ -18,6 +18,7 @@ import {
   saveMindMapViewState,
 } from "../../lib/mindmapStorage";
 import { MindMapTreeCanvas } from "./MindMapTreeCanvas";
+import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import {
   Network,
   Copy,
@@ -29,6 +30,7 @@ import {
   Info,
   Share2,
   Download,
+  FileCode,
 } from "lucide-react";
 
 export type MindMapEdgeTypeFilter = "all" | LinkType;
@@ -65,6 +67,7 @@ export function MindMapView() {
   const [internalTopicId, setInternalTopicId] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Active topic ID: prefer user-selected internalTopicId if set, fallback to selectedTopicId or first active topic
@@ -556,6 +559,19 @@ export function MindMapView() {
             <span className="sm:hidden">PNG</span>
           </button>
 
+          {/* Import / Preview Markdown Outline Action */}
+          <button
+            type="button"
+            data-testid="btn-open-import-preview"
+            onClick={() => setIsImportModalOpen(true)}
+            title="Xem trước dàn ý sơ đồ tư duy từ Markdown (Sandbox)"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+          >
+            <FileCode className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Xem trước dàn ý</span>
+            <span className="sm:hidden">Xem trước</span>
+          </button>
+
           {/* Copy Markdown Outline CTA */}
           <button
             onClick={handleCopyMarkdown}
@@ -654,6 +670,12 @@ export function MindMapView() {
           </p>
         </div>
       )}
+
+      {/* Import / Preview Sandbox Modal */}
+      <MindMapImportPreviewModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+      />
     </div>
   );
 }
