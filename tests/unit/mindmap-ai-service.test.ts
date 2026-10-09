@@ -17,6 +17,8 @@ import {
   normalizeTitleForComparison,
   normalizeAiResponse,
   createMockMindMapAiClient,
+  validateAiProviderPayload,
+  createGeminiMindMapAiClient,
   type AiExpansionContext,
 } from '../../src/lib/mindmapAiService';
 
@@ -191,6 +193,168 @@ describe('Mind Map AI Node Expansion Service (Phase P3)', () => {
 
       expect(res.ok).toBe(false);
       expect(res.error?.code).toBe('CANCELLED');
+    });
+  });
+
+  describe('4. validateAiProviderPayload (Phase P3.x Hardening)', () => {
+    it('accepts valid structured provider payload', () => {
+      const validPayload = {
+        candidates: [
+          { title: 'Chánh Kiến', description: 'Hiểu biết đúng đắn', nodeType: 'topic' },
+          { title: 'Chánh Tư Duy', nodeType: 'topic' },
+        ],
+      };
+
+      const res = validateAiProviderPayload(validPayload);
+      expect(res.valid).toBe(true);
+      expect(res.errors).toHaveLength(0);
+      expect(res.data?.candidates).toHaveLength(2);
+    });
+
+    it('rejects payload when candidates is missing or not an array', () => {
+      expect(validateAiProviderPayload(null).valid).toBe(false);
+      expect(validateAiProviderPayload({}).valid).toBe(false);
+      expect(validateAiProviderPayload({ candidates: 'not-an-array' }).valid).toBe(false);
+    });
+
+    it('rejects structured payload when candidates have empty or non-string titles', () => {
+      const invalidPayload = {
+        candidates: [
+          { title: '' },
+          { title: '   ' },
+          { description: 'No title' },
+        ],
+      };
+
+      const res = validateAiProviderPayload(invalidPayload);
+      expect(res.valid).toBe(false);
+      expect(res.errors.length).toBeGreaterThan(0);
+    });
+
+    it('rejects structured payload with empty candidates array', () => {
+      const res = validateAiProviderPayload({ candidates: [] });
+      expect(res.valid).toBe(false);
+      expect(res.errors).toContain('Candidates array cannot be empty');
+    });
+
+    it('rejects structured payload when candidate has invalid nodeType', () => {
+      const res = validateAiProviderPayload({
+        candidates: [{ title: 'Hợp lệ', nodeType: 'invalid-type' }],
+      });
+      expect(res.valid).toBe(false);
+      expect(res.errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('5. createGeminiMindMapAiClient (Phase P3.x Hardening)', () => {
+    const sampleContext: AiExpansionContext = {
+      targetNodeId: 'node-target-1',
+      targetNodeTitle: 'Bát Chánh Đạo',
+      rootTopicTitle: 'Tứ Diệu Đế',
+      ancestorTitles: ['Tứ Diệu Đế'],
+      existingSiblingTitles: [],
+      preset: 'sub_components',
+      language: 'vi',
+    };
+
+    it('calls custom fetcher and parses valid structured Gemini JSON response successfully', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      candidates: [
+                        { title: 'Chánh Kiến', description: 'Hiểu biết như thật' },
+                        { title: 'Chánh Tư Duy', description: 'Suy nghĩ chân chính' },
+                      ],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+
+      const client = createGeminiMindMapAiClient({
+        apiKey: 'test-api-key',
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext);
+      expect(res.ok).toBe(true);
+      expect(res.candidates).toHaveLength(2);
+      expect(res.candidates[0].title).toBe('Chánh Kiến');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns VALIDATION_ERROR when structured Gemini response fails schema validation', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    // Structured JSON with empty candidates array -> schema-invalid!
+                    text: JSON.stringify({
+                      candidates: [],
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      });
+
+      const client = createGeminiMindMapAiClient({
+        apiKey: 'test-api-key',
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext);
+      expect(res.ok).toBe(false);
+      expect(res.error?.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('returns CANCELLED when AbortSignal is aborted during request', async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const mockFetch = vi.fn();
+      const client = createGeminiMindMapAiClient({
+        apiKey: 'test-api-key',
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext, controller.signal);
+      expect(res.ok).toBe(false);
+      expect(res.error?.code).toBe('CANCELLED');
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('handles HTTP error responses safely with API_ERROR code', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        text: async () => 'Rate limit exceeded',
+      });
+
+      const client = createGeminiMindMapAiClient({
+        apiKey: 'test-api-key',
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext);
+      expect(res.ok).toBe(false);
+      expect(res.error?.code).toBe('API_ERROR');
     });
   });
 });

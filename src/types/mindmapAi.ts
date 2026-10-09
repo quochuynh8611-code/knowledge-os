@@ -64,9 +64,28 @@ export interface AiExpansionServiceResult {
   rawText?: string;
   isFallbackParsed?: boolean;      // Đánh dấu nếu phải dùng parser fallback
   error?: {
-    code: 'API_ERROR' | 'NETWORK_ERROR' | 'PARSE_ERROR' | 'CANCELLED' | 'EMPTY_RESULT';
+    code: 'API_ERROR' | 'NETWORK_ERROR' | 'PARSE_ERROR' | 'CANCELLED' | 'EMPTY_RESULT' | 'VALIDATION_ERROR';
     message: string;
   };
+}
+
+/**
+ * Kết quả xác thực payload từ AI Provider
+ */
+export interface AiProviderValidationResult {
+  valid: boolean;
+  errors: string[];
+  data?: AiExpansionJsonPayload;
+}
+
+/**
+ * Options cấu hình cho Gemini AI Client
+ */
+export interface GeminiAiClientOptions {
+  apiKey?: string;
+  apiEndpoint?: string;
+  model?: string;
+  customFetch?: typeof fetch;
 }
 
 /**

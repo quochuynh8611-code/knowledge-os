@@ -81,6 +81,49 @@ describe('Mind Map AI Node Expansion UI & Integration (Phase P3)', () => {
       fireEvent.click(aiBtn);
       expect(onRequestAiExpand).toHaveBeenCalledWith('node-kho-de');
     });
+
+    it('Scenario 1.3: triggers onRequestAiExpand when pressing Shift + A on focused node in editable mode', () => {
+      const onRequestAiExpand = vi.fn();
+      render(
+        <MindMapTreeCanvas
+          tree={SAMPLE_TREE}
+          layoutMode="tree_horizontal"
+          isEditable={true}
+          onRequestAiExpand={onRequestAiExpand}
+        />
+      );
+
+      const canvasBackdrop = screen.getByTestId('mindmap-canvas-backdrop');
+      const targetNode = document.querySelector('[data-node-id="node-kho-de"]');
+      expect(targetNode).toBeInTheDocument();
+
+      // Click to focus target node
+      fireEvent.click(targetNode!);
+
+      // Press Shift + A
+      fireEvent.keyDown(canvasBackdrop, { key: 'A', shiftKey: true });
+      expect(onRequestAiExpand).toHaveBeenCalledWith('node-kho-de');
+    });
+
+    it('Scenario 1.4: does NOT trigger onRequestAiExpand on Shift + A when isEditable is false', () => {
+      const onRequestAiExpand = vi.fn();
+      render(
+        <MindMapTreeCanvas
+          tree={SAMPLE_TREE}
+          layoutMode="tree_horizontal"
+          isEditable={false}
+          onRequestAiExpand={onRequestAiExpand}
+        />
+      );
+
+      const canvasBackdrop = screen.getByTestId('mindmap-canvas-backdrop');
+      const targetNode = document.querySelector('[data-node-id="node-kho-de"]');
+      expect(targetNode).toBeInTheDocument();
+
+      fireEvent.click(targetNode!);
+      fireEvent.keyDown(canvasBackdrop, { key: 'A', shiftKey: true });
+      expect(onRequestAiExpand).not.toHaveBeenCalled();
+    });
   });
 
   describe('2. MindMapAiExpansionModal UI Workflow', () => {

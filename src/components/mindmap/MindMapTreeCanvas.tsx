@@ -258,6 +258,15 @@ export function MindMapTreeCanvas({
         }
       }
 
+      // Phase P3.x: Shift + A shortcut to open AI expansion for current node
+      if (e.shiftKey && (e.key === "A" || e.key === "a")) {
+        if (currentId && onRequestAiExpand) {
+          e.preventDefault();
+          onRequestAiExpand(currentId);
+          return;
+        }
+      }
+
       if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
         if (currentId && currentId !== tree.id) {
           e.preventDefault();

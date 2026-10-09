@@ -13,6 +13,8 @@ import {
   AiCandidateNode,
   AiExpansionServiceResult,
   AiExpansionJsonPayload,
+  AiProviderValidationResult,
+  GeminiAiClientOptions,
   MindMapAiClient,
 } from '../types/mindmapAi';
 
@@ -28,6 +30,75 @@ export function normalizeTitleForComparison(title: string): string {
     .trim()
     .replace(/\s+/g, ' ')
     .toLowerCase();
+}
+
+/**
+ * Runtime validation gate for structured AI provider output.
+ * Protects against malformed objects, non-array candidates, empty titles, and invalid types.
+ */
+export function validateAiProviderPayload(payload: any): AiProviderValidationResult {
+  const errors: string[] = [];
+  if (!payload || typeof payload !== 'object') {
+    return {
+      valid: false,
+      errors: ['Payload must be a non-null object'],
+    };
+  }
+
+  if (!Array.isArray(payload.candidates)) {
+    return {
+      valid: false,
+      errors: ['Payload must contain a "candidates" array'],
+    };
+  }
+
+  if (payload.candidates.length === 0) {
+    return {
+      valid: false,
+      errors: ['Candidates array cannot be empty'],
+    };
+  }
+
+  const validCandidates: Array<{ title: string; description?: string; nodeType?: 'topic' | 'note' }> = [];
+
+  for (let i = 0; i < payload.candidates.length; i++) {
+    const item = payload.candidates[i];
+    if (!item || typeof item !== 'object') {
+      errors.push(`Candidate at index ${i} is not a valid object`);
+      continue;
+    }
+
+    if (typeof item.title !== 'string' || !item.title.trim()) {
+      errors.push(`Candidate at index ${i} has an empty or invalid title`);
+      continue;
+    }
+
+    if (item.nodeType !== undefined && item.nodeType !== 'topic' && item.nodeType !== 'note') {
+      errors.push(`Candidate at index ${i} has invalid nodeType: "${item.nodeType}"`);
+      continue;
+    }
+
+    validCandidates.push({
+      title: item.title.trim(),
+      description: typeof item.description === 'string' ? item.description.trim() : undefined,
+      nodeType: item.nodeType,
+    });
+  }
+
+  if (errors.length > 0 || validCandidates.length === 0) {
+    return {
+      valid: false,
+      errors: errors.length > 0 ? errors : ['No valid candidates found'],
+    };
+  }
+
+  return {
+    valid: true,
+    errors: [],
+    data: {
+      candidates: validCandidates,
+    },
+  };
 }
 
 /**
@@ -160,6 +231,151 @@ export function normalizeAiResponse(
     candidates,
     rawText,
     isFallbackParsed,
+  };
+}
+
+/**
+ * Creates a live Gemini-backed MindMapAiClient implementation.
+ * Validates provider responses before candidate normalization and respects AbortSignal.
+ */
+export function createGeminiMindMapAiClient(options?: GeminiAiClientOptions): MindMapAiClient {
+  const envApiKey =
+    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY);
+  const apiKey = options?.apiKey || envApiKey;
+  const model = options?.model || 'gemini-2.5-flash';
+  const apiEndpoint = options?.apiEndpoint || `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const fetchFn = options?.customFetch || fetch;
+
+  return {
+    async generateNodeExpansion(
+      context: AiExpansionContext,
+      signal?: AbortSignal
+    ): Promise<AiExpansionServiceResult> {
+      if (signal?.aborted) {
+        return {
+          ok: false,
+          candidates: [],
+          error: {
+            code: 'CANCELLED',
+            message: 'Đã dừng quá trình tạo gợi ý.',
+          },
+        };
+      }
+
+      if (!apiKey && !options?.customFetch) {
+        return {
+          ok: false,
+          candidates: [],
+          error: {
+            code: 'API_ERROR',
+            message: 'GEMINI_API_KEY chưa được cấu hình. Vui lòng cấu hình API Key.',
+          },
+        };
+      }
+
+      const prompt = `Bạn là chuyên gia tư duy và kiến trúc sư tri thức. Nhiệm vụ: Gợi ý các nhánh con chất lượng cao cho sơ đồ tư duy.
+Ngữ cảnh nút mục tiêu: "${context.targetNodeTitle}"
+Chủ đề gốc: "${context.rootTopicTitle}"
+Đường dẫn cha: ${context.ancestorTitles.join(' > ') || 'None'}
+Các nhánh anh em hiện có (tránh trùng lặp): ${context.existingSiblingTitles.join(', ') || 'None'}
+Mẫu định hướng: ${context.preset}
+Chỉ dẫn bổ sung: ${context.customInstruction || 'None'}
+Ngôn ngữ phản hồi: ${context.language === 'en' ? 'English' : 'Tiếng Việt'}
+
+BẮT BUỘC trả về định dạng JSON thuần túy theo schema:
+{
+  "candidates": [
+    { "title": "Tiêu đề nhánh ngắn gọn", "description": "Giải thích tóm tắt" }
+  ]
+}`;
+
+      try {
+        const url = new URL(apiEndpoint);
+        if (apiKey) {
+          url.searchParams.set('key', apiKey);
+        }
+
+        const response = await fetchFn(url.toString(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: 'application/json',
+            },
+          }),
+          signal,
+        });
+
+        if (!response.ok) {
+          return {
+            ok: false,
+            candidates: [],
+            error: {
+              code: 'API_ERROR',
+              message: `Lỗi kết nối Gemini API (${response.status}: ${response.statusText}).`,
+            },
+          };
+        }
+
+        const data = await response.json();
+        const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        // Check if structured payload is returned
+        try {
+          let cleanStr = textResponse.trim();
+          if (cleanStr.includes('```')) {
+            const match = cleanStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+            if (match && match[1]) cleanStr = match[1].trim();
+          }
+          const parsed = JSON.parse(cleanStr);
+          if (parsed && typeof parsed === 'object') {
+            const validation = validateAiProviderPayload(parsed);
+            if (!validation.valid) {
+              return {
+                ok: false,
+                candidates: [],
+                rawText: textResponse,
+                error: {
+                  code: 'VALIDATION_ERROR',
+                  message: `Phản hồi từ AI không đúng cấu trúc: ${validation.errors.join(', ')}`,
+                },
+              };
+            }
+          }
+        } catch {
+          // If not JSON, proceed to normalizeAiResponse for fallback parsing
+        }
+
+        return normalizeAiResponse(textResponse, context);
+      } catch (err: any) {
+        if (signal?.aborted || err?.name === 'AbortError') {
+          return {
+            ok: false,
+            candidates: [],
+            error: {
+              code: 'CANCELLED',
+              message: 'Đã dừng quá trình tạo gợi ý.',
+            },
+          };
+        }
+        return {
+          ok: false,
+          candidates: [],
+          error: {
+            code: 'NETWORK_ERROR',
+            message: err?.message || 'Lỗi mạng khi kết nối tới dịch vụ AI.',
+          },
+        };
+      }
+    },
   };
 }
 
