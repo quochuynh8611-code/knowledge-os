@@ -19,6 +19,8 @@ export enum TreeMutationErrorCode {
   ROOT_CANNOT_MOVE = 'ROOT_CANNOT_MOVE',
   BOUNDARY_REACHED = 'BOUNDARY_REACHED',
   DUPLICATE_ID = 'DUPLICATE_ID',
+  CANNOT_REPARENT_TO_SELF = 'CANNOT_REPARENT_TO_SELF',
+  CANNOT_REPARENT_TO_DESCENDANT = 'CANNOT_REPARENT_TO_DESCENDANT',
 }
 
 export interface TreeMutationResult {
@@ -403,6 +405,172 @@ export function insertBatchChildNodes(
   }
 
   const newTree = appendBatchToParent(tree);
+
+  return {
+    ok: true,
+    tree: newTree,
+  };
+}
+
+/**
+ * Checks if a candidate node is a descendant (child, grandchild, etc.) of an ancestor node.
+ * Used for circularity defense in drag-and-drop reparenting.
+ */
+export function isDescendantNode(
+  tree: MindMapTreeNode,
+  ancestorId: string,
+  candidateChildId: string
+): boolean {
+  if (!tree || !ancestorId || !candidateChildId || ancestorId === candidateChildId) {
+    return false;
+  }
+
+  const ancestor = findNodeById(tree, ancestorId);
+  if (!ancestor || !Array.isArray(ancestor.children) || ancestor.children.length === 0) {
+    return false;
+  }
+
+  return findNodeById({ ...ancestor, id: '__virtual_check_root__' }, candidateChildId) !== null;
+}
+
+/**
+ * Recursively recomputes hopDistance and parentHopId for a subtree being moved.
+ */
+function recomputeSubtreeHops(
+  node: MindMapTreeNode,
+  newParentHopId: string,
+  newParentHopDistance: number
+): MindMapTreeNode {
+  const hopDistance = newParentHopDistance + 1;
+  return {
+    ...node,
+    parentHopId: newParentHopId,
+    hopDistance,
+    tags: Array.isArray(node.tags) ? [...node.tags] : [],
+    children: Array.isArray(node.children)
+      ? node.children.map((child) => recomputeSubtreeHops(child, node.id, hopDistance))
+      : [],
+  };
+}
+
+/**
+ * Reparents a node (and its entire subtree) to a new parent node immutably (Phase P4).
+ * Supports reordering among siblings via targetIndex.
+ * Enforces cycle defense, self-reparenting defense, and root node protection.
+ */
+export function reparentNode(
+  tree: MindMapTreeNode,
+  sourceNodeId: string,
+  targetParentId: string,
+  targetIndex?: number
+): TreeMutationResult {
+  if (!tree) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.NODE_NOT_FOUND,
+        message: 'Cây sơ đồ tư duy không hợp lệ.',
+      },
+    };
+  }
+
+  // 1. Root cannot be moved
+  if (sourceNodeId === tree.id) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.ROOT_CANNOT_MOVE,
+        message: 'Không thể di chuyển nút gốc của sơ đồ tư duy.',
+      },
+    };
+  }
+
+  // 2. Cannot reparent to self
+  if (sourceNodeId === targetParentId) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.CANNOT_REPARENT_TO_SELF,
+        message: 'Không thể đặt một nút làm con của chính nó.',
+      },
+    };
+  }
+
+  // 3. Circularity defense: cannot reparent to own descendant
+  if (isDescendantNode(tree, sourceNodeId, targetParentId)) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.CANNOT_REPARENT_TO_DESCENDANT,
+        message: 'Không thể di chuyển một nút vào các nhánh con cháu của chính nó.',
+      },
+    };
+  }
+
+  // 4. Validate source node exists
+  const sourceNode = findNodeById(tree, sourceNodeId);
+  if (!sourceNode) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.NODE_NOT_FOUND,
+        message: `Không tìm thấy nút nguồn có ID "${sourceNodeId}".`,
+      },
+    };
+  }
+
+  // 5. Validate target parent exists
+  const targetParent = findNodeById(tree, targetParentId);
+  if (!targetParent) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.PARENT_NOT_FOUND,
+        message: `Không tìm thấy nút cha đích có ID "${targetParentId}".`,
+      },
+    };
+  }
+
+  // 6. Extract source subtree with updated hop hierarchy
+  const movedSubtree = recomputeSubtreeHops(
+    sourceNode,
+    targetParent.id,
+    targetParent.hopDistance
+  );
+
+  // 7. Pure tree transformation: remove from old parent and insert into new parent
+  function transformNode(node: MindMapTreeNode): MindMapTreeNode {
+    // If this node is the old parent, remove sourceNodeId from its children
+    let filteredChildren = node.children.filter((c) => c.id !== sourceNodeId);
+
+    // If this node is the target parent, insert movedSubtree
+    if (node.id === targetParentId) {
+      const updatedChildren = filteredChildren.map(transformNode);
+      if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex <= updatedChildren.length) {
+        const nextChildren = [...updatedChildren];
+        nextChildren.splice(targetIndex, 0, movedSubtree);
+        return {
+          ...node,
+          tags: [...node.tags],
+          children: nextChildren,
+        };
+      } else {
+        return {
+          ...node,
+          tags: [...node.tags],
+          children: [...updatedChildren, movedSubtree],
+        };
+      }
+    }
+
+    return {
+      ...node,
+      tags: [...node.tags],
+      children: filteredChildren.map(transformNode),
+    };
+  }
+
+  const newTree = transformNode(tree);
 
   return {
     ok: true,

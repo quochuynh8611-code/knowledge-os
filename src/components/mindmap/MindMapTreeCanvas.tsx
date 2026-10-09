@@ -53,6 +53,9 @@ interface MindMapTreeCanvasProps {
 
   // Phase P3: AI Expansion Props
   onRequestAiExpand?: (nodeId: string) => void;
+
+  // Phase P4: Drag-and-Drop Reparenting Props
+  onReparentNode?: (sourceNodeId: string, targetParentId: string, targetIndex?: number) => void;
 }
 
 interface InlineNodeEditorProps {
@@ -161,6 +164,7 @@ export function MindMapTreeCanvas({
   onMoveUp,
   onMoveDown,
   onRequestAiExpand,
+  onReparentNode,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -171,6 +175,8 @@ export function MindMapTreeCanvas({
   const [zoom, setZoom] = useState<number>(1.0);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
 
   // Build tree lookup maps for O(1) parent and sibling traversal
   const { nodeMap, parentMap } = useMemo(() => {
@@ -608,6 +614,61 @@ export function MindMapTreeCanvas({
     const nodeCycles =
       cycleAnnotations?.filter((ca) => ca.nodeId === node.id) || [];
 
+    const canDrag = Boolean(isEditable && !isRoot);
+    const isDragOverTarget = Boolean(
+      isEditable && dragOverNodeId === node.id && draggingNodeId !== node.id
+    );
+
+    const handleDragStart = (e: React.DragEvent) => {
+      if (!canDrag) {
+        e.preventDefault();
+        return;
+      }
+      e.stopPropagation();
+      setDraggingNodeId(node.id);
+      e.dataTransfer.setData("application/x-mindmap-node", node.id);
+      e.dataTransfer.setData("text/plain", node.id);
+      e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleDragEnd = () => {
+      setDraggingNodeId(null);
+      setDragOverNodeId(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+      if (!isEditable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (draggingNodeId !== node.id) {
+        e.dataTransfer.dropEffect = "move";
+        if (dragOverNodeId !== node.id) {
+          setDragOverNodeId(node.id);
+        }
+      }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+      e.stopPropagation();
+      if (dragOverNodeId === node.id) {
+        setDragOverNodeId(null);
+      }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      if (!isEditable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setDragOverNodeId(null);
+      setDraggingNodeId(null);
+      const sourceId =
+        e.dataTransfer.getData("application/x-mindmap-node") ||
+        e.dataTransfer.getData("text/plain");
+      if (sourceId && sourceId !== node.id && onReparentNode) {
+        onReparentNode(sourceId, node.id);
+      }
+    };
+
     return (
       <div
         data-node-id={node.id}
@@ -616,23 +677,31 @@ export function MindMapTreeCanvas({
         data-peer-highlighted={isPeerHighlighted ? "true" : undefined}
         data-search-match={isSearchMatch ? "true" : undefined}
         data-search-dim={isSearchDimmed ? "true" : undefined}
+        draggable={canDrag ? true : undefined}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onMouseEnter={() => setHoveredNodeId(node.id)}
         onMouseLeave={() => setHoveredNodeId(null)}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
-          isFocused
-            ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
-            : isHighlighted
-              ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
-              : isSearchMatch
-                ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
-                : isPeerHighlighted
-                  ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
-                  : isRoot
-                    ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-                    : isTopic
-                      ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                      : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+          isDragOverTarget
+            ? "ring-2 ring-sky-500 shadow-lg bg-sky-50/90 dark:bg-sky-950/60 border-sky-500"
+            : isFocused
+              ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
+              : isHighlighted
+                ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
+                : isSearchMatch
+                  ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
+                  : isPeerHighlighted
+                    ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
+                    : isRoot
+                      ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+                      : isTopic
+                        ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                        : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
         } ${
           isSearchDimmed ? "opacity-35" : ""
         } ${

@@ -63,6 +63,7 @@ import {
   findNodeById,
   countTreeNodes,
   insertBatchChildNodes,
+  reparentNode,
 } from "../../lib/mindmapTreeMutations";
 import { MindMapAiExpansionModal } from "./MindMapAiExpansionModal";
 import { AiExpansionContext, AiCandidateNode } from "../../types/mindmapAi";
@@ -661,6 +662,26 @@ export function MindMapView() {
       if (res.ok && res.tree) {
         setWorkingDocumentTree(res.tree);
         setIsDirty(true);
+      }
+    },
+    [workingDocumentTree, projection?.tree]
+  );
+
+  const handleReparentNode = useCallback(
+    (sourceNodeId: string, targetParentId: string, targetIndex?: number) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = reparentNode(currentTree, sourceNodeId, targetParentId, targetIndex);
+      if (res.ok && res.tree) {
+        setWorkingDocumentTree(res.tree);
+        setIsDirty(true);
+        // Automatically uncollapse target parent so newly reparented child is visible
+        setCollapsedNodeIds((prev) => {
+          if (!prev.has(targetParentId)) return prev;
+          const next = new Set(prev);
+          next.delete(targetParentId);
+          return next;
+        });
       }
     },
     [workingDocumentTree, projection?.tree]
@@ -1320,6 +1341,7 @@ export function MindMapView() {
           onMoveUp={handleMoveUp}
           onMoveDown={handleMoveDown}
           onRequestAiExpand={handleRequestAiExpand}
+          onReparentNode={handleReparentNode}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
