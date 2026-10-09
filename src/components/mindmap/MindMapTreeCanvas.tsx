@@ -52,9 +52,156 @@ export function MindMapTreeCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1.0);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+
+  // Build tree lookup maps for O(1) parent and sibling traversal
+  const { nodeMap, parentMap } = useMemo(() => {
+    const nodes = new Map<string, MindMapTreeNode>();
+    const parents = new Map<string, string>();
+
+    const traverse = (node: MindMapTreeNode, parentId?: string) => {
+      nodes.set(node.id, node);
+      if (parentId) {
+        parents.set(node.id, parentId);
+      }
+      for (const child of node.children) {
+        traverse(child, node.id);
+      }
+    };
+
+    traverse(tree);
+    return { nodeMap: nodes, parentMap: parents };
+  }, [tree]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (
+      target?.tagName === "INPUT" ||
+      target?.tagName === "TEXTAREA" ||
+      target?.tagName === "SELECT"
+    ) {
+      return;
+    }
+
+    const currentId = focusedNodeId || tree.id;
+    const currentNode = nodeMap.get(currentId);
+
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      setFocusedNodeId(null);
+      return;
+    }
+
+    if (e.key === "Home") {
+      e.preventDefault();
+      setFocusedNodeId(tree.id);
+      return;
+    }
+
+    if (e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      if (focusedNodeId && currentNode && currentNode.children.length > 0 && onToggleCollapse) {
+        onToggleCollapse(focusedNodeId);
+      }
+      return;
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (focusedNodeId && currentNode && currentNode.type === "topic" && onSelectTopic) {
+        onSelectTopic(focusedNodeId);
+      }
+      return;
+    }
+
+    // Helper functions for arrow navigation
+    const isCollapsed = (id: string) => Boolean(collapsedNodeIds?.has(id));
+
+    const getFirstChild = (node: MindMapTreeNode | undefined): string | null => {
+      if (!node || node.children.length === 0 || isCollapsed(node.id)) {
+        return null;
+      }
+      return node.children[0].id;
+    };
+
+    const getParent = (id: string): string | null => {
+      return parentMap.get(id) || null;
+    };
+
+    const getSibling = (id: string, delta: number): string | null => {
+      const parentId = parentMap.get(id);
+      if (!parentId) return null;
+      const parentNode = nodeMap.get(parentId);
+      if (!parentNode) return null;
+      const idx = parentNode.children.findIndex((c) => c.id === id);
+      if (idx === -1) return null;
+      const targetIdx = idx + delta;
+      if (targetIdx < 0 || targetIdx >= parentNode.children.length) {
+        return null;
+      }
+      return parentNode.children[targetIdx].id;
+    };
+
+    if (!focusedNodeId) {
+      // First arrow key press establishes initial focus
+      if (["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) {
+        e.preventDefault();
+        if (isHorizontal && e.key === "ArrowRight") {
+          const childId = getFirstChild(tree);
+          setFocusedNodeId(childId || tree.id);
+        } else if (!isHorizontal && e.key === "ArrowDown") {
+          const childId = getFirstChild(tree);
+          setFocusedNodeId(childId || tree.id);
+        } else {
+          setFocusedNodeId(tree.id);
+        }
+        return;
+      }
+    }
+
+    if (isHorizontal) {
+      // Horizontal layout: Right -> child, Left -> parent, Down -> next sibling, Up -> prev sibling
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const childId = getFirstChild(currentNode);
+        if (childId) setFocusedNodeId(childId);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const parentId = getParent(currentId);
+        if (parentId) setFocusedNodeId(parentId);
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextSibling = getSibling(currentId, 1);
+        if (nextSibling) setFocusedNodeId(nextSibling);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevSibling = getSibling(currentId, -1);
+        if (prevSibling) setFocusedNodeId(prevSibling);
+      }
+    } else {
+      // Vertical layout: Down -> child, Up -> parent, Right -> next sibling, Left -> prev sibling
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const childId = getFirstChild(currentNode);
+        if (childId) setFocusedNodeId(childId);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const parentId = getParent(currentId);
+        if (parentId) setFocusedNodeId(parentId);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        const nextSibling = getSibling(currentId, 1);
+        if (nextSibling) setFocusedNodeId(nextSibling);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        const prevSibling = getSibling(currentId, -1);
+        if (prevSibling) setFocusedNodeId(prevSibling);
+      }
+    }
+  };
 
   const dragStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number }>({
     clientX: 0,
@@ -277,9 +424,11 @@ export function MindMapTreeCanvas({
     const isSearchActive = matchingNodeIds !== null && matchingNodeIds !== undefined;
     const isSearchMatch = isSearchActive && matchingNodeIds.has(node.id);
     const isSearchDimmed = isSearchActive && !isSearchMatch;
+    const isFocused = focusedNodeId === node.id;
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
+      setFocusedNodeId(node.id);
       setFocusedCrossLinkNodeId((prev) => (prev === node.id ? null : node.id));
       if (isTopic && onSelectTopic) {
         onSelectTopic(node.id);
@@ -299,6 +448,7 @@ export function MindMapTreeCanvas({
     return (
       <div
         data-node-id={node.id}
+        data-focused={isFocused ? "true" : undefined}
         data-highlighted={isHighlighted ? "true" : undefined}
         data-peer-highlighted={isPeerHighlighted ? "true" : undefined}
         data-search-match={isSearchMatch ? "true" : undefined}
@@ -307,17 +457,19 @@ export function MindMapTreeCanvas({
         onMouseLeave={() => setHoveredNodeId(null)}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
-          isHighlighted
-            ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
-            : isSearchMatch
-              ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
-              : isPeerHighlighted
-                ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
-                : isRoot
-                  ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-                  : isTopic
-                    ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                    : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+          isFocused
+            ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
+            : isHighlighted
+              ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
+              : isSearchMatch
+                ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
+                : isPeerHighlighted
+                  ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
+                  : isRoot
+                    ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+                    : isTopic
+                      ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                      : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
         } ${
           isSearchDimmed ? "opacity-35" : ""
         } ${
@@ -496,14 +648,16 @@ export function MindMapTreeCanvas({
   return (
     <div
       ref={backdropRef}
+      tabIndex={0}
       data-testid="mindmap-canvas-backdrop"
       onClick={() => setFocusedCrossLinkNodeId(null)}
+      onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800 ${
+      className={`relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800 focus:outline-none ${
         isDragging ? "cursor-grabbing select-none" : "cursor-grab"
       }`}
     >
