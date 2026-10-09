@@ -54,7 +54,22 @@ import {
   FileText,
   RotateCcw,
   Trash2,
+  Undo2,
+  Redo2,
 } from "lucide-react";
+import {
+  MindMapHistoryState,
+  createMindMapHistory,
+  pushHistoryMutation,
+  undoHistory,
+  redoHistory,
+  canUndo,
+  canRedo,
+  isHistoryDirty,
+  commitHistorySave,
+  resetHistoryToSavedBaseline,
+  shouldIgnoreCanvasShortcut,
+} from "../../lib/mindmapHistory";
 import {
   renameNodeTitle,
   insertChildNode,
@@ -115,9 +130,11 @@ export function MindMapView() {
   const [isVolatileStorage, setIsVolatileStorage] = useState<boolean>(false);
   const [savedDocsRevision, setSavedDocsRevision] = useState<number>(0);
 
-  // Working Copy State (Phase P2 Interactive Canvas Editing)
+  // Working Copy State & History (Phase P2 & Phase P5)
   const [workingDocumentTree, setWorkingDocumentTree] =
     useState<MindMapTreeNode | null>(null);
+  const [historyState, setHistoryState] =
+    useState<MindMapHistoryState | null>(null);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [pendingDeleteNodeId, setPendingDeleteNodeId] = useState<string | null>(
@@ -146,7 +163,7 @@ export function MindMapView() {
     return getMindMapVersion(activeDocumentId);
   }, [activeDocumentId, savedDocsRevision]);
 
-  // Synchronize working tree when active saved document version changes
+  // Synchronize working tree and history when active saved document version changes
   useEffect(() => {
     if (activeMode === "saved-document" && activeDocumentVersion) {
       const initial = documentTreeToProjectedTree(
@@ -154,10 +171,12 @@ export function MindMapView() {
         layoutMode
       );
       setWorkingDocumentTree(initial);
+      setHistoryState(createMindMapHistory(initial));
       setIsDirty(false);
       setEditingNodeId(null);
     } else {
       setWorkingDocumentTree(null);
+      setHistoryState(null);
       setIsDirty(false);
       setEditingNodeId(null);
     }
@@ -575,7 +594,77 @@ export function MindMapView() {
     return "Sơ đồ tư duy mới";
   }, [activeMode, activeDocumentSummary, projection?.rootTitle]);
 
-  // Interactive Canvas Editing Actions (Phase P2)
+  // Interactive Canvas Editing Actions (Phase P2 & Phase P5 History)
+  const applyTreeMutation = useCallback((nextTree: MindMapTreeNode) => {
+    setWorkingDocumentTree(nextTree);
+    setHistoryState((prevHistory) => {
+      const baseHistory = prevHistory || createMindMapHistory(nextTree);
+      const updated = pushHistoryMutation(baseHistory, nextTree);
+      setIsDirty(isHistoryDirty(updated));
+      return updated;
+    });
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setHistoryState((prev) => {
+      if (!prev || !canUndo(prev)) return prev;
+      const next = undoHistory(prev);
+      setWorkingDocumentTree(next.present);
+      setIsDirty(isHistoryDirty(next));
+      return next;
+    });
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    setHistoryState((prev) => {
+      if (!prev || !canRedo(prev)) return prev;
+      const next = redoHistory(prev);
+      setWorkingDocumentTree(next.present);
+      setIsDirty(isHistoryDirty(next));
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut listener for Canvas Undo / Redo (Cmd/Ctrl + Z, Cmd/Ctrl + Shift + Z, Cmd/Ctrl + Y)
+  useEffect(() => {
+    if (activeMode !== "saved-document") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (shouldIgnoreCanvasShortcut(e.target)) return;
+
+      const isMac =
+        typeof navigator !== "undefined" &&
+        navigator.platform &&
+        navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const isCmdOrCtrl = isMac ? e.metaKey : (e.ctrlKey || e.metaKey);
+
+      if (!isCmdOrCtrl) return;
+
+      // Undo: Cmd+Z or Ctrl+Z without Shift
+      if ((e.key === "z" || e.key === "Z") && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Redo: Cmd+Shift+Z, Ctrl+Shift+Z, or Ctrl+Y / Cmd+Y
+      if (
+        ((e.key === "z" || e.key === "Z") && e.shiftKey) ||
+        e.key === "y" ||
+        e.key === "Y"
+      ) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeMode, handleUndo, handleRedo]);
+
   const handleStartRename = useCallback((nodeId: string) => {
     setEditingNodeId(nodeId);
   }, []);
@@ -586,12 +675,11 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = renameNodeTitle(currentTree, nodeId, nextTitle);
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
         setEditingNodeId(null);
       }
     },
-    [workingDocumentTree, projection?.tree]
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const handleCancelRename = useCallback(() => {
@@ -604,8 +692,7 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = insertChildNode(currentTree, parentNodeId);
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
         const parent = findNodeById(res.tree, parentNodeId);
         if (parent && parent.children.length > 0) {
           const newChild = parent.children[parent.children.length - 1];
@@ -613,7 +700,7 @@ export function MindMapView() {
         }
       }
     },
-    [workingDocumentTree, projection?.tree]
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const handleRequestDelete = useCallback(
@@ -631,11 +718,10 @@ export function MindMapView() {
     if (!currentTree || !pendingDeleteNodeId) return;
     const res = deleteNode(currentTree, pendingDeleteNodeId);
     if (res.ok && res.tree) {
-      setWorkingDocumentTree(res.tree);
-      setIsDirty(true);
+      applyTreeMutation(res.tree);
       setPendingDeleteNodeId(null);
     }
-  }, [workingDocumentTree, projection?.tree, pendingDeleteNodeId]);
+  }, [workingDocumentTree, projection?.tree, pendingDeleteNodeId, applyTreeMutation]);
 
   const handleCancelDelete = useCallback(() => {
     setPendingDeleteNodeId(null);
@@ -647,11 +733,10 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = moveNodeWithinParent(currentTree, nodeId, "up");
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
       }
     },
-    [workingDocumentTree, projection?.tree]
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const handleMoveDown = useCallback(
@@ -660,11 +745,10 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = moveNodeWithinParent(currentTree, nodeId, "down");
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
       }
     },
-    [workingDocumentTree, projection?.tree]
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const handleReparentNode = useCallback(
@@ -673,8 +757,7 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = reparentNode(currentTree, sourceNodeId, targetParentId, targetIndex);
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
         // Automatically uncollapse target parent so newly reparented child is visible
         setCollapsedNodeIds((prev) => {
           if (!prev.has(targetParentId)) return prev;
@@ -684,20 +767,27 @@ export function MindMapView() {
         });
       }
     },
-    [workingDocumentTree, projection?.tree]
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const handleDiscardChanges = useCallback(() => {
-    if (activeDocumentVersion) {
+    if (historyState) {
+      const reset = resetHistoryToSavedBaseline(historyState);
+      setWorkingDocumentTree(reset.present);
+      setHistoryState(reset);
+      setIsDirty(isHistoryDirty(reset));
+      setEditingNodeId(null);
+    } else if (activeDocumentVersion) {
       const initial = documentTreeToProjectedTree(
         activeDocumentVersion.treeData,
         layoutMode
       );
       setWorkingDocumentTree(initial);
+      setHistoryState(createMindMapHistory(initial));
       setIsDirty(false);
       setEditingNodeId(null);
     }
-  }, [activeDocumentVersion, layoutMode]);
+  }, [historyState, activeDocumentVersion, layoutMode]);
 
   // AI Node Expansion Actions (Phase P3)
   const handleRequestAiExpand = useCallback((nodeId: string) => {
@@ -720,8 +810,7 @@ export function MindMapView() {
       );
 
       if (res.ok && res.tree) {
-        setWorkingDocumentTree(res.tree);
-        setIsDirty(true);
+        applyTreeMutation(res.tree);
         // Automatically uncollapse target node so newly inserted children are visible
         setCollapsedNodeIds((prev) => {
           if (!prev.has(aiExpansionTargetNodeId)) return prev;
@@ -732,7 +821,7 @@ export function MindMapView() {
         setAiExpansionTargetNodeId(null);
       }
     },
-    [aiExpansionTargetNodeId, workingDocumentTree, projection?.tree]
+    [aiExpansionTargetNodeId, workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
   const aiExpansionContext = useMemo((): AiExpansionContext | null => {
@@ -797,6 +886,13 @@ export function MindMapView() {
         setActiveDocumentId(result.data.document.id);
         setActiveMode("saved-document");
         setIsVolatileStorage(result.isVolatile);
+        setHistoryState((prev) =>
+          prev
+            ? commitHistorySave(prev)
+            : projection?.tree
+            ? createMindMapHistory(projection.tree)
+            : null
+        );
         setIsDirty(false);
         setSavedDocsRevision((r) => r + 1);
         setIsSaveModalOpen(false);
@@ -835,6 +931,13 @@ export function MindMapView() {
 
       if (result.success) {
         setIsVolatileStorage(result.isVolatile);
+        setHistoryState((prev) =>
+          prev
+            ? commitHistorySave(prev)
+            : projection?.tree
+            ? createMindMapHistory(projection.tree)
+            : null
+        );
         setIsDirty(false);
         setSavedDocsRevision((r) => r + 1);
         setIsSaveModalOpen(false);
@@ -1197,6 +1300,32 @@ export function MindMapView() {
               </span>
             )}
           </button>
+
+          {/* Undo / Redo Actions (Phase P5) */}
+          {activeMode === "saved-document" && (
+            <div className="flex items-center bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl p-0.5">
+              <button
+                type="button"
+                data-testid="mindmap-undo-button"
+                onClick={handleUndo}
+                disabled={!historyState || !canUndo(historyState)}
+                title="Hoàn tác (Cmd/Ctrl + Z)"
+                className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                data-testid="mindmap-redo-button"
+                onClick={handleRedo}
+                disabled={!historyState || !canRedo(historyState)}
+                title="Làm lại (Cmd/Ctrl + Shift + Z hoặc Cmd/Ctrl + Y)"
+                className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-700 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed transition cursor-pointer"
+              >
+                <Redo2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Active Saved Document Badge & Back to Live Button */}
           {activeMode === "saved-document" && (
