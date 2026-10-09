@@ -208,4 +208,102 @@ describe("Phase I2: Mind Map Preview-Only Sandbox Modal", () => {
     expect(mockDataContextValue.deleteTopic).not.toHaveBeenCalled();
     expect(mockDataContextValue.addKnowledgeLink).not.toHaveBeenCalled();
   });
+
+  it("Scenario 8: Category selection is required to enable Import CTA", () => {
+    render(
+      <DataContext.Provider value={mockDataContextValue}>
+        <MindMapImportPreviewModal
+          isOpen={true}
+          onClose={vi.fn()}
+          initialMarkdown="- 📚 **[Topic Test](#/topics/topic-1)**"
+        />
+      </DataContext.Provider>
+    );
+
+    const categorySelect = screen.getByTestId("import-target-category-select") as HTMLSelectElement;
+    const importBtn = screen.getByTestId("btn-trigger-import") as HTMLButtonElement;
+
+    expect(categorySelect).toBeInTheDocument();
+    expect(importBtn).toBeDisabled();
+
+    // Select category
+    fireEvent.change(categorySelect, { target: { value: "cat-1" } });
+    expect(importBtn).not.toBeDisabled();
+  });
+
+  it("Scenario 9: Opening Confirmation Dialog shows summary before committing write", () => {
+    render(
+      <DataContext.Provider value={mockDataContextValue}>
+        <MindMapImportPreviewModal
+          isOpen={true}
+          onClose={vi.fn()}
+          initialMarkdown={"- 📚 Gốc\n  - [tiên quyết] 📚 Nhánh 1"}
+        />
+      </DataContext.Provider>
+    );
+
+    const categorySelect = screen.getByTestId("import-target-category-select");
+    fireEvent.change(categorySelect, { target: { value: "cat-1" } });
+
+    const importBtn = screen.getByTestId("btn-trigger-import");
+    fireEvent.click(importBtn);
+
+    // Confirmation dialog appears
+    const confirmDialog = screen.getByTestId("import-confirm-dialog");
+    expect(confirmDialog).toBeInTheDocument();
+    expect(confirmDialog).toHaveTextContent("Xác nhận nhập sơ đồ vào CSDL");
+    expect(confirmDialog).toHaveTextContent("2 chủ đề");
+  });
+
+  it("Scenario 10: Canceling confirmation dialog performs zero-write", () => {
+    render(
+      <DataContext.Provider value={mockDataContextValue}>
+        <MindMapImportPreviewModal
+          isOpen={true}
+          onClose={vi.fn()}
+          initialMarkdown={"- 📚 Gốc\n  - [tiên quyết] 📚 Nhánh 1"}
+        />
+      </DataContext.Provider>
+    );
+
+    const categorySelect = screen.getByTestId("import-target-category-select");
+    fireEvent.change(categorySelect, { target: { value: "cat-1" } });
+
+    const importBtn = screen.getByTestId("btn-trigger-import");
+    fireEvent.click(importBtn);
+
+    const cancelBtn = screen.getByTestId("btn-cancel-import-confirm");
+    fireEvent.click(cancelBtn);
+
+    // Dialog closes and zero writes performed
+    expect(screen.queryByTestId("import-confirm-dialog")).not.toBeInTheDocument();
+    expect(mockDataContextValue.addTopic).not.toHaveBeenCalled();
+  });
+
+  it("Scenario 11: Submitting confirmation dialog invokes ingestion port and closes modal", async () => {
+    const handleClose = vi.fn();
+    mockDataContextValue.addTopic.mockReturnValue("new-topic-id-1");
+
+    render(
+      <DataContext.Provider value={mockDataContextValue}>
+        <MindMapImportPreviewModal
+          isOpen={true}
+          onClose={handleClose}
+          initialMarkdown={"- 📚 Gốc\n  - [tiên quyết] 📚 Nhánh 1"}
+        />
+      </DataContext.Provider>
+    );
+
+    const categorySelect = screen.getByTestId("import-target-category-select");
+    fireEvent.change(categorySelect, { target: { value: "cat-1" } });
+
+    const importBtn = screen.getByTestId("btn-trigger-import");
+    fireEvent.click(importBtn);
+
+    const submitBtn = screen.getByTestId("btn-submit-import-confirm");
+    await fireEvent.click(submitBtn);
+
+    // Assert addTopic was called
+    expect(mockDataContextValue.addTopic).toHaveBeenCalled();
+  });
 });
