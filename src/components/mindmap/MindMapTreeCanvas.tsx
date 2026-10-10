@@ -63,6 +63,9 @@ interface MindMapTreeCanvasProps {
   onToggleSelectNode?: (nodeId: string, isModifier: boolean) => void;
   onClearSelection?: () => void;
   onBatchDelete?: () => void;
+
+  // Phase P7.A: Marquee Selection Props
+  onSelectMultipleNodes?: (nodeIds: string[]) => void;
 }
 
 interface InlineNodeEditorProps {
@@ -176,6 +179,7 @@ export function MindMapTreeCanvas({
   onToggleSelectNode,
   onClearSelection,
   onBatchDelete,
+  onSelectMultipleNodes,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -219,6 +223,28 @@ export function MindMapTreeCanvas({
     if (e.key === "Escape") {
       e.stopPropagation();
       setFocusedNodeId(null);
+      if (onClearSelection && selectedNodeIds && selectedNodeIds.size > 0) {
+        onClearSelection();
+      }
+      return;
+    }
+
+    // Phase P7.A: Cmd+A / Ctrl+A shortcut for selecting all logical-visible nodes
+    if ((e.metaKey || e.ctrlKey) && (e.key === "a" || e.key === "A")) {
+      e.preventDefault();
+      if (onSelectMultipleNodes) {
+        const visibleIds: string[] = [];
+        const collectVisible = (node: MindMapTreeNode) => {
+          visibleIds.push(node.id);
+          if (!collapsedNodeIds?.has(node.id)) {
+            for (const child of node.children) {
+              collectVisible(child);
+            }
+          }
+        };
+        collectVisible(tree);
+        onSelectMultipleNodes(visibleIds);
+      }
       return;
     }
 
@@ -384,6 +410,16 @@ export function MindMapTreeCanvas({
     }
   };
 
+  const [marqueeBox, setMarqueeBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+  } | null>(null);
+  const isMarqueeDraggingRef = useRef(false);
+  const marqueeStartRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  const wasMarqueeRef = useRef(false);
+
   const dragStartRef = useRef<{ clientX: number; clientY: number; panX: number; panY: number }>({
     clientX: 0,
     clientY: 0,
@@ -403,7 +439,30 @@ export function MindMapTreeCanvas({
     ) {
       return;
     }
+
     dragDistanceRef.current = 0;
+    wasMarqueeRef.current = false;
+
+    if (e.shiftKey) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore in test/JSDOM environments without pointer capture
+      }
+      isMarqueeDraggingRef.current = true;
+      marqueeStartRef.current = {
+        clientX: e.clientX,
+        clientY: e.clientY,
+      };
+      setMarqueeBox({
+        startX: e.clientX,
+        startY: e.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      });
+      return;
+    }
+
     isDraggingRef.current = true;
     setIsDragging(true);
     dragStartRef.current = {
@@ -415,6 +474,19 @@ export function MindMapTreeCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isMarqueeDraggingRef.current && marqueeStartRef.current) {
+      const dx = e.clientX - marqueeStartRef.current.clientX;
+      const dy = e.clientY - marqueeStartRef.current.clientY;
+      dragDistanceRef.current = Math.max(dragDistanceRef.current, Math.hypot(dx, dy));
+      setMarqueeBox({
+        startX: marqueeStartRef.current.clientX,
+        startY: marqueeStartRef.current.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      });
+      return;
+    }
+
     if (!isDraggingRef.current) return;
     const dx = e.clientX - dragStartRef.current.clientX;
     const dy = e.clientY - dragStartRef.current.clientY;
@@ -425,7 +497,68 @@ export function MindMapTreeCanvas({
     });
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isMarqueeDraggingRef.current) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      const dist = dragDistanceRef.current;
+      if (dist > 5 && marqueeStartRef.current) {
+        wasMarqueeRef.current = true;
+        const boxLeft = Math.min(marqueeStartRef.current.clientX, e.clientX);
+        const boxRight = Math.max(marqueeStartRef.current.clientX, e.clientX);
+        const boxTop = Math.min(marqueeStartRef.current.clientY, e.clientY);
+        const boxBottom = Math.max(marqueeStartRef.current.clientY, e.clientY);
+
+        const nodeEls = backdropRef.current?.querySelectorAll<HTMLElement>("[data-node-id]");
+        const intersectedIds: string[] = [];
+        if (nodeEls) {
+          nodeEls.forEach((el) => {
+            const nodeId = el.getAttribute("data-node-id");
+            if (!nodeId) return;
+            const nodeRect = el.getBoundingClientRect();
+            const isIntersecting = !(
+              nodeRect.right < boxLeft ||
+              nodeRect.left > boxRight ||
+              nodeRect.bottom < boxTop ||
+              nodeRect.top > boxBottom
+            );
+            if (isIntersecting) {
+              intersectedIds.push(nodeId);
+            }
+          });
+        }
+        if (onSelectMultipleNodes) {
+          onSelectMultipleNodes(intersectedIds);
+        }
+      }
+      isMarqueeDraggingRef.current = false;
+      marqueeStartRef.current = null;
+      setMarqueeBox(null);
+      return;
+    }
+
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      setIsDragging(false);
+    }
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isMarqueeDraggingRef.current) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {
+        // ignore
+      }
+      isMarqueeDraggingRef.current = false;
+      marqueeStartRef.current = null;
+      setMarqueeBox(null);
+      return;
+    }
+
     if (isDraggingRef.current) {
       isDraggingRef.current = false;
       setIsDragging(false);
@@ -1001,9 +1134,10 @@ export function MindMapTreeCanvas({
       data-testid="mindmap-canvas-backdrop"
       onClick={() => {
         setFocusedCrossLinkNodeId(null);
-        const wasPan = dragDistanceRef.current > 5;
+        const wasPanOrMarquee = dragDistanceRef.current > 5 || wasMarqueeRef.current;
+        wasMarqueeRef.current = false;
         dragDistanceRef.current = 0;
-        if (!wasPan && onClearSelection) {
+        if (!wasPanOrMarquee && onClearSelection) {
           onClearSelection();
         }
       }}
@@ -1012,11 +1146,34 @@ export function MindMapTreeCanvas({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
       className={`relative w-full overflow-auto p-8 min-h-[500px] flex items-center justify-center bg-stone-50/50 dark:bg-stone-950/40 rounded-2xl border border-stone-200/80 dark:border-stone-800 focus:outline-none ${
         isDragging ? "cursor-grabbing select-none" : "cursor-grab"
       }`}
     >
+      {marqueeBox && (() => {
+        const backdropRect = backdropRef.current?.getBoundingClientRect();
+        const scrollLeft = backdropRef.current?.scrollLeft ?? 0;
+        const scrollTop = backdropRef.current?.scrollTop ?? 0;
+        const backdropLeft = backdropRect?.left ?? 0;
+        const backdropTop = backdropRect?.top ?? 0;
+        const left = Math.min(marqueeBox.startX, marqueeBox.currentX) - backdropLeft + scrollLeft;
+        const top = Math.min(marqueeBox.startY, marqueeBox.currentY) - backdropTop + scrollTop;
+        const width = Math.abs(marqueeBox.currentX - marqueeBox.startX);
+        const height = Math.abs(marqueeBox.currentY - marqueeBox.startY);
+        return (
+          <div
+            data-testid="mindmap-marquee-box"
+            className="absolute border border-dashed border-indigo-500 bg-indigo-500/15 pointer-events-none z-50 rounded-xs"
+            style={{
+              left: `${left}px`,
+              top: `${top}px`,
+              width: `${width}px`,
+              height: `${height}px`,
+            }}
+          />
+        );
+      })()}
       <div
         ref={containerRef}
         data-testid="mindmap-canvas-content"

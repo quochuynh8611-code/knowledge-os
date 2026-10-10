@@ -809,6 +809,10 @@ export function MindMapView() {
     setSelectedNodeIds(new Set());
   }, []);
 
+  const handleSelectMultipleNodes = useCallback((nodeIds: string[]) => {
+    setSelectedNodeIds(new Set(nodeIds));
+  }, []);
+
   const handleBatchDelete = useCallback(() => {
     const currentTree = workingDocumentTree || projection?.tree;
     if (!currentTree || selectedNodeIds.size === 0) return;
@@ -1635,6 +1639,7 @@ export function MindMapView() {
           onToggleSelectNode={handleToggleSelectNode}
           onClearSelection={handleClearSelection}
           onBatchDelete={handleBatchDelete}
+          onSelectMultipleNodes={handleSelectMultipleNodes}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
