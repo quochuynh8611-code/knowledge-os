@@ -281,13 +281,14 @@ Tổng kết trạng thái thực tế các phiên bản Mind Map:
 | **v1.1** | **Track A + Track C.1** | - LocalStorage caching nút thu gọn (`collapsedNodeIds`) per-topic.<br>- Lưu `layoutMode` per-topic trong `mindmapStorage.ts`.<br>- Nút "Sơ đồ" CTA trong `TopicDetail.tsx`. | **COMPLETE & VERIFIED** |
 | **v1.2** | **Track B + Track C.2 + C.3** | - SVG Cross-Links overlay với Bézier curves (`MindMapCrossLinksLayer.tsx`).<br>- Deterministic sort & hard cap 15 edges.<br>- Interactive cycle badge focus navigation.<br>- Dashboard Home entry card & Command Palette `Cmd+K`. | **COMPLETE & VERIFIED** |
 | **v2.0** | **Tracks A, B, C, D, E** | - Edge-type semantic filter dropdown.<br>- Viewport zoom, pan, and fit-to-viewport.<br>- Canvas export sang PNG và standalone SVG (kèm multi-parent parity).<br>- Multi-parent DAG classification, styling, and export parity.<br>- Minimap overview radar (desktop radar, drag indicator, mobile toggle $\ge 44\text{px}$, dynamic ResizeObserver). | **COMPLETE & VERIFIED** |
+| **v2.5 (Phase P1–P7.C)** | **Persistence, Editing & Parity** | - Local-First document storage & version history (Phase P1–P2).<br>- AI expansion node ingestion (Phase P3).<br>- Canvas node mutation, editing, and reparenting (Phase P4–P5).<br>- Marquee selection: replace, add, subtract modes (Phase P7.A–P7.B).<br>- Document persistence & export lifecycle parity hardening (Phase P7.C). | **IMPLEMENTATION COMPLETE (Targeted & Marquee Suites Verified)** |
 | **v3.0** | **Future Enhancements** | - Full Layered DAG layout engine (Sugiyama).<br>- Real-time collaborative node positioning & editing.<br>- Inline node markdown editing drawer.<br>- Multi-touch gesture optimization for mobile/tablets. | **DEFERRED BACKLOG** |
 
 ---
 
 ## 8. Implementation Checklist Summary
 
-Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12 test suites / 153 unit tests):
+Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map:
 
 - [x] **Core Engine**:
   - [x] `tests/unit/mindmap-projection.test.ts` (10/10 tests pass).
@@ -304,8 +305,12 @@ Trạng thái kiểm thử và nghiệm thu toàn bộ hệ thống Mind Map (12
   - [x] `tests/unit/mindmap-crosslinks-projection.test.ts` (8/8 tests pass).
   - [x] `tests/unit/mindmap-crosslinks-overlay.test.tsx` (9/9 tests pass).
   - [x] `tests/unit/mindmap-minimap.test.tsx` (25/25 tests pass).
-- [x] **Quality Gates & Static Analysis**:
-  - [x] Toàn bộ **12 test files / 153 unit tests** cho Mind Map đạt 100% pass (`npx vitest run tests/unit/mindmap-*.test.ts*`).
+- [x] **v2.5 Marquee Selection & Lifecycle Parity (Phase P7.A–P7.C)**:
+  - [x] `tests/unit/mindmap-marquee-selection.test.tsx` (11/11 tests pass).
+  - [x] `tests/unit/mindmap-marquee-modifiers.test.tsx` (10/10 tests pass).
+  - [x] `tests/unit/mindmap-document-lifecycle-parity.test.tsx` (7/7 tests pass).
+- [x] **Quality Gates & Static Analysis (Phase P7.C Scope)**:
+  - [x] Targeted lifecycle parity suite (7/7 tests) và related marquee regression suites (21/21 tests) đạt 100% pass (`vitest run`).
   - [x] `npm run typecheck` (`tsc --noEmit`) đạt 0 lỗi.
 
 ---

@@ -238,10 +238,13 @@ export function MindMapView() {
 
   // Derive mind map projection (supports both Live Topic and Saved Document working copy)
   const projection: MindMapTreeProjection | null = useMemo(() => {
-    if (activeMode === "saved-document" && activeDocumentVersion) {
+    if (activeMode === "saved-document" && (workingDocumentTree || activeDocumentVersion)) {
       const tree =
         workingDocumentTree ||
-        documentTreeToProjectedTree(activeDocumentVersion.treeData, layoutMode);
+        (activeDocumentVersion
+          ? documentTreeToProjectedTree(activeDocumentVersion.treeData, layoutMode)
+          : null);
+      if (!tree) return null;
       return {
         rootNodeId: tree.id,
         rootTitle: tree.title,
@@ -250,9 +253,9 @@ export function MindMapView() {
         totalNodesCount: countTreeNodes(tree),
         hasTruncatedBranches: false,
         hasCyclesDetected: false,
-        generatedAt: activeDocumentVersion.createdAt || new Date().toISOString(),
+        generatedAt: activeDocumentVersion?.createdAt || new Date().toISOString(),
         tree,
-        crossEdges: (activeDocumentVersion.crossLinks || []).map((edge) => ({
+        crossEdges: (activeDocumentVersion?.crossLinks || []).map((edge) => ({
           id: edge.id,
           sourceNodeId: edge.sourceNodeId,
           sourceTitle: edge.sourceNodeId,
@@ -279,6 +282,7 @@ export function MindMapView() {
     );
   }, [
     activeMode,
+    workingDocumentTree,
     activeDocumentVersion,
     activeDocumentSummary,
     topics,
@@ -1008,11 +1012,12 @@ export function MindMapView() {
   // Persistence Actions (Phase P1 & P2)
   const handleSaveNewDocument = useCallback(
     (title: string, description?: string, changeSummary?: string) => {
-      if (!projection?.tree) return;
-      const docTree = projectedTreeToDocumentTree(projection.tree);
-      const currentValidIds = collectTreeNodeIds(projection.tree);
+      const activeTree = workingDocumentTree || projection?.tree;
+      if (!activeTree) return;
+      const docTree = projectedTreeToDocumentTree(activeTree);
+      const currentValidIds = collectTreeNodeIds(activeTree);
       const sanitizedCollapsed = sanitizeCollapsedIds(Array.from(collapsedNodeIds), currentValidIds);
-      const crossLinks = (projection.crossEdges || []).map((e) => ({
+      const crossLinks = (projection?.crossEdges || []).map((e) => ({
         id: e.id,
         sourceNodeId: e.sourceNodeId,
         targetNodeId: e.targetNodeId,
@@ -1045,8 +1050,8 @@ export function MindMapView() {
         setHistoryState((prev) =>
           prev
             ? commitHistorySave(prev)
-            : projection?.tree
-            ? createMindMapHistory(projection.tree)
+            : activeTree
+            ? createMindMapHistory(activeTree)
             : null
         );
         setIsDirty(false);
@@ -1054,16 +1059,17 @@ export function MindMapView() {
         setIsSaveModalOpen(false);
       }
     },
-    [projection, activeRootTopicId, layoutMode, collapsedNodeIds, showCrossLinks]
+    [workingDocumentTree, projection, activeRootTopicId, layoutMode, collapsedNodeIds, showCrossLinks]
   );
 
   const handleSaveVersion = useCallback(
     (changeSummary: string) => {
-      if (!activeDocumentId || !projection?.tree) return;
-      const docTree = projectedTreeToDocumentTree(projection.tree);
-      const currentValidIds = collectTreeNodeIds(projection.tree);
+      const activeTree = workingDocumentTree || projection?.tree;
+      if (!activeDocumentId || !activeTree) return;
+      const docTree = projectedTreeToDocumentTree(activeTree);
+      const currentValidIds = collectTreeNodeIds(activeTree);
       const sanitizedCollapsed = sanitizeCollapsedIds(Array.from(collapsedNodeIds), currentValidIds);
-      const crossLinks = (projection.crossEdges || []).map((e) => ({
+      const crossLinks = (projection?.crossEdges || []).map((e) => ({
         id: e.id,
         sourceNodeId: e.sourceNodeId,
         targetNodeId: e.targetNodeId,
@@ -1092,8 +1098,8 @@ export function MindMapView() {
         setHistoryState((prev) =>
           prev
             ? commitHistorySave(prev)
-            : projection?.tree
-            ? createMindMapHistory(projection.tree)
+            : activeTree
+            ? createMindMapHistory(activeTree)
             : null
         );
         setIsDirty(false);
@@ -1101,7 +1107,7 @@ export function MindMapView() {
         setIsSaveModalOpen(false);
       }
     },
-    [activeDocumentId, projection, layoutMode, collapsedNodeIds, showCrossLinks]
+    [activeDocumentId, workingDocumentTree, projection, layoutMode, collapsedNodeIds, showCrossLinks]
   );
 
   const handleOpenSavedDocument = useCallback(
@@ -1407,7 +1413,7 @@ export function MindMapView() {
             type="button"
             data-testid="btn-export-svg"
             onClick={handleExportSvg}
-            disabled={!projection}
+            disabled={!(workingDocumentTree || projection)}
             title="Xuất sơ đồ tư duy ra file vector SVG độc lập"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
           >
@@ -1420,7 +1426,7 @@ export function MindMapView() {
             type="button"
             data-testid="btn-export-png"
             onClick={handleExportPng}
-            disabled={!projection || isExportingPng}
+            disabled={!(workingDocumentTree || projection) || isExportingPng}
             title="Xuất sơ đồ tư duy ra file ảnh PNG độ nét cao (2x)"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
           >
@@ -1449,7 +1455,7 @@ export function MindMapView() {
             type="button"
             data-testid="btn-save-mindmap"
             onClick={() => setIsSaveModalOpen(true)}
-            disabled={!projection}
+            disabled={!(workingDocumentTree || projection)}
             title={
               activeMode === "saved-document"
                 ? "Lưu phiên bản mới cho sơ đồ hiện tại"
@@ -1557,7 +1563,7 @@ export function MindMapView() {
           {/* Copy Markdown Outline CTA */}
           <button
             onClick={handleCopyMarkdown}
-            disabled={!projection}
+            disabled={!(workingDocumentTree || projection)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white dark:bg-stone-100 dark:hover:bg-white dark:text-stone-900 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
           >
             {copied ? (

@@ -1,12 +1,26 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-09-27
+> **Cập nhật lần cuối:** 2026-10-10
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **WORKFLOW-FIRST SHELL (PHASE 1) & EMBEDDED RESEARCH WORKSPACE (PHASE 2A) HOÀN TẤT & VERIFIED (428/428 TEST SUITES PASS — 3.640 TESTS, 0 TSC ERRORS)**
+> **Trạng thái tổng thể:** 🟢 **MIND MAP PHASE P7.C LIFECYCLE PARITY HARDENING: Implementation hoàn tất; đã kiểm chứng qua targeted tests, regression suites liên quan và TypeScript compile (0 errors).**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+
+## Mind Map Document Lifecycle & Export Parity Hardening — Phase P7.C Closure (2026-10-10)
+
+**Status**: ✅ Implementation hoàn tất; đã kiểm chứng qua targeted tests, regression suites liên quan và TypeScript compile (Pending Commit)
+**Tests**: 7/7 Lifecycle Parity tests PASS (targeted), 21/21 Marquee Regression tests PASS (liên quan)
+**Typecheck**: 0 errors (`npx tsc --noEmit`)
+**Database & Architecture**: Active tree resolution (`workingDocumentTree || projection?.tree`) cho luồng save & export; loại bỏ ràng buộc cứng `disabled={!projection}` cho standalone documents; đồng bộ projection derivation với working document tree trên canvas trong các scenario được kiểm thử.
+
+### Features Delivered & Verified
+1. ✅ **Phase P7.C (Active Tree Resolution & Resilience)**: `src/components/mindmap/MindMapView.tsx` — Loại bỏ phụ thuộc cứng `disabled={!projection}` ở các nút Save/Export, đảm bảo standalone documents mở độc lập không bị khóa; guard lưu phiên bản sử dụng `activeTree` thay vì `projection?.tree` lỗi thời.
+2. ✅ **Phase P7.C (Projection Derivation Parity)**: Cập nhật `projection` memo để tự động cập nhật khi `workingDocumentTree` thay đổi, cải thiện và duy trì parity giữa canvas và các bộ serializer SVG/PNG/Markdown trong các scenario được kiểm thử.
+3. ✅ **Phase P7.C (Lifecycle Test Suite)**: `tests/unit/mindmap-document-lifecycle-parity.test.tsx` — 7 kịch bản kiểm thử cho save document, save version, export parity, failure dirty state preservation, và backward compatibility cho live topic baseline.
+
+---
 
 ## Mind Map Keyboard Navigation & A11y Tree Traversal — Phase K2 Closure (2026-10-09)
 
