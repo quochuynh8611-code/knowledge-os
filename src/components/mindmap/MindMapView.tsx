@@ -31,7 +31,7 @@ import {
   documentTreeToProjectedTree,
 } from "../../lib/mindmapDocumentStorage";
 import { MindMapDocumentSummary } from "../../types/mindmapDocument";
-import { MindMapTreeCanvas } from "./MindMapTreeCanvas";
+import { MindMapTreeCanvas, MarqueeSelectionMode } from "./MindMapTreeCanvas";
 import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import { MindMapSaveModal } from "./MindMapSaveModal";
 import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
@@ -809,9 +809,26 @@ export function MindMapView() {
     setSelectedNodeIds(new Set());
   }, []);
 
-  const handleSelectMultipleNodes = useCallback((nodeIds: string[]) => {
-    setSelectedNodeIds(new Set(nodeIds));
-  }, []);
+  const handleSelectMultipleNodes = useCallback(
+    (nodeIds: string[], mode: MarqueeSelectionMode = "replace") => {
+      setSelectedNodeIds((prev) => {
+        if (mode === "add") {
+          if (nodeIds.length === 0) return prev;
+          const next = new Set(prev);
+          nodeIds.forEach((id) => next.add(id));
+          return next;
+        }
+        if (mode === "subtract") {
+          if (nodeIds.length === 0) return prev;
+          const next = new Set(prev);
+          nodeIds.forEach((id) => next.delete(id));
+          return next;
+        }
+        return new Set(nodeIds);
+      });
+    },
+    []
+  );
 
   const handleBatchDelete = useCallback(() => {
     const currentTree = workingDocumentTree || projection?.tree;

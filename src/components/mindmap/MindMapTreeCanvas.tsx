@@ -64,9 +64,11 @@ interface MindMapTreeCanvasProps {
   onClearSelection?: () => void;
   onBatchDelete?: () => void;
 
-  // Phase P7.A: Marquee Selection Props
-  onSelectMultipleNodes?: (nodeIds: string[]) => void;
+  // Phase P7.A & P7.B: Marquee Selection Props
+  onSelectMultipleNodes?: (nodeIds: string[], mode?: MarqueeSelectionMode) => void;
 }
+
+export type MarqueeSelectionMode = "replace" | "add" | "subtract";
 
 interface InlineNodeEditorProps {
   nodeId: string;
@@ -415,8 +417,10 @@ export function MindMapTreeCanvas({
     startY: number;
     currentX: number;
     currentY: number;
+    mode: MarqueeSelectionMode;
   } | null>(null);
   const isMarqueeDraggingRef = useRef(false);
+  const marqueeModeRef = useRef<MarqueeSelectionMode>("replace");
   const marqueeStartRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const wasMarqueeRef = useRef(false);
 
@@ -444,12 +448,27 @@ export function MindMapTreeCanvas({
     wasMarqueeRef.current = false;
 
     if (e.shiftKey) {
+      // Ambiguity check: if both Cmd/Ctrl AND Alt/Option are held with Shift -> fail-closed!
+      const hasCmdOrCtrl = Boolean(e.metaKey || e.ctrlKey);
+      const hasAlt = Boolean(e.altKey);
+      if (hasCmdOrCtrl && hasAlt) {
+        return;
+      }
+
+      let mode: MarqueeSelectionMode = "replace";
+      if (hasCmdOrCtrl) {
+        mode = "add";
+      } else if (hasAlt) {
+        mode = "subtract";
+      }
+
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {
         // ignore in test/JSDOM environments without pointer capture
       }
       isMarqueeDraggingRef.current = true;
+      marqueeModeRef.current = mode;
       marqueeStartRef.current = {
         clientX: e.clientX,
         clientY: e.clientY,
@@ -459,6 +478,7 @@ export function MindMapTreeCanvas({
         startY: e.clientY,
         currentX: e.clientX,
         currentY: e.clientY,
+        mode,
       });
       return;
     }
@@ -483,6 +503,7 @@ export function MindMapTreeCanvas({
         startY: marqueeStartRef.current.clientY,
         currentX: e.clientX,
         currentY: e.clientY,
+        mode: marqueeModeRef.current,
       });
       return;
     }
@@ -531,7 +552,11 @@ export function MindMapTreeCanvas({
           });
         }
         if (onSelectMultipleNodes) {
-          onSelectMultipleNodes(intersectedIds);
+          if (marqueeModeRef.current === "replace") {
+            onSelectMultipleNodes(intersectedIds);
+          } else {
+            onSelectMultipleNodes(intersectedIds, marqueeModeRef.current);
+          }
         }
       }
       isMarqueeDraggingRef.current = false;
@@ -1161,10 +1186,16 @@ export function MindMapTreeCanvas({
         const top = Math.min(marqueeBox.startY, marqueeBox.currentY) - backdropTop + scrollTop;
         const width = Math.abs(marqueeBox.currentX - marqueeBox.startX);
         const height = Math.abs(marqueeBox.currentY - marqueeBox.startY);
+        const colorClasses =
+          marqueeBox.mode === "add"
+            ? "border-emerald-500 bg-emerald-500/15"
+            : marqueeBox.mode === "subtract"
+            ? "border-rose-500 bg-rose-500/15"
+            : "border-indigo-500 bg-indigo-500/15";
         return (
           <div
             data-testid="mindmap-marquee-box"
-            className="absolute border border-dashed border-indigo-500 bg-indigo-500/15 pointer-events-none z-50 rounded-xs"
+            className={`absolute border border-dashed ${colorClasses} pointer-events-none z-50 rounded-xs`}
             style={{
               left: `${left}px`,
               top: `${top}px`,
