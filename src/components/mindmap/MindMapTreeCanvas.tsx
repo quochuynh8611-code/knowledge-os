@@ -56,6 +56,11 @@ interface MindMapTreeCanvasProps {
 
   // Phase P4: Drag-and-Drop Reparenting Props
   onReparentNode?: (sourceNodeId: string, targetParentId: string, targetIndex?: number) => void;
+
+  // Phase P6a: Multi-Node Selection Props
+  selectedNodeIds?: Set<string>;
+  onToggleSelectNode?: (nodeId: string, isModifier: boolean) => void;
+  onClearSelection?: () => void;
 }
 
 interface InlineNodeEditorProps {
@@ -165,6 +170,9 @@ export function MindMapTreeCanvas({
   onMoveDown,
   onRequestAiExpand,
   onReparentNode,
+  selectedNodeIds,
+  onToggleSelectNode,
+  onClearSelection,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -588,6 +596,7 @@ export function MindMapTreeCanvas({
     const isTopic = node.type === "topic";
     const hasChildren = node.children.length > 0;
     const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
+    const isSelected = Boolean(selectedNodeIds?.has(node.id));
     const isHighlighted = highlightedNodeId === node.id;
     const isPeerHighlighted = peerNodeIds.has(node.id);
     const isSearchActive = matchingNodeIds !== null && matchingNodeIds !== undefined;
@@ -597,6 +606,10 @@ export function MindMapTreeCanvas({
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
+      const isModifier = Boolean(e.shiftKey || e.metaKey || e.ctrlKey);
+      if (onToggleSelectNode) {
+        onToggleSelectNode(node.id, isModifier);
+      }
       setFocusedNodeId(node.id);
       setFocusedCrossLinkNodeId((prev) => (prev === node.id ? null : node.id));
       if (isTopic && onSelectTopic) {
@@ -672,6 +685,7 @@ export function MindMapTreeCanvas({
     return (
       <div
         data-node-id={node.id}
+        data-selected={isSelected ? "true" : undefined}
         data-focused={isFocused ? "true" : undefined}
         data-highlighted={isHighlighted ? "true" : undefined}
         data-peer-highlighted={isPeerHighlighted ? "true" : undefined}
@@ -689,19 +703,21 @@ export function MindMapTreeCanvas({
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
           isDragOverTarget
             ? "ring-2 ring-sky-500 shadow-lg bg-sky-50/90 dark:bg-sky-950/60 border-sky-500"
-            : isFocused
+            : isSelected
               ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
-              : isHighlighted
-                ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
-                : isSearchMatch
-                  ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
-                  : isPeerHighlighted
-                    ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
-                    : isRoot
-                      ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-                      : isTopic
-                        ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                        : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+              : isFocused
+                ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
+                : isHighlighted
+                  ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500 animate-pulse"
+                  : isSearchMatch
+                    ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
+                    : isPeerHighlighted
+                      ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
+                      : isRoot
+                        ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
+                        : isTopic
+                          ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
+                          : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
         } ${
           isSearchDimmed ? "opacity-35" : ""
         } ${
@@ -976,7 +992,12 @@ export function MindMapTreeCanvas({
       ref={backdropRef}
       tabIndex={0}
       data-testid="mindmap-canvas-backdrop"
-      onClick={() => setFocusedCrossLinkNodeId(null)}
+      onClick={() => {
+        setFocusedCrossLinkNodeId(null);
+        if (onClearSelection) {
+          onClearSelection();
+        }
+      }}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}

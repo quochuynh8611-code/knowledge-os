@@ -74,6 +74,7 @@ import {
   renameNodeTitle,
   insertChildNode,
   deleteNode,
+  deleteBatchNodes,
   moveNodeWithinParent,
   findNodeById,
   countTreeNodes,
@@ -143,6 +144,9 @@ export function MindMapView() {
   const [pendingLeaveTarget, setPendingLeaveTarget] = useState<
     "live-topic" | { type: "open-document"; documentId: string } | null
   >(null);
+
+  // Multi-Node Selection State (Phase P6a)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
 
   // AI Expansion State (Phase P3)
   const [aiExpansionTargetNodeId, setAiExpansionTargetNodeId] = useState<
@@ -770,7 +774,43 @@ export function MindMapView() {
     [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
+  // Multi-Node Selection & Batch Operations (Phase P6a)
+  const handleToggleSelectNode = useCallback(
+    (nodeId: string, isModifier: boolean) => {
+      setSelectedNodeIds((prev) => {
+        const next = new Set(prev);
+        if (isModifier) {
+          if (next.has(nodeId)) {
+            next.delete(nodeId);
+          } else {
+            next.add(nodeId);
+          }
+        } else {
+          next.clear();
+          next.add(nodeId);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNodeIds(new Set());
+  }, []);
+
+  const handleBatchDelete = useCallback(() => {
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree || selectedNodeIds.size === 0) return;
+    const res = deleteBatchNodes(currentTree, Array.from(selectedNodeIds));
+    if (res.ok && res.tree) {
+      applyTreeMutation(res.tree);
+      setSelectedNodeIds(new Set());
+    }
+  }, [workingDocumentTree, projection?.tree, selectedNodeIds, applyTreeMutation]);
+
   const handleDiscardChanges = useCallback(() => {
+    setSelectedNodeIds(new Set());
     if (historyState) {
       const reset = resetHistoryToSavedBaseline(historyState);
       setWorkingDocumentTree(reset.present);
@@ -1471,6 +1511,9 @@ export function MindMapView() {
           onMoveDown={handleMoveDown}
           onRequestAiExpand={handleRequestAiExpand}
           onReparentNode={handleReparentNode}
+          selectedNodeIds={selectedNodeIds}
+          onToggleSelectNode={handleToggleSelectNode}
+          onClearSelection={handleClearSelection}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
@@ -1628,6 +1671,43 @@ export function MindMapView() {
           onClose={() => setAiExpansionTargetNodeId(null)}
           onInsertCandidates={handleInsertAiCandidates}
         />
+      )}
+
+      {/* Floating Batch Action Bar (Phase P6a) */}
+      {selectedNodeIds.size >= 2 && (
+        <div
+          data-testid="mindmap-batch-action-bar"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-2.5 shadow-xl animate-in fade-in slide-in-from-bottom-3 duration-200"
+        >
+          <div className="flex items-center gap-2">
+            <span
+              data-testid="batch-selection-count"
+              className="text-xs font-semibold text-stone-800 dark:text-stone-200"
+            >
+              Đã chọn {selectedNodeIds.size} nút
+            </span>
+          </div>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-700" />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              data-testid="btn-batch-delete"
+              onClick={handleBatchDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa các nút</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-batch-deselect"
+              onClick={handleClearSelection}
+              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

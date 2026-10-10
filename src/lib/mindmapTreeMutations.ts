@@ -578,3 +578,84 @@ export function reparentNode(
   };
 }
 
+/**
+ * Deletes multiple nodes in a single atomic batch operation (Phase P6a).
+ * Filters out root node, prunes redundant descendant deletions, and updates tree immutably.
+ */
+export function deleteBatchNodes(
+  tree: MindMapTreeNode,
+  targetNodeIds: string[]
+): TreeMutationResult {
+  if (!tree) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.NODE_NOT_FOUND,
+        message: 'Không tìm thấy cây sơ đồ tư duy.',
+      },
+    };
+  }
+
+  if (!Array.isArray(targetNodeIds) || targetNodeIds.length === 0) {
+    return {
+      ok: true,
+      tree,
+    };
+  }
+
+  // 1. Deduplicate and filter out root node
+  const uniqueIds = Array.from(new Set(targetNodeIds));
+  const nonRootIds = uniqueIds.filter((id) => id !== tree.id);
+  if (nonRootIds.length === 0) {
+    return {
+      ok: true,
+      tree,
+    };
+  }
+
+  // 2. Filter only IDs that actually exist in the tree
+  const validIds = nonRootIds.filter((id) => findNodeById(tree, id) !== null);
+  if (validIds.length === 0) {
+    return {
+      ok: true,
+      tree,
+    };
+  }
+
+  // 3. Ancestor Pruning: if an ancestor is also in the deletion list, prune at highest ancestor
+  const prunedIds = new Set<string>();
+  for (const id of validIds) {
+    const hasAncestorInList = validIds.some(
+      (otherId) => otherId !== id && isDescendantNode(tree, otherId, id)
+    );
+    if (!hasAncestorInList) {
+      prunedIds.add(id);
+    }
+  }
+
+  if (prunedIds.size === 0) {
+    return {
+      ok: true,
+      tree,
+    };
+  }
+
+  // 4. Recursively remove nodes in prunedIds immutably
+  function removeRecursively(node: MindMapTreeNode): MindMapTreeNode {
+    return {
+      ...node,
+      tags: Array.isArray(node.tags) ? [...node.tags] : [],
+      children: node.children
+        .filter((child) => !prunedIds.has(child.id))
+        .map(removeRecursively),
+    };
+  }
+
+  const newTree = removeRecursively(tree);
+
+  return {
+    ok: true,
+    tree: newTree,
+  };
+}
+
