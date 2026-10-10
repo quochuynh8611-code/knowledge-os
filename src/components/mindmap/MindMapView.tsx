@@ -1514,6 +1514,7 @@ export function MindMapView() {
           selectedNodeIds={selectedNodeIds}
           onToggleSelectNode={handleToggleSelectNode}
           onClearSelection={handleClearSelection}
+          onBatchDelete={handleBatchDelete}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">

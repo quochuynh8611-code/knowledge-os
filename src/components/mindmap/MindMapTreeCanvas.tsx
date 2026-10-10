@@ -26,6 +26,7 @@ import {
   X,
   Sparkles,
 } from "lucide-react";
+import { shouldIgnoreCanvasShortcut } from "../../lib/mindmapHistory";
 
 interface MindMapTreeCanvasProps {
   tree: MindMapTreeNode;
@@ -57,10 +58,11 @@ interface MindMapTreeCanvasProps {
   // Phase P4: Drag-and-Drop Reparenting Props
   onReparentNode?: (sourceNodeId: string, targetParentId: string, targetIndex?: number) => void;
 
-  // Phase P6a: Multi-Node Selection Props
+  // Phase P6a & P6b.1: Multi-Node Selection Props
   selectedNodeIds?: Set<string>;
   onToggleSelectNode?: (nodeId: string, isModifier: boolean) => void;
   onClearSelection?: () => void;
+  onBatchDelete?: () => void;
 }
 
 interface InlineNodeEditorProps {
@@ -173,6 +175,7 @@ export function MindMapTreeCanvas({
   selectedNodeIds,
   onToggleSelectNode,
   onClearSelection,
+  onBatchDelete,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -206,12 +209,7 @@ export function MindMapTreeCanvas({
   }, [tree]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement | null;
-    if (
-      target?.tagName === "INPUT" ||
-      target?.tagName === "TEXTAREA" ||
-      target?.tagName === "SELECT"
-    ) {
+    if (shouldIgnoreCanvasShortcut(e.target)) {
       return;
     }
 
@@ -265,6 +263,12 @@ export function MindMapTreeCanvas({
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedNodeIds && selectedNodeIds.size >= 2 && onBatchDelete) {
+          e.preventDefault();
+          onBatchDelete();
+          return;
+        }
+
         if (currentId && currentId !== tree.id && onRequestDelete) {
           e.preventDefault();
           onRequestDelete(currentId);
@@ -387,6 +391,7 @@ export function MindMapTreeCanvas({
     panY: 0,
   });
   const isDraggingRef = useRef(false);
+  const dragDistanceRef = useRef(0);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -398,6 +403,7 @@ export function MindMapTreeCanvas({
     ) {
       return;
     }
+    dragDistanceRef.current = 0;
     isDraggingRef.current = true;
     setIsDragging(true);
     dragStartRef.current = {
@@ -412,6 +418,7 @@ export function MindMapTreeCanvas({
     if (!isDraggingRef.current) return;
     const dx = e.clientX - dragStartRef.current.clientX;
     const dy = e.clientY - dragStartRef.current.clientY;
+    dragDistanceRef.current = Math.max(dragDistanceRef.current, Math.hypot(dx, dy));
     setPan({
       x: dragStartRef.current.panX + dx,
       y: dragStartRef.current.panY + dy,
@@ -994,7 +1001,9 @@ export function MindMapTreeCanvas({
       data-testid="mindmap-canvas-backdrop"
       onClick={() => {
         setFocusedCrossLinkNodeId(null);
-        if (onClearSelection) {
+        const wasPan = dragDistanceRef.current > 5;
+        dragDistanceRef.current = 0;
+        if (!wasPan && onClearSelection) {
           onClearSelection();
         }
       }}

@@ -259,4 +259,163 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
     expect(document.querySelector('[data-node-id="child-3"]')).toBeNull();
     expect(document.querySelector('[data-node-id="doc-root"]')).not.toBeNull();
   });
+
+  describe('Phase P6b.1 — Keyboard Delete / Backspace & Pan Movement Threshold', () => {
+    it('7. Pressing Delete key triggers atomic batch delete when count >= 2', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Multi-select child-1 and child-2
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // Press Delete on canvas
+      fireEvent.keyDown(canvas, { key: 'Delete' });
+
+      // Both nodes deleted atomically without opening single confirm modal
+      expect(document.querySelector('[data-node-id="child-1"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="child-2"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="child-3"]')).not.toBeNull();
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+      expect(screen.queryByTestId('confirm-delete-node-modal')).toBeNull();
+    });
+
+    it('8. Pressing Backspace key triggers atomic batch delete and supports one-step undo', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Multi-select child-1 and child-2
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+
+      // Press Backspace on canvas
+      fireEvent.keyDown(canvas, { key: 'Backspace' });
+
+      expect(document.querySelector('[data-node-id="child-1"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="child-2"]')).toBeNull();
+
+      // One-step undo via Cmd+Z
+      fireEvent.keyDown(window, { key: 'z', metaKey: true });
+
+      expect(document.querySelector('[data-node-id="child-1"]')).not.toBeNull();
+      expect(document.querySelector('[data-node-id="child-2"]')).not.toBeNull();
+    });
+
+    it('9. Preserves single-node delete flow (opening confirm modal) when count < 2', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Single select child-1 (count = 1 < 2)
+      fireEvent.click(node1Card);
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+
+      // Press Delete on canvas
+      fireEvent.keyDown(canvas, { key: 'Delete' });
+
+      // Single-node delete confirmation modal SHOULD be displayed
+      expect(screen.getByTestId('confirm-delete-node-modal')).toBeInTheDocument();
+      // Node is NOT deleted yet
+      expect(document.querySelector('[data-node-id="child-1"]')).not.toBeNull();
+    });
+
+    it('10. Preserves root node if root was selected alongside child node during keyboard delete', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const rootCard = document.querySelector('[data-node-id="doc-root"]') as HTMLElement;
+      const node3Card = document.querySelector('[data-node-id="child-3"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Multi-select root and child-3
+      fireEvent.click(rootCard);
+      fireEvent.click(node3Card, { shiftKey: true });
+
+      fireEvent.keyDown(canvas, { key: 'Delete' });
+
+      expect(document.querySelector('[data-node-id="child-3"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="doc-root"]')).not.toBeNull();
+    });
+
+    it('11. Ignores Delete/Backspace shortcut when target is an editable control (input/textarea/modal)', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      const searchInput = screen.getByPlaceholderText('Tìm nút trong sơ đồ...');
+
+      // Multi-select child-1 and child-2
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+
+      // Press Delete while focus/event target is inside searchInput
+      fireEvent.keyDown(searchInput, { key: 'Delete' });
+
+      // Nodes must NOT be deleted
+      expect(document.querySelector('[data-node-id="child-1"]')).not.toBeNull();
+      expect(document.querySelector('[data-node-id="child-2"]')).not.toBeNull();
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+    });
+
+    it('12. Pan gesture exceeding movement threshold does NOT clear selection on mouseup/click', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Multi-select child-1 and child-2
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // Simulate Pan drag gesture: pointerDown -> pointerMove (dx=50, dy=50 > 5px threshold) -> pointerUp -> click
+      fireEvent.pointerDown(canvas, { button: 0, clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(canvas, { clientX: 150, clientY: 150 });
+      fireEvent.pointerUp(canvas);
+      fireEvent.click(canvas);
+
+      // Selection must be PRESERVED
+      expect(node1Card).toHaveAttribute('data-selected', 'true');
+      expect(node2Card).toHaveAttribute('data-selected', 'true');
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+    });
+
+    it('13. Real click on backdrop (within movement threshold) clears selection', () => {
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      const canvas = screen.getByTestId('mindmap-canvas-backdrop');
+
+      // Multi-select child-1 and child-2
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // Real click without moving (dx=0, dy=0 <= 5px threshold)
+      fireEvent.pointerDown(canvas, { button: 0, clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(canvas);
+      fireEvent.click(canvas);
+
+      // Selection must be CLEARED
+      expect(node1Card).not.toHaveAttribute('data-selected', 'true');
+      expect(node2Card).not.toHaveAttribute('data-selected', 'true');
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+    });
+  });
 });
