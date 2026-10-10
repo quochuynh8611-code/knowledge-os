@@ -278,5 +278,20 @@ describe("Mind Map Track A - Component & View State Tests", () => {
       const saved = loadMindMapViewState(topicId);
       expect(saved.collapsedNodeIds).toEqual(["node-a"]);
     });
+
+    it("AC-05: ensures deleted or reparented orphan IDs are purged before persistence", () => {
+      // Given: An active tree with branch nodes
+      const validNodes = new Set(["topic-root", "topic-branch-1"]);
+      // And a collapsed state containing an active branch, a deleted branch, and a reparented orphan
+      const staleCollapsedIds = ["topic-branch-1", "topic-branch-2-deleted", "note-leaf-orphan"];
+
+      // When: Sanitizing against active tree nodes
+      const cleaned = sanitizeCollapsedIds(staleCollapsedIds, validNodes);
+
+      // Then: Deleted and orphan IDs must be purged
+      expect(cleaned).toEqual(["topic-branch-1"]);
+      expect(cleaned).not.toContain("topic-branch-2-deleted");
+      expect(cleaned).not.toContain("note-leaf-orphan");
+    });
   });
 });

@@ -20,21 +20,23 @@ import { MindMapView } from '../../src/components/mindmap/MindMapView';
 import * as mindmapDocumentStorage from '../../src/lib/mindmapDocumentStorage';
 import { MindMapDocumentNode } from '../../src/types/mindmapDocument';
 
+let mockTopics: any[] = [
+  {
+    id: 'topic-1',
+    title: 'Chủ đề 1',
+    visibility: 'visible',
+    parentId: null,
+  },
+];
+let mockSelectedTopicId: string | null = 'topic-1';
 const mockOpenTopicDetail = vi.fn();
 
 vi.mock('../../src/context/DataContext', () => ({
   useData: () => ({
-    topics: [
-      {
-        id: 'topic-1',
-        title: 'Chủ đề 1',
-        visibility: 'visible',
-        parentId: null,
-      },
-    ],
+    topics: mockTopics,
     notes: [],
     resources: [],
-    selectedTopicId: 'topic-1',
+    selectedTopicId: mockSelectedTopicId,
     openTopicDetail: mockOpenTopicDetail,
   }),
 }));
@@ -49,13 +51,27 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
         id: 'child-1',
         title: 'Child 1',
         nodeType: 'topic',
-        children: [],
+        children: [
+          {
+            id: 'grandchild-1',
+            title: 'Grandchild 1',
+            nodeType: 'note',
+            children: [],
+          },
+        ],
       },
       {
         id: 'child-2',
         title: 'Child 2',
         nodeType: 'topic',
-        children: [],
+        children: [
+          {
+            id: 'grandchild-2',
+            title: 'Grandchild 2',
+            nodeType: 'note',
+            children: [],
+          },
+        ],
       },
       {
         id: 'child-3',
@@ -68,6 +84,15 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTopics = [
+      {
+        id: 'topic-1',
+        title: 'Chủ đề 1',
+        visibility: 'visible',
+        parentId: null,
+      },
+    ];
+    mockSelectedTopicId = 'topic-1';
     vi.spyOn(mindmapDocumentStorage, 'listMindMapDocuments').mockReturnValue([
       {
         id: 'doc-123',
@@ -416,6 +441,249 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
       expect(node1Card).not.toHaveAttribute('data-selected', 'true');
       expect(node2Card).not.toHaveAttribute('data-selected', 'true');
       expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+    });
+  });
+
+  describe('Phase P6b.2 — Selection-Aware View-State Operations & Context Isolation', () => {
+    it('14. AC-01: Renders Batch Collapse and Batch Expand buttons on Floating Action Bar when count >= 2', () => {
+      // Given: Người dùng mở saved document
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+
+      // When: Chọn 2 node bằng Shift-click
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+
+      // Then: Floating Action Bar phải hiển thị nút "Thu gọn" và "Mở rộng"
+      const batchCollapseBtn = screen.getByTestId('btn-batch-collapse');
+      const batchExpandBtn = screen.getByTestId('btn-batch-expand');
+      expect(batchCollapseBtn).toBeInTheDocument();
+      expect(batchExpandBtn).toBeInTheDocument();
+    });
+
+    it('15. AC-02 & AC-03: Clicking Batch Collapse collapses selected nodes with children, Batch Expand expands them', () => {
+      // Given: Người dùng mở saved document và các nhánh con đang hiển thị
+      render(<MindMapView />);
+      openSavedDocument();
+
+      expect(document.querySelector('[data-node-id="grandchild-1"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-node-id="grandchild-2"]')).toBeInTheDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+
+      // When: Chọn child-1 và child-2 rồi nhấn "Thu gọn các nhánh"
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+
+      const batchCollapseBtn = screen.getByTestId('btn-batch-collapse');
+      fireEvent.click(batchCollapseBtn);
+
+      // Then: grandchild-1 và grandchild-2 bị ẩn khỏi DOM
+      expect(document.querySelector('[data-node-id="grandchild-1"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="grandchild-2"]')).toBeNull();
+
+      // When: Nhấn "Mở rộng các nhánh"
+      const batchExpandBtn = screen.getByTestId('btn-batch-expand');
+      fireEvent.click(batchExpandBtn);
+
+      // Then: grandchild-1 và grandchild-2 xuất hiện trở lại trong DOM
+      expect(document.querySelector('[data-node-id="grandchild-1"]')).toBeInTheDocument();
+      expect(document.querySelector('[data-node-id="grandchild-2"]')).toBeInTheDocument();
+    });
+
+    it('16. Open Decision 1: Batch Collapse ignores leaf nodes without children', () => {
+      // Given: child-1 có con, child-3 là leaf node không có con
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node3Card = document.querySelector('[data-node-id="child-3"]') as HTMLElement;
+
+      // When: Chọn child-1 và child-3 rồi nhấn "Thu gọn"
+      fireEvent.click(node1Card);
+      fireEvent.click(node3Card, { shiftKey: true });
+
+      const batchCollapseBtn = screen.getByTestId('btn-batch-collapse');
+      fireEvent.click(batchCollapseBtn);
+
+      // Then: child-1 bị thu gọn (grandchild-1 bị ẩn), child-3 vẫn hiển thị bình thường
+      expect(document.querySelector('[data-node-id="grandchild-1"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="child-3"]')).toBeInTheDocument();
+    });
+
+    it('17. AC-04: Batch Collapse and Batch Expand do not mutate treeData, do not set isDirty, and do not record undo history', () => {
+      // Given: Document vừa mở, trạng thái clean, undo button disabled
+      render(<MindMapView />);
+      openSavedDocument();
+
+      const undoBtn = screen.getByTestId('mindmap-undo-button');
+      expect(undoBtn).toBeDisabled();
+      expect(screen.queryByTestId('unsaved-changes-badge')).toBeNull();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+
+      // When: Thực hiện Batch Collapse
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+      fireEvent.click(screen.getByTestId('btn-batch-collapse'));
+
+      // Then: Undo button vẫn disabled, isDirty không bị bật
+      expect(undoBtn).toBeDisabled();
+      expect(screen.queryByTestId('unsaved-changes-badge')).toBeNull();
+
+      // When: Thực hiện Batch Expand
+      fireEvent.click(screen.getByTestId('btn-batch-expand'));
+
+      // Then: Undo button vẫn disabled, isDirty vẫn là false
+      expect(undoBtn).toBeDisabled();
+      expect(screen.queryByTestId('unsaved-changes-badge')).toBeNull();
+    });
+
+    it('18. AC-05: Prunes stale collapsed IDs after batch delete so deleted IDs are not persisted into version snapshot', () => {
+      // Given: child-1 ban đầu đang bị thu gọn (collapsedNodeIds chứa "child-1")
+      vi.spyOn(mindmapDocumentStorage, 'getMindMapVersion').mockReturnValueOnce({
+        id: 'ver-1',
+        documentId: 'doc-123',
+        versionNumber: 1,
+        createdAt: '2026-01-01T00:00:00Z',
+        treeData: mockSavedDocTree,
+        crossLinks: [],
+        viewState: {
+          layoutMode: 'tree_horizontal',
+          collapsedNodeIds: ['child-1'],
+          showCrossLinks: false,
+        },
+      });
+
+      const appendVersionSpy = vi.spyOn(mindmapDocumentStorage, 'appendMindMapVersion');
+
+      render(<MindMapView />);
+      openSavedDocument();
+
+      // child-1 bị thu gọn nên grandchild-1 không hiển thị
+      expect(document.querySelector('[data-node-id="grandchild-1"]')).toBeNull();
+
+      const node1Card = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const node2Card = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+
+      // When: Chọn child-1 và child-2 rồi thực hiện xóa hàng loạt
+      fireEvent.click(node1Card);
+      fireEvent.click(node2Card, { shiftKey: true });
+      fireEvent.click(screen.getByTestId('btn-batch-delete'));
+
+      // child-1 và child-2 đã bị xóa khỏi DOM
+      expect(document.querySelector('[data-node-id="child-1"]')).toBeNull();
+      expect(document.querySelector('[data-node-id="child-2"]')).toBeNull();
+
+      // When: Lưu version mới
+      fireEvent.click(screen.getByTestId('btn-save-mindmap'));
+      const summaryInput = screen.getByTestId('input-change-summary');
+      fireEvent.change(summaryInput, { target: { value: 'Xóa 2 nhánh' } });
+      fireEvent.click(screen.getByTestId('btn-confirm-save-doc'));
+
+      // Then: appendMindMapVersion được gọi và viewState.collapsedNodeIds KHÔNG được chứa "child-1" đã bị xóa
+      expect(appendVersionSpy).toHaveBeenCalled();
+      const lastCallArg = appendVersionSpy.mock.calls[appendVersionSpy.mock.calls.length - 1][0];
+      expect(lastCallArg.viewState?.collapsedNodeIds).not.toContain('child-1');
+    });
+
+    it('19. AC-06: Context Isolation: Resets selectedNodeIds when switching active topic in Live Mode', () => {
+      // Given: Topic-1 có 2 node trong Live Mode
+      mockTopics = [
+        {
+          id: 'topic-1',
+          title: 'Chủ đề 1',
+          visibility: 'visible',
+          parentId: null,
+          links: [{ id: 'l1', sourceId: 'topic-1', targetId: 'topic-1-sub', linkType: 'prerequisite', strength: 5 }],
+        },
+        {
+          id: 'topic-1-sub',
+          title: 'Nhánh con 1',
+          visibility: 'visible',
+          parentId: 'topic-1',
+          links: [],
+        },
+        {
+          id: 'topic-2',
+          title: 'Chủ đề 2',
+          visibility: 'visible',
+          parentId: null,
+          links: [],
+        },
+      ];
+      render(<MindMapView />);
+
+      const rootNode = document.querySelector('[data-node-id="topic-1"]') as HTMLElement;
+      const subNode = document.querySelector('[data-node-id="topic-1-sub"]') as HTMLElement;
+      expect(rootNode).toBeInTheDocument();
+      expect(subNode).toBeInTheDocument();
+
+      // Multi-select 2 nodes in topic-1 -> Action bar appears
+      fireEvent.click(rootNode);
+      fireEvent.click(subNode, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // When: Chuyển sang topic-2 qua topic select dropdown
+      const topicSelect = screen.getByLabelText('Chọn chủ đề gốc');
+      fireEvent.change(topicSelect, { target: { value: 'topic-2' } });
+
+      // Then: Action bar phải biến mất và selectedNodeIds phải được reset hoàn toàn
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+      expect(document.querySelector('[data-selected="true"]')).toBeNull();
+    });
+
+    it('20. AC-07 & AC-08: Context Isolation: Resets selectedNodeIds when switching between live mode and saved document', () => {
+      // Given: Ở Live Mode, chọn 2 node để action bar xuất hiện
+      mockTopics = [
+        {
+          id: 'topic-1',
+          title: 'Chủ đề 1',
+          visibility: 'visible',
+          parentId: null,
+          links: [{ id: 'l1', sourceId: 'topic-1', targetId: 'topic-1-sub', linkType: 'prerequisite', strength: 5 }],
+        },
+        {
+          id: 'topic-1-sub',
+          title: 'Nhánh con 1',
+          visibility: 'visible',
+          parentId: 'topic-1',
+          links: [],
+        },
+      ];
+      render(<MindMapView />);
+
+      const rootNode = document.querySelector('[data-node-id="topic-1"]') as HTMLElement;
+      const subNode = document.querySelector('[data-node-id="topic-1-sub"]') as HTMLElement;
+      fireEvent.click(rootNode);
+      fireEvent.click(subNode, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // When: Mở Saved Document
+      openSavedDocument();
+
+      // Then: Selection từ Live Mode không được rò rỉ sang Saved Document
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+      expect(document.querySelector('[data-selected="true"]')).toBeNull();
+
+      // When: Chọn 2 node trong Saved Document
+      const child1 = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
+      const child2 = document.querySelector('[data-node-id="child-2"]') as HTMLElement;
+      fireEvent.click(child1);
+      fireEvent.click(child2, { shiftKey: true });
+      expect(screen.getByTestId('mindmap-batch-action-bar')).toBeInTheDocument();
+
+      // When: Quay về Live Mode
+      fireEvent.click(screen.getByTestId('btn-return-live-mode'));
+
+      // Then: Selection từ Saved Document bị xóa hoàn toàn, action bar không xuất hiện
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+      expect(document.querySelector('[data-selected="true"]')).toBeNull();
     });
   });
 });

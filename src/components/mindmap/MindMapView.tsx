@@ -17,6 +17,7 @@ import { LinkType } from "../../types";
 import {
   loadMindMapViewState,
   saveMindMapViewState,
+  sanitizeCollapsedIds,
 } from "../../lib/mindmapStorage";
 import {
   listMindMapDocuments,
@@ -56,6 +57,8 @@ import {
   Trash2,
   Undo2,
   Redo2,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   MindMapHistoryState,
@@ -101,6 +104,18 @@ function findAncestorIds(root: MindMapTreeNode, targetId: string): string[] | nu
     if (sub) return [root.id, ...sub];
   }
   return null;
+}
+
+function collectTreeNodeIds(node: MindMapTreeNode): Set<string> {
+  const ids = new Set<string>();
+  const traverse = (n: MindMapTreeNode) => {
+    ids.add(n.id);
+    for (const child of n.children) {
+      traverse(child);
+    }
+  };
+  traverse(node);
+  return ids;
 }
 
 export function MindMapView() {
@@ -208,6 +223,7 @@ export function MindMapView() {
     if (activeMode === "saved-document") return;
     setActiveEdgeTypeFilter("all");
     setSearchQuery("");
+    setSelectedNodeIds(new Set());
     if (!activeRootTopicId) {
       setCollapsedNodeIds(new Set());
       setLayoutMode("tree_horizontal");
@@ -293,15 +309,7 @@ export function MindMapView() {
   // Collect all active node IDs in tree for stale ID sanitization
   const validNodeIds = useMemo(() => {
     if (!projection) return new Set<string>();
-    const ids = new Set<string>();
-    const traverse = (node: MindMapTreeNode) => {
-      ids.add(node.id);
-      for (const child of node.children) {
-        traverse(child);
-      }
-    };
-    traverse(projection.tree);
-    return ids;
+    return collectTreeNodeIds(projection.tree);
   }, [projection]);
 
   // Compute search matching nodes and their ancestor paths
@@ -722,6 +730,8 @@ export function MindMapView() {
     if (!currentTree || !pendingDeleteNodeId) return;
     const res = deleteNode(currentTree, pendingDeleteNodeId);
     if (res.ok && res.tree) {
+      const nextValidIds = collectTreeNodeIds(res.tree);
+      setCollapsedNodeIds((prev) => new Set(sanitizeCollapsedIds(Array.from(prev), nextValidIds)));
       applyTreeMutation(res.tree);
       setPendingDeleteNodeId(null);
     }
@@ -761,14 +771,14 @@ export function MindMapView() {
       if (!currentTree) return;
       const res = reparentNode(currentTree, sourceNodeId, targetParentId, targetIndex);
       if (res.ok && res.tree) {
-        applyTreeMutation(res.tree);
+        const nextValidIds = collectTreeNodeIds(res.tree);
         // Automatically uncollapse target parent so newly reparented child is visible
         setCollapsedNodeIds((prev) => {
-          if (!prev.has(targetParentId)) return prev;
-          const next = new Set(prev);
-          next.delete(targetParentId);
-          return next;
+          const cleaned = new Set(sanitizeCollapsedIds(Array.from(prev), nextValidIds));
+          cleaned.delete(targetParentId);
+          return cleaned;
         });
+        applyTreeMutation(res.tree);
       }
     },
     [workingDocumentTree, projection?.tree, applyTreeMutation]
@@ -804,10 +814,93 @@ export function MindMapView() {
     if (!currentTree || selectedNodeIds.size === 0) return;
     const res = deleteBatchNodes(currentTree, Array.from(selectedNodeIds));
     if (res.ok && res.tree) {
+      const nextValidIds = collectTreeNodeIds(res.tree);
+      setCollapsedNodeIds((prev) => new Set(sanitizeCollapsedIds(Array.from(prev), nextValidIds)));
       applyTreeMutation(res.tree);
       setSelectedNodeIds(new Set());
     }
   }, [workingDocumentTree, projection?.tree, selectedNodeIds, applyTreeMutation]);
+
+  const handleBatchCollapse = useCallback(() => {
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree || selectedNodeIds.size === 0) return;
+
+    // Collect IDs in selectedNodeIds that have children.length > 0 (ignore leaf nodes)
+    const collapsibleIds: string[] = [];
+    const checkNode = (node: MindMapTreeNode) => {
+      if (selectedNodeIds.has(node.id) && Array.isArray(node.children) && node.children.length > 0) {
+        collapsibleIds.push(node.id);
+      }
+      for (const child of node.children) {
+        checkNode(child);
+      }
+    };
+    checkNode(currentTree);
+
+    if (collapsibleIds.length === 0) return;
+
+    setCollapsedNodeIds((prev) => {
+      const next = new Set(prev);
+      for (const id of collapsibleIds) {
+        next.add(id);
+      }
+      if (activeMode === "live-topic" && activeRootTopicId) {
+        saveMindMapViewState(
+          {
+            version: 1,
+            topicId: activeRootTopicId,
+            layoutMode,
+            collapsedNodeIds: Array.from(next),
+            showCrossLinks,
+            updatedAt: new Date().toISOString(),
+          },
+          validNodeIds
+        );
+      }
+      return next;
+    });
+  }, [
+    workingDocumentTree,
+    projection?.tree,
+    selectedNodeIds,
+    activeMode,
+    activeRootTopicId,
+    layoutMode,
+    showCrossLinks,
+    validNodeIds,
+  ]);
+
+  const handleBatchExpand = useCallback(() => {
+    if (selectedNodeIds.size === 0) return;
+
+    setCollapsedNodeIds((prev) => {
+      const next = new Set(prev);
+      for (const id of selectedNodeIds) {
+        next.delete(id);
+      }
+      if (activeMode === "live-topic" && activeRootTopicId) {
+        saveMindMapViewState(
+          {
+            version: 1,
+            topicId: activeRootTopicId,
+            layoutMode,
+            collapsedNodeIds: Array.from(next),
+            showCrossLinks,
+            updatedAt: new Date().toISOString(),
+          },
+          validNodeIds
+        );
+      }
+      return next;
+    });
+  }, [
+    selectedNodeIds,
+    activeMode,
+    activeRootTopicId,
+    layoutMode,
+    showCrossLinks,
+    validNodeIds,
+  ]);
 
   const handleDiscardChanges = useCallback(() => {
     setSelectedNodeIds(new Set());
@@ -896,6 +989,8 @@ export function MindMapView() {
     (title: string, description?: string, changeSummary?: string) => {
       if (!projection?.tree) return;
       const docTree = projectedTreeToDocumentTree(projection.tree);
+      const currentValidIds = collectTreeNodeIds(projection.tree);
+      const sanitizedCollapsed = sanitizeCollapsedIds(Array.from(collapsedNodeIds), currentValidIds);
       const crossLinks = (projection.crossEdges || []).map((e) => ({
         id: e.id,
         sourceNodeId: e.sourceNodeId,
@@ -917,7 +1012,7 @@ export function MindMapView() {
         changeSummary,
         viewState: {
           layoutMode,
-          collapsedNodeIds: Array.from(collapsedNodeIds),
+          collapsedNodeIds: sanitizedCollapsed,
           showCrossLinks,
         },
       });
@@ -945,6 +1040,8 @@ export function MindMapView() {
     (changeSummary: string) => {
       if (!activeDocumentId || !projection?.tree) return;
       const docTree = projectedTreeToDocumentTree(projection.tree);
+      const currentValidIds = collectTreeNodeIds(projection.tree);
+      const sanitizedCollapsed = sanitizeCollapsedIds(Array.from(collapsedNodeIds), currentValidIds);
       const crossLinks = (projection.crossEdges || []).map((e) => ({
         id: e.id,
         sourceNodeId: e.sourceNodeId,
@@ -964,7 +1061,7 @@ export function MindMapView() {
         crossLinks,
         viewState: {
           layoutMode,
-          collapsedNodeIds: Array.from(collapsedNodeIds),
+          collapsedNodeIds: sanitizedCollapsed,
           showCrossLinks,
         },
       });
@@ -996,6 +1093,7 @@ export function MindMapView() {
       if (version) {
         setActiveDocumentId(documentId);
         setActiveMode("saved-document");
+        setSelectedNodeIds(new Set());
         setLayoutMode(version.viewState.layoutMode);
         setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
         setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
@@ -1018,10 +1116,17 @@ export function MindMapView() {
         setActiveMode("live-topic");
         setActiveDocumentId(null);
         setWorkingDocumentTree(null);
+        setSelectedNodeIds(new Set());
         setIsDirty(false);
+        if (activeRootTopicId) {
+          const savedState = loadMindMapViewState(activeRootTopicId);
+          setLayoutMode(savedState.layoutMode);
+          setCollapsedNodeIds(new Set(savedState.collapsedNodeIds));
+          setShowCrossLinks(Boolean(savedState.showCrossLinks));
+        }
       }
     },
-    [activeDocumentId]
+    [activeDocumentId, activeRootTopicId]
   );
 
   const handleReturnToLiveMode = useCallback(() => {
@@ -1032,16 +1137,30 @@ export function MindMapView() {
     setActiveMode("live-topic");
     setActiveDocumentId(null);
     setWorkingDocumentTree(null);
+    setSelectedNodeIds(new Set());
     setIsDirty(false);
-  }, [isDirty]);
+    if (activeRootTopicId) {
+      const savedState = loadMindMapViewState(activeRootTopicId);
+      setLayoutMode(savedState.layoutMode);
+      setCollapsedNodeIds(new Set(savedState.collapsedNodeIds));
+      setShowCrossLinks(Boolean(savedState.showCrossLinks));
+    }
+  }, [isDirty, activeRootTopicId]);
 
   const handleConfirmDiscardAndLeave = useCallback(() => {
     if (pendingLeaveTarget === "live-topic") {
       setActiveMode("live-topic");
       setActiveDocumentId(null);
       setWorkingDocumentTree(null);
+      setSelectedNodeIds(new Set());
       setIsDirty(false);
       setPendingLeaveTarget(null);
+      if (activeRootTopicId) {
+        const savedState = loadMindMapViewState(activeRootTopicId);
+        setLayoutMode(savedState.layoutMode);
+        setCollapsedNodeIds(new Set(savedState.collapsedNodeIds));
+        setShowCrossLinks(Boolean(savedState.showCrossLinks));
+      }
     } else if (
       pendingLeaveTarget &&
       typeof pendingLeaveTarget === "object" &&
@@ -1054,13 +1173,14 @@ export function MindMapView() {
       if (version) {
         setActiveDocumentId(docId);
         setActiveMode("saved-document");
+        setSelectedNodeIds(new Set());
         setLayoutMode(version.viewState.layoutMode);
         setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
         setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
         setIsBrowserModalOpen(false);
       }
     }
-  }, [pendingLeaveTarget]);
+  }, [pendingLeaveTarget, activeRootTopicId]);
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
@@ -1690,6 +1810,24 @@ export function MindMapView() {
           </div>
           <div className="h-4 w-px bg-stone-200 dark:bg-stone-700" />
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              data-testid="btn-batch-collapse"
+              onClick={handleBatchCollapse}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition cursor-pointer"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+              <span>Thu gọn</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-batch-expand"
+              onClick={handleBatchExpand}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition cursor-pointer"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+              <span>Mở rộng</span>
+            </button>
             <button
               type="button"
               data-testid="btn-batch-delete"
