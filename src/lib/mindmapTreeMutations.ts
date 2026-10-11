@@ -21,11 +21,13 @@ export enum TreeMutationErrorCode {
   DUPLICATE_ID = 'DUPLICATE_ID',
   CANNOT_REPARENT_TO_SELF = 'CANNOT_REPARENT_TO_SELF',
   CANNOT_REPARENT_TO_DESCENDANT = 'CANNOT_REPARENT_TO_DESCENDANT',
+  ROOT_CANNOT_HAVE_SIBLING = 'ROOT_CANNOT_HAVE_SIBLING',
 }
 
 export interface TreeMutationResult {
   ok: boolean;
   tree?: MindMapTreeNode;
+  newNodeId?: string;
   error?: {
     code: TreeMutationErrorCode;
     message: string;
@@ -183,6 +185,134 @@ export function insertChildNode(
   return {
     ok: true,
     tree: newTree,
+    newNodeId: customId,
+  };
+}
+
+/**
+ * Finds the parent node of a given targetNodeId.
+ * Returns null if targetNodeId is the root or not found.
+ */
+export function findParentNode(tree: MindMapTreeNode, targetNodeId: string): MindMapTreeNode | null {
+  if (!tree || !targetNodeId || tree.id === targetNodeId) return null;
+  if (Array.isArray(tree.children)) {
+    for (const child of tree.children) {
+      if (child.id === targetNodeId) {
+        return tree;
+      }
+      const found = findParentNode(child, targetNodeId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Calculates the fallback focus node ID when deleting targetNodeId.
+ * Priority order:
+ * 1. Preceding sibling
+ * 2. Succeeding sibling
+ * 3. Parent
+ * 4. Root
+ */
+export function findDeleteFallbackNodeId(tree: MindMapTreeNode, targetNodeId: string): string {
+  if (!tree || tree.id === targetNodeId) return tree ? tree.id : '';
+  const parent = findParentNode(tree, targetNodeId);
+  if (!parent || !Array.isArray(parent.children)) return tree.id;
+
+  const idx = parent.children.findIndex((c) => c.id === targetNodeId);
+  if (idx === -1) return tree.id;
+
+  // 1. Preceding sibling
+  if (idx > 0) {
+    return parent.children[idx - 1].id;
+  }
+  // 2. Succeeding sibling
+  if (idx < parent.children.length - 1) {
+    return parent.children[idx + 1].id;
+  }
+  // 3. Parent
+  return parent.id;
+}
+
+/**
+ * Inserts a new sibling node immediately after targetNodeId within its parent immutably.
+ * Rejects root node (root cannot have siblings).
+ */
+export function insertSiblingNode(
+  tree: MindMapTreeNode,
+  targetNodeId: string,
+  input?: { title?: string; type?: GraphNodeType }
+): TreeMutationResult {
+  if (tree.id === targetNodeId) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.ROOT_CANNOT_HAVE_SIBLING,
+        message: 'Nút gốc không thể có nhánh cùng cấp.',
+      },
+    };
+  }
+
+  const parent = findParentNode(tree, targetNodeId);
+  if (!parent) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.PARENT_NOT_FOUND,
+        message: `Không tìm thấy nút cha của nút "${targetNodeId}".`,
+      },
+    };
+  }
+
+  const targetIndex = parent.children.findIndex((c) => c.id === targetNodeId);
+  if (targetIndex === -1) {
+    return {
+      ok: false,
+      error: {
+        code: TreeMutationErrorCode.NODE_NOT_FOUND,
+        message: `Không tìm thấy nút có ID "${targetNodeId}" trong danh sách con của cha.`,
+      },
+    };
+  }
+
+  const customId = `node-custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const title = (input?.title || '').trim() || 'New node';
+  const nodeType = input?.type || 'topic';
+
+  const newSibling: MindMapTreeNode = {
+    id: customId,
+    title,
+    type: nodeType,
+    domain: parent.domain || 'general',
+    hopDistance: parent.hopDistance,
+    parentHopId: parent.id,
+    tags: [],
+    children: [],
+  };
+
+  function insertAfterInParent(node: MindMapTreeNode): MindMapTreeNode {
+    if (node.id === parent.id) {
+      const clonedChildren = node.children.map(cloneTreeNode);
+      clonedChildren.splice(targetIndex + 1, 0, newSibling);
+      return {
+        ...node,
+        tags: [...node.tags],
+        children: clonedChildren,
+      };
+    }
+    return {
+      ...node,
+      tags: [...node.tags],
+      children: node.children.map(insertAfterInParent),
+    };
+  }
+
+  const newTree = insertAfterInParent(tree);
+  return {
+    ok: true,
+    tree: newTree,
+    newNodeId: customId,
   };
 }
 

@@ -41,13 +41,18 @@ interface MindMapTreeCanvasProps {
   onSelectTopic?: (topicId: string) => void;
   onFocusNode?: (nodeId: string) => void;
 
-  // Phase P2: Interactive Editing Props
+  // Phase P2 & M3: Interactive Editing Props
   isEditable?: boolean;
+  isDrawerOpen?: boolean;
+  focusedNodeId?: string | null;
+  onFocusNodeIdChange?: (nodeId: string | null) => void;
   editingNodeId?: string | null;
   onStartRename?: (nodeId: string) => void;
   onCommitRename?: (nodeId: string, newTitle: string) => void;
   onCancelRename?: () => void;
-  onAddChild?: (parentNodeId: string) => void;
+  onAddChild?: (parentNodeId: string, options?: { title?: string }) => void;
+  onAddSibling?: (targetNodeId: string, options?: { title?: string }) => void;
+  onDeleteNodeDirectly?: (nodeId: string) => void;
   onRequestDelete?: (nodeId: string) => void;
   onMoveUp?: (nodeId: string) => void;
   onMoveDown?: (nodeId: string) => void;
@@ -167,11 +172,16 @@ export function MindMapTreeCanvas({
   onSelectTopic,
   onFocusNode,
   isEditable,
+  isDrawerOpen,
+  focusedNodeId: propFocusedNodeId,
+  onFocusNodeIdChange,
   editingNodeId,
   onStartRename,
   onCommitRename,
   onCancelRename,
   onAddChild,
+  onAddSibling,
+  onDeleteNodeDirectly,
   onRequestDelete,
   onMoveUp,
   onMoveDown,
@@ -188,7 +198,21 @@ export function MindMapTreeCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
-  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [internalFocusedNodeId, setInternalFocusedNodeId] = useState<string | null>(null);
+  const focusedNodeId = propFocusedNodeId !== undefined ? propFocusedNodeId : internalFocusedNodeId;
+
+  const setFocusedNodeId = (
+    idOrUpdater: string | null | ((prev: string | null) => string | null)
+  ) => {
+    setInternalFocusedNodeId((prev) => {
+      const next = typeof idOrUpdater === "function" ? idOrUpdater(prev) : idOrUpdater;
+      if (onFocusNodeIdChange) {
+        onFocusNodeIdChange(next);
+      }
+      return next;
+    });
+  };
+
   const [zoom, setZoom] = useState<number>(1.0);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -216,6 +240,10 @@ export function MindMapTreeCanvas({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (shouldIgnoreCanvasShortcut(e.target)) {
+      return;
+    }
+
+    if (isDrawerOpen) {
       return;
     }
 
@@ -266,13 +294,21 @@ export function MindMapTreeCanvas({
 
     if (e.key === "Enter") {
       e.preventDefault();
+      if (isEditable) {
+        // Phase M3: Enter creates sibling if not root, strict no-op on root
+        if (currentId !== tree.id && onAddSibling) {
+          onAddSibling(currentId, { title: "New node" });
+        }
+        return;
+      }
+
       if (focusedNodeId && currentNode && currentNode.type === "topic" && onSelectTopic) {
         onSelectTopic(focusedNodeId);
       }
       return;
     }
 
-    // Phase P2.x: Keyboard shortcuts for editing mode
+    // Phase P2.x & M3: Keyboard shortcuts for editing mode
     if (isEditable) {
       if (e.key === "F2") {
         e.preventDefault();
@@ -285,23 +321,33 @@ export function MindMapTreeCanvas({
       if (e.key === "Tab" || e.key === "Insert") {
         e.preventDefault();
         if (currentId && onAddChild) {
-          onAddChild(currentId);
+          onAddChild(currentId, { title: "New node" });
         }
         return;
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
         if (selectedNodeIds && selectedNodeIds.size >= 2 && onBatchDelete) {
-          e.preventDefault();
           onBatchDelete();
           return;
         }
 
-        if (currentId && currentId !== tree.id && onRequestDelete) {
-          e.preventDefault();
+        if (currentId === tree.id) {
+          // Phase M3: Root cannot be deleted
+          return;
+        }
+
+        if (currentId && onDeleteNodeDirectly) {
+          onDeleteNodeDirectly(currentId);
+          return;
+        }
+
+        if (currentId && onRequestDelete) {
           onRequestDelete(currentId);
           return;
         }
+        return;
       }
 
       // Phase P3.x: Shift + A shortcut to open AI expansion for current node

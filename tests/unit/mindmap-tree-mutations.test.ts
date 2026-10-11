@@ -14,6 +14,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   renameNodeTitle,
   insertChildNode,
+  insertSiblingNode,
+  findParentNode,
+  findDeleteFallbackNodeId,
   deleteNode,
   moveNodeWithinParent,
   findNodeById,
@@ -399,6 +402,55 @@ describe('Mind Map Tree Mutations (Phase P2)', () => {
       const result = insertBatchChildNodes(sampleTree, 'node-dao-de', []);
       expect(result.ok).toBe(true);
       expect(result.tree).toBeDefined();
+    });
+  });
+
+  // =========================================================================
+  // 7. PHASE M3: SIBLING INSERT & FOCUS FALLBACK
+  // =========================================================================
+  describe('Phase M3 Helpers: insertSiblingNode & focus fallback', () => {
+    it('inserts a sibling node immediately after target node with default title "New node"', () => {
+      const result = insertSiblingNode(sampleTree, 'node-kho-de');
+      expect(result.ok).toBe(true);
+      expect(result.tree).toBeDefined();
+      expect(result.newNodeId).toBeDefined();
+
+      const root = result.tree!;
+      expect(root.children).toHaveLength(5);
+      expect(root.children[0].id).toBe('node-kho-de');
+      expect(root.children[1].id).toBe(result.newNodeId);
+      expect(root.children[1].title).toBe('New node');
+      expect(root.children[2].id).toBe('node-tap-de');
+
+      // Verify input tree immutability
+      expect(sampleTree.children).toHaveLength(4);
+    });
+
+    it('rejects inserting sibling for root node', () => {
+      const result = insertSiblingNode(sampleTree, 'root-1');
+      expect(result.ok).toBe(false);
+      expect(result.error?.code).toBe(TreeMutationErrorCode.ROOT_CANNOT_HAVE_SIBLING);
+    });
+
+    it('correctly calculates delete fallback node ID following priority order', () => {
+      // 1. Preceding sibling if exists (deleting node-tap-de falls back to node-kho-de)
+      expect(findDeleteFallbackNodeId(sampleTree, 'node-tap-de')).toBe('node-kho-de');
+
+      // 2. Succeeding sibling if preceding does not exist (deleting node-kho-de falls back to node-tap-de)
+      expect(findDeleteFallbackNodeId(sampleTree, 'node-kho-de')).toBe('node-tap-de');
+
+      // 3. Parent if no siblings exist (deleting node-sinh-lao-benh-tu falls back to node-kho-de)
+      expect(findDeleteFallbackNodeId(sampleTree, 'node-sinh-lao-benh-tu')).toBe('node-kho-de');
+
+      // 4. Root for root node
+      expect(findDeleteFallbackNodeId(sampleTree, 'root-1')).toBe('root-1');
+    });
+
+    it('findParentNode locates correct parent and returns null for root', () => {
+      expect(findParentNode(sampleTree, 'node-kho-de')?.id).toBe('root-1');
+      expect(findParentNode(sampleTree, 'node-sinh-lao-benh-tu')?.id).toBe('node-kho-de');
+      expect(findParentNode(sampleTree, 'root-1')).toBeNull();
+      expect(findParentNode(sampleTree, 'non-existent')).toBeNull();
     });
   });
 });

@@ -152,7 +152,13 @@ export function shouldIgnoreCanvasShortcut(target: EventTarget | null): boolean 
   }
 
   const tagName = target.tagName.toUpperCase();
-  if (tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT") {
+  if (
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT" ||
+    tagName === "BUTTON" ||
+    Boolean(target.closest("button"))
+  ) {
     return true;
   }
 

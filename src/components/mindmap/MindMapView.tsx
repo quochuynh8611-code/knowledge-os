@@ -80,6 +80,8 @@ import {
 import {
   renameNodeTitle,
   insertChildNode,
+  insertSiblingNode,
+  findDeleteFallbackNodeId,
   deleteNode,
   deleteBatchNodes,
   moveNodeWithinParent,
@@ -180,6 +182,9 @@ export function MindMapView() {
 
   // Multi-Node Selection State (Phase P6a)
   const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+
+  // Focused Node State (Phase M3)
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
 
   // AI Expansion State (Phase P3)
   const [aiExpansionTargetNodeId, setAiExpansionTargetNodeId] = useState<
@@ -747,17 +752,52 @@ export function MindMapView() {
   }, []);
 
   const handleAddChild = useCallback(
-    (parentNodeId: string) => {
+    (parentNodeId: string, options?: { title?: string }) => {
       const currentTree = workingDocumentTree || projection?.tree;
       if (!currentTree) return;
-      const res = insertChildNode(currentTree, parentNodeId);
+      const res = insertChildNode(currentTree, parentNodeId, options);
       if (res.ok && res.tree) {
         applyTreeMutation(res.tree);
         const parent = findNodeById(res.tree, parentNodeId);
         if (parent && parent.children.length > 0) {
           const newChild = parent.children[parent.children.length - 1];
-          setEditingNodeId(newChild.id);
+          if (options?.title) {
+            setFocusedNodeId(newChild.id);
+          } else {
+            setEditingNodeId(newChild.id);
+          }
         }
+      }
+    },
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
+  );
+
+  const handleAddSibling = useCallback(
+    (targetNodeId: string, options?: { title?: string }) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree || targetNodeId === currentTree.id) return;
+      const res = insertSiblingNode(currentTree, targetNodeId, options);
+      if (res.ok && res.tree) {
+        applyTreeMutation(res.tree);
+        if (res.newNodeId) {
+          setFocusedNodeId(res.newNodeId);
+        }
+      }
+    },
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
+  );
+
+  const handleDeleteNodeDirectly = useCallback(
+    (nodeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree || nodeId === currentTree.id) return; // Root cannot be deleted
+      const fallbackId = findDeleteFallbackNodeId(currentTree, nodeId);
+      const res = deleteNode(currentTree, nodeId);
+      if (res.ok && res.tree) {
+        const nextValidIds = collectTreeNodeIds(res.tree);
+        setCollapsedNodeIds((prev) => new Set(sanitizeCollapsedIds(Array.from(prev), nextValidIds)));
+        applyTreeMutation(res.tree);
+        setFocusedNodeId(fallbackId);
       }
     },
     [workingDocumentTree, projection?.tree, applyTreeMutation]
@@ -1711,11 +1751,16 @@ export function MindMapView() {
           onSelectTopic={(topicId) => openTopicDetail(topicId)}
           onFocusNode={handleFocusNode}
           isEditable={activeMode === "saved-document"}
+          isDrawerOpen={activeDrawerNodeId !== null}
+          focusedNodeId={focusedNodeId}
+          onFocusNodeIdChange={setFocusedNodeId}
           editingNodeId={editingNodeId}
           onStartRename={handleStartRename}
           onCommitRename={handleCommitRename}
           onCancelRename={handleCancelRename}
           onAddChild={handleAddChild}
+          onAddSibling={handleAddSibling}
+          onDeleteNodeDirectly={handleDeleteNodeDirectly}
           onRequestDelete={handleRequestDelete}
           onMoveUp={handleMoveUp}
           onMoveDown={handleMoveDown}
