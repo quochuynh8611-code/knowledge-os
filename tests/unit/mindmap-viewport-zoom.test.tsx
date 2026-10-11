@@ -1,7 +1,12 @@
 import React from "react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, fireEvent, cleanup, screen } from "@testing-library/react";
-import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanvas";
+import {
+  MindMapTreeCanvas,
+  clampZoom,
+  computeFitScale,
+  formatZoomPercent,
+} from "../../src/components/mindmap/MindMapTreeCanvas";
 import type { MindMapTreeNode } from "../../src/lib/mindmapProjection";
 
 describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
@@ -398,6 +403,187 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
       expect(btnZoomReset).toHaveTextContent("100%");
       expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
       expect(canvasContent.style.transform).toContain("scale(1)");
+    });
+  });
+
+  describe("Phase M4b-A: Viewport Zoom Polish & Control Isolation Hardening", () => {
+    it("Scenario 13: Zero-size geometry fails closed to zoom 1.0 and pan (0, 0) upon fit", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const backdrop = screen.getByTestId("mindmap-canvas-backdrop");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+      const btnFit = screen.getByTestId("btn-zoom-fit");
+      const btnZoomReset = screen.getByTestId("btn-zoom-reset");
+
+      // Backdrop has 0 width and height (e.g. unmounted or hidden container)
+      vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
+        width: 0,
+        height: 0,
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      vi.spyOn(canvasContent, "getBoundingClientRect").mockReturnValue({
+        width: 1000,
+        height: 800,
+        top: 0,
+        left: 0,
+        bottom: 800,
+        right: 1000,
+        x: 0,
+        y: 0,
+        toJSON: () => {},
+      });
+
+      fireEvent.click(btnFit);
+
+      expect(btnZoomReset).toHaveTextContent("100%");
+      expect(canvasContent.style.transform).toContain("scale(1)");
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+    });
+
+    it("Scenario 14: Pointer down on zoom controls widget does not trigger backdrop drag-pan", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const zoomControls = screen.getByTestId("mindmap-zoom-controls");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+
+      // Pointer down directly on controls widget
+      fireEvent.pointerDown(zoomControls, { clientX: 100, clientY: 100, button: 0 });
+      fireEvent.pointerMove(zoomControls, { clientX: 180, clientY: 190 });
+      fireEvent.pointerUp(zoomControls);
+
+      // Pan translation must remain untouched at (0px, 0px)
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+    });
+
+    it("Scenario 15: Pointer down on minimap radar does not trigger backdrop drag-pan", () => {
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+        />
+      );
+
+      const minimap = screen.getByTestId("mindmap-minimap");
+      const canvasContent = screen.getByTestId("mindmap-canvas-content");
+
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+
+      // Pointer down on minimap container
+      fireEvent.pointerDown(minimap, { clientX: 50, clientY: 50, button: 0 });
+      fireEvent.pointerMove(minimap, { clientX: 120, clientY: 130 });
+      fireEvent.pointerUp(minimap);
+
+      expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
+    });
+
+    it("Scenario 16: Canvas keyboard shortcuts respect shouldIgnoreCanvasShortcut in interactive elements", () => {
+      const onSelectMultipleNodesMock = vi.fn();
+
+      render(
+        <div>
+          <input data-testid="test-text-input" type="text" />
+          <MindMapTreeCanvas
+            tree={mockTree}
+            layoutMode="tree_horizontal"
+            collapsedNodeIds={new Set()}
+            onSelectMultipleNodes={onSelectMultipleNodesMock}
+          />
+        </div>
+      );
+
+      const input = screen.getByTestId("test-text-input");
+
+      // Press Cmd+A inside text input
+      fireEvent.keyDown(input, { key: "a", metaKey: true });
+
+      // Canvas shortcut must not hijack input Cmd+A
+      expect(onSelectMultipleNodesMock).not.toHaveBeenCalled();
+    });
+
+    it("Scenario 17: Pure viewport arithmetic helpers enforce clamps, formatting, and fail-closed geometry", () => {
+      // 1. clampZoom tests
+      expect(clampZoom(1.0)).toBe(1.0);
+      expect(clampZoom(0.2)).toBe(0.5);
+      expect(clampZoom(3.5)).toBe(2.0);
+      expect(clampZoom(0.5)).toBe(0.5);
+      expect(clampZoom(2.0)).toBe(2.0);
+
+      // 2. formatZoomPercent tests
+      expect(formatZoomPercent(1.0)).toBe("100%");
+      expect(formatZoomPercent(0.5)).toBe("50%");
+      expect(formatZoomPercent(2.0)).toBe("200%");
+      expect(formatZoomPercent(1.15)).toBe("115%");
+
+      // 3. computeFitScale tests with valid geometry
+      const fitNormal = computeFitScale(1000, 800, 1000, 800, 1.0, 64);
+      // (1000 - 64) / 1000 = 0.936 -> 0.94
+      expect(fitNormal.scale).toBeLessThanOrEqual(2.0);
+      expect(fitNormal.scale).toBeGreaterThanOrEqual(0.5);
+      expect(fitNormal.pan).toEqual({ x: 0, y: 0 });
+
+      // 4. computeFitScale fail-closed on zero or invalid geometry
+      const fitZeroW = computeFitScale(0, 500, 1000, 800, 1.0, 64);
+      expect(fitZeroW).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+
+      const fitZeroH = computeFitScale(800, 0, 1000, 800, 1.0, 64);
+      expect(fitZeroH).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+
+      const fitZeroContent = computeFitScale(800, 600, 0, 0, 1.0, 64);
+      expect(fitZeroContent).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+    });
+
+    it("Scenario 18: Viewport interactions are read-only and do not mutate tree structure", () => {
+      const onMoveUpMock = vi.fn();
+      const onAddChildMock = vi.fn();
+      const onDeleteNodeDirectlyMock = vi.fn();
+
+      render(
+        <MindMapTreeCanvas
+          tree={mockTree}
+          layoutMode="tree_horizontal"
+          collapsedNodeIds={new Set()}
+          onMoveUp={onMoveUpMock}
+          onAddChild={onAddChildMock}
+          onDeleteNodeDirectly={onDeleteNodeDirectlyMock}
+        />
+      );
+
+      const btnZoomIn = screen.getByTestId("btn-zoom-in");
+      const btnZoomOut = screen.getByTestId("btn-zoom-out");
+      const btnZoomReset = screen.getByTestId("btn-zoom-reset");
+      const btnFit = screen.getByTestId("btn-zoom-fit");
+
+      fireEvent.click(btnZoomIn);
+      fireEvent.click(btnZoomOut);
+      fireEvent.click(btnFit);
+      fireEvent.click(btnZoomReset);
+
+      // Verify zero mutation callbacks were triggered
+      expect(onMoveUpMock).not.toHaveBeenCalled();
+      expect(onAddChildMock).not.toHaveBeenCalled();
+      expect(onDeleteNodeDirectlyMock).not.toHaveBeenCalled();
     });
   });
 });

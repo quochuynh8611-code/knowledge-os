@@ -159,6 +159,65 @@ function InlineNodeEditor({
   );
 }
 
+/**
+ * Clamps zoom scale to strictly bounded [min, max] interval.
+ */
+export function clampZoom(zoom: number, min = 0.5, max = 2.0): number {
+  if (isNaN(zoom)) return 1.0;
+  return Math.min(max, Math.max(min, +zoom.toFixed(2)));
+}
+
+/**
+ * Formats zoom scale into integer percentage string (e.g. 1.0 -> "100%", 1.15 -> "115%").
+ */
+export function formatZoomPercent(zoom: number): string {
+  if (isNaN(zoom)) return "100%";
+  return `${Math.round(zoom * 100)}%`;
+}
+
+/**
+ * Computes fit-to-viewport scale and pan offset with fail-closed zero-size geometry handling.
+ */
+export function computeFitScale(
+  backdropWidth: number,
+  backdropHeight: number,
+  contentWidth: number,
+  contentHeight: number,
+  currentZoom: number,
+  padding = 64
+): { scale: number; pan: { x: number; y: number } } {
+  if (
+    backdropWidth <= 0 ||
+    backdropHeight <= 0 ||
+    contentWidth <= 0 ||
+    contentHeight <= 0 ||
+    isNaN(backdropWidth) ||
+    isNaN(backdropHeight) ||
+    isNaN(contentWidth) ||
+    isNaN(contentHeight)
+  ) {
+    return { scale: 1.0, pan: { x: 0, y: 0 } };
+  }
+
+  const safeZoom = currentZoom > 0 && !isNaN(currentZoom) ? currentZoom : 1.0;
+  const unscaledWidth = contentWidth / safeZoom;
+  const unscaledHeight = contentHeight / safeZoom;
+
+  const availableWidth = Math.max(100, backdropWidth - padding);
+  const availableHeight = Math.max(100, backdropHeight - padding);
+
+  const scaleX = availableWidth / unscaledWidth;
+  const scaleY = availableHeight / unscaledHeight;
+  const computedScale = Math.min(scaleX, scaleY);
+
+  const clampedScale = clampZoom(computedScale, 0.5, 2.0);
+
+  return {
+    scale: clampedScale,
+    pan: { x: 0, y: 0 },
+  };
+}
+
 export function MindMapTreeCanvas({
   tree,
   layoutMode,
@@ -638,12 +697,12 @@ export function MindMapTreeCanvas({
 
   const handleZoomIn = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setZoom((prev) => Math.min(2.0, +(prev + 0.1).toFixed(2)));
+    setZoom((prev) => clampZoom(prev + 0.1));
   };
 
   const handleZoomOut = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setZoom((prev) => Math.max(0.5, +(prev - 0.1).toFixed(2)));
+    setZoom((prev) => clampZoom(prev - 0.1));
   };
 
   const handleZoomReset = (e: React.MouseEvent) => {
@@ -661,32 +720,17 @@ export function MindMapTreeCanvas({
     const backdropRect = backdrop.getBoundingClientRect();
     const contentRect = content.getBoundingClientRect();
 
-    if (
-      backdropRect.width === 0 ||
-      backdropRect.height === 0 ||
-      contentRect.width === 0 ||
-      contentRect.height === 0
-    ) {
-      setZoom(1.0);
-      setPan({ x: 0, y: 0 });
-      return;
-    }
+    const fitResult = computeFitScale(
+      backdropRect.width,
+      backdropRect.height,
+      contentRect.width,
+      contentRect.height,
+      zoom,
+      64
+    );
 
-    const unscaledWidth = contentRect.width / zoom;
-    const unscaledHeight = contentRect.height / zoom;
-
-    const padding = 64;
-    const availableWidth = Math.max(100, backdropRect.width - padding);
-    const availableHeight = Math.max(100, backdropRect.height - padding);
-
-    const scaleX = availableWidth / unscaledWidth;
-    const scaleY = availableHeight / unscaledHeight;
-    const computedScale = Math.min(scaleX, scaleY);
-
-    const clampedScale = Math.min(2.0, Math.max(0.5, +computedScale.toFixed(2)));
-
-    setZoom(clampedScale);
-    setPan({ x: 0, y: 0 });
+    setZoom(fitResult.scale);
+    setPan(fitResult.pan);
   };
 
   const activeCrossLinkNodeId = focusedCrossLinkNodeId ?? hoveredNodeId;
@@ -1286,6 +1330,7 @@ export function MindMapTreeCanvas({
       {/* Floating Zoom Controls Widget */}
       <div
         data-testid="mindmap-zoom-controls"
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white/90 dark:bg-stone-900/90 backdrop-blur-md border border-stone-200 dark:border-stone-800 rounded-lg p-1 shadow-sm"
       >
@@ -1309,7 +1354,7 @@ export function MindMapTreeCanvas({
           aria-label="Khôi phục tỷ lệ 100%"
           className="px-2 py-1 text-xs font-mono font-medium rounded hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer text-stone-700 dark:text-stone-200"
         >
-          {Math.round(zoom * 100)}%
+          {formatZoomPercent(zoom)}
         </button>
 
         <button
