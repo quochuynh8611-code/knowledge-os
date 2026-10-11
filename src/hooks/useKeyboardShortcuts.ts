@@ -13,6 +13,7 @@ export interface ShortcutItem {
 export interface UseKeyboardShortcutsOptions {
   shortcuts?: ShortcutItem[];
   onOpenCommandPalette?: () => void;
+  onOpenQuickCapture?: () => void;
   onOpenShortcutsModal?: () => void;
   onCloseModals?: () => void;
   onNavigateTab?: (tab: string) => void;
@@ -22,6 +23,7 @@ export interface UseKeyboardShortcutsOptions {
 export function useKeyboardShortcuts({
   shortcuts = [],
   onOpenCommandPalette,
+  onOpenQuickCapture,
   onOpenShortcutsModal,
   onCloseModals,
   onNavigateTab,
@@ -45,6 +47,14 @@ export function useKeyboardShortcuts({
         e.preventDefault();
         e.stopPropagation();
         onOpenCommandPalette?.();
+        return;
+      }
+
+      // 1b. Quick Capture Modal: Ctrl+N or Cmd+N (allowed everywhere, best-effort)
+      if (isCmdOrCtrl && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        e.stopPropagation();
+        onOpenQuickCapture?.();
         return;
       }
 
@@ -113,6 +123,7 @@ export function useKeyboardShortcuts({
     [
       disabled,
       onOpenCommandPalette,
+      onOpenQuickCapture,
       onOpenShortcutsModal,
       onCloseModals,
       onNavigateTab,

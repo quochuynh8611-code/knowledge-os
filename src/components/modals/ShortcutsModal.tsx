@@ -35,6 +35,10 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
           keys: [`${modKey}`, "K"],
           description: "Mở Thanh Lệnh Toàn Năng (Command Palette)",
         },
+        {
+          keys: [`${modKey}`, "N"],
+          description: "Ghi chú nhanh vào Inbox (Quick Capture)",
+        },
         { keys: ["?"], description: "Mở Bảng tra cứu phím tắt này" },
         { keys: ["Esc"], description: "Đóng hộp thoại / Bỏ chọn" },
       ],

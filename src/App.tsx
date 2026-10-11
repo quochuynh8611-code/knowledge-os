@@ -12,6 +12,8 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useTheme } from "./hooks/useTheme";
 import { CommandPalette } from "./components/search/CommandPalette";
 import { ShortcutsModal } from "./components/modals/ShortcutsModal";
+import { QuickCaptureModal } from "./components/modals/QuickCaptureModal";
+import type { ResearchExcerpt } from "./types";
 import {
   LayoutDashboard,
   FolderTree,
@@ -132,12 +134,39 @@ function AppContent() {
     topics,
     addNote,
     updateTopicProgress,
+    addExcerptToInbox,
   } = useData();
   const { toggleTheme } = useTheme();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showQuickCaptureModal, setShowQuickCaptureModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
   const [showWrapupModal, setShowWrapupModal] = useState(false);
+
+  const handleSaveQuickCapture = async (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const excerpt: ResearchExcerpt = {
+      id: `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      archivedDocumentId: "quick-capture",
+      topicId: null,
+      targetNoteId: null,
+      selectedText: trimmed,
+      contextPrefix: null,
+      contextSuffix: null,
+      positionSelector: {},
+      highlightColor: "#f59e0b",
+      citationSnapshot: {
+        title: "Ghi chú chớp nhoáng",
+        author: "Quick Capture",
+      },
+      userNote: null,
+      status: "inbox",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await addExcerptToInbox(excerpt);
+  };
 
   const customPaletteItems: CommandPaletteItem[] = useMemo(
     () => [
@@ -223,15 +252,18 @@ function AppContent() {
     onNavigateTab: (tab) => setActiveTab(tab as any),
     onOpenTopic: (id) => openTopicDetail(id),
     onToggleTheme: () => toggleTheme(),
+    onOpenQuickCapture: () => setShowQuickCaptureModal(true),
   });
 
   // Global Keyboard Shortcuts hook
   useKeyboardShortcuts({
     onOpenCommandPalette: palette.openPalette,
+    onOpenQuickCapture: () => setShowQuickCaptureModal(true),
     onOpenShortcutsModal: () => setShowShortcutsModal(true),
     onCloseModals: () => {
       palette.closePalette();
       setShowShortcutsModal(false);
+      setShowQuickCaptureModal(false);
     },
     onNavigateTab: (tab) => setActiveTab(tab as any),
   });
@@ -521,6 +553,11 @@ function AppContent() {
       <ShortcutsModal
         isOpen={showShortcutsModal}
         onClose={() => setShowShortcutsModal(false)}
+      />
+      <QuickCaptureModal
+        isOpen={showQuickCaptureModal}
+        onClose={() => setShowQuickCaptureModal(false)}
+        onSave={handleSaveQuickCapture}
       />
 
       {/* Global Phase 5 Integration Modals */}

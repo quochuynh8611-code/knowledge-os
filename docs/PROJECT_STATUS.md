@@ -2,19 +2,19 @@
 
 > **Cập nhật lần cuối:** 2026-10-11  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE D1 DASHBOARD DAILY DUE REVIEW WIDGET: Đã hoàn tất implementation & verification cục bộ (Commit `d951c73`, LOCAL-ONLY / NOT PUSHED); toàn bộ targeted tests, regression tests và typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau D1 để thực hiện reconciliation và chọn ứng viên roadmap tiếp theo.**
+> **Trạng thái tổng thể:** 🟢 **PHASE D2 GLOBAL QUICK-CAPTURE MODAL (`⌘N`): Đã hoàn tất implementation & verification cục bộ (LOCAL-ONLY / NOT PUSHED); toàn bộ 12/12 targeted tests, 30/30 regression tests và typecheck đạt GREEN (0 errors). Đang dừng tại cổng điều hành (Human Approval Gate) trước khi stage/commit.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `d951c73` (`feat(dashboard): add daily due review widget with 1-click launch`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 5 commits**.
+- **Current Baseline / HEAD:** Commit `1f12479` (`docs(governance): reconcile project status after phase d1 closure`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 6 commits**.
 - **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
-- **Working Tree:** Sạch đối với tracked files; duy nhất còn 1 session log ngoài scope ở trạng thái untracked: `docs/session-logs/2026-10-11-mindmap-m2-closure-and-personal-knowledge-os-upgrade-plan.md`.
-- **Quality Gates Baseline:**
-  - Targeted tests: 7/7 PASS (`tests/unit/dashboard-daily-due-widget.test.tsx`).
-  - Regression subset: 8/8 PASS (`tests/unit/phase14b-focus-domain-ui.test.tsx` + `tests/integration/flashcard-analytics-widget.test.tsx`).
+- **Working Tree:** Chứa các thay đổi chưa stage của Phase D2 (`QuickCaptureModal.tsx`, `App.tsx`, `useKeyboardShortcuts.ts`, `useCommandPalette.ts`, `ShortcutsModal.tsx`, tests & docs).
+- **Quality Gates Baseline (Phase D2):**
+  - Targeted tests: 12/12 PASS ([`tests/unit/quick-capture-modal.test.tsx`](tests/unit/quick-capture-modal.test.tsx)).
+  - Regression subset: 30/30 PASS (`keyboard-shortcuts`, `dashboard-daily-due-widget`, `quick-capture-modal`, `command-palette-caller-wiring`).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
@@ -24,20 +24,44 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md`](docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md) | Báo cáo đóng Phase D1: chi tiết widget, trigger 1-click, verification evidence và error resilience. |
-| **3** | [`docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md`](docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md) | Bản ghi quyết định kiến trúc: Habit widget độc lập, 1-click launch và zero schema migration. |
-| **4** | [`docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md`](docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md) | Đặc tả kỹ thuật D1: UI contract, state model, Gherkin acceptance criteria. |
-| **5** | [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md) | Baseline Mind Map gần nhất (Phase M3 Keyboard Authoring). |
+| **2** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Báo cáo đóng Phase D2: Quick-Capture Modal, `⌘N`/`Ctrl+N`, Command Palette fallback, canonical excerpt contract. |
+| **3** | [`docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md`](docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md) | Bản ghi quyết định kiến trúc: Global modal tại App shell, reuse `addExcerptToInbox`, fallback Command Palette. |
+| **4** | [`docs/specs/phase-d2-global-quick-capture-modal-spec.md`](docs/specs/phase-d2-global-quick-capture-modal-spec.md) | Đặc tả kỹ thuật D2: UI contract, state model, Gherkin acceptance criteria, error retention. |
+| **5** | [`docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md`](docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md) | Baseline Phase D1 (Dashboard Daily Due Review Widget). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase D1 đã được đóng và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap còn lại sau D1**, chưa mở phase và chưa được duyệt implementation.
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase D2 đã hoàn tất implementation cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp bắt ý tưởng vụt sáng mà không đánh mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥇 **Cao nhất (P1)** |
+| **Candidate 1** | **Phase R3.A — Reader Excerpt Promotion to Flashcard**<br>- Nút thăng hạng trích đoạn trong Research Inbox thành Flashcard trực tiếp từ ReaderSidebar. | Chuyển đổi mượt mà từ gom nhặt thụ động sang chủ động ghi nhớ ngắt quãng (Active Recall). | Thấp-Trung bình (UI wiring + FlashcardFormModal). | 🥇 **Cao nhất (P1)** |
+| **Candidate 2** | **Phase M4 — Mind Map Visual Polish & Export**<br>- Cải thiện giao diện xuất ảnh/SVG, zoom slider mịn và responsive viewport. | Xuất bản và chia sẻ sơ đồ tư duy cho bài giảng và ghi chép. | Thấp | 🥈 **P2** |
+
+---
+
+## ⚡ Global Quick-Capture Modal — Phase D2 Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (LOCAL-ONLY / NOT PUSHED)  
+**Tests**: 12/12 Targeted tests PASS, 30/30 Regression tests PASS  
+**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+**Database & Architecture**: Zero schema migration. Zero backend API changes. Toàn bộ thao tác dựa trên client-side DataContext và localStorage persistence hiện hữu. Tái sử dụng contract canonical `addExcerptToInbox(excerpt)` với `archivedDocumentId: "quick-capture"` và `status: "inbox"`. Không sửa `Navbar.tsx`.
+
+### Features Delivered & Verified
+1. ✅ **Global Quick-Capture Modal (`QuickCaptureModal.tsx`)**: Modal toàn cục gọn gàng, tự động focus `textarea`, hỗ trợ submit nhanh bằng `⌘+Enter` hoặc `Ctrl+Enter`, Escape đóng modal tức thì mà không cần popup confirm.
+2. ✅ **Phím tắt toàn cục `⌘N` / `Ctrl+N`**: Bắt trong `useKeyboardShortcuts.ts`, gọi `preventDefault` để hạn chế mở cửa sổ mới trình duyệt, hoạt động omnipresent trên toàn shell.
+3. ✅ **Command Palette Fallback**: Bổ sung action `act-quick-capture` ("Ghi Chú Nhanh (Quick Capture)") vào danh mục `Hành động nhanh` của Command Palette làm phương án thay thế đáng tin cậy 100% khi phím tắt bị trình duyệt chặn.
+4. ✅ **Canonical Payload Contract**: Đóng gói văn bản nhập vào thành trích đoạn `ResearchExcerpt` chuẩn mực (`archivedDocumentId: "quick-capture"`, title: "Ghi chú chớp nhoáng", author: "Quick Capture", status: "inbox", highlightColor: "#f59e0b").
+5. ✅ **Bảo toàn dữ liệu khi lỗi (Error Retention)**: Khi thao tác lưu gặp lỗi, modal không đóng và không xóa văn bản draft trong textarea, đảm bảo người dùng không mất ý tưởng.
+6. ✅ **Shortcuts Tra Cứu**: Bổ sung `⌘N` / `Ctrl+N` vào nhóm "Thao Tác Nhanh & Tìm Kiếm" trong `ShortcutsModal.tsx`.
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/phase-d2-global-quick-capture-modal-spec.md`](docs/specs/phase-d2-global-quick-capture-modal-spec.md)
+- **ADR**: [`docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md`](docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md)
+- **Closure Report**: [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md)
+- **Targeted Test Suite**: [`tests/unit/quick-capture-modal.test.tsx`](tests/unit/quick-capture-modal.test.tsx)
 
 ---
 

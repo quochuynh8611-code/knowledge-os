@@ -99,6 +99,7 @@ export interface UseCommandPaletteOptions {
   onOpenTopicModal?: () => void;
   onOpenNoteModal?: () => void;
   onOpenReviewModal?: () => void;
+  onOpenQuickCapture?: () => void;
 }
 
 export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
@@ -224,6 +225,26 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       })),
 
       // 2. Quick Actions
+      ...(options.onOpenQuickCapture
+        ? [
+            {
+              id: "act-quick-capture",
+              title: "Ghi Chú Nhanh (Quick Capture)",
+              description: "Bắt ý tưởng chớp nhoáng vào Research Inbox (⌘N)",
+              category: "Hành động nhanh" as const,
+              icon: Sparkles,
+              keywords: [
+                "quick capture",
+                "ghi chu nhanh",
+                "chop nhoang",
+                "inbox",
+                "fleeting note",
+                "y tuong",
+              ],
+              action: () => options.onOpenQuickCapture?.(),
+            },
+          ]
+        : []),
       {
         id: "act-add-topic",
         title: "Tạo Chủ Đề Nghiên Cứu Mới",
