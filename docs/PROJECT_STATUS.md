@@ -2,19 +2,19 @@
 
 > **Cập nhật lần cuối:** 2026-10-11  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE D2 GLOBAL QUICK-CAPTURE MODAL (`⌘N`): Đã hoàn tất implementation & verification cục bộ (LOCAL-ONLY / NOT PUSHED); toàn bộ 12/12 targeted tests, 30/30 regression tests và typecheck đạt GREEN (0 errors). Đang dừng tại cổng điều hành (Human Approval Gate) trước khi stage/commit.**
+> **Trạng thái tổng thể:** 🟢 **PHASE M4a MIND MAP EXPORT UX HARDENING: Đã hoàn tất implementation, tests & documentation cục bộ (LOCAL-ONLY / NOT PUSHED, UNCOMMITTED); toàn bộ 7/7 targeted integration tests, 66/66 regression tests và typecheck đạt GREEN (0 errors). Đang dừng tại cổng điều hành (Human Approval Gate) trước khi stage/commit.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `1f12479` (`docs(governance): reconcile project status after phase d1 closure`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 6 commits**.
+- **Current Baseline / HEAD:** Commit `d6d5503` (`feat(capture): add global quick-capture modal`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 7 commits**.
 - **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
-- **Working Tree:** Chứa các thay đổi chưa stage của Phase D2 (`QuickCaptureModal.tsx`, `App.tsx`, `useKeyboardShortcuts.ts`, `useCommandPalette.ts`, `ShortcutsModal.tsx`, tests & docs).
-- **Quality Gates Baseline (Phase D2):**
-  - Targeted tests: 12/12 PASS ([`tests/unit/quick-capture-modal.test.tsx`](tests/unit/quick-capture-modal.test.tsx)).
-  - Regression subset: 30/30 PASS (`keyboard-shortcuts`, `dashboard-daily-due-widget`, `quick-capture-modal`, `command-palette-caller-wiring`).
+- **Working Tree:** Chứa các thay đổi chưa stage của Phase M4a (`MindMapView.tsx`, `tests/integration/mindmap-export-workflow.test.tsx`, và bộ tài liệu docs M4a).
+- **Quality Gates Baseline (Phase M4a):**
+  - Targeted tests: 7/7 PASS ([`tests/integration/mindmap-export-workflow.test.tsx`](tests/integration/mindmap-export-workflow.test.tsx)).
+  - Regression subset: 66/66 PASS (`mindmap-svg-export`, `mindmap-undo-redo`, `mindmap-document-storage`, `mindmap-projection`, `mindmap-export-workflow`).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
@@ -24,27 +24,48 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Báo cáo đóng Phase D2: Quick-Capture Modal, `⌘N`/`Ctrl+N`, Command Palette fallback, canonical excerpt contract. |
-| **3** | [`docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md`](docs/adr/ADR-098-phase-d2-global-quick-capture-modal.md) | Bản ghi quyết định kiến trúc: Global modal tại App shell, reuse `addExcerptToInbox`, fallback Command Palette. |
-| **4** | [`docs/specs/phase-d2-global-quick-capture-modal-spec.md`](docs/specs/phase-d2-global-quick-capture-modal-spec.md) | Đặc tả kỹ thuật D2: UI contract, state model, Gherkin acceptance criteria, error retention. |
-| **5** | [`docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md`](docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md) | Baseline Phase D1 (Dashboard Daily Due Review Widget). |
+| **2** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
+| **3** | [`docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md`](docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md) | Bản ghi quyết định kiến trúc ADR-099: Ưu tiên document title, tái sử dụng Toast component, dọn dẹp bộ nhớ. |
+| **4** | [`docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md`](docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md) | Đặc tả kỹ thuật M4a: Filename contract, feedback contract, Gherkin scenarios, invariants. |
+| **5** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase D2 đã hoàn tất implementation cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M4a đã hoàn tất implementation cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase R3.A — Reader Excerpt Promotion to Flashcard**<br>- Nút thăng hạng trích đoạn trong Research Inbox thành Flashcard trực tiếp từ ReaderSidebar. | Chuyển đổi mượt mà từ gom nhặt thụ động sang chủ động ghi nhớ ngắt quãng (Active Recall). | Thấp-Trung bình (UI wiring + FlashcardFormModal). | 🥇 **Cao nhất (P1)** |
-| **Candidate 2** | **Phase M4 — Mind Map Visual Polish & Export**<br>- Cải thiện giao diện xuất ảnh/SVG, zoom slider mịn và responsive viewport. | Xuất bản và chia sẻ sơ đồ tư duy cho bài giảng và ghi chép. | Thấp | 🥈 **P2** |
+| **Candidate 1** | **Phase M4b — Mind Map Viewport Zoom Polish**<br>- Tinh chỉnh zoom slider, responsive viewport, nút "Fit to Screen" và căn giữa cây tư duy. | Nâng cao độ mượt mà khi quan sát và điều hướng trên canvas sơ đồ tư duy lớn. | Thấp-Trung bình | 🥇 **Cao nhất (P1)** |
+| **Candidate 2** | **Phase M5 — Mind Map Multi-Parent / Cross-Link Editing UI**<br>- Cho phép tạo và gỡ liên kết chéo trực tiếp trên giao diện tương tác. | Biểu diễn mối quan hệ đa chiều giữa các nhánh kiến thức. | Trung bình | 🥈 **P2** |
+
+---
+
+## 🗺️ Mind Map Export UX Hardening — Phase M4a Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (LOCAL-ONLY / NOT PUSHED, UNCOMMITTED)  
+**Tests**: 7/7 Targeted tests PASS, 66/66 Regression tests PASS  
+**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+**Database & Architecture**: Không đổi schema. Không đổi projection engine. Xử lý chuẩn hóa tên file tải về ưu tiên tiêu đề tài liệu (`activeDocumentSummary.title`) cho cả SVG và PNG. Bổ sung Toast feedback thông báo thành công và thất bại cho người dùng. Bảo toàn 100% tính chất read-only (không làm bẩn tài liệu, không ghi undo history).
+
+### Features Delivered & Verified
+1. ✅ **Filename Resolution Contract**: Ưu tiên `activeDocumentSummary.title` khi ở `saved-document` mode, fallback về `projection.rootTitle` và `"Topic"`. Áp dụng đồng bộ cho cả SVG và PNG.
+2. ✅ **Success & Error Toast Feedback**: Tích hợp component `Toast` có sẵn, hiển thị thông báo tức thì khi xuất file SVG/PNG thành công hoặc khi xảy ra sự cố rasterize.
+3. ✅ **Safe Memory & Loading Cleanup**: Khối `finally` đảm bảo luôn thu hồi `URL.revokeObjectURL(url)` và giải phóng nút bấm khỏi trạng thái `isExportingPng = true`.
+4. ✅ **State Invariants Isolation**: Thao tác xuất file hoàn toàn là read-only, không làm thay đổi `isDirty`, không đẩy mutation vào Undo/Redo stack.
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md`](docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md)
+- **ADR**: [`docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md`](docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md)
+- **Closure Report**: [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md)
+- **Primary Tests**: [`tests/integration/mindmap-export-workflow.test.tsx`](tests/integration/mindmap-export-workflow.test.tsx)
 
 ---
 
 ## ⚡ Global Quick-Capture Modal — Phase D2 Closure (2026-10-11)
 
-**Status**: ✅ Complete & Verified Locally (LOCAL-ONLY / NOT PUSHED)  
+**Status**: ✅ Complete & Verified Locally (Commit `d6d5503`, LOCAL-ONLY / NOT PUSHED)  
 **Tests**: 12/12 Targeted tests PASS, 30/30 Regression tests PASS  
 **Typecheck**: 0 errors (`npx tsc --noEmit`)  
 **Database & Architecture**: Zero schema migration. Zero backend API changes. Toàn bộ thao tác dựa trên client-side DataContext và localStorage persistence hiện hữu. Tái sử dụng contract canonical `addExcerptToInbox(excerpt)` với `archivedDocumentId: "quick-capture"` và `status: "inbox"`. Không sửa `Navbar.tsx`.

@@ -39,6 +39,7 @@ import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import { MindMapSaveModal } from "./MindMapSaveModal";
 import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
 import { MindMapNodeDrawer } from "./MindMapNodeDrawer";
+import { Toast, ToastType } from "../ui/Toast";
 import {
   Network,
   Copy,
@@ -155,6 +156,10 @@ export function MindMapView() {
   const [copied, setCopied] = useState<boolean>(false);
   const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: ToastType;
+  } | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Persistence State (Phase P1)
@@ -528,8 +533,12 @@ export function MindMapView() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
+      const exportTitle =
+        activeMode === "saved-document" && activeDocumentSummary?.title
+          ? activeDocumentSummary.title
+          : projection.rootTitle || "Topic";
       link.download = getMindMapExportFilename(
-        projection.rootTitle,
+        exportTitle,
         layoutMode,
         "svg"
       );
@@ -537,14 +546,31 @@ export function MindMapView() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      setToast({
+        message: "Đã xuất file SVG thành công!",
+        type: "success",
+      });
     } catch (err) {
       console.error("Failed to export mind map SVG:", err);
+      setToast({
+        message: "Không thể xuất file SVG. Vui lòng thử lại.",
+        type: "error",
+      });
     }
-  }, [projection, layoutMode, collapsedNodeIds, showCrossLinks, filteredCrossEdges]);
+  }, [
+    projection,
+    layoutMode,
+    collapsedNodeIds,
+    showCrossLinks,
+    filteredCrossEdges,
+    activeMode,
+    activeDocumentSummary,
+  ]);
 
   // Export Mind Map to rasterized PNG file
   const handleExportPng = useCallback(async () => {
     if (!projection) return;
+    let url = "";
     try {
       setIsExportingPng(true);
       const svgString = exportMindMapToSvg(projection, {
@@ -555,24 +581,46 @@ export function MindMapView() {
       });
 
       const pngBlob = await rasterizeSvgToPng(svgString, { scale: 2 });
-      const url = URL.createObjectURL(pngBlob);
+      url = URL.createObjectURL(pngBlob);
       const link = document.createElement("a");
       link.href = url;
+      const exportTitle =
+        activeMode === "saved-document" && activeDocumentSummary?.title
+          ? activeDocumentSummary.title
+          : projection.rootTitle || "Topic";
       link.download = getMindMapExportFilename(
-        projection.rootTitle,
+        exportTitle,
         layoutMode,
         "png"
       );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      setToast({
+        message: "Đã xuất ảnh PNG thành công!",
+        type: "success",
+      });
     } catch (err) {
       console.error("Failed to export mind map PNG:", err);
+      setToast({
+        message: "Không thể xuất file PNG. Vui lòng thử lại sau.",
+        type: "error",
+      });
     } finally {
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
       setIsExportingPng(false);
     }
-  }, [projection, layoutMode, collapsedNodeIds, showCrossLinks, filteredCrossEdges]);
+  }, [
+    projection,
+    layoutMode,
+    collapsedNodeIds,
+    showCrossLinks,
+    filteredCrossEdges,
+    activeMode,
+    activeDocumentSummary,
+  ]);
 
   // Cleanup highlight timer on unmount
   useEffect(() => {
@@ -1997,6 +2045,15 @@ export function MindMapView() {
           node={activeDrawerNode}
           onClose={() => setActiveDrawerNodeId(null)}
           onUpdateTitle={handleUpdateNodeTitleFromDrawer}
+        />
+      )}
+
+      {/* Toast Feedback (Phase M4a) */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
