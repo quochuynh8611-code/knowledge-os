@@ -8,6 +8,7 @@ import { WeeklyCadenceBar } from './WeeklyCadenceBar';
 import { LearningStateCard } from './LearningStateCard';
 import { ResumeStudyQueue } from './ResumeStudyQueue';
 import { FlashcardAnalyticsWidget } from '../flashcards/FlashcardAnalyticsWidget';
+import { DailyDueReviewWidget } from './DailyDueReviewWidget';
 import { PageHeader } from '../workbench/PageHeader';
 import { SectionHeader } from '../workbench/SectionHeader';
 import { ToolbarButton } from '../workbench/ToolbarButton';
@@ -145,8 +146,9 @@ export function DashboardHome() {
       {/* Khối 2: Weekly Learning Cadence & Momentum Horizon */}
       <WeeklyCadenceBar cadence={weeklyCadence} />
 
-      {/* Khối 2.5: Flashcard & Retention Progress Analytics */}
-      <section>
+      {/* Khối 2.5: Flashcard Daily Due Habit & Retention Analytics */}
+      <section className="space-y-4">
+        <DailyDueReviewWidget />
         <FlashcardAnalyticsWidget />
       </section>
 
