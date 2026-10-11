@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Trash2,
+  Brain,
 } from 'lucide-react';
 import { TocItem } from './ReaderTocDrawer';
 import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
@@ -38,6 +39,7 @@ export interface ReaderSidebarProps {
   onDeleteExcerpt?: (id: string) => void;
   inboxItems?: ResearchInboxItem[];
   onDeleteInboxItem?: (id: string) => void;
+  onPromoteToFlashcard?: (item: ResearchInboxItem) => void;
   onOpenArchiveLink?: (documentId: string, locator?: string) => void;
   onOpenNoteDetail?: (noteId: string) => void;
 }
@@ -66,6 +68,7 @@ export function ReaderSidebar({
   onDeleteExcerpt,
   inboxItems = [],
   onDeleteInboxItem,
+  onPromoteToFlashcard,
   onOpenArchiveLink,
   onOpenNoteDetail,
 }: ReaderSidebarProps) {
@@ -461,6 +464,20 @@ export function ReaderSidebar({
                       {item.excerpt?.citationSnapshot?.title || documentTitle}
                     </span>
                     <div className="flex items-center gap-1">
+                      {!item.isProcessed && onPromoteToFlashcard && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPromoteToFlashcard(item);
+                          }}
+                          aria-label="Tạo thẻ nhớ từ trích đoạn"
+                          className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition cursor-pointer"
+                          title="Tạo thẻ nhớ từ trích đoạn"
+                        >
+                          <Brain className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                       {onDeleteInboxItem && (
                         <button
                           type="button"

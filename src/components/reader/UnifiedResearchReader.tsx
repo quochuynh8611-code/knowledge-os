@@ -126,6 +126,7 @@ export function UnifiedResearchReader({
   const [isCreateFlashcardModalOpen, setIsCreateFlashcardModalOpen] = useState(false);
   const [flashcardProvenance, setFlashcardProvenance] = useState<FlashcardCitationProvenance | undefined>(undefined);
   const [flashcardInitialFront, setFlashcardInitialFront] = useState<string>('');
+  const [activePromotingInboxItem, setActivePromotingInboxItem] = useState<ResearchInboxItem | null>(null);
   const readerViewportRef = useRef<HTMLDivElement>(null);
   const [viewingBacklinkNote, setViewingBacklinkNote] = useState<Note | null>(null);
   const [viewingBacklinkTargetCitation, setViewingBacklinkTargetCitation] = useState<{ documentId: string; locator?: string } | undefined>(undefined);
@@ -141,6 +142,7 @@ export function UnifiedResearchReader({
     addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
     updateNote?: (id: string, noteData: Partial<Note>) => void;
     deleteInboxItem?: (id: string) => Promise<void>;
+    processInboxItem?: (id: string) => Promise<void>;
   } | undefined;
   const notes = dataContext?.notes || [];
   const resources = dataContext?.resources || [];
@@ -150,6 +152,7 @@ export function UnifiedResearchReader({
   const deleteExcerpt = dataContext?.deleteExcerpt;
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
   const deleteInboxItem = dataContext?.deleteInboxItem;
+  const processInboxItem = dataContext?.processInboxItem;
 
   // Phase 21A: Extract active document reverse citations (backlinks)
   const backlinks = useMemo(() => {
@@ -452,11 +455,47 @@ export function UnifiedResearchReader({
         citationFormatted: citationSnapshot.formatted || citationSnapshot.apa,
       };
 
+      setActivePromotingInboxItem(null);
       setFlashcardProvenance(provenance);
       setFlashcardInitialFront(selectedText);
       setIsCreateFlashcardModalOpen(true);
     }
   };
+
+  const handlePromoteInboxItemToFlashcard = useCallback(
+    (item: ResearchInboxItem) => {
+      if (!item || item.isProcessed || isCreateFlashcardModalOpen) {
+        return;
+      }
+
+      const excerpt = item.excerpt;
+      const formatNormalized: ReaderDocumentFormat =
+        normalizedFormat === 'epub' ? 'epub' : normalizedFormat === 'pdf' ? 'pdf' : 'md';
+
+      const canonicalLoc =
+        excerpt?.positionSelector?.headingId ||
+        (excerpt?.positionSelector?.pageNumber !== undefined
+          ? `page=${excerpt.positionSelector.pageNumber}`
+          : undefined) ||
+        excerpt?.positionSelector?.cfi;
+
+      const provenance: FlashcardCitationProvenance = {
+        documentId: excerpt?.archivedDocumentId || documentId,
+        documentTitle: excerpt?.citationSnapshot?.title || title,
+        format: formatNormalized,
+        locator: canonicalLoc,
+        sourceUrl: fileUrl,
+        excerptText: excerpt?.selectedText,
+        citationFormatted: excerpt?.citationSnapshot?.formatted || excerpt?.citationSnapshot?.apa,
+      };
+
+      setActivePromotingInboxItem(item);
+      setFlashcardProvenance(provenance);
+      setFlashcardInitialFront(excerpt?.selectedText || '');
+      setIsCreateFlashcardModalOpen(true);
+    },
+    [isCreateFlashcardModalOpen, normalizedFormat, documentId, title, fileUrl]
+  );
 
   const handleOpenCreateNewNote = () => {
     if (!activeSelection?.text) return;
@@ -827,6 +866,7 @@ export function UnifiedResearchReader({
               deleteInboxItem(id);
             }
           }}
+          onPromoteToFlashcard={handlePromoteInboxItemToFlashcard}
           onOpenArchiveLink={handleOpenArchiveLinkFromSidebar}
           onOpenNoteDetail={(noteId) => {
             const matched = notes.find((n) => n.id === noteId);
@@ -878,10 +918,19 @@ export function UnifiedResearchReader({
           restoreFocusRef={readerViewportRef}
           onClose={() => {
             setIsCreateFlashcardModalOpen(false);
+            setActivePromotingInboxItem(null);
             setActiveSelection(null);
           }}
-          onSuccess={(card) => {
+          onSuccess={async (card) => {
+            if (activePromotingInboxItem && processInboxItem) {
+              try {
+                await processInboxItem(activePromotingInboxItem.id);
+              } catch (err) {
+                console.error('Failed to mark inbox item as processed:', err);
+              }
+            }
             setIsCreateFlashcardModalOpen(false);
+            setActivePromotingInboxItem(null);
             setActiveSelection(null);
             showToast(`Đã tạo flashcard: "${card.front.slice(0, 30)}..."`);
           }}
