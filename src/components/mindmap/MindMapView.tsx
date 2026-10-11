@@ -1680,6 +1680,11 @@ export function MindMapView() {
       <MindMapImportPreviewModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
+        onDocumentCreated={(documentId) => {
+          setSavedDocsRevision((r) => r + 1);
+          handleOpenSavedDocument(documentId);
+          setIsImportModalOpen(false);
+        }}
       />
 
       {/* Save Document / Version Modal */}

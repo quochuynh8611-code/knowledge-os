@@ -23,12 +23,19 @@ import {
   DownloadCloud,
   Check,
   Loader2,
+  Upload,
+  Save,
 } from "lucide-react";
+import {
+  createMindMapDocument,
+  projectedTreeToDocumentTree,
+} from "../../lib/mindmapDocumentStorage";
 
 export interface MindMapImportPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMarkdown?: string;
+  onDocumentCreated?: (documentId: string) => void;
 }
 
 const SAMPLE_MARKDOWN = `# 🗺️ Sơ Đồ Tư Duy: Bát Chánh Đạo
@@ -46,6 +53,7 @@ export function MindMapImportPreviewModal({
   isOpen,
   onClose,
   initialMarkdown = "",
+  onDocumentCreated,
 }: MindMapImportPreviewModalProps) {
   let dataContext: any = null;
   try {
@@ -58,6 +66,7 @@ export function MindMapImportPreviewModal({
   const topics = dataContext?.topics || [];
 
   const [markdownText, setMarkdownText] = useState<string>(initialMarkdown);
+  const [importedFileName, setImportedFileName] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<MindMapLayoutMode>("tree_horizontal");
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
 
@@ -97,12 +106,14 @@ export function MindMapImportPreviewModal({
 
   const handleLoadSample = useCallback(() => {
     setMarkdownText(SAMPLE_MARKDOWN);
+    setImportedFileName(null);
     setCollapsedNodeIds(new Set());
     setIngestionError(null);
   }, []);
 
   const handleClear = useCallback(() => {
     setMarkdownText("");
+    setImportedFileName(null);
     setCollapsedNodeIds(new Set());
     setIngestionError(null);
   }, []);
@@ -149,11 +160,97 @@ export function MindMapImportPreviewModal({
     onClose,
   ]);
 
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const currentName = file.name;
+    if (typeof file.text === "function") {
+      file.text()
+        .then((text) => {
+          setImportedFileName(currentName);
+          setMarkdownText(text);
+          setCollapsedNodeIds(new Set());
+          setIngestionError(null);
+        })
+        .catch((err) => {
+          setIngestionError(err?.message || "Không thể đọc nội dung tệp");
+        });
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result;
+        if (typeof content === "string") {
+          setImportedFileName(currentName);
+          setMarkdownText(content);
+          setCollapsedNodeIds(new Set());
+          setIngestionError(null);
+        }
+      };
+      reader.onerror = () => {
+        setIngestionError("Lỗi khi đọc tệp qua FileReader");
+      };
+      reader.readAsText(file);
+    }
+    e.target.value = "";
+  }, []);
+
+  const resolveDocumentTitle = useCallback(() => {
+    if (parseResult.root?.title && parseResult.root.title.trim()) {
+      return parseResult.root.title.trim();
+    }
+    if (importedFileName) {
+      const stripped = importedFileName.replace(/\.(md|txt)$/i, "").trim();
+      if (stripped) return stripped;
+    }
+    return `Imported Mind Map ${new Date().toLocaleDateString("vi-VN")}`;
+  }, [parseResult.root?.title, importedFileName]);
+
+  const handleSaveAsDocument = useCallback(() => {
+    if (!previewTree || !parseResult.root || parseResult.errors.length > 0) return;
+
+    const title = resolveDocumentTitle();
+    const docTree = projectedTreeToDocumentTree(previewTree);
+
+    const result = createMindMapDocument({
+      title,
+      treeData: docTree,
+      changeSummary: "Khởi tạo từ tệp Markdown",
+      viewState: {
+        layoutMode,
+        collapsedNodeIds: Array.from(collapsedNodeIds),
+        showCrossLinks: false,
+      },
+    });
+
+    if (result.success && result.data) {
+      if (onDocumentCreated) {
+        onDocumentCreated(result.data.document.id);
+      }
+      onClose();
+    } else {
+      setIngestionError(result.errorMessage || "Không thể lưu tài liệu sơ đồ. Vui lòng kiểm tra lại.");
+    }
+  }, [
+    previewTree,
+    parseResult.root,
+    parseResult.errors.length,
+    resolveDocumentTitle,
+    layoutMode,
+    collapsedNodeIds,
+    onDocumentCreated,
+    onClose,
+  ]);
+
   if (!isOpen) return null;
 
   const totalNodesCount = parseResult.totalNodeCount;
   const isImportEnabled =
     Boolean(targetCategoryId) &&
+    Boolean(parseResult.root) &&
+    parseResult.errors.length === 0 &&
+    !isIngesting;
+
+  const isSaveDocEnabled =
     Boolean(parseResult.root) &&
     parseResult.errors.length === 0 &&
     !isIngesting;
@@ -226,6 +323,21 @@ export function MindMapImportPreviewModal({
                 Nhập Dàn Ý Markdown:
               </span>
               <div className="flex items-center gap-1.5">
+                <label
+                  data-testid="btn-pick-file"
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg transition cursor-pointer"
+                  title="Tải tệp Markdown từ máy (.md, .txt)"
+                >
+                  <Upload className="w-3 h-3 text-stone-500 dark:text-stone-400" />
+                  <span>Chọn Tệp</span>
+                  <input
+                    type="file"
+                    data-testid="import-file-input"
+                    accept=".md,text/markdown,text/plain"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
                 <button
                   type="button"
                   data-testid="btn-load-sample"
@@ -424,6 +536,24 @@ export function MindMapImportPreviewModal({
               className="px-3.5 py-1.5 bg-stone-200 hover:bg-stone-300 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition cursor-pointer"
             >
               Đóng
+            </button>
+
+            {/* Save as Document CTA (Phase M1) */}
+            <button
+              type="button"
+              data-testid="btn-save-as-document"
+              disabled={!isSaveDocEnabled}
+              aria-disabled={!isSaveDocEnabled}
+              title={
+                !isSaveDocEnabled
+                  ? "Cần dàn ý Markdown hợp lệ để lưu thành tài liệu"
+                  : "Lưu sơ đồ này thành tài liệu độc lập để mở lại về sau"
+              }
+              onClick={handleSaveAsDocument}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-300 dark:disabled:bg-stone-800 text-white disabled:text-stone-400 dark:disabled:text-stone-600 rounded-xl text-xs font-semibold transition cursor-pointer disabled:cursor-not-allowed shadow-2xs"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Lưu thành tài liệu</span>
             </button>
 
             {/* Controlled Ingestion CTA Button (Phase I3) */}
