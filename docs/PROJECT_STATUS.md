@@ -1,15 +1,64 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-11
-> **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **MIND MAP PHASE M2 INLINE NODE DRAWER: Đã hoàn tất implementation & verification cục bộ (Commit `7d288fb`, NOT PUSHED); toàn bộ tests & typecheck đạt GREEN. Đang dừng ở bước đối chiếu governance & roadmap, chưa mở phase mới.**
+> **Cập nhật lần cuối:** 2026-10-11  
+> **Người phụ trách:** Staff Software Engineer / Technical Architect  
+> **Trạng thái tổng thể:** 🟢 **PHASE R3.A READER EXCERPT PROMOTION TO FLASHCARD: Đã hoàn tất implementation & verification cục bộ (Commit `680e8b8`, LOCAL-ONLY / NOT PUSHED); toàn bộ tests & typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau Phase G1, chưa mở phase mới.**
 
 ---
 
-## 🎯 1. Trọng tâm Hiện tại (Current Objective)
+## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-> **Trọng tâm hiện tại:** Đối chiếu Governance & Lựa chọn Ứng viên Roadmap tiếp theo (Roadmap Reconciliation & Candidate Selection).
-> **Trạng thái:** Phase M2 đã được hoàn tất và commit cục bộ (`7d288fb`). Hệ thống đang dừng để review kiến trúc và lựa chọn phase kế tiếp; **tuyệt đối chưa mở phase mới** và chưa push lên remote.
+- **Current Baseline / HEAD:** Commit `680e8b8` (`feat(reader): close phase r3.a excerpt promotion to flashcard`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 1 commit**.
+- **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
+- **Working Tree:** Clean (duy nhất 1 session log ngoài scope chưa stage: `docs/session-logs/2026-10-11-mindmap-m2-closure-and-personal-knowledge-os-upgrade-plan.md`).
+- **Quality Gates Baseline:**
+  - Targeted tests: 8/8 PASS (`tests/unit/reader-sidebar-inbox-promote.test.tsx` + `tests/integration/reader-excerpt-to-flashcard.test.tsx`).
+  - Regression subset: 21/21 PASS (7 test files reader / inbox / toolbar).
+  - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
+
+---
+
+## 📖 2. Thứ Tự Đọc Nguồn Chân Lý (Source-of-Truth Reading Order)
+
+Để một kỹ sư hoặc AI agent mới nắm bắt ngay hệ thống mà không cần đọc lại toàn bộ lịch sử:
+
+| Thứ tự | Tập tin | Vai trò & Mục đích |
+| :---: | :--- | :--- |
+| **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
+| **2** | [`docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md`](docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md) | Báo cáo đóng Phase R3.A: Chi tiết thay đổi, bằng chứng kiểm thử và ranh giới an toàn. |
+| **3** | [`docs/adr/ADR-095-phase-r3a-reader-excerpt-promotion-to-flashcard.md`](docs/adr/ADR-095-phase-r3a-reader-excerpt-promotion-to-flashcard.md) | Bản ghi quyết định kiến trúc: Direct selection, Inbox staging promotion, Error-retention contract. |
+| **4** | [`docs/specs/phase-r3a-reader-excerpt-to-flashcard-spec.md`](docs/specs/phase-r3a-reader-excerpt-to-flashcard-spec.md) | Đặc tả kỹ thuật Phase R3.A: Interface contract, invariants, provenance mapping. |
+
+---
+
+## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
+
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Các hạng mục dưới đây **chỉ là ứng viên trong lộ trình (roadmap candidates)**, được trích xuất từ phân tích nhu cầu thực tế cá nhân (Session Log 2026-10-11). **Tuyệt đối chưa mở phase và chưa được duyệt implementation.**
+
+| Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
+| :--- | :--- | :--- | :---: | :---: |
+| **Candidate 1** | **Phase M3 — Mind Map Keyboard Authoring**<br>- `Tab`: Tạo node con (Child).<br>- `Enter`: Tạo node ngang hàng (Sibling).<br>- `Delete`/`Backspace`: Xóa node an toàn.<br>- Kế thừa hạ tầng M1/M2 và K2. | Tăng tốc độ phác thảo ý tưởng và cấu trúc bài nghiên cứu lên gấp 5 lần mà không cần rời tay khỏi bàn phím. | Trung bình (cần cẩn trọng history stack & dirty state). | 🥇 **Cao nhất (P1)** |
+| **Candidate 2** | **Phase D1 — Dashboard Daily Due Review Widget**<br>- Tích hợp widget thẻ đến hạn ôn tập ngay tại `DashboardHome`.<br>- Nút 1-click "Ôn tập ngay 5 phút" kích hoạt trực tiếp `FlashcardReviewStudio`. | Tận dụng ngay kết quả Phase R3.A: Thẻ vừa tạo từ Reader sẽ xuất hiện trong nhịp ôn tập hàng ngày, duy trì Active Recall đều đặn. | Thấp (chỉ cần UI widget kết nối DataContext hiện có). | 🥈 **Cao (P2)** |
+| **Candidate 3** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp người dùng bắt trọn ý tưởng vụt sáng khi đang duyệt bất kỳ khu vực nào trong ứng dụng mà không làm mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥉 **Trung bình (P3)** |
+
+---
+
+## Reader Excerpt Promotion to Flashcard — Phase R3.A Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (Commit `680e8b8`, LOCAL-ONLY / NOT PUSHED)  
+**Tests**: 8/8 Targeted tests PASS, 21/21 Reader/Inbox/Toolbar Regression tests PASS  
+**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+**Database & Architecture**: Khép kín chu trình từ Reader sang Flashcard Spaced Repetition (SM-2) theo nguyên tắc Zero Schema Migration. Bổ sung affordance "Tạo thẻ nhớ" (`Brain` icon) trên từng item chưa xử lý trong tab Inbox của `ReaderSidebar`; guard chống double-click và ẩn CTA cho processed items; wire `FlashcardCitationProvenance` và cập nhật `processInboxItem(item.id)` sau khi tạo thẻ thành công trong `UnifiedResearchReader`; bảo toàn 100% dữ liệu staging khi có lỗi (Error-Retention Contract).
+
+### Features Delivered & Verified
+1. ✅ **Phase R3.A (Inbox Promotion Affordance)**: `src/components/reader/ReaderSidebar.tsx` — Render nút icon "Tạo thẻ nhớ từ trích đoạn" cho inbox items chưa xử lý (`!item.isProcessed && onPromoteToFlashcard`), ẩn CTA cho processed items.
+2. ✅ **Phase R3.A (Runtime Provenance Handoff & Error-Retention)**: `src/components/reader/UnifiedResearchReader.tsx` — Quản lý `activePromotingInboxItem`, trích xuất `processInboxItem` từ DataContext, ánh xạ `FlashcardCitationProvenance`, cập nhật `isProcessed = true` chỉ khi tạo thẻ thành công, bảo toàn nguyên vẹn `isProcessed = false` khi đóng modal hoặc xảy ra lỗi.
+3. ✅ **Phase R3.A (Specification & Acceptance Evidence)**:
+   - ADR: `docs/adr/ADR-095-phase-r3a-reader-excerpt-promotion-to-flashcard.md`
+   - Planning Spec: `docs/specs/phase-r3a-reader-excerpt-to-flashcard-spec.md`
+   - Closure Report: `docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md`
+   - Test Suites: `tests/unit/reader-sidebar-inbox-promote.test.tsx` (3 scenarios) & `tests/integration/reader-excerpt-to-flashcard.test.tsx` (5 scenarios).
 
 ---
 
