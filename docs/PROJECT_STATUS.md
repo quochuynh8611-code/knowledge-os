@@ -2,19 +2,19 @@
 
 > **Cập nhật lần cuối:** 2026-10-11  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE M3 MIND MAP KEYBOARD AUTHORING: Đã hoàn tất implementation & verification cục bộ (Commit `5bfe56a`, LOCAL-ONLY / NOT PUSHED); toàn bộ targeted tests, regression tests và typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau M3 để thực hiện reconciliation và chọn ứng viên roadmap tiếp theo.**
+> **Trạng thái tổng thể:** 🟢 **PHASE D1 DASHBOARD DAILY DUE REVIEW WIDGET: Đã hoàn tất implementation & verification cục bộ (Commit `d951c73`, LOCAL-ONLY / NOT PUSHED); toàn bộ targeted tests, regression tests và typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau D1 để thực hiện reconciliation và chọn ứng viên roadmap tiếp theo.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `5bfe56a` (`feat(mindmap): add keyboard authoring for saved documents`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 3 commits**.
+- **Current Baseline / HEAD:** Commit `d951c73` (`feat(dashboard): add daily due review widget with 1-click launch`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 5 commits**.
 - **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
 - **Working Tree:** Sạch đối với tracked files; duy nhất còn 1 session log ngoài scope ở trạng thái untracked: `docs/session-logs/2026-10-11-mindmap-m2-closure-and-personal-knowledge-os-upgrade-plan.md`.
 - **Quality Gates Baseline:**
-  - Targeted tests: 11/11 PASS (`tests/unit/mindmap-keyboard-authoring.test.tsx`).
-  - Regression subset: 55/55 PASS (5 test files mind map lifecycle / node drawer / keyboard nav / undo-redo / tree mutations).
+  - Targeted tests: 7/7 PASS (`tests/unit/dashboard-daily-due-widget.test.tsx`).
+  - Regression subset: 8/8 PASS (`tests/unit/phase14b-focus-domain-ui.test.tsx` + `tests/integration/flashcard-analytics-widget.test.tsx`).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
@@ -24,23 +24,45 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md) | Báo cáo đóng Phase M3: chi tiết implementation, verification evidence và blast-radius control. |
-| **3** | [`docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md`](docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md) | Bản ghi quyết định kiến trúc cho keyboard authoring của saved documents. |
-| **4** | [`docs/specs/mindmap-phase-m3-planning-spec-v1.md`](docs/specs/mindmap-phase-m3-planning-spec-v1.md) | Đặc tả kỹ thuật M3: scope, invariants, Gherkin acceptance criteria và rollback strategy. |
-| **5** | [`docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md`](docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md) | Baseline gần nhất ngoài M3 cho luồng Reader → Flashcard; hữu ích khi đối chiếu governance liên phase. |
+| **2** | [`docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md`](docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md) | Báo cáo đóng Phase D1: chi tiết widget, trigger 1-click, verification evidence và error resilience. |
+| **3** | [`docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md`](docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md) | Bản ghi quyết định kiến trúc: Habit widget độc lập, 1-click launch và zero schema migration. |
+| **4** | [`docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md`](docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md) | Đặc tả kỹ thuật D1: UI contract, state model, Gherkin acceptance criteria. |
+| **5** | [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md) | Baseline Mind Map gần nhất (Phase M3 Keyboard Authoring). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M3 đã được đóng và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap còn lại sau M3**, chưa mở phase và chưa được duyệt implementation.
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase D1 đã được đóng và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap còn lại sau D1**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase D1 — Dashboard Daily Due Review Widget**<br>- Tích hợp widget thẻ đến hạn ôn tập ngay tại `DashboardHome`.<br>- Nút 1-click "Ôn tập ngay 5 phút" kích hoạt trực tiếp `FlashcardReviewStudio`. | Tận dụng ngay kết quả Reader/Flashcard pipeline để tạo nhịp ôn tập hàng ngày ngay từ trang chủ. | Thấp (UI widget kết nối DataContext hiện có). | 🥇 **Cao nhất (P1)** |
-| **Candidate 2** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp bắt ý tưởng vụt sáng mà không đánh mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥈 **Cao (P2)** |
+| **Candidate 1** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp bắt ý tưởng vụt sáng mà không đánh mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥇 **Cao nhất (P1)** |
 
 ---
+
+## Dashboard Daily Due Review Widget — Phase D1 Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (Commit `d951c73`, LOCAL-ONLY / NOT PUSHED)  
+**Tests**: 7/7 Targeted tests PASS, 8/8 Regression tests PASS  
+**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+**Database & Architecture**: Không đổi schema. Bổ sung `DailyDueReviewWidget` độc lập tại `DashboardHome`, kết nối trực tiếp `openFlashcardReview(null, "review")` để mở `FlashcardReviewStudio` cho toàn bộ thẻ đến hạn với 1-click. Cô lập lỗi an toàn (Fail-Safe Error Boundary), không gây gián đoạn các khối khác trên dashboard.
+
+### Features Delivered & Verified
+1. ✅ **Trạng thái có thẻ đến hạn (`dueToday > 0`)**: Hiển thị số lượng thẻ đến hạn, huy hiệu "Cần ôn hôm nay", ước tính `~5 phút`, và nút CTA "Ôn tập ngay 5 phút".
+2. ✅ **1-Click Review Launch**: Nhấp CTA kích hoạt trực tiếp `openFlashcardReview(null, "review")` đưa thẳng người dùng vào studio ôn tập SM-2 toàn vault, và tự động trở lại Dashboard khi đóng.
+3. ✅ **Trạng thái All-Caught-Up (`dueToday === 0`)**: Thông điệp thành tựu tích cực "Đã hoàn tất mục tiêu hôm nay" kèm icon `CheckCircle2` và tỷ lệ ghi nhớ (`retentionRate`), ẩn nút thúc giục quá hạn.
+4. ✅ **Khả năng phục hồi khi lỗi (Error Resilience)**: Khi API `/api/flashcards/progress` gặp sự cố hoặc offline, widget hiển thị fallback nhẹ nhàng kèm nút "Thử lại", tuyệt đối không làm sập `DashboardHome`.
+5. ✅ **Tách biệt kiến trúc**: Tồn tại độc lập khỏi `FlashcardAnalyticsWidget`, tập trung thuần túy vào vòng lặp thói quen ôn tập hàng ngày.
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md`](docs/specs/phase-d1-dashboard-daily-due-review-widget-spec.md)
+- **ADR**: [`docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md`](docs/adr/ADR-097-phase-d1-dashboard-daily-due-review-widget.md)
+- **Closure Report**: [`docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md`](docs/reports/phase-d1-dashboard-daily-due-review-widget-closure-report.md)
+- **Primary Tests**: [`tests/unit/dashboard-daily-due-widget.test.tsx`](tests/unit/dashboard-daily-due-widget.test.tsx)
+
+---
+
 
 ## Mind Map Keyboard Authoring — Phase M3 Closure (2026-10-11)
 
