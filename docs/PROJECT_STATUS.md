@@ -1,16 +1,53 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-10
+> **Cập nhật lần cuối:** 2026-10-11
 > **Người phụ trách:** Staff Software Engineer / Technical Architect
-> **Trạng thái tổng thể:** 🟢 **MIND MAP PHASE P7.C LIFECYCLE PARITY HARDENING: Implementation hoàn tất; đã kiểm chứng qua targeted tests, regression suites liên quan và TypeScript compile (0 errors).**
+> **Trạng thái tổng thể:** 🟢 **MIND MAP PHASE M2 INLINE NODE DRAWER: Đã hoàn tất implementation & verification cục bộ (Commit `7d288fb`, NOT PUSHED); toàn bộ tests & typecheck đạt GREEN. Đang dừng ở bước đối chiếu governance & roadmap, chưa mở phase mới.**
 
 ---
 
 ## 🎯 1. Trọng tâm Hiện tại (Current Objective)
 
+> **Trọng tâm hiện tại:** Đối chiếu Governance & Lựa chọn Ứng viên Roadmap tiếp theo (Roadmap Reconciliation & Candidate Selection).
+> **Trạng thái:** Phase M2 đã được hoàn tất và commit cục bộ (`7d288fb`). Hệ thống đang dừng để review kiến trúc và lựa chọn phase kế tiếp; **tuyệt đối chưa mở phase mới** và chưa push lên remote.
+
+---
+
+## Mind Map Saved Document Inline Node Drawer — Phase M2 Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (Commit `7d288fb`, NOT PUSHED)
+**Tests**: 7/7 Node Drawer tests PASS (targeted), 7/7 Lifecycle Parity PASS (regression), 7/7 Markdown Import PASS (regression), 10/10 Persistence UI PASS (regression)
+**Typecheck**: 0 errors (`npx tsc --noEmit`)
+**Database & Architecture**: Scope M2 title-only inline node drawer cô lập hoàn toàn cho `saved-document` mode; giữ nguyên canvas selection (`selectedNodeIds`); cập nhật qua `renameNodeTitle` + `applyTreeMutation`; bảo toàn dirty state, history stack và save version pipeline; lookup an toàn metadata persisted (`nodeType`, `semanticBadge`, `sourceIdReference`) mà không làm ô nhiễm `MindMapTreeNode` hay thay đổi schema lưu trữ.
+
+### Features Delivered & Verified
+1. ✅ **Phase M2 (Title-Only Inline Drawer Component)**: `src/components/mindmap/MindMapNodeDrawer.tsx` — Render header, input title, apply button, close button, và các badges metadata read-only (`id`, `nodeType`, `semanticBadge`, `sourceIdReference`).
+2. ✅ **Phase M2 (Runtime Wiring & Mode Isolation)**: `src/components/mindmap/MindMapView.tsx` — Quản lý `activeDrawerNodeId` độc lập với canvas selection; kích hoạt khi click node trong saved-document mode; vô hiệu hóa tuyệt đối trong live-topics mode; tích hợp `renameNodeTitle` + `applyTreeMutation`.
+3. ✅ **Phase M2 (Specification & Acceptance Evidence)**:
+   - ADR: `docs/adr/ADR-094-phase-m2-title-only-inline-node-drawer.md`
+   - Planning Spec: `docs/specs/mindmap-phase-m2-planning-spec-v1.md`
+   - Test Suite: `tests/unit/mindmap-node-drawer.test.tsx` (7 scenarios)
+   - Closure Report: `docs/reports/mindmap-phase-m2-closure-report.md`
+
+---
+
+## Mind Map External Markdown Import to Saved Document — Phase M1 Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (Commit `08e9799`, NOT PUSHED)
+**Tests**: 7/7 Markdown Import to Document tests PASS (targeted)
+**Typecheck**: 0 errors (`npx tsc --noEmit`)
+**Database & Architecture**: File picker `.md` cục bộ trên preview modal; tách bạch 2 luồng CTA "Lưu thành tài liệu" (`createMindMapDocument`) vs "Nhập vào CSDL" (topological topic ingestion); tự động mở document vừa tạo trong MindMapView mà không yêu cầu category gating hay ghi đè topic graph sống.
+
+### Features Delivered & Verified
+1. ✅ **Phase M1 (Local File Picker & Import Split)**: `src/components/mindmap/MindMapImportPreviewModal.tsx` — Nạp nội dung file `.md` vào textarea sandbox; phân tách rõ nút lưu tài liệu độc lập và nút nhập topic database.
+2. ✅ **Phase M1 (Immediate Document Opening)**: `src/components/mindmap/MindMapView.tsx` — Callback `onDocumentCreated` lập tức nạp và hiển thị tài liệu mới tạo trên canvas.
+3. ✅ **Phase M1 (Specification & Tests)**: `tests/unit/mindmap-import-file-to-document.test.tsx` (7 scenarios) & `docs/specs/mindmap-phase-m1-closure-report.md`.
+
+---
+
 ## Mind Map Document Lifecycle & Export Parity Hardening — Phase P7.C Closure (2026-10-10)
 
-**Status**: ✅ Implementation hoàn tất; đã kiểm chứng qua targeted tests, regression suites liên quan và TypeScript compile (Pending Commit)
+**Status**: ✅ Complete & Verified Locally (Commit `cfc74c4`, NOT PUSHED)
 **Tests**: 7/7 Lifecycle Parity tests PASS (targeted), 21/21 Marquee Regression tests PASS (liên quan)
 **Typecheck**: 0 errors (`npx tsc --noEmit`)
 **Database & Architecture**: Active tree resolution (`workingDocumentTree || projection?.tree`) cho luồng save & export; loại bỏ ràng buộc cứng `disabled={!projection}` cho standalone documents; đồng bộ projection derivation với working document tree trên canvas trong các scenario được kiểm thử.
