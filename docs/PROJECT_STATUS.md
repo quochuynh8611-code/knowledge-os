@@ -2,47 +2,69 @@
 
 > **Cập nhật lần cuối:** 2026-10-11  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE R3.A READER EXCERPT PROMOTION TO FLASHCARD: Đã hoàn tất implementation & verification cục bộ (Commit `680e8b8`, LOCAL-ONLY / NOT PUSHED); toàn bộ tests & typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau Phase G1, chưa mở phase mới.**
+> **Trạng thái tổng thể:** 🟢 **PHASE M3 MIND MAP KEYBOARD AUTHORING: Đã hoàn tất implementation & verification cục bộ (Commit `5bfe56a`, LOCAL-ONLY / NOT PUSHED); toàn bộ targeted tests, regression tests và typecheck đạt GREEN. Đang dừng ở cổng điều hành (Governance Gate) sau M3 để thực hiện reconciliation và chọn ứng viên roadmap tiếp theo.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `680e8b8` (`feat(reader): close phase r3.a excerpt promotion to flashcard`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 1 commit**.
+- **Current Baseline / HEAD:** Commit `5bfe56a` (`feat(mindmap): add keyboard authoring for saved documents`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 3 commits**.
 - **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
-- **Working Tree:** Clean (duy nhất 1 session log ngoài scope chưa stage: `docs/session-logs/2026-10-11-mindmap-m2-closure-and-personal-knowledge-os-upgrade-plan.md`).
+- **Working Tree:** Sạch đối với tracked files; duy nhất còn 1 session log ngoài scope ở trạng thái untracked: `docs/session-logs/2026-10-11-mindmap-m2-closure-and-personal-knowledge-os-upgrade-plan.md`.
 - **Quality Gates Baseline:**
-  - Targeted tests: 8/8 PASS (`tests/unit/reader-sidebar-inbox-promote.test.tsx` + `tests/integration/reader-excerpt-to-flashcard.test.tsx`).
-  - Regression subset: 21/21 PASS (7 test files reader / inbox / toolbar).
+  - Targeted tests: 11/11 PASS (`tests/unit/mindmap-keyboard-authoring.test.tsx`).
+  - Regression subset: 55/55 PASS (5 test files mind map lifecycle / node drawer / keyboard nav / undo-redo / tree mutations).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
 
 ## 📖 2. Thứ Tự Đọc Nguồn Chân Lý (Source-of-Truth Reading Order)
 
-Để một kỹ sư hoặc AI agent mới nắm bắt ngay hệ thống mà không cần đọc lại toàn bộ lịch sử:
-
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md`](docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md) | Báo cáo đóng Phase R3.A: Chi tiết thay đổi, bằng chứng kiểm thử và ranh giới an toàn. |
-| **3** | [`docs/adr/ADR-095-phase-r3a-reader-excerpt-promotion-to-flashcard.md`](docs/adr/ADR-095-phase-r3a-reader-excerpt-promotion-to-flashcard.md) | Bản ghi quyết định kiến trúc: Direct selection, Inbox staging promotion, Error-retention contract. |
-| **4** | [`docs/specs/phase-r3a-reader-excerpt-to-flashcard-spec.md`](docs/specs/phase-r3a-reader-excerpt-to-flashcard-spec.md) | Đặc tả kỹ thuật Phase R3.A: Interface contract, invariants, provenance mapping. |
+| **2** | [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md) | Báo cáo đóng Phase M3: chi tiết implementation, verification evidence và blast-radius control. |
+| **3** | [`docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md`](docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md) | Bản ghi quyết định kiến trúc cho keyboard authoring của saved documents. |
+| **4** | [`docs/specs/mindmap-phase-m3-planning-spec-v1.md`](docs/specs/mindmap-phase-m3-planning-spec-v1.md) | Đặc tả kỹ thuật M3: scope, invariants, Gherkin acceptance criteria và rollback strategy. |
+| **5** | [`docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md`](docs/reports/phase-r3a-reader-excerpt-to-flashcard-closure-report.md) | Baseline gần nhất ngoài M3 cho luồng Reader → Flashcard; hữu ích khi đối chiếu governance liên phase. |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Các hạng mục dưới đây **chỉ là ứng viên trong lộ trình (roadmap candidates)**, được trích xuất từ phân tích nhu cầu thực tế cá nhân (Session Log 2026-10-11). **Tuyệt đối chưa mở phase và chưa được duyệt implementation.**
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M3 đã được đóng và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap còn lại sau M3**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase M3 — Mind Map Keyboard Authoring**<br>- `Tab`: Tạo node con (Child).<br>- `Enter`: Tạo node ngang hàng (Sibling).<br>- `Delete`/`Backspace`: Xóa node an toàn.<br>- Kế thừa hạ tầng M1/M2 và K2. | Tăng tốc độ phác thảo ý tưởng và cấu trúc bài nghiên cứu lên gấp 5 lần mà không cần rời tay khỏi bàn phím. | Trung bình (cần cẩn trọng history stack & dirty state). | 🥇 **Cao nhất (P1)** |
-| **Candidate 2** | **Phase D1 — Dashboard Daily Due Review Widget**<br>- Tích hợp widget thẻ đến hạn ôn tập ngay tại `DashboardHome`.<br>- Nút 1-click "Ôn tập ngay 5 phút" kích hoạt trực tiếp `FlashcardReviewStudio`. | Tận dụng ngay kết quả Phase R3.A: Thẻ vừa tạo từ Reader sẽ xuất hiện trong nhịp ôn tập hàng ngày, duy trì Active Recall đều đặn. | Thấp (chỉ cần UI widget kết nối DataContext hiện có). | 🥈 **Cao (P2)** |
-| **Candidate 3** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp người dùng bắt trọn ý tưởng vụt sáng khi đang duyệt bất kỳ khu vực nào trong ứng dụng mà không làm mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥉 **Trung bình (P3)** |
+| **Candidate 1** | **Phase D1 — Dashboard Daily Due Review Widget**<br>- Tích hợp widget thẻ đến hạn ôn tập ngay tại `DashboardHome`.<br>- Nút 1-click "Ôn tập ngay 5 phút" kích hoạt trực tiếp `FlashcardReviewStudio`. | Tận dụng ngay kết quả Reader/Flashcard pipeline để tạo nhịp ôn tập hàng ngày ngay từ trang chủ. | Thấp (UI widget kết nối DataContext hiện có). | 🥇 **Cao nhất (P1)** |
+| **Candidate 2** | **Phase D2 — Global Quick-Capture Modal (`⌘N`)**<br>- Phím tắt toàn cục mở modal ghi chú chớp nhoáng (Fleeting Notes) vào Research Inbox từ bất kỳ view nào. | Giúp bắt ý tưởng vụt sáng mà không đánh mất ngữ cảnh đang làm việc. | Thấp (UI modal + `addExcerptToInbox`). | 🥈 **Cao (P2)** |
 
 ---
+
+## Mind Map Keyboard Authoring — Phase M3 Closure (2026-10-11)
+
+**Status**: ✅ Complete & Verified Locally (Commit `5bfe56a`, LOCAL-ONLY / NOT PUSHED)  
+**Tests**: 11/11 Targeted tests PASS, 55/55 Regression tests PASS  
+**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+**Database & Architecture**: Không đổi schema. Mở rộng mind map saved-document runtime theo hướng keyboard authoring tối thiểu, mode-gated, focus-driven; giữ nguyên projection parity, dirty-state, undo/redo và Save Version pipeline.
+
+### Features Delivered & Verified
+1. ✅ **Child creation bằng `Tab`**: tạo node con mới với title mặc định `"New node"`, append cuối danh sách `children`, sau đó tự động chuyển focus sang node mới.
+2. ✅ **Sibling creation bằng `Enter`**: tạo sibling mới ngay sau node hiện tại; root node bị chặn tuyệt đối không có sibling.
+3. ✅ **Safe delete bằng `Delete` / `Backspace`**: xoá toàn bộ subtree, không reparent; root node được bảo vệ không cho xoá.
+4. ✅ **Focus fallback sau delete**: ưu tiên sibling trước, sau đó sibling sau, rồi parent, cuối cùng root fallback.
+5. ✅ **Drawer & input isolation**: keyboard authoring bị chặn khi inline drawer đang mở hoặc khi focus đang nằm trong input / textarea / button / interactive controls.
+6. ✅ **State integrity**: mutation keyboard tiếp tục tích hợp đúng với `workingDocumentTree`, dirty-state, undo/redo history và Save Version persistence.
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/mindmap-phase-m3-planning-spec-v1.md`](docs/specs/mindmap-phase-m3-planning-spec-v1.md)
+- **ADR**: [`docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md`](docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md)
+- **Closure Report**: [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md)
+- **Primary Tests**: [`tests/unit/mindmap-keyboard-authoring.test.tsx`](tests/unit/mindmap-keyboard-authoring.test.tsx)
+
+---
+
 
 ## Reader Excerpt Promotion to Flashcard — Phase R3.A Closure (2026-10-11)
 
