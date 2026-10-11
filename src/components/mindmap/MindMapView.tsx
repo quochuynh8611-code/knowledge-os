@@ -30,11 +30,15 @@ import {
   projectedTreeToDocumentTree,
   documentTreeToProjectedTree,
 } from "../../lib/mindmapDocumentStorage";
-import { MindMapDocumentSummary } from "../../types/mindmapDocument";
+import {
+  MindMapDocumentSummary,
+  MindMapDocumentNode,
+} from "../../types/mindmapDocument";
 import { MindMapTreeCanvas, MarqueeSelectionMode } from "./MindMapTreeCanvas";
 import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import { MindMapSaveModal } from "./MindMapSaveModal";
 import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
+import { MindMapNodeDrawer } from "./MindMapNodeDrawer";
 import {
   Network,
   Copy,
@@ -118,6 +122,20 @@ function collectTreeNodeIds(node: MindMapTreeNode): Set<string> {
   return ids;
 }
 
+function findDocumentNodeById(
+  root: MindMapDocumentNode,
+  targetId: string
+): MindMapDocumentNode | null {
+  if (root.id === targetId) return root;
+  if (Array.isArray(root.children)) {
+    for (const child of root.children) {
+      const res = findDocumentNodeById(child, targetId);
+      if (res) return res;
+    }
+  }
+  return null;
+}
+
 export function MindMapView() {
   const { topics, notes, resources, selectedTopicId, openTopicDetail } = useData();
 
@@ -167,6 +185,9 @@ export function MindMapView() {
   const [aiExpansionTargetNodeId, setAiExpansionTargetNodeId] = useState<
     string | null
   >(null);
+
+  // Inline Node Drawer State (Phase M2)
+  const [activeDrawerNodeId, setActiveDrawerNodeId] = useState<string | null>(null);
 
   const savedDocuments = useMemo(() => {
     return listMindMapDocuments();
@@ -315,6 +336,29 @@ export function MindMapView() {
     if (!projection) return new Set<string>();
     return collectTreeNodeIds(projection.tree);
   }, [projection]);
+
+  // Active editable node for Inline Node Drawer (Phase M2)
+  const activeDrawerNode = useMemo(() => {
+    if (activeMode !== "saved-document" || !activeDrawerNodeId) return null;
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree) return null;
+    const found = findNodeById(currentTree, activeDrawerNodeId);
+    if (!found) return null;
+    const docNode = activeDocumentVersion?.treeData
+      ? findDocumentNodeById(activeDocumentVersion.treeData, activeDrawerNodeId)
+      : null;
+    return {
+      ...found,
+      semanticBadge: (found as any).semanticBadge || docNode?.semanticBadge,
+      sourceIdReference: (found as any).sourceIdReference || docNode?.sourceIdReference,
+    };
+  }, [
+    activeMode,
+    activeDrawerNodeId,
+    workingDocumentTree,
+    projection?.tree,
+    activeDocumentVersion,
+  ]);
 
   // Compute search matching nodes and their ancestor paths
   const searchResults = useMemo(() => {
@@ -788,6 +832,18 @@ export function MindMapView() {
     [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
+  const handleUpdateNodeTitleFromDrawer = useCallback(
+    (nodeId: string, nextTitle: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+      const res = renameNodeTitle(currentTree, nodeId, nextTitle);
+      if (res.ok && res.tree) {
+        applyTreeMutation(res.tree);
+      }
+    },
+    [workingDocumentTree, projection?.tree, applyTreeMutation]
+  );
+
   // Multi-Node Selection & Batch Operations (Phase P6a)
   const handleToggleSelectNode = useCallback(
     (nodeId: string, isModifier: boolean) => {
@@ -805,8 +861,11 @@ export function MindMapView() {
         }
         return next;
       });
+      if (activeMode === "saved-document" && !isModifier) {
+        setActiveDrawerNodeId(nodeId);
+      }
     },
-    []
+    [activeMode]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -1121,6 +1180,7 @@ export function MindMapView() {
         setActiveDocumentId(documentId);
         setActiveMode("saved-document");
         setSelectedNodeIds(new Set());
+        setActiveDrawerNodeId(null);
         setLayoutMode(version.viewState.layoutMode);
         setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
         setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
@@ -1165,6 +1225,7 @@ export function MindMapView() {
     setActiveDocumentId(null);
     setWorkingDocumentTree(null);
     setSelectedNodeIds(new Set());
+    setActiveDrawerNodeId(null);
     setIsDirty(false);
     if (activeRootTopicId) {
       const savedState = loadMindMapViewState(activeRootTopicId);
@@ -1180,6 +1241,7 @@ export function MindMapView() {
       setActiveDocumentId(null);
       setWorkingDocumentTree(null);
       setSelectedNodeIds(new Set());
+      setActiveDrawerNodeId(null);
       setIsDirty(false);
       setPendingLeaveTarget(null);
       if (activeRootTopicId) {
@@ -1201,6 +1263,7 @@ export function MindMapView() {
         setActiveDocumentId(docId);
         setActiveMode("saved-document");
         setSelectedNodeIds(new Set());
+        setActiveDrawerNodeId(null);
         setLayoutMode(version.viewState.layoutMode);
         setCollapsedNodeIds(new Set(version.viewState.collapsedNodeIds));
         setShowCrossLinks(Boolean(version.viewState.showCrossLinks));
@@ -1880,6 +1943,16 @@ export function MindMapView() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Inline Node Drawer (Phase M2) */}
+      {activeMode === "saved-document" && (
+        <MindMapNodeDrawer
+          isOpen={Boolean(activeDrawerNode)}
+          node={activeDrawerNode}
+          onClose={() => setActiveDrawerNodeId(null)}
+          onUpdateTitle={handleUpdateNodeTitleFromDrawer}
+        />
       )}
     </div>
   );
