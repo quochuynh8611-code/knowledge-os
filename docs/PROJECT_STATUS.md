@@ -2,19 +2,19 @@
 
 > **Cập nhật lần cuối:** 2026-10-11  
 > **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE M4a MIND MAP EXPORT UX HARDENING: Đã hoàn tất implementation, tests & documentation cục bộ (LOCAL-ONLY / NOT PUSHED, UNCOMMITTED); toàn bộ 7/7 targeted integration tests, 66/66 regression tests và typecheck đạt GREEN (0 errors). Đang dừng tại cổng điều hành (Human Approval Gate) trước khi stage/commit.**
+> **Trạng thái tổng thể:** 🟢 **PHASE M4b-A MIND MAP VIEWPORT ZOOM POLISH: Đã hoàn tất implementation, tests & documentation cục bộ (Commit `9b80e0c`, LOCAL-ONLY / NOT PUSHED); toàn bộ 18/18 targeted tests, 67/67 canvas/viewport/minimap regression tests, 7/7 export integration tests và typecheck đạt GREEN (0 errors). Working tree sạch; sẵn sàng cho các phase tiếp theo theo chỉ đạo điều hành.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `d6d5503` (`feat(capture): add global quick-capture modal`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 7 commits**.
+- **Current Baseline / HEAD:** Commit `9b80e0c` (`feat(mindmap): polish viewport zoom controls`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 9 commits** (đã bao gồm M4a `fb8bc42` và M4b-A `9b80e0c`).
 - **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
-- **Working Tree:** Chứa các thay đổi chưa stage của Phase M4a (`MindMapView.tsx`, `tests/integration/mindmap-export-workflow.test.tsx`, và bộ tài liệu docs M4a).
-- **Quality Gates Baseline (Phase M4a):**
-  - Targeted tests: 7/7 PASS ([`tests/integration/mindmap-export-workflow.test.tsx`](tests/integration/mindmap-export-workflow.test.tsx)).
-  - Regression subset: 66/66 PASS (`mindmap-svg-export`, `mindmap-undo-redo`, `mindmap-document-storage`, `mindmap-projection`, `mindmap-export-workflow`).
+- **Working Tree:** Tracked sạch hoàn toàn (Clean). Đúng 1 file session log untracked ngoài scope (`docs/session-logs/...`) được giữ nguyên tuyệt đối.
+- **Quality Gates Baseline (Phase M4b-A):**
+  - Targeted tests: 18/18 PASS ([`tests/unit/mindmap-viewport-zoom.test.tsx`](tests/unit/mindmap-viewport-zoom.test.tsx)).
+  - Regression subset: 67/67 PASS (`mindmap-minimap`, `mindmap-marquee-selection`, `mindmap-keyboard-authoring`, `mindmap-marquee-modifiers`, `mindmap-keyboard-nav`, `mindmap-canvas-drag-drop`) + 7/7 PASS (`mindmap-export-workflow`).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
@@ -24,29 +24,55 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
-| **3** | [`docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md`](docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md) | Bản ghi quyết định kiến trúc ADR-099: Ưu tiên document title, tái sử dụng Toast component, dọn dẹp bộ nhớ. |
-| **4** | [`docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md`](docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md) | Đặc tả kỹ thuật M4a: Filename contract, feedback contract, Gherkin scenarios, invariants. |
-| **5** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
+| **2** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
+| **3** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
+| **4** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
+| **5** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
+| **6** | [`docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md`](docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md) | Bản ghi quyết định kiến trúc ADR-099: Ưu tiên document title, tái sử dụng Toast component, dọn dẹp bộ nhớ. |
+| **7** | [`docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md`](docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md) | Đặc tả kỹ thuật M4a: Filename contract, feedback contract, Gherkin scenarios, invariants. |
+| **8** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M4a đã hoàn tất implementation cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M4a và Phase M4b-A đã hoàn tất implementation và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase M4b — Mind Map Viewport Zoom Polish**<br>- Tinh chỉnh zoom slider, responsive viewport, nút "Fit to Screen" và căn giữa cây tư duy. | Nâng cao độ mượt mà khi quan sát và điều hướng trên canvas sơ đồ tư duy lớn. | Thấp-Trung bình | 🥇 **Cao nhất (P1)** |
-| **Candidate 2** | **Phase M5 — Mind Map Multi-Parent / Cross-Link Editing UI**<br>- Cho phép tạo và gỡ liên kết chéo trực tiếp trên giao diện tương tác. | Biểu diễn mối quan hệ đa chiều giữa các nhánh kiến thức. | Trung bình | 🥈 **P2** |
+| **Candidate 1** | **Phase M5 — Mind Map Multi-Parent / Cross-Link Editing UI**<br>- Cho phép tạo và gỡ liên kết chéo trực tiếp trên giao diện tương tác giữa các nhánh. | Biểu diễn mối quan hệ đa chiều giữa các nhánh kiến thức. | Trung bình | 🥇 **Cao nhất (P1)** |
+| **Candidate 2** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Tinh chỉnh trải nghiệm đánh dấu và xem lại highlight trong Reader. | Nâng cao hiệu suất trích xuất tri thức từ tài liệu đọc. | Trung bình | 🥈 **P2** |
+
+---
+
+## 🔍 Mind Map Viewport Zoom Polish — Phase M4b-A Closure (2026-10-11)
+
+- **Status**: ✅ Complete & Verified Locally (Commit `9b80e0c`, LOCAL-ONLY / NOT PUSHED)
+- **Tests**: 18/18 Targeted tests PASS, 67/67 Canvas/Viewport/Minimap/Keyboard Regression tests PASS, 7/7 Export Integration tests PASS
+- **Typecheck**: 0 errors (`npx tsc --noEmit`)
+- **Database & Architecture**: Không đổi schema database. Hướng A (Direction A: Local Component Polish): Giữ nguyên toàn bộ trạng thái `zoom` và `pan` cục bộ bên trong `MindMapTreeCanvas.tsx` (zero state lifting lên `MindMapView.tsx`). Trích xuất 3 pure arithmetic helpers: `clampZoom`, `formatZoomPercent`, `computeFitScale`. Xử lý hình học bất thường fail-closed an toàn về `zoom = 1.0, pan = { x: 0, y: 0 }`. Phòng vệ đa tầng pointer event isolation (`onPointerDown={(e) => e.stopPropagation()}`) trên container widget điều khiển zoom. Thao tác điều hướng viewport thuần túy read-only (không làm bẩn tài liệu, không ghi undo history, không kích hoạt tree mutations).
+
+### Features Delivered & Verified
+1. ✅ **Pure Viewport Arithmetic Helpers**: Export `clampZoom(zoom, min=0.5, max=2.0)`, `formatZoomPercent(zoom)`, và `computeFitScale(backdropW, backdropH, contentW, contentH, currentZoom, padding=64)` hoạt động độc lập với DOM và có kiểm thử số học biên 100%.
+2. ✅ **Refactored Zoom In / Zoom Out**: Sử dụng `clampZoom` với bước nhảy 0.1, khử sai số số học dấu phẩy động bằng `+zoom.toFixed(2)`, quản lý chính xác trạng thái disabled tại biên [0.5, 2.0].
+3. ✅ **Refactored Fit-to-Viewport**: Tích hợp `computeFitScale`, bảo đảm safety padding 64px và reset pan về `{ x: 0, y: 0 }`.
+4. ✅ **Fail-Closed Zero-Size Geometry**: Khi backdrop hoặc nội dung có kích thước `<= 0` hoặc `NaN` (chưa mount DOM hoặc tab ẩn), tự động phục hồi an toàn về `scale = 1.0, pan = { x: 0, y: 0 }`.
+5. ✅ **Pointer Event Isolation**: Container widget điều khiển zoom chặn triệt để sự kiện pointer down/click, loại bỏ 100% hiện tượng click nút zoom vô tình kích hoạt drag-pan trên canvas backdrop.
+6. ✅ **Read-Only Invariants**: Đảm bảo các thao tác zoom/pan/fit/reset không làm bẩn tài liệu (`isDirty === false`), không đẩy mutation vào Undo/Redo stack và không gọi bất kỳ mutation callback nào của cây (`onMoveUp`, `onAddChild`, `onDeleteNodeDirectly`).
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md)
+- **ADR**: [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md)
+- **Closure Report**: [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md)
+- **Primary Tests**: [`tests/unit/mindmap-viewport-zoom.test.tsx`](tests/unit/mindmap-viewport-zoom.test.tsx)
 
 ---
 
 ## 🗺️ Mind Map Export UX Hardening — Phase M4a Closure (2026-10-11)
 
-**Status**: ✅ Complete & Verified Locally (LOCAL-ONLY / NOT PUSHED, UNCOMMITTED)  
-**Tests**: 7/7 Targeted tests PASS, 66/66 Regression tests PASS  
-**Typecheck**: 0 errors (`npx tsc --noEmit`)  
+- **Status**: ✅ Complete & Verified Locally (Commit `fb8bc42`, LOCAL-ONLY / NOT PUSHED)
+- **Tests**: 7/7 Targeted tests PASS, 66/66 Regression tests PASS
+- **Typecheck**: 0 errors (`npx tsc --noEmit`)
 **Database & Architecture**: Không đổi schema. Không đổi projection engine. Xử lý chuẩn hóa tên file tải về ưu tiên tiêu đề tài liệu (`activeDocumentSummary.title`) cho cả SVG và PNG. Bổ sung Toast feedback thông báo thành công và thất bại cho người dùng. Bảo toàn 100% tính chất read-only (không làm bẩn tài liệu, không ghi undo history).
 
 ### Features Delivered & Verified
