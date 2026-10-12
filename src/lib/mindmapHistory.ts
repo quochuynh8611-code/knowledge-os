@@ -345,7 +345,7 @@ export function shouldIgnoreCanvasShortcut(target: EventTarget | null): boolean 
     return true;
   }
 
-  if (target.closest("[role='dialog'], [data-modal]")) {
+  if (target.closest("[role='dialog'], [data-modal], [data-testid='mindmap-node-drawer']")) {
     return true;
   }
 

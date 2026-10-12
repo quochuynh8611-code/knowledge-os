@@ -451,7 +451,13 @@ export function MindMapTreeCanvas({
       return;
     }
 
-    if (isDrawerOpen) {
+    if (
+      typeof document !== "undefined" &&
+      document.activeElement &&
+      document.activeElement !== document.body &&
+      document.activeElement !== backdropRef.current &&
+      shouldIgnoreCanvasShortcut(document.activeElement)
+    ) {
       return;
     }
 

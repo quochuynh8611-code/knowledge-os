@@ -335,7 +335,7 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
       expect(document.querySelector('[data-node-id="child-2"]')).not.toBeNull();
     });
 
-    it('9. Preserves single-node delete flow (opening confirm modal) when count < 2', () => {
+    it('9. Preserves single-node delete flow (deleting directly with undo support) when count < 2', () => {
       render(<MindMapView />);
       openSavedDocument();
 
@@ -349,9 +349,12 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
       // Press Delete on canvas
       fireEvent.keyDown(canvas, { key: 'Delete' });
 
-      // Single-node delete confirmation modal SHOULD be displayed
-      expect(screen.getByTestId('confirm-delete-node-modal')).toBeInTheDocument();
-      // Node is NOT deleted yet
+      // Node is deleted directly with undo support (Phase M3 contract)
+      expect(document.querySelector('[data-node-id="child-1"]')).toBeNull();
+      expect(screen.queryByTestId('mindmap-batch-action-bar')).toBeNull();
+
+      // One-step undo restores child-1
+      fireEvent.keyDown(window, { key: 'z', metaKey: true });
       expect(document.querySelector('[data-node-id="child-1"]')).not.toBeNull();
     });
 

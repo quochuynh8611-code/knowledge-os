@@ -322,9 +322,37 @@ describe("Phase M3 — Mind Map Keyboard Authoring for Saved Documents", () => {
   });
 
   // =========================================================================
-  // SCENARIO 8: Drawer open blocks authoring
+  // SCENARIO 8: Drawer text input active focus blocks authoring
   // =========================================================================
-  it("Scenario 8: Drawer open blocks canvas keyboard authoring", () => {
+  it("Scenario 8: Drawer text input active focus blocks canvas keyboard authoring", () => {
+    render(<MindMapView />);
+    openSavedDocument();
+
+    // Click node to open Drawer (Phase M2)
+    const khoNode = document.querySelector('[data-node-id="doc-child-kho"]');
+    fireEvent.click(khoNode!);
+    expect(screen.getByTestId("mindmap-node-drawer")).toBeInTheDocument();
+
+    const titleInput = screen.getByTestId("input-drawer-node-title");
+    titleInput.focus();
+
+    const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+    // Try pressing Tab, Enter, Delete, Backspace while drawer title input has active focus
+    fireEvent.keyDown(canvasBackdrop, { key: "Tab", code: "Tab" });
+    fireEvent.keyDown(canvasBackdrop, { key: "Enter", code: "Enter" });
+    fireEvent.keyDown(canvasBackdrop, { key: "Delete", code: "Delete" });
+    fireEvent.keyDown(canvasBackdrop, { key: "Backspace", code: "Backspace" });
+
+    // No authoring mutation occurs
+    expect(screen.queryByText("New node")).not.toBeInTheDocument();
+    expect(document.querySelector('[data-node-id="doc-child-kho"]')).toBeInTheDocument();
+  });
+
+  // =========================================================================
+  // SCENARIO 8b: Canvas keyboard authoring works with Drawer open when canvas is focused
+  // =========================================================================
+  it("Scenario 8b: Canvas keyboard authoring works with Drawer open when canvas is focused", () => {
     render(<MindMapView />);
     openSavedDocument();
 
@@ -334,16 +362,13 @@ describe("Phase M3 — Mind Map Keyboard Authoring for Saved Documents", () => {
     expect(screen.getByTestId("mindmap-node-drawer")).toBeInTheDocument();
 
     const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+    canvasBackdrop.focus();
 
-    // Try pressing Tab, Enter, Delete, Backspace while drawer is open
+    // Press Tab while canvas has focus
     fireEvent.keyDown(canvasBackdrop, { key: "Tab", code: "Tab" });
-    fireEvent.keyDown(canvasBackdrop, { key: "Enter", code: "Enter" });
-    fireEvent.keyDown(canvasBackdrop, { key: "Delete", code: "Delete" });
-    fireEvent.keyDown(canvasBackdrop, { key: "Backspace", code: "Backspace" });
 
-    // No authoring mutation occurs
-    expect(screen.queryByText("New node")).not.toBeInTheDocument();
-    expect(document.querySelector('[data-node-id="doc-child-kho"]')).toBeInTheDocument();
+    // Child node is created
+    expect(screen.getByText("New node")).toBeInTheDocument();
   });
 
   // =========================================================================
