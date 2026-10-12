@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useMemo, useEffect, useCallback } from "react";
 import {
   MindMapTreeNode,
   MindMapLayoutMode,
@@ -89,6 +89,9 @@ interface MindMapTreeCanvasProps {
 
   // Phase M7b: Inline Cross-Link edgeType Mutation
   onUpdateCrossLinkType?: (edgeId: string, newType: LinkType) => void;
+
+  // Phase M7c: Inline Cross-Link Label Renaming
+  onUpdateCrossLinkLabel?: (edgeId: string, newLabel: string | undefined) => void;
 }
 
 export type MarqueeSelectionMode = "replace" | "add" | "subtract";
@@ -273,6 +276,7 @@ export function MindMapTreeCanvas({
   onDeleteCrossLink,
   onOpenDrawerForNode,
   onUpdateCrossLinkType,
+  onUpdateCrossLinkLabel,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -958,6 +962,30 @@ export function MindMapTreeCanvas({
       }
     }
   }, [selectedCrossLinkId, crossEdges]);
+
+  // Phase M7c: Local Draft State for Cross-Link Label Renaming
+  const [draftLabel, setDraftLabel] = useState<string>("");
+  const committedLabelRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!selectedCrossLinkId || !crossEdges) {
+      setDraftLabel("");
+      committedLabelRef.current = undefined;
+      return;
+    }
+    const edge = crossEdges.find((e) => e.id === selectedCrossLinkId);
+    const norm = edge?.label ? edge.label.trim() || undefined : undefined;
+    setDraftLabel(edge?.label || "");
+    committedLabelRef.current = norm;
+  }, [selectedCrossLinkId, crossEdges]);
+
+  const handleCommitCrossLinkLabel = useCallback(() => {
+    if (!selectedCrossLinkId) return;
+    const trimmed = draftLabel.trim() || undefined;
+    if (trimmed === committedLabelRef.current) return;
+    committedLabelRef.current = trimmed;
+    onUpdateCrossLinkLabel?.(selectedCrossLinkId, trimmed);
+  }, [selectedCrossLinkId, draftLabel, onUpdateCrossLinkLabel]);
 
   // Phase M7a & M6 Protection: Window listener for cross-link selection shortcuts
   useEffect(() => {
@@ -1707,14 +1735,44 @@ export function MindMapTreeCanvas({
                   {targetTitle}
                 </span>
               </div>
-              {selectedEdge.label && (
-                <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
-                  Nhãn:{" "}
-                  <span className="font-medium text-stone-700 dark:text-stone-300">
-                    {selectedEdge.label}
-                  </span>
+              <div className="mt-2 pt-2 border-t border-stone-100 dark:border-stone-800">
+                <div className="flex items-center justify-between gap-1 mb-0.5">
+                  <label
+                    htmlFor={`crosslink-label-input-${selectedEdge.id}`}
+                    className="text-[10px] text-stone-500 dark:text-stone-400 block"
+                  >
+                    Nhãn:
+                  </label>
+                  {selectedEdge.label && (
+                    <span className="text-[10px] text-stone-400 dark:text-stone-500 font-medium truncate max-w-[150px]">
+                      {selectedEdge.label}
+                    </span>
+                  )}
                 </div>
-              )}
+                <input
+                  id={`crosslink-label-input-${selectedEdge.id}`}
+                  data-testid="crosslink-label-input"
+                  type="text"
+                  maxLength={60}
+                  value={draftLabel}
+                  onChange={(e) => setDraftLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCommitCrossLinkLabel();
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const edge = crossEdges?.find((edgeItem) => edgeItem.id === selectedCrossLinkId);
+                      setDraftLabel(edge?.label || "");
+                    }
+                  }}
+                  onBlur={handleCommitCrossLinkLabel}
+                  placeholder="Nhập nhãn..."
+                  className="w-full px-2 py-1 text-xs bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white dark:focus:bg-stone-800 transition"
+                />
+              </div>
             </div>
           );
         })()}

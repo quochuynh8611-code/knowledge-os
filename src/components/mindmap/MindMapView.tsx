@@ -311,7 +311,7 @@ export function MindMapView() {
             targetTitle: tgtNode?.title || edge.targetNodeId,
             type: edge.edgeType,
             strength: 3,
-            label: edge.label || getSemanticEdgeLabel(edge.edgeType),
+            label: edge.label !== undefined ? edge.label : "",
             isCycle: false,
           };
         }),
@@ -1119,6 +1119,35 @@ export function MindMapView() {
 
       const nextLinks = workingDocumentCrossLinks.map((e) =>
         e.id === edgeId ? { ...e, edgeType: newType } : e
+      );
+
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
+  // Phase M7c: Inline Cross-Link Label Renaming with Atomic History
+  const handleUpdateCrossLinkLabelFromCanvas = useCallback(
+    (edgeId: string, rawLabel: string | undefined) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const currentEdge = workingDocumentCrossLinks.find((e) => e.id === edgeId);
+      if (!currentEdge) return;
+
+      const normalizedLabel = rawLabel ? rawLabel.trim() || undefined : undefined;
+      const currentNormalized = currentEdge.label ? currentEdge.label.trim() || undefined : undefined;
+
+      // Strict same-value normalized no-op
+      if (normalizedLabel === currentNormalized) return;
+
+      const nextLinks = workingDocumentCrossLinks.map((e) =>
+        e.id === edgeId ? { ...e, label: normalizedLabel } : e
       );
 
       applyMutation(currentTree, nextLinks);
@@ -2030,6 +2059,7 @@ export function MindMapView() {
           onAddCrossLink={handleAddCrossLinkFromCanvas}
           onDeleteCrossLink={handleDeleteCrossLinkFromCanvas}
           onUpdateCrossLinkType={handleUpdateCrossLinkTypeFromCanvas}
+          onUpdateCrossLinkLabel={handleUpdateCrossLinkLabelFromCanvas}
           onOpenDrawerForNode={(nodeId) => {
             setActiveDrawerNodeId(nodeId);
           }}

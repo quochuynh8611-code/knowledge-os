@@ -433,5 +433,188 @@ describe("Phase M7a — Mind Map On-Canvas Cross-Link Inspection & Quick Delete"
     fireEvent.keyDown(select, { key: "Backspace" });
     expect(mockDelete).not.toHaveBeenCalled();
   });
+
+  it("15. Popover render <input data-testid=\"crosslink-label-input\"> với giá trị ban đầu của edge.label", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input") as HTMLInputElement;
+    expect(labelInput).toBeInTheDocument();
+    expect(labelInput.value).toBe("Nhân Quả");
+  });
+
+  it("16. Nhấn Enter sau khi sửa label kích hoạt onUpdateCrossLinkLabel với edgeId và newLabel", () => {
+    const mockUpdateLabel = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkLabel={mockUpdateLabel}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input");
+    fireEvent.change(labelInput, { target: { value: "Quan Hệ Nhân Quả Mới" } });
+    fireEvent.keyDown(labelInput, { key: "Enter" });
+
+    expect(mockUpdateLabel).toHaveBeenCalledTimes(1);
+    expect(mockUpdateLabel).toHaveBeenCalledWith("edge-dukkha-samudaya", "Quan Hệ Nhân Quả Mới");
+  });
+
+  it("17. Blur khỏi label input sau khi sửa kích hoạt onUpdateCrossLinkLabel với edgeId và newLabel", () => {
+    const mockUpdateLabel = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkLabel={mockUpdateLabel}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input");
+    fireEvent.change(labelInput, { target: { value: "Quan Hệ Blur" } });
+    fireEvent.blur(labelInput);
+
+    expect(mockUpdateLabel).toHaveBeenCalledTimes(1);
+    expect(mockUpdateLabel).toHaveBeenCalledWith("edge-dukkha-samudaya", "Quan Hệ Blur");
+  });
+
+  it("18. Nhập chuỗi chỉ gồm khoảng trắng hoặc xóa sạch và nhấn Enter chuẩn hóa thành undefined", () => {
+    const mockUpdateLabel = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkLabel={mockUpdateLabel}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input");
+    fireEvent.change(labelInput, { target: { value: "    " } });
+    fireEvent.keyDown(labelInput, { key: "Enter" });
+
+    expect(mockUpdateLabel).toHaveBeenCalledTimes(1);
+    expect(mockUpdateLabel).toHaveBeenCalledWith("edge-dukkha-samudaya", undefined);
+  });
+
+  it("19. Nhấn Enter hoặc blur khi giá trị nhãn không đổi là strict no-op", () => {
+    const mockUpdateLabel = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkLabel={mockUpdateLabel}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input");
+    // Nhập cùng giá trị (kèm khoảng trắng thừa)
+    fireEvent.change(labelInput, { target: { value: "  Nhân Quả  " } });
+    fireEvent.keyDown(labelInput, { key: "Enter" });
+
+    expect(mockUpdateLabel).not.toHaveBeenCalled();
+  });
+
+  it("20. Nhấn Escape khi đang focus trong label input hoàn nguyên draft và GIỮ popover mở", () => {
+    const mockUpdateLabel = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkLabel={mockUpdateLabel}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input") as HTMLInputElement;
+    fireEvent.change(labelInput, { target: { value: "Nhãn Tạm Thời Chưa Lưu" } });
+    expect(labelInput.value).toBe("Nhãn Tạm Thời Chưa Lưu");
+
+    // Nhấn Escape trên input
+    fireEvent.keyDown(labelInput, { key: "Escape" });
+
+    // Không kích hoạt update
+    expect(mockUpdateLabel).not.toHaveBeenCalled();
+    // Hoàn nguyên giá trị ban đầu
+    expect(labelInput.value).toBe("Nhân Quả");
+    // Popover vẫn mở
+    expect(screen.getByTestId("crosslink-quick-actions")).toBeInTheDocument();
+  });
+
+  it("21. Focus bên trong label input + nhấn Delete / Backspace không kích hoạt onDeleteCrossLink (M6 Protection)", () => {
+    const mockDelete = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onDeleteCrossLink={mockDelete}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input");
+    labelInput.focus();
+
+    fireEvent.keyDown(labelInput, { key: "Delete" });
+    fireEvent.keyDown(labelInput, { key: "Backspace" });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
 });
 

@@ -236,4 +236,84 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     // 3. Có thông báo lỗi (Toast alert)
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
+
+  it("Scenario 5: Successful inline label mutation updates document, creates 1 history entry, and supports Undo/Redo", async () => {
+    render(<MindMapView />);
+
+    // 1. Mở tài liệu có sẵn liên kết
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    // 2. Click chọn cross-link để mở quick action popover
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    // 3. Sửa nhãn qua input
+    const labelInput = screen.getByTestId("crosslink-label-input") as HTMLInputElement;
+    expect(labelInput.value).toBe("Quan hệ thử nghiệm");
+
+    fireEvent.change(labelInput, { target: { value: "Quan hệ cập nhật M7c" } });
+    fireEvent.keyDown(labelInput, { key: "Enter" });
+
+    // 4. Kiểm tra document dirty & giá trị nhãn đã cập nhật
+    expect((screen.getByTestId("crosslink-label-input") as HTMLInputElement).value).toBe("Quan hệ cập nhật M7c");
+    expect(screen.getByTestId("dirty-indicator")).toBeInTheDocument();
+
+    // 5. Nhấn Undo (Cmd+Z)
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+
+    // Nhãn được hoàn nguyên về "Quan hệ thử nghiệm"
+    expect((screen.getByTestId("crosslink-label-input") as HTMLInputElement).value).toBe("Quan hệ thử nghiệm");
+
+    // 6. Nhấn Redo (Cmd+Shift+Z)
+    fireEvent.keyDown(window, { key: "z", metaKey: true, shiftKey: true });
+
+    // Nhãn được áp dụng lại "Quan hệ cập nhật M7c"
+    expect((screen.getByTestId("crosslink-label-input") as HTMLInputElement).value).toBe("Quan hệ cập nhật M7c");
+  });
+
+  it("Scenario 6: Empty/whitespace label submission normalizes to undefined and integrates with Undo/Redo", async () => {
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input") as HTMLInputElement;
+    expect(labelInput.value).toBe("Quan hệ thử nghiệm");
+
+    // Xóa sạch hoặc chỉ nhập khoảng trắng
+    fireEvent.change(labelInput, { target: { value: "     " } });
+    fireEvent.blur(labelInput);
+
+    // Nhãn chuẩn hóa thành rỗng/undefined trên UI & document dirty
+    expect((screen.getByTestId("crosslink-label-input") as HTMLInputElement).value).toBe("");
+    expect(screen.getByTestId("dirty-indicator")).toBeInTheDocument();
+
+    // Undo phục hồi lại nhãn cũ
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+    expect((screen.getByTestId("crosslink-label-input") as HTMLInputElement).value).toBe("Quan hệ thử nghiệm");
+  });
+
+  it("Scenario 7: Same-value label submission is strict no-op with zero history entries", async () => {
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    const labelInput = screen.getByTestId("crosslink-label-input") as HTMLInputElement;
+    expect(labelInput.value).toBe("Quan hệ thử nghiệm");
+
+    // Nhập cùng giá trị kèm khoảng trắng thừa
+    fireEvent.change(labelInput, { target: { value: "  Quan hệ thử nghiệm  " } });
+    fireEvent.keyDown(labelInput, { key: "Enter" });
+
+    // Không làm bẩn document, không tạo history entry
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+  });
 });
