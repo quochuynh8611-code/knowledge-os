@@ -33,6 +33,7 @@ import {
 import {
   MindMapDocumentSummary,
   MindMapDocumentNode,
+  MindMapDocumentEdge,
 } from "../../types/mindmapDocument";
 import { MindMapTreeCanvas, MarqueeSelectionMode } from "./MindMapTreeCanvas";
 import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
@@ -66,17 +67,24 @@ import {
   ChevronDown,
 } from "lucide-react";
 import {
-  MindMapHistoryState,
+  MindMapDocumentHistoryState,
   createMindMapHistory,
-  pushHistoryMutation,
-  undoHistory,
-  redoHistory,
+  createMindMapDocumentHistory,
+  pushDocumentHistoryMutation,
+  undoDocumentHistory,
+  redoDocumentHistory,
   canUndo,
   canRedo,
+  canUndoDocument,
+  canRedoDocument,
   isHistoryDirty,
   commitHistorySave,
   resetHistoryToSavedBaseline,
+  isDocumentHistoryDirty,
+  commitDocumentHistorySave,
+  resetDocumentHistoryToSavedBaseline,
   shouldIgnoreCanvasShortcut,
+  pruneDanglingCrossLinks,
 } from "../../lib/mindmapHistory";
 import {
   renameNodeTitle,
@@ -171,11 +179,13 @@ export function MindMapView() {
   const [isVolatileStorage, setIsVolatileStorage] = useState<boolean>(false);
   const [savedDocsRevision, setSavedDocsRevision] = useState<number>(0);
 
-  // Working Copy State & History (Phase P2 & Phase P5)
+  // Working Copy State & History (Phase P2, Phase P5 & Phase M5a)
   const [workingDocumentTree, setWorkingDocumentTree] =
     useState<MindMapTreeNode | null>(null);
+  const [workingDocumentCrossLinks, setWorkingDocumentCrossLinks] =
+    useState<MindMapDocumentEdge[]>([]);
   const [historyState, setHistoryState] =
-    useState<MindMapHistoryState | null>(null);
+    useState<MindMapDocumentHistoryState | null>(null);
   const [isDirty, setIsDirty] = useState<boolean>(false);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [pendingDeleteNodeId, setPendingDeleteNodeId] = useState<string | null>(
@@ -213,19 +223,22 @@ export function MindMapView() {
     return getMindMapVersion(activeDocumentId);
   }, [activeDocumentId, savedDocsRevision]);
 
-  // Synchronize working tree and history when active saved document version changes
+  // Synchronize working tree, cross-links and history when active saved document version changes
   useEffect(() => {
     if (activeMode === "saved-document" && activeDocumentVersion) {
       const initial = documentTreeToProjectedTree(
         activeDocumentVersion.treeData,
         layoutMode
       );
+      const initialLinks = activeDocumentVersion.crossLinks || [];
       setWorkingDocumentTree(initial);
-      setHistoryState(createMindMapHistory(initial));
+      setWorkingDocumentCrossLinks(initialLinks);
+      setHistoryState(createMindMapDocumentHistory(initial, initialLinks));
       setIsDirty(false);
       setEditingNodeId(null);
     } else {
       setWorkingDocumentTree(null);
+      setWorkingDocumentCrossLinks([]);
       setHistoryState(null);
       setIsDirty(false);
       setEditingNodeId(null);
@@ -286,7 +299,7 @@ export function MindMapView() {
         hasCyclesDetected: false,
         generatedAt: activeDocumentVersion?.createdAt || new Date().toISOString(),
         tree,
-        crossEdges: (activeDocumentVersion?.crossLinks || []).map((edge) => ({
+        crossEdges: (workingDocumentCrossLinks || []).map((edge) => ({
           id: edge.id,
           sourceNodeId: edge.sourceNodeId,
           sourceTitle: edge.sourceNodeId,
@@ -314,6 +327,7 @@ export function MindMapView() {
   }, [
     activeMode,
     workingDocumentTree,
+    workingDocumentCrossLinks,
     activeDocumentVersion,
     activeDocumentSummary,
     topics,
@@ -707,33 +721,60 @@ export function MindMapView() {
     return "Sơ đồ tư duy mới";
   }, [activeMode, activeDocumentSummary, projection?.rootTitle]);
 
-  // Interactive Canvas Editing Actions (Phase P2 & Phase P5 History)
-  const applyTreeMutation = useCallback((nextTree: MindMapTreeNode) => {
-    setWorkingDocumentTree(nextTree);
-    setHistoryState((prevHistory) => {
-      const baseHistory = prevHistory || createMindMapHistory(nextTree);
-      const updated = pushHistoryMutation(baseHistory, nextTree);
-      setIsDirty(isHistoryDirty(updated));
-      return updated;
-    });
-  }, []);
+  // Interactive Canvas Editing Actions (Phase P2, P5 History & Phase M5a Composite History)
+  const applyMutation = useCallback(
+    (nextTree: MindMapTreeNode, nextLinks?: MindMapDocumentEdge[]) => {
+      setWorkingDocumentTree(nextTree);
+      const validNodeIds = collectTreeNodeIds(nextTree);
+      const linksToPrune =
+        nextLinks !== undefined ? nextLinks : workingDocumentCrossLinks;
+      const { prunedCrossLinks } = pruneDanglingCrossLinks(
+        linksToPrune,
+        validNodeIds
+      );
+      setWorkingDocumentCrossLinks(prunedCrossLinks);
+
+      setHistoryState((prevHistory) => {
+        const baseHistory =
+          prevHistory ||
+          createMindMapDocumentHistory(nextTree, prunedCrossLinks);
+        const updated = pushDocumentHistoryMutation(
+          baseHistory,
+          nextTree,
+          prunedCrossLinks
+        );
+        setIsDirty(isDocumentHistoryDirty(updated));
+        return updated;
+      });
+    },
+    [workingDocumentCrossLinks]
+  );
+
+  const applyTreeMutation = useCallback(
+    (nextTree: MindMapTreeNode) => {
+      applyMutation(nextTree, workingDocumentCrossLinks);
+    },
+    [applyMutation, workingDocumentCrossLinks]
+  );
 
   const handleUndo = useCallback(() => {
     setHistoryState((prev) => {
-      if (!prev || !canUndo(prev)) return prev;
-      const next = undoHistory(prev);
-      setWorkingDocumentTree(next.present);
-      setIsDirty(isHistoryDirty(next));
+      if (!prev || !canUndoDocument(prev)) return prev;
+      const next = undoDocumentHistory(prev);
+      setWorkingDocumentTree(next.present.tree);
+      setWorkingDocumentCrossLinks(next.present.crossLinks);
+      setIsDirty(isDocumentHistoryDirty(next));
       return next;
     });
   }, []);
 
   const handleRedo = useCallback(() => {
     setHistoryState((prev) => {
-      if (!prev || !canRedo(prev)) return prev;
-      const next = redoHistory(prev);
-      setWorkingDocumentTree(next.present);
-      setIsDirty(isHistoryDirty(next));
+      if (!prev || !canRedoDocument(prev)) return prev;
+      const next = redoDocumentHistory(prev);
+      setWorkingDocumentTree(next.present.tree);
+      setWorkingDocumentCrossLinks(next.present.crossLinks);
+      setIsDirty(isDocumentHistoryDirty(next));
       return next;
     });
   }, []);
@@ -932,6 +973,66 @@ export function MindMapView() {
     [workingDocumentTree, projection?.tree, applyTreeMutation]
   );
 
+  const availableNodesList = useMemo(() => {
+    const currentTree = workingDocumentTree || projection?.tree;
+    if (!currentTree) return [];
+    const list: Array<{ id: string; title: string }> = [];
+    const traverse = (node: MindMapTreeNode) => {
+      list.push({ id: node.id, title: node.title });
+      for (const child of node.children || []) {
+        traverse(child);
+      }
+    };
+    traverse(currentTree);
+    return list;
+  }, [workingDocumentTree, projection?.tree]);
+
+  const handleAddCrossLinkFromDrawer = useCallback(
+    (edgeInput: {
+      targetNodeId: string;
+      edgeType: LinkType;
+      label?: string;
+    }) => {
+      if (!activeDrawerNodeId) return;
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const newEdge: MindMapDocumentEdge = {
+        id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        sourceNodeId: activeDrawerNodeId,
+        targetNodeId: edgeInput.targetNodeId,
+        edgeType: edgeInput.edgeType,
+        label: edgeInput.label,
+      };
+
+      const nextLinks = [...workingDocumentCrossLinks, newEdge];
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      activeDrawerNodeId,
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
+  const handleRemoveCrossLinkFromDrawer = useCallback(
+    (edgeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const nextLinks = workingDocumentCrossLinks.filter((e) => e.id !== edgeId);
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
   // Multi-Node Selection & Batch Operations (Phase P6a)
   const handleToggleSelectNode = useCallback(
     (nodeId: string, isModifier: boolean) => {
@@ -1078,7 +1179,8 @@ export function MindMapView() {
     setSelectedNodeIds(new Set());
     if (historyState) {
       const reset = resetHistoryToSavedBaseline(historyState);
-      setWorkingDocumentTree(reset.present);
+      setWorkingDocumentTree(reset.present.tree);
+      setWorkingDocumentCrossLinks(reset.present.crossLinks);
       setHistoryState(reset);
       setIsDirty(isHistoryDirty(reset));
       setEditingNodeId(null);
@@ -1087,8 +1189,10 @@ export function MindMapView() {
         activeDocumentVersion.treeData,
         layoutMode
       );
+      const initialLinks = activeDocumentVersion.crossLinks || [];
       setWorkingDocumentTree(initial);
-      setHistoryState(createMindMapHistory(initial));
+      setWorkingDocumentCrossLinks(initialLinks);
+      setHistoryState(createMindMapDocumentHistory(initial, initialLinks));
       setIsDirty(false);
       setEditingNodeId(null);
     }
@@ -1198,7 +1302,7 @@ export function MindMapView() {
           prev
             ? commitHistorySave(prev)
             : activeTree
-            ? createMindMapHistory(activeTree)
+            ? createMindMapDocumentHistory(activeTree)
             : null
         );
         setIsDirty(false);
@@ -1216,17 +1320,11 @@ export function MindMapView() {
       const docTree = projectedTreeToDocumentTree(activeTree);
       const currentValidIds = collectTreeNodeIds(activeTree);
       const sanitizedCollapsed = sanitizeCollapsedIds(Array.from(collapsedNodeIds), currentValidIds);
-      const crossLinks = (projection?.crossEdges || []).map((e) => ({
-        id: e.id,
-        sourceNodeId: e.sourceNodeId,
-        targetNodeId: e.targetNodeId,
-        edgeType: (e.type === "prerequisite" ||
-        e.type === "advanced" ||
-        e.type === "contradicts"
-          ? e.type
-          : "related") as LinkType,
-        label: e.label,
-      }));
+      const { prunedCrossLinks } = pruneDanglingCrossLinks(
+        workingDocumentCrossLinks,
+        currentValidIds
+      );
+      const crossLinks = prunedCrossLinks;
 
       const result = appendMindMapVersion({
         documentId: activeDocumentId,
@@ -1246,15 +1344,24 @@ export function MindMapView() {
           prev
             ? commitHistorySave(prev)
             : activeTree
-            ? createMindMapHistory(activeTree)
+            ? createMindMapDocumentHistory(activeTree, crossLinks)
             : null
         );
+        setWorkingDocumentCrossLinks(crossLinks);
         setIsDirty(false);
         setSavedDocsRevision((r) => r + 1);
         setIsSaveModalOpen(false);
       }
     },
-    [activeDocumentId, workingDocumentTree, projection, layoutMode, collapsedNodeIds, showCrossLinks]
+    [
+      activeDocumentId,
+      workingDocumentTree,
+      projection?.tree,
+      collapsedNodeIds,
+      workingDocumentCrossLinks,
+      layoutMode,
+      showCrossLinks,
+    ]
   );
 
   const handleOpenSavedDocument = useCallback(
@@ -2038,13 +2145,18 @@ export function MindMapView() {
         </div>
       )}
 
-      {/* Inline Node Drawer (Phase M2) */}
+      {/* Inline Node Drawer (Phase M2 & Phase M5a) */}
       {activeMode === "saved-document" && (
         <MindMapNodeDrawer
           isOpen={Boolean(activeDrawerNode)}
           node={activeDrawerNode}
           onClose={() => setActiveDrawerNodeId(null)}
           onUpdateTitle={handleUpdateNodeTitleFromDrawer}
+          crossLinks={workingDocumentCrossLinks}
+          availableNodes={availableNodesList}
+          onAddCrossLink={handleAddCrossLinkFromDrawer}
+          onRemoveCrossLink={handleRemoveCrossLinkFromDrawer}
+          treeRoot={workingDocumentTree || projection?.tree}
         />
       )}
 
