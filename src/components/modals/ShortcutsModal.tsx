@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
-import { X, Keyboard, Sparkles, Navigation, Command } from "lucide-react";
+import React, { useEffect, useMemo } from "react";
+import { X, Keyboard } from "lucide-react";
+import { getHelpModalSections } from "../../lib/shortcutsRegistry";
 
 export interface ShortcutsModalProps {
   isOpen: boolean;
@@ -19,44 +20,18 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
+  const isMac = useMemo(() => {
+    return (
+      typeof navigator !== "undefined" &&
+      /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+    );
+  }, []);
+
+  const shortcutSections = useMemo(() => {
+    return getHelpModalSections(isMac);
+  }, [isMac]);
+
   if (!isOpen) return null;
-
-  const isMac =
-    typeof navigator !== "undefined" &&
-    /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-  const modKey = isMac ? "⌘" : "Ctrl";
-
-  const shortcutSections = [
-    {
-      title: "Thao Tác Nhanh & Tìm Kiếm",
-      icon: Command,
-      items: [
-        {
-          keys: [`${modKey}`, "K"],
-          description: "Mở Thanh Lệnh Toàn Năng (Command Palette)",
-        },
-        {
-          keys: [`${modKey}`, "N"],
-          description: "Ghi chú nhanh vào Inbox (Quick Capture)",
-        },
-        { keys: ["?"], description: "Mở Bảng tra cứu phím tắt này" },
-        { keys: ["Esc"], description: "Đóng hộp thoại / Bỏ chọn" },
-      ],
-    },
-    {
-      title: "Chuyển Đổi Danh Mục Nhanh (Số 1-7)",
-      icon: Navigation,
-      items: [
-        { keys: ["1"], description: "Về Trang Tổng Quan (Dashboard)" },
-        { keys: ["2"], description: "Về Cây Phân Cấp Chủ Đề (Topics)" },
-        { keys: ["3"], description: "Về Thẻ Nhớ (Flashcards)" },
-        { keys: ["4"], description: "Về Ghi Chú & Liên Kết (Notes)" },
-        { keys: ["5"], description: "Về Tài Liệu (Resources)" },
-        { keys: ["6"], description: "Về Bản Đồ Tri Thức (Knowledge Graph)" },
-        { keys: ["7"], description: "Về Thư Viện Sách (Library)" },
-      ],
-    },
-  ];
 
   return (
     <div
@@ -67,7 +42,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl max-w-lg w-full p-6 text-stone-900 dark:text-stone-100 overflow-hidden relative"
+        className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl shadow-2xl max-w-xl w-full p-6 text-stone-900 dark:text-stone-100 overflow-hidden relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -84,7 +59,7 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
                 Phím Tắt Hệ Thống (Shortcuts)
               </h3>
               <p className="text-xs text-stone-500 dark:text-stone-400">
-                Tối ưu tốc độ khảo cứu và điều hướng bằng bàn phím
+                Tối ưu tốc độ khảo cứu, ôn tập và điều hướng bằng bàn phím
               </p>
             </div>
           </div>
@@ -92,32 +67,39 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Đóng bảng phím tắt"
-            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition"
+            className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-xl transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Shortcuts Lists */}
-        <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
-          {shortcutSections.map((sec, idx) => {
+        <div className="space-y-5 max-h-[65vh] overflow-y-auto pr-1">
+          {shortcutSections.map((sec) => {
             const SecIcon = sec.icon;
             return (
-              <div key={idx} className="space-y-2.5">
+              <div key={sec.id} className="space-y-2.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-400">
                   <SecIcon className="w-3.5 h-3.5" />
                   <span>{sec.title}</span>
                 </div>
                 <div className="bg-stone-50 dark:bg-stone-950/50 rounded-2xl border border-stone-200/80 dark:border-stone-800/80 divide-y divide-stone-200/60 dark:divide-stone-800/60">
-                  {sec.items.map((item, itemIdx) => (
+                  {sec.items.map((item) => (
                     <div
-                      key={itemIdx}
-                      className="flex items-center justify-between px-3.5 py-2.5 text-xs"
+                      key={item.id}
+                      className="flex items-center justify-between px-3.5 py-2.5 text-xs gap-3"
                     >
-                      <span className="text-stone-700 dark:text-stone-300">
-                        {item.description}
-                      </span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-stone-700 dark:text-stone-300 font-medium">
+                          {item.description}
+                        </span>
+                        {item.scopeNote && (
+                          <span className="text-[10px] text-amber-700/80 dark:text-amber-400/80">
+                            {item.scopeNote}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
                         {item.keys.map((k, kIdx) => (
                           <kbd
                             key={kIdx}

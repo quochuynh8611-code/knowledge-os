@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { shortcutScope } from "../lib/shortcutScope";
+import { TAB_SHORTCUT_MAP } from "../lib/shortcutsRegistry";
 
 export interface ShortcutItem {
   key: string;
@@ -88,16 +89,7 @@ export function useKeyboardShortcuts({
         ) {
           return;
         }
-        const tabMap: Record<string, string> = {
-          "1": "dashboard",
-          "2": "topics",
-          "3": "flashcards",
-          "4": "notes",
-          "5": "resources",
-          "6": "graph",
-          "7": "library",
-        };
-        const targetTab = tabMap[e.key];
+        const targetTab = TAB_SHORTCUT_MAP[e.key];
         if (targetTab && onNavigateTab) {
           e.preventDefault();
           onNavigateTab(targetTab);

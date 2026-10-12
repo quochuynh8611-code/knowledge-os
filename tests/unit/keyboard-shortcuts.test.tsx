@@ -67,6 +67,65 @@ describe("Keyboard Shortcuts & ShortcutsModal (Phase 1B)", () => {
 
       document.body.removeChild(input);
     });
+    it("Kích hoạt onOpenQuickCapture khi nhấn Ctrl+N hoặc Cmd+N", () => {
+      const handleOpenCapture = vi.fn();
+      renderHook(() =>
+        useKeyboardShortcuts({
+          onOpenQuickCapture: handleOpenCapture,
+        }),
+      );
+
+      fireEvent.keyDown(window, { key: "n", ctrlKey: true });
+      expect(handleOpenCapture).toHaveBeenCalledTimes(1);
+
+      fireEvent.keyDown(window, { key: "n", metaKey: true });
+      expect(handleOpenCapture).toHaveBeenCalledTimes(2);
+    });
+
+    it("Kích hoạt onCloseModals khi nhấn phím Escape", () => {
+      const handleCloseModals = vi.fn();
+      renderHook(() =>
+        useKeyboardShortcuts({
+          onCloseModals: handleCloseModals,
+        }),
+      );
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      expect(handleCloseModals).toHaveBeenCalledTimes(1);
+    });
+
+    it("Chặn phím 1-4 nhưng vẫn cho phép 5-7 khi flashcard_review scope đang kích hoạt", async () => {
+      const { shortcutScope } = await import("../../src/lib/shortcutScope");
+      shortcutScope.reset();
+      const unregister = shortcutScope.pushScope("flashcard_review");
+
+      const handleNavigate = vi.fn();
+      renderHook(() =>
+        useKeyboardShortcuts({
+          onNavigateTab: handleNavigate,
+        }),
+      );
+
+      // 1-4 bị chặn
+      fireEvent.keyDown(window, { key: "1" });
+      fireEvent.keyDown(window, { key: "2" });
+      fireEvent.keyDown(window, { key: "3" });
+      fireEvent.keyDown(window, { key: "4" });
+      expect(handleNavigate).not.toHaveBeenCalled();
+
+      // 5-7 vẫn hoạt động bình thường
+      fireEvent.keyDown(window, { key: "5" });
+      expect(handleNavigate).toHaveBeenCalledWith("resources");
+
+      fireEvent.keyDown(window, { key: "6" });
+      expect(handleNavigate).toHaveBeenCalledWith("graph");
+
+      fireEvent.keyDown(window, { key: "7" });
+      expect(handleNavigate).toHaveBeenCalledWith("library");
+
+      unregister();
+      shortcutScope.reset();
+    });
   });
 
   describe("ShortcutsModal Component", () => {
@@ -77,14 +136,24 @@ describe("Keyboard Shortcuts & ShortcutsModal (Phase 1B)", () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it("Hiển thị đầy đủ các danh mục phím tắt khi isOpen = true", () => {
+    it("Hiển thị đầy đủ các danh mục phím tắt từ registry khi isOpen = true", () => {
       const handleClose = vi.fn();
       render(<ShortcutsModal isOpen={true} onClose={handleClose} />);
 
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.getByText(/Phím Tắt Hệ Thống/i)).toBeInTheDocument();
+
+      // Kiểm tra sự hiện diện của các nhóm phím từ registry
+      expect(screen.getByText(/Thao Tác Nhanh & Tìm Kiếm/i)).toBeInTheDocument();
+      expect(screen.getByText(/Chuyển Đổi Danh Mục Nhanh/i)).toBeInTheDocument();
+      expect(screen.getByText(/Không Gian Ôn Tập Thẻ Nhớ/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sơ Đồ Tư Duy/i)).toBeInTheDocument();
+
+      // Kiểm tra phím thao tác cụ thể
       expect(screen.getByText(/Thanh Lệnh Toàn Năng/i)).toBeInTheDocument();
-      expect(screen.getByText(/Thẻ Nhớ/i)).toBeInTheDocument();
+      expect(screen.getByText(/Ghi chú nhanh vào Inbox/i)).toBeInTheDocument();
+      expect(screen.getByText(/Lật mặt trước \/ sau thẻ nhớ/i)).toBeInTheDocument();
+      expect(screen.getByText(/Thêm nhánh con/i)).toBeInTheDocument();
 
       // Close on button click
       const closeBtn = screen.getByLabelText(/Đóng bảng phím tắt/i);
