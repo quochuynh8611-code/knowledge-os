@@ -6,6 +6,9 @@ interface MindMapCrossLinksLayerProps {
   collapsedNodeIds?: Set<string>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hoveredNodeId?: string | null;
+  selectedEdgeId?: string | null;
+  onSelectEdge?: (edgeId: string, midPos: { x: number; y: number }) => void;
+  isConnecting?: boolean;
 }
 
 interface ComputedPath {
@@ -25,6 +28,9 @@ export function MindMapCrossLinksLayer({
   collapsedNodeIds,
   containerRef,
   hoveredNodeId,
+  selectedEdgeId,
+  onSelectEdge,
+  isConnecting = false,
 }: MindMapCrossLinksLayerProps) {
   const [paths, setPaths] = useState<ComputedPath[]>([]);
 
@@ -148,40 +154,49 @@ export function MindMapCrossLinksLayer({
         const isConnected =
           Boolean(hoveredNodeId) &&
           (p.sourceNodeId === hoveredNodeId || p.targetNodeId === hoveredNodeId);
-        const isDimmed = Boolean(hoveredNodeId) && !isConnected;
+        const isSelected = selectedEdgeId === p.id;
+        const isDimmed = Boolean(hoveredNodeId) && !isConnected && !isSelected;
 
         const colorClasses = p.isMultiParent
-          ? isConnected
+          ? isSelected
             ? "text-indigo-600 dark:text-indigo-300 opacity-100"
-            : isDimmed
-              ? "text-indigo-500/30 dark:text-indigo-400/30 opacity-20"
-              : "text-indigo-500/70 dark:text-indigo-400/70 opacity-70"
-          : isConnected
+            : isConnected
+              ? "text-indigo-600 dark:text-indigo-300 opacity-100"
+              : isDimmed
+                ? "text-indigo-500/30 dark:text-indigo-400/30 opacity-20"
+                : "text-indigo-500/70 dark:text-indigo-400/70 opacity-70"
+          : isSelected
             ? "text-amber-600 dark:text-amber-300 opacity-100"
-            : isDimmed
-              ? "text-amber-500/30 dark:text-amber-400/30 opacity-20"
-              : "text-amber-500/70 dark:text-amber-400/70 opacity-70";
+            : isConnected
+              ? "text-amber-600 dark:text-amber-300 opacity-100"
+              : isDimmed
+                ? "text-amber-500/30 dark:text-amber-400/30 opacity-20"
+                : "text-amber-500/70 dark:text-amber-400/70 opacity-70";
 
         return (
           <g key={p.id}>
+            {/* Visual Cross-Link Path */}
             <path
               data-edge-id={p.id}
               data-multi-parent={p.isMultiParent ? "true" : "false"}
-              data-highlighted={isConnected ? "true" : undefined}
+              data-highlighted={isConnected || isSelected ? "true" : undefined}
+              data-edge-selected={isSelected ? "true" : undefined}
               data-dimmed={isDimmed ? "true" : undefined}
               d={p.d}
               fill="none"
               stroke="currentColor"
               strokeWidth={
-                isConnected
-                  ? p.strength >= 4
-                    ? 3
-                    : 2.5
-                  : p.strength >= 4
-                    ? 2
-                    : 1.5
+                isSelected
+                  ? 3.5
+                  : isConnected
+                    ? p.strength >= 4
+                      ? 3
+                      : 2.5
+                    : p.strength >= 4
+                      ? 2
+                      : 1.5
               }
-              strokeDasharray={isConnected ? "6 3" : "4 4"}
+              strokeDasharray={isSelected ? undefined : isConnected ? "6 3" : "4 4"}
               markerEnd={
                 p.isMultiParent
                   ? "url(#multiparent-arrow)"
@@ -189,7 +204,27 @@ export function MindMapCrossLinksLayer({
               }
               className={`transition-all duration-150 pointer-events-none ${colorClasses}`}
             />
-            {isConnected && p.label && (
+
+            {/* Invisible 16px Hit-Target Path for Interaction & Selection */}
+            <path
+              data-testid={`crosslink-hit-target-${p.id}`}
+              d={p.d}
+              fill="none"
+              stroke="transparent"
+              strokeWidth={16}
+              className={isConnecting ? "pointer-events-none" : "cursor-pointer"}
+              style={{
+                pointerEvents: isConnecting ? "none" : "stroke",
+              }}
+              onClick={(e) => {
+                if (isConnecting) return;
+                e.stopPropagation();
+                onSelectEdge?.(p.id, { x: p.midX, y: p.midY });
+              }}
+            />
+
+            {/* Cross-Link Label on Hover or Selection */}
+            {(isConnected || isSelected) && p.label && (
               <g
                 data-edge-label-id={p.id}
                 transform={`translate(${p.midX}, ${p.midY})`}

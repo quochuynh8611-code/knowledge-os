@@ -82,6 +82,10 @@ interface MindMapTreeCanvasProps {
     edgeType?: LinkType;
     label?: string;
   }) => void;
+
+  // Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Action
+  onDeleteCrossLink?: (edgeId: string) => void;
+  onOpenDrawerForNode?: (nodeId: string) => void;
 }
 
 export type MarqueeSelectionMode = "replace" | "add" | "subtract";
@@ -263,6 +267,8 @@ export function MindMapTreeCanvas({
   onBatchDelete,
   onSelectMultipleNodes,
   onAddCrossLink,
+  onDeleteCrossLink,
+  onOpenDrawerForNode,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -271,6 +277,10 @@ export function MindMapTreeCanvas({
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
   const [internalFocusedNodeId, setInternalFocusedNodeId] = useState<string | null>(null);
   const focusedNodeId = propFocusedNodeId !== undefined ? propFocusedNodeId : internalFocusedNodeId;
+
+  // Phase M7a: Cross-Link Inspection & Quick Action State
+  const [selectedCrossLinkId, setSelectedCrossLinkId] = useState<string | null>(null);
+  const [selectedCrossLinkMidPos, setSelectedCrossLinkMidPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Phase M5b: Direct Drag-to-Connect State
   interface ConnectingState {
@@ -464,6 +474,28 @@ export function MindMapTreeCanvas({
     const currentId = focusedNodeId || tree.id;
     const currentNode = nodeMap.get(currentId);
 
+    // Phase M7a: Cross-link selection keyboard precedence
+    if (selectedCrossLinkId) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation?.();
+        setSelectedCrossLinkId(null);
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation?.();
+        if (onDeleteCrossLink) {
+          onDeleteCrossLink(selectedCrossLinkId);
+        }
+        setSelectedCrossLinkId(null);
+        return;
+      }
+    }
+
     if (e.key === "Escape") {
       e.stopPropagation();
       setFocusedNodeId(null);
@@ -535,7 +567,11 @@ export function MindMapTreeCanvas({
       if (e.key === "Tab" || e.key === "Insert") {
         e.preventDefault();
         if (currentId && onAddChild) {
-          onAddChild(currentId, { title: "New node" });
+          if (onAddSibling) {
+            onAddChild(currentId, { title: "New node" });
+          } else {
+            onAddChild(currentId);
+          }
         }
         return;
       }
@@ -909,6 +945,56 @@ export function MindMapTreeCanvas({
     };
   }, [focusedCrossLinkNodeId]);
 
+  // Phase M7a: Auto-dismiss cross-link popover when edge no longer exists in crossEdges
+  useEffect(() => {
+    if (selectedCrossLinkId && crossEdges) {
+      const exists = crossEdges.some((e) => e.id === selectedCrossLinkId);
+      if (!exists) {
+        setSelectedCrossLinkId(null);
+      }
+    }
+  }, [selectedCrossLinkId, crossEdges]);
+
+  // Phase M7a & M6 Protection: Window listener for cross-link selection shortcuts
+  useEffect(() => {
+    if (!selectedCrossLinkId) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      if (shouldIgnoreCanvasShortcut(e.target)) return;
+      if (
+        typeof document !== "undefined" &&
+        document.activeElement &&
+        document.activeElement !== document.body &&
+        document.activeElement !== backdropRef.current &&
+        shouldIgnoreCanvasShortcut(document.activeElement)
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedCrossLinkId(null);
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (onDeleteCrossLink) {
+          onDeleteCrossLink(selectedCrossLinkId);
+        }
+        setSelectedCrossLinkId(null);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [selectedCrossLinkId, onDeleteCrossLink]);
+
   const peerNodeIds = useMemo(() => {
     if (!showCrossLinks || !activeCrossLinkNodeId || !crossEdges) return new Set<string>();
     const peers = new Set<string>();
@@ -1106,6 +1192,7 @@ export function MindMapTreeCanvas({
     return (
       <div
         data-node-id={node.id}
+        data-testid={`node-card-${node.id}`}
         data-connect-accept={isConnectValid ? "true" : undefined}
         data-connect-reject={connectRejectReason || undefined}
         data-selected={isSelected ? "true" : undefined}
@@ -1438,6 +1525,7 @@ export function MindMapTreeCanvas({
       tabIndex={0}
       data-testid="mindmap-canvas-backdrop"
       onClick={() => {
+        setSelectedCrossLinkId(null);
         setFocusedCrossLinkNodeId(null);
         const wasPanOrMarquee = dragDistanceRef.current > 5 || wasMarqueeRef.current;
         wasMarqueeRef.current = false;
@@ -1500,9 +1588,120 @@ export function MindMapTreeCanvas({
             collapsedNodeIds={collapsedNodeIds}
             containerRef={containerRef}
             hoveredNodeId={activeCrossLinkNodeId}
+            selectedEdgeId={selectedCrossLinkId}
+            onSelectEdge={(edgeId, midPos) => {
+              setSelectedCrossLinkId(edgeId);
+              setSelectedCrossLinkMidPos(midPos);
+            }}
+            isConnecting={Boolean(connectingState)}
           />
         )}
         {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
+
+        {/* Phase M7a: Floating On-Canvas Cross-Link Quick Inspect Popover */}
+        {(() => {
+          if (!selectedCrossLinkId || !crossEdges) return null;
+          const selectedEdge = crossEdges.find((e) => e.id === selectedCrossLinkId);
+          if (!selectedEdge) return null;
+          if (
+            collapsedNodeIds?.has(selectedEdge.sourceNodeId) ||
+            collapsedNodeIds?.has(selectedEdge.targetNodeId)
+          ) {
+            return null;
+          }
+
+          const sourceTitle =
+            selectedEdge.sourceTitle ||
+            nodeMap.get(selectedEdge.sourceNodeId)?.title ||
+            selectedEdge.sourceNodeId;
+          const targetTitle =
+            selectedEdge.targetTitle ||
+            nodeMap.get(selectedEdge.targetNodeId)?.title ||
+            selectedEdge.targetNodeId;
+
+          return (
+            <div
+              data-testid="crosslink-quick-actions"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              style={{
+                position: "absolute",
+                left: `${selectedCrossLinkMidPos.x}px`,
+                top: `${selectedCrossLinkMidPos.y}px`,
+                transform: "translate(-50%, -120%)",
+              }}
+              className="z-30 min-w-[220px] max-w-[320px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-xl shadow-xl border border-stone-200 dark:border-stone-700 p-2.5 text-xs text-stone-800 dark:text-stone-200 pointer-events-auto select-none"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800 pb-1.5 mb-1.5">
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+                  {selectedEdge.type || "related"}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    data-testid="crosslink-open-drawer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onOpenDrawerForNode) {
+                        onOpenDrawerForNode(selectedEdge.sourceNodeId);
+                        setSelectedCrossLinkId(null);
+                      }
+                    }}
+                    className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 transition cursor-pointer"
+                    title="Mở chi tiết liên kết trong Drawer"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="crosslink-quick-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onDeleteCrossLink) {
+                        onDeleteCrossLink(selectedEdge.id);
+                      }
+                      setSelectedCrossLinkId(null);
+                    }}
+                    className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition cursor-pointer"
+                    title="Xóa liên kết"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="crosslink-close-popover"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCrossLinkId(null);
+                    }}
+                    className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
+                    title="Đóng popover"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 font-medium text-xs text-stone-900 dark:text-stone-100">
+                <span className="truncate max-w-[120px]" title={sourceTitle}>
+                  {sourceTitle}
+                </span>
+                <ArrowRight className="w-3 h-3 text-stone-400 shrink-0" />
+                <span className="truncate max-w-[120px]" title={targetTitle}>
+                  {targetTitle}
+                </span>
+              </div>
+              {selectedEdge.label && (
+                <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
+                  Nhãn:{" "}
+                  <span className="font-medium text-stone-700 dark:text-stone-300">
+                    {selectedEdge.label}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Floating Minimap Overview Radar */}

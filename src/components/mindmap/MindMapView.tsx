@@ -299,17 +299,21 @@ export function MindMapView() {
         hasCyclesDetected: false,
         generatedAt: activeDocumentVersion?.createdAt || new Date().toISOString(),
         tree,
-        crossEdges: (workingDocumentCrossLinks || []).map((edge) => ({
-          id: edge.id,
-          sourceNodeId: edge.sourceNodeId,
-          sourceTitle: edge.sourceNodeId,
-          targetNodeId: edge.targetNodeId,
-          targetTitle: edge.targetNodeId,
-          type: edge.edgeType,
-          strength: 3,
-          label: edge.label || getSemanticEdgeLabel(edge.edgeType),
-          isCycle: false,
-        })),
+        crossEdges: (workingDocumentCrossLinks || []).map((edge) => {
+          const srcNode = findNodeById(tree, edge.sourceNodeId);
+          const tgtNode = findNodeById(tree, edge.targetNodeId);
+          return {
+            id: edge.id,
+            sourceNodeId: edge.sourceNodeId,
+            sourceTitle: srcNode?.title || edge.sourceNodeId,
+            targetNodeId: edge.targetNodeId,
+            targetTitle: tgtNode?.title || edge.targetNodeId,
+            type: edge.edgeType,
+            strength: 3,
+            label: edge.label || getSemanticEdgeLabel(edge.edgeType),
+            isCycle: false,
+          };
+        }),
         cycleAnnotations: [],
       };
     }
@@ -1052,6 +1056,23 @@ export function MindMapView() {
       };
 
       const nextLinks = [...workingDocumentCrossLinks, newEdge];
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
+  // Phase M7a: Direct On-Canvas Cross-Link Delete with Atomic History
+  const handleDeleteCrossLinkFromCanvas = useCallback(
+    (edgeId: string) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const nextLinks = workingDocumentCrossLinks.filter((e) => e.id !== edgeId);
       applyMutation(currentTree, nextLinks);
     },
     [
@@ -1959,6 +1980,10 @@ export function MindMapView() {
           onBatchDelete={handleBatchDelete}
           onSelectMultipleNodes={handleSelectMultipleNodes}
           onAddCrossLink={handleAddCrossLinkFromCanvas}
+          onDeleteCrossLink={handleDeleteCrossLinkFromCanvas}
+          onOpenDrawerForNode={(nodeId) => {
+            setActiveDrawerNodeId(nodeId);
+          }}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
