@@ -27,6 +27,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { shouldIgnoreCanvasShortcut } from "../../lib/mindmapHistory";
+import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
+import { MindMapDocumentEdge } from "../../types/mindmapDocument";
+import { LinkType } from "../../types";
 
 interface MindMapTreeCanvasProps {
   tree: MindMapTreeNode;
@@ -71,6 +74,14 @@ interface MindMapTreeCanvasProps {
 
   // Phase P7.A & P7.B: Marquee Selection Props
   onSelectMultipleNodes?: (nodeIds: string[], mode?: MarqueeSelectionMode) => void;
+
+  // Phase M5b: Direct Drag-to-Connect Props
+  onAddCrossLink?: (edge: {
+    sourceNodeId: string;
+    targetNodeId: string;
+    edgeType?: LinkType;
+    label?: string;
+  }) => void;
 }
 
 export type MarqueeSelectionMode = "replace" | "add" | "subtract";
@@ -251,6 +262,7 @@ export function MindMapTreeCanvas({
   onClearSelection,
   onBatchDelete,
   onSelectMultipleNodes,
+  onAddCrossLink,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -259,6 +271,143 @@ export function MindMapTreeCanvas({
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
   const [internalFocusedNodeId, setInternalFocusedNodeId] = useState<string | null>(null);
   const focusedNodeId = propFocusedNodeId !== undefined ? propFocusedNodeId : internalFocusedNodeId;
+
+  // Phase M5b: Direct Drag-to-Connect State
+  interface ConnectingState {
+    sourceNodeId: string;
+    startPos: { x: number; y: number };
+    currentPos: { x: number; y: number };
+    candidateTargetId: string | null;
+    candidateRejectReason?: string;
+    isValid: boolean;
+  }
+
+  const [connectingState, setConnectingState] = useState<ConnectingState | null>(null);
+  const connectingStateRef = useRef<ConnectingState | null>(null);
+
+  useEffect(() => {
+    if (!connectingState) return;
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        connectingStateRef.current = null;
+        setConnectingState(null);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalKeyDown, true);
+    };
+  }, [connectingState]);
+
+  const handleConnectPointerDown = (
+    e: React.PointerEvent<HTMLElement>,
+    sourceNodeId: string
+  ) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      // ignore in test/JSDOM environments without pointer capture
+    }
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const startX = rect ? rect.left + rect.width / 2 : e.clientX;
+    const startY = rect ? rect.top + rect.height / 2 : e.clientY;
+
+    const initialState: ConnectingState = {
+      sourceNodeId,
+      startPos: { x: startX, y: startY },
+      currentPos: { x: e.clientX, y: e.clientY },
+      candidateTargetId: null,
+      candidateRejectReason: undefined,
+      isValid: false,
+    };
+
+    connectingStateRef.current = initialState;
+    setConnectingState(initialState);
+  };
+
+  const handleConnectPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!connectingStateRef.current) return;
+    e.stopPropagation();
+
+    const currentPos = { x: e.clientX, y: e.clientY };
+
+    const targetEl = document.elementFromPoint?.(e.clientX, e.clientY) as HTMLElement | null;
+    const targetCard = targetEl?.closest?.("[data-node-id]") as HTMLElement | null;
+    const candidateTargetId = targetCard?.getAttribute("data-node-id") || null;
+
+    let isValid = false;
+    let candidateRejectReason: string | undefined = undefined;
+
+    if (candidateTargetId) {
+      const existingDocEdges: MindMapDocumentEdge[] = (crossEdges || []).map((edge) => ({
+        id: edge.id,
+        sourceNodeId: edge.sourceNodeId,
+        targetNodeId: edge.targetNodeId,
+        edgeType: (edge as any).edgeType || (edge as any).type || "related",
+        label: edge.label,
+      }));
+
+      const result = validateCrossLinkMutation(
+        connectingStateRef.current.sourceNodeId,
+        candidateTargetId,
+        "related",
+        existingDocEdges,
+        tree
+      );
+
+      isValid = result.valid;
+      candidateRejectReason = result.error;
+    }
+
+    const nextState: ConnectingState = {
+      ...connectingStateRef.current,
+      currentPos,
+      candidateTargetId,
+      candidateRejectReason,
+      isValid,
+    };
+    connectingStateRef.current = nextState;
+    setConnectingState(nextState);
+  };
+
+  const handleConnectPointerUp = (e: React.PointerEvent<HTMLElement>) => {
+    const state = connectingStateRef.current;
+    if (!state) return;
+    e.stopPropagation();
+
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
+
+    if (state.candidateTargetId && state.isValid && onAddCrossLink) {
+      onAddCrossLink({
+        sourceNodeId: state.sourceNodeId,
+        targetNodeId: state.candidateTargetId,
+        edgeType: "related",
+      });
+    }
+
+    connectingStateRef.current = null;
+    setConnectingState(null);
+  };
+
+  const handleConnectPointerCancel = (e: React.PointerEvent<HTMLElement>) => {
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      // ignore
+    }
+    connectingStateRef.current = null;
+    setConnectingState(null);
+  };
 
   const setFocusedNodeId = (
     idOrUpdater: string | null | ((prev: string | null) => string | null)
@@ -599,6 +748,8 @@ export function MindMapTreeCanvas({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (connectingStateRef.current) return;
+
     if (isMarqueeDraggingRef.current && marqueeStartRef.current) {
       const dx = e.clientX - marqueeStartRef.current.clientX;
       const dy = e.clientY - marqueeStartRef.current.clientY;
@@ -624,6 +775,8 @@ export function MindMapTreeCanvas({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (connectingStateRef.current) return;
+
     if (isMarqueeDraggingRef.current) {
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -887,6 +1040,13 @@ export function MindMapTreeCanvas({
       isEditable && dragOverNodeId === node.id && draggingNodeId !== node.id
     );
 
+    const isConnectCandidate = connectingState?.candidateTargetId === node.id;
+    const isConnectValid = Boolean(isConnectCandidate && connectingState?.isValid);
+    const connectRejectReason =
+      isConnectCandidate && !connectingState?.isValid
+        ? connectingState?.candidateRejectReason
+        : undefined;
+
     const handleDragStart = (e: React.DragEvent) => {
       if (!canDrag) {
         e.preventDefault();
@@ -940,6 +1100,8 @@ export function MindMapTreeCanvas({
     return (
       <div
         data-node-id={node.id}
+        data-connect-accept={isConnectValid ? "true" : undefined}
+        data-connect-reject={connectRejectReason || undefined}
         data-selected={isSelected ? "true" : undefined}
         data-focused={isFocused ? "true" : undefined}
         data-highlighted={isHighlighted ? "true" : undefined}
@@ -956,8 +1118,12 @@ export function MindMapTreeCanvas({
         onMouseLeave={() => setHoveredNodeId(null)}
         onClick={handleClick}
         className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
-          isDragOverTarget
-            ? "ring-2 ring-sky-500 shadow-lg bg-sky-50/90 dark:bg-sky-950/60 border-sky-500"
+          isConnectValid
+            ? "ring-2 ring-indigo-500 shadow-lg bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500"
+            : connectRejectReason
+              ? "ring-2 ring-rose-500 shadow-lg bg-rose-50/90 dark:bg-rose-950/60 border-rose-500"
+              : isDragOverTarget
+                ? "ring-2 ring-sky-500 shadow-lg bg-sky-50/90 dark:bg-sky-950/60 border-sky-500"
             : isSelected
               ? "ring-2 ring-amber-500 shadow-md ring-offset-2 dark:ring-offset-stone-900 bg-amber-50/90 dark:bg-amber-950/60 border-amber-500"
               : isFocused
@@ -1173,6 +1339,24 @@ export function MindMapTreeCanvas({
             <ArrowRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           </div>
         )}
+
+        {/* Phase M5b: Dedicated Connection Handle */}
+        {isEditable && (
+          <div
+            role="button"
+            data-testid={`connector-handle-${node.id}`}
+            aria-label={`Kéo để kết nối từ nút ${node.title}`}
+            title="Kéo để liên kết chéo (Drag to connect)"
+            onPointerDown={(e) => handleConnectPointerDown(e, node.id)}
+            onPointerMove={handleConnectPointerMove}
+            onPointerUp={handleConnectPointerUp}
+            onPointerCancel={handleConnectPointerCancel}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center cursor-crosshair shadow-sm ring-2 ring-white dark:ring-stone-900 z-10 transition-transform hover:scale-125"
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-white pointer-events-none" />
+          </div>
+        )}
       </div>
     );
   };
@@ -1382,6 +1566,26 @@ export function MindMapTreeCanvas({
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Phase M5b: Drag-to-Connect Preview Overlay */}
+      {connectingState && (
+        <svg
+          data-testid="mindmap-connect-preview-layer"
+          className="fixed inset-0 pointer-events-none z-50 w-full h-full"
+          style={{ position: "fixed", left: 0, top: 0, width: "100vw", height: "100vh" }}
+        >
+          <path
+            data-testid="mindmap-connect-preview-line"
+            data-valid={connectingState.isValid ? "true" : "false"}
+            d={`M ${connectingState.startPos.x} ${connectingState.startPos.y} C ${(connectingState.startPos.x + connectingState.currentPos.x) / 2} ${connectingState.startPos.y}, ${(connectingState.startPos.x + connectingState.currentPos.x) / 2} ${connectingState.currentPos.y}, ${connectingState.currentPos.x} ${connectingState.currentPos.y}`}
+            fill="none"
+            stroke={connectingState.isValid ? "#6366f1" : "#f43f5e"}
+            strokeWidth={2.5}
+            strokeDasharray={connectingState.isValid ? undefined : "6 4"}
+            className="transition-colors duration-150"
+          />
+        </svg>
+      )}
     </div>
   );
 }

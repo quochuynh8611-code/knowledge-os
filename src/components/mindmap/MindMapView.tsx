@@ -1033,6 +1033,35 @@ export function MindMapView() {
     ]
   );
 
+  const handleAddCrossLinkFromCanvas = useCallback(
+    (edgeInput: {
+      sourceNodeId: string;
+      targetNodeId: string;
+      edgeType?: LinkType;
+      label?: string;
+    }) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const newEdge: MindMapDocumentEdge = {
+        id: `edge-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        sourceNodeId: edgeInput.sourceNodeId,
+        targetNodeId: edgeInput.targetNodeId,
+        edgeType: edgeInput.edgeType || "related",
+        label: edgeInput.label,
+      };
+
+      const nextLinks = [...workingDocumentCrossLinks, newEdge];
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
   // Multi-Node Selection & Batch Operations (Phase P6a)
   const handleToggleSelectNode = useCallback(
     (nodeId: string, isModifier: boolean) => {
@@ -1802,7 +1831,10 @@ export function MindMapView() {
                 data-testid="unsaved-changes-badge"
                 className="flex items-center gap-1 px-2.5 py-1 bg-amber-100 dark:bg-amber-950/80 border border-amber-400 dark:border-amber-600 rounded-xl text-xs font-bold text-amber-900 dark:text-amber-200"
               >
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span
+                  data-testid="dirty-indicator"
+                  className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                />
                 <span>Có thay đổi chưa lưu</span>
               </div>
               <button
@@ -1926,6 +1958,7 @@ export function MindMapView() {
           onClearSelection={handleClearSelection}
           onBatchDelete={handleBatchDelete}
           onSelectMultipleNodes={handleSelectMultipleNodes}
+          onAddCrossLink={handleAddCrossLinkFromCanvas}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
