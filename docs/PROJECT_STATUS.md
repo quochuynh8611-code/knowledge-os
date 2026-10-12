@@ -1,20 +1,21 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-11  
-> **Người phụ trách:** Staff Software Engineer / Technical Architect  
-> **Trạng thái tổng thể:** 🟢 **PHASE M4b-A MIND MAP VIEWPORT ZOOM POLISH: Đã hoàn tất implementation, tests & documentation cục bộ (Commit `9b80e0c`, LOCAL-ONLY / NOT PUSHED); toàn bộ 18/18 targeted tests, 67/67 canvas/viewport/minimap regression tests, 7/7 export integration tests và typecheck đạt GREEN (0 errors). Working tree sạch; sẵn sàng cho các phase tiếp theo theo chỉ đạo điều hành.**
+> **Cập nhật lần cuối:** 2026-10-12<br>
+> **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
+> **Trạng thái tổng thể:** 🟢 **PHASE M6 MIND MAP CANVAS FOCUS & KEYBOARD SHORTCUT RECONCILIATION & PHASE M5b DRAG-TO-CONNECT: Đã hoàn tất implementation, tests, pre-push verification & push lên origin/main (Commit `caa1504` và `ae66568`, PUSHED / IN-SYNC); toàn bộ 39/39 targeted tests (bao gồm 20/20 multi-selection, 12/12 keyboard authoring, 7/7 keyboard navigation), 120/120 canvas/viewport/keyboard regression gate và TypeScript typecheck đạt GREEN (0 errors). Working tree sạch; sẵn sàng cho các phase tiếp theo theo chỉ đạo điều hành.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `9b80e0c` (`feat(mindmap): polish viewport zoom controls`).
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 9 commits** (đã bao gồm M4a `fb8bc42` và M4b-A `9b80e0c`).
-- **Remote Policy:** **LOCAL-ONLY / NOT PUSHED** (Tuyệt đối không push lên remote cho đến khi có lệnh phê duyệt explicit).
-- **Working Tree:** Tracked sạch hoàn toàn (Clean). Đúng 1 file session log untracked ngoài scope (`docs/session-logs/...`) được giữ nguyên tuyệt đối.
-- **Quality Gates Baseline (Phase M4b-A):**
-  - Targeted tests: 18/18 PASS ([`tests/unit/mindmap-viewport-zoom.test.tsx`](tests/unit/mindmap-viewport-zoom.test.tsx)).
-  - Regression subset: 67/67 PASS (`mindmap-minimap`, `mindmap-marquee-selection`, `mindmap-keyboard-authoring`, `mindmap-marquee-modifiers`, `mindmap-keyboard-nav`, `mindmap-canvas-drag-drop`) + 7/7 PASS (`mindmap-export-workflow`).
+- **Current Baseline / HEAD:** Commit `caa1504` (`fix(mindmap): reconcile focus-aware keyboard shortcuts between canvas and drawer (M6)`).
+- **Git Branch Status:** `main` tracking `origin/main` — **up to date / synchronized** (Đã push đầy đủ cả M5b `ae66568` và M6 `caa1504`).
+- **Remote Policy:** **SYNCHRONIZED WITH ORIGIN/MAIN** (Local và Remote hoàn toàn trùng khớp tại commit `caa1504`).
+- **Working Tree:** Tracked sạch hoàn toàn (Clean). Đúng 1 file session log untracked ngoài scope (`docs/session-logs/...`) được giữ nguyên ngoài commit boundary.
+- **Quality Gates Baseline (Phase M6 & M5b):**
+  - Phase M6 Targeted tests: 39/39 PASS (`tests/unit/mindmap-multi-selection.test.tsx` 20/20, `tests/unit/mindmap-keyboard-authoring.test.tsx` 12/12, `tests/unit/mindmap-keyboard-nav.test.tsx` 7/7).
+  - Phase M5b Targeted tests: 15/15 PASS (`tests/unit/mindmap-crosslink-drag-connect.test.tsx`, `tests/integration/mindmap-crosslink-drag-history.test.tsx`).
+  - Wide Regression Gate: 120/120 PASS (toàn bộ 12 test suites liên quan đến canvas, viewport, keyboard, crosslinks, document save/history).
   - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
 
 ---
@@ -24,24 +25,78 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và ứng viên tiếp theo. |
-| **2** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
-| **3** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
-| **4** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
-| **5** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
-| **6** | [`docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md`](docs/adr/ADR-099-mindmap-phase-m4a-export-ux-hardening.md) | Bản ghi quyết định kiến trúc ADR-099: Ưu tiên document title, tái sử dụng Toast component, dọn dẹp bộ nhớ. |
-| **7** | [`docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md`](docs/specs/mindmap-phase-m4a-export-ux-hardening-spec.md) | Đặc tả kỹ thuật M4a: Filename contract, feedback contract, Gherkin scenarios, invariants. |
-| **8** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
+| **2** | [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md) | Báo cáo đóng Phase M6: Focus-aware keyboard shortcut reconciliation giữa Canvas và Drawer, loại bỏ blanket guard, phục hồi 20/20 multi-selection test. |
+| **3** | [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md) | Báo cáo đóng Phase M5b: Canvas direct drag-to-connect interaction, pointer capture gesture, live Bézier preview, DOM hit-testing, history integration. |
+| **4** | [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md) | Quyết định kiến trúc ADR-M5-003: Dedicated connection handle, pointer capture lifecycle, fixed SVG preview, live validation. |
+| **5** | [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md) | Đặc tả kỹ thuật M5b: Gherkin scenarios, event isolation, undo/redo atomic contract cho canvas connection. |
+| **6** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
+| **7** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
+| **8** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
+| **9** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
+| **10** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M4a và Phase M4b-A đã hoàn tất implementation và commit cục bộ. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
+> ⚠️ **LƯU Ý QUẢN TRỊ:** Phase M5a, Phase M5b và Phase M6 đã hoàn tất implementation, kiểm thử toàn diện và push thành công lên `origin/main`. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
 | :--- | :--- | :--- | :---: | :---: |
-| **Candidate 1** | **Phase M5 — Mind Map Multi-Parent / Cross-Link Editing UI**<br>- Cho phép tạo và gỡ liên kết chéo trực tiếp trên giao diện tương tác giữa các nhánh. | Biểu diễn mối quan hệ đa chiều giữa các nhánh kiến thức. | Trung bình | 🥇 **Cao nhất (P1)** |
+| **Candidate 1** | **Phase M7 — Mind Map Direct On-Canvas Cross-Link Inspection & Quick Action**<br>- Cho phép click/hover trực tiếp vào đường cong liên kết chéo trên Canvas để xem nhãn, đổi quan hệ hoặc xóa liên kết nhanh mà không bắt buộc mở Drawer. | Tăng tốc độ điều hướng và chỉnh sửa liên kết tri thức trực quan ngay trên Canvas. | Trung bình | 🥇 **Cao nhất (P1)** |
 | **Candidate 2** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Tinh chỉnh trải nghiệm đánh dấu và xem lại highlight trong Reader. | Nâng cao hiệu suất trích xuất tri thức từ tài liệu đọc. | Trung bình | 🥈 **P2** |
+
+---
+
+## ⌨️ Mind Map Canvas Focus & Keyboard Shortcut Reconciliation — Phase M6 Closure (2026-10-12)
+
+- **Status**: ✅ Complete, Verified & Pushed to Remote (Commit `caa1504`, PUSHED / IN-SYNC)
+- **Tests**: 39/39 Targeted tests PASS (`mindmap-multi-selection.test.tsx` 20/20, `mindmap-keyboard-authoring.test.tsx` 12/12, `mindmap-keyboard-nav.test.tsx` 7/7), 120/120 Regression Gate PASS across 12 suites
+- **Typecheck**: 0 errors (`npx tsc --noEmit`)
+- **Database & Architecture**: Không đổi schema database. Giải quyết triệt để xung đột quyền sở hữu bàn phím giữa Canvas và Node Drawer:
+  - Loại bỏ hoàn toàn blanket guard `if (isDrawerOpen) return;` trong `MindMapTreeCanvas.tsx`.
+  - Mở rộng helper `shouldIgnoreCanvasShortcut(target)` trong `src/lib/mindmapHistory.ts` để nhận diện cả container `[data-testid='mindmap-node-drawer']`.
+  - Thiết lập cơ chế **focus-aware keyboard isolation**: Canvas chỉ bỏ qua phím tắt khi người dùng đang thực sự focus vào form controls/inputs bên trong Drawer; nếu focus ở Canvas backdrop hoặc phím điều hướng hợp lệ, các phím tắt xóa (`Delete` / `Backspace`), điều hướng (`Arrow`), thêm node (`Tab`, `Enter`) tiếp tục hoạt động mượt mà.
+  - Phục hồi 100% (20/20 PASS) bộ test đa lựa chọn và xóa hàng loạt `tests/unit/mindmap-multi-selection.test.tsx`.
+
+### Features Delivered & Verified
+1. ✅ **Focus-Aware Keyboard Ownership**: Phân tách rõ ràng giữa trạng thái hiển thị của Drawer và trạng thái active element thực tế của bàn phím.
+2. ✅ **Multi-Selection Batch Deletion**: Khôi phục khả năng xóa node đơn lẻ hoặc hàng loạt bằng phím `Delete`/`Backspace` ngay cả khi Drawer đang mở chế độ xem chi tiết.
+3. ✅ **Drawer Input Text Safety**: Bảo đảm 100% các phím gõ text, `Backspace`, `Delete` khi đang soạn thảo trong title input / notes textarea của Drawer không bị Canvas bắt trộm.
+4. ✅ **Zero Regression Across Authoring & Navigation**: Toàn bộ thao tác tạo node con (`Tab`), tạo node anh em (`Enter`), điều hướng cây (`Arrow keys`) duy trì tính toàn vẹn 100%.
+
+### Artifacts
+- **Closure Report**: [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md)
+- **Primary Tests**: [`tests/unit/mindmap-multi-selection.test.tsx`](tests/unit/mindmap-multi-selection.test.tsx), [`tests/unit/mindmap-keyboard-authoring.test.tsx`](tests/unit/mindmap-keyboard-authoring.test.tsx), [`tests/unit/mindmap-keyboard-nav.test.tsx`](tests/unit/mindmap-keyboard-nav.test.tsx)
+
+---
+
+## 🔗 Mind Map Canvas Direct Drag-to-Connect — Phase M5b Closure (2026-10-12)
+
+- **Status**: ✅ Complete, Verified & Pushed to Remote (Commit `ae66568`, PUSHED / IN-SYNC)
+- **Tests**: 15/15 Targeted tests PASS (`mindmap-crosslink-drag-connect.test.tsx` 8/8, `mindmap-crosslink-drag-history.test.tsx` 7/7), 13/13 M5a regression tests PASS, 99/99 Wider Canvas Gate PASS
+- **Typecheck**: 0 errors (`npx tsc --noEmit`)
+- **Database & Architecture**: Không đổi schema database. Triển khai cơ chế kéo thả trực tiếp trên Canvas để nối liên kết chéo (cross-links) theo ADR-M5-003:
+  - Cổng kết nối chuyên biệt (`data-testid="connector-handle-${node.id}"`) tại rìa phải node khi `isEditable === true`.
+  - Quản lý vòng đời cử chỉ kéo thả bằng Pointer Events API (`setPointerCapture`, `onPointerMove`, `onPointerUp`, `onPointerCancel`).
+  - Lớp SVG Client-Space Preview Overlay (`data-testid="mindmap-connect-preview-layer"`) render đường cong Bézier thời gian thực với màu sắc phân biệt hợp lệ (`data-valid="true"`) và không hợp lệ (`data-valid="false"`).
+  - Live Hit-Testing bằng DOM `elementFromPoint` kết hợp kiểm tra ràng buộc `validateCrossLinkMutation` (chống self-link, duplicate link, cycle creation).
+  - Tích hợp lịch sử hoàn tác nguyên tử: Undo (`⌘Z`) gỡ bỏ liên kết, Redo (`⇧⌘Z`) phục hồi liên kết chính xác.
+  - Cách ly cử chỉ hoàn hảo: không kích hoạt pan canvas, không kích hoạt marquee selection, phím `Escape` hủy bỏ tức thì không làm bẩn tài liệu.
+
+### Features Delivered & Verified
+1. ✅ **Dedicated Connection Handle**: Cổng kết nối tròn xuất hiện bên phải node ở chế độ chỉnh sửa, tự động ẩn khi chỉ đọc.
+2. ✅ **Pointer Capture Life-cycle**: Khóa con trỏ chuột an toàn, theo dõi cử chỉ kéo trên toàn màn hình.
+3. ✅ **Live Bézier Curve Feedback**: Xem trước đường cong kết nối trực quan theo thời gian thực.
+4. ✅ **Real-time Constraint Validation**: Phản hồi tức thì trạng thái chấp nhận hoặc từ chối kết nối dựa trên luật liên kết.
+5. ✅ **Atomic Undo/Redo Integration**: Kết nối tạo liên kết chéo đồng bộ vào `workingDocumentCrossLinks` và lưu vào lịch sử chỉnh sửa tài liệu.
+6. ✅ **Instant Escape Cancellation**: Nhấn `Escape` hủy phiên kéo lập tức, không lưu rác vào undo history.
+
+### Artifacts
+- **Planning Spec**: [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md)
+- **ADR**: [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md)
+- **Closure Report**: [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md)
+- **Primary Tests**: [`tests/unit/mindmap-crosslink-drag-connect.test.tsx`](tests/unit/mindmap-crosslink-drag-connect.test.tsx), [`tests/integration/mindmap-crosslink-drag-history.test.tsx`](tests/integration/mindmap-crosslink-drag-history.test.tsx)
 
 ---
 
