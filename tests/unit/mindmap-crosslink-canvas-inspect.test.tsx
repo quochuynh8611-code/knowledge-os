@@ -285,5 +285,153 @@ describe("Phase M7a — Mind Map On-Canvas Cross-Link Inspection & Quick Delete"
 
     document.body.removeChild(containerDiv);
   });
+
+  it("9. Popover render <select data-testid=\"crosslink-type-select\"> với current value đúng", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select") as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+    expect(select.value).toBe("related");
+  });
+
+  it("10. Select chứa đủ 4 options hợp lệ đồng bộ với Drawer", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select") as HTMLSelectElement;
+    const options = Array.from(select.options).map((opt) => ({
+      value: opt.value,
+      text: opt.text,
+    }));
+
+    expect(options).toEqual([
+      { value: "related", text: "Liên quan" },
+      { value: "prerequisite", text: "Tiên quyết" },
+      { value: "advanced", text: "Nâng cao" },
+      { value: "contradicts", text: "Đối chiếu" },
+    ]);
+  });
+
+  it("11. Chọn lại đúng type hiện tại là no-op, không gọi onUpdateCrossLinkType", () => {
+    const mockUpdateType = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkType={mockUpdateType}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select");
+    fireEvent.change(select, { target: { value: "related" } });
+
+    expect(mockUpdateType).not.toHaveBeenCalled();
+  });
+
+  it("12. Chọn type mới hợp lệ kích hoạt onUpdateCrossLinkType với edgeId và newType", () => {
+    const mockUpdateType = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onUpdateCrossLinkType={mockUpdateType}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select");
+    fireEvent.change(select, { target: { value: "prerequisite" } });
+
+    expect(mockUpdateType).toHaveBeenCalledTimes(1);
+    expect(mockUpdateType).toHaveBeenCalledWith("edge-dukkha-samudaya", "prerequisite");
+  });
+
+  it("13. Focus bên trong select + nhấn Delete không kích hoạt onDeleteCrossLink", () => {
+    const mockDelete = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onDeleteCrossLink={mockDelete}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select");
+    select.focus();
+
+    fireEvent.keyDown(select, { key: "Delete" });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  it("14. Focus bên trong select + nhấn Backspace không kích hoạt onDeleteCrossLink", () => {
+    const mockDelete = vi.fn();
+
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onDeleteCrossLink={mockDelete}
+      />
+    );
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-dukkha-samudaya");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select");
+    select.focus();
+
+    fireEvent.keyDown(select, { key: "Backspace" });
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
 });
 

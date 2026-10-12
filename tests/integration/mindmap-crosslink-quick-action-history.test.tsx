@@ -132,4 +132,108 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     // Edge lại bị xóa
     expect(screen.queryByTestId("crosslink-hit-target-edge-test-a-b")).not.toBeInTheDocument();
   });
+
+  it("Scenario 2: Successful edgeType mutation updates canvas, creates 1 history entry, and supports Undo/Redo", async () => {
+    render(<MindMapView />);
+
+    // 1. Mở tài liệu có sẵn liên kết
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    // 2. Định vị hit target của cross-link và mở quick action popover
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    // 3. Chọn loại quan hệ mới "prerequisite"
+    const select = screen.getByTestId("crosslink-type-select") as HTMLSelectElement;
+    expect(select.value).toBe("related");
+    fireEvent.change(select, { target: { value: "prerequisite" } });
+
+    // 4. Kiểm tra: Value trên select cập nhật thành "prerequisite" & dirty indicator xuất hiện
+    expect((screen.getByTestId("crosslink-type-select") as HTMLSelectElement).value).toBe("prerequisite");
+    expect(screen.getByTestId("dirty-indicator")).toBeInTheDocument();
+
+    // 5. Nhấn Undo (Cmd+Z)
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+
+    // Type được khôi phục về "related"
+    expect((screen.getByTestId("crosslink-type-select") as HTMLSelectElement).value).toBe("related");
+
+    // 6. Nhấn Redo (Cmd+Shift+Z)
+    fireEvent.keyDown(window, { key: "z", metaKey: true, shiftKey: true });
+
+    // Type được áp dụng lại thành "prerequisite"
+    expect((screen.getByTestId("crosslink-type-select") as HTMLSelectElement).value).toBe("prerequisite");
+  });
+
+  it("Scenario 3: Same-type reselect is a no-op and produces zero history entries", async () => {
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select") as HTMLSelectElement;
+    expect(select.value).toBe("related");
+
+    // Re-select same type "related"
+    fireEvent.change(select, { target: { value: "related" } });
+
+    // Không làm bẩn document nếu trước đó clean
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+  });
+
+  it("Scenario 4: Validation rejection on duplicate link prevents mutation, creates zero history entry, and displays error feedback", async () => {
+    // Chuẩn bị tài liệu ban đầu có 2 cross-links giữa node A và node B:
+    // edge-1: type 'related'
+    // edge-2: type 'contradicts'
+    const versionWithTwoEdges: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+          label: "Quan hệ 1",
+        },
+        {
+          id: "edge-test-a-b-2",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "contradicts",
+          label: "Quan hệ 2",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithTwoEdges);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    // Chọn edge-test-a-b
+    const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    fireEvent.click(hitTarget);
+
+    const select = screen.getByTestId("crosslink-type-select") as HTMLSelectElement;
+    expect(select.value).toBe("related");
+
+    // Cố gắng đổi sang "contradicts" (đã tồn tại giữa A và B)
+    fireEvent.change(select, { target: { value: "contradicts" } });
+
+    // Mutation bị từ chối:
+    // 1. Value của edge vẫn giữ nguyên "related"
+    expect((screen.getByTestId("crosslink-type-select") as HTMLSelectElement).value).toBe("related");
+
+    // 2. Không làm bẩn document / không tạo history entry
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+
+    // 3. Có thông báo lỗi (Toast alert)
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+  });
 });

@@ -86,6 +86,9 @@ interface MindMapTreeCanvasProps {
   // Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Action
   onDeleteCrossLink?: (edgeId: string) => void;
   onOpenDrawerForNode?: (nodeId: string) => void;
+
+  // Phase M7b: Inline Cross-Link edgeType Mutation
+  onUpdateCrossLinkType?: (edgeId: string, newType: LinkType) => void;
 }
 
 export type MarqueeSelectionMode = "replace" | "add" | "subtract";
@@ -269,6 +272,7 @@ export function MindMapTreeCanvas({
   onAddCrossLink,
   onDeleteCrossLink,
   onOpenDrawerForNode,
+  onUpdateCrossLinkType,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -1634,9 +1638,21 @@ export function MindMapTreeCanvas({
               className="z-30 min-w-[220px] max-w-[320px] bg-white/95 dark:bg-stone-900/95 backdrop-blur-md rounded-xl shadow-xl border border-stone-200 dark:border-stone-700 p-2.5 text-xs text-stone-800 dark:text-stone-200 pointer-events-auto select-none"
             >
               <div className="flex items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-800 pb-1.5 mb-1.5">
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-                  {selectedEdge.type || "related"}
-                </span>
+                <select
+                  data-testid="crosslink-type-select"
+                  value={selectedEdge.type || "related"}
+                  onChange={(e) => {
+                    const newType = e.target.value as LinkType;
+                    if (newType === (selectedEdge.type || "related")) return;
+                    onUpdateCrossLinkType?.(selectedEdge.id, newType);
+                  }}
+                  className="px-1.5 py-0.5 text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                >
+                  <option value="related">Liên quan</option>
+                  <option value="prerequisite">Tiên quyết</option>
+                  <option value="advanced">Nâng cao</option>
+                  <option value="contradicts">Đối chiếu</option>
+                </select>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"

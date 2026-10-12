@@ -79,13 +79,18 @@ export function validateCrossLinkMutation(
   targetNodeId: string,
   edgeType: LinkType,
   existingEdges: MindMapDocumentEdge[] = [],
-  treeRoot?: MindMapTreeNode | null
+  treeRoot?: MindMapTreeNode | null,
+  options?: { excludeEdgeId?: string }
 ): ValidateCrossLinkResult {
   if (sourceNodeId === targetNodeId) {
     return { valid: false, error: "CANNOT_LINK_SELF" };
   }
 
-  const isDuplicate = existingEdges.some(
+  const edgesToConsider = options?.excludeEdgeId
+    ? existingEdges.filter((e) => e.id !== options.excludeEdgeId)
+    : existingEdges;
+
+  const isDuplicate = edgesToConsider.some(
     (e) =>
       e.sourceNodeId === sourceNodeId &&
       e.targetNodeId === targetNodeId &&
@@ -95,7 +100,7 @@ export function validateCrossLinkMutation(
     return { valid: false, error: "DUPLICATE_CROSS_LINK" };
   }
 
-  if (treeRoot && hasDirectedPath(targetNodeId, sourceNodeId, treeRoot, existingEdges)) {
+  if (treeRoot && hasDirectedPath(targetNodeId, sourceNodeId, treeRoot, edgesToConsider)) {
     return { valid: false, error: "CYCLE_DETECTED" };
   }
 

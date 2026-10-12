@@ -14,6 +14,7 @@ import {
   rasterizeSvgToPng,
 } from "../../lib/mindmapExport";
 import { LinkType } from "../../types";
+import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
 import {
   loadMindMapViewState,
   saveMindMapViewState,
@@ -1083,6 +1084,53 @@ export function MindMapView() {
     ]
   );
 
+  // Phase M7b: Inline Cross-Link edgeType Mutation with Validation and Atomic History
+  const handleUpdateCrossLinkTypeFromCanvas = useCallback(
+    (edgeId: string, newType: LinkType) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const currentEdge = workingDocumentCrossLinks.find((e) => e.id === edgeId);
+      if (!currentEdge) return;
+
+      if (currentEdge.edgeType === newType) return;
+
+      const validation = validateCrossLinkMutation(
+        currentEdge.sourceNodeId,
+        currentEdge.targetNodeId,
+        newType,
+        workingDocumentCrossLinks,
+        currentTree,
+        { excludeEdgeId: edgeId }
+      );
+
+      if (!validation.valid) {
+        setToast({
+          message:
+            validation.error === "DUPLICATE_CROSS_LINK"
+              ? "Đã tồn tại liên kết cùng loại giữa hai nút này"
+              : validation.error === "CYCLE_DETECTED"
+              ? "Không thể đổi loại liên kết: phát hiện chu trình"
+              : validation.error || "Không thể cập nhật loại liên kết",
+          type: "error",
+        });
+        return;
+      }
+
+      const nextLinks = workingDocumentCrossLinks.map((e) =>
+        e.id === edgeId ? { ...e, edgeType: newType } : e
+      );
+
+      applyMutation(currentTree, nextLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
   // Multi-Node Selection & Batch Operations (Phase P6a)
   const handleToggleSelectNode = useCallback(
     (nodeId: string, isModifier: boolean) => {
@@ -1981,6 +2029,7 @@ export function MindMapView() {
           onSelectMultipleNodes={handleSelectMultipleNodes}
           onAddCrossLink={handleAddCrossLinkFromCanvas}
           onDeleteCrossLink={handleDeleteCrossLinkFromCanvas}
+          onUpdateCrossLinkType={handleUpdateCrossLinkTypeFromCanvas}
           onOpenDrawerForNode={(nodeId) => {
             setActiveDrawerNodeId(nodeId);
           }}
