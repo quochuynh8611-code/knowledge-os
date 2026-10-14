@@ -138,6 +138,7 @@ export function UnifiedResearchReader({
     researchInboxItems?: ResearchInboxItem[];
     researchExcerpts?: ResearchExcerpt[];
     addExcerpt?: (excerpt: ResearchExcerpt) => Promise<ResearchExcerpt>;
+    updateExcerpt?: (id: string, updates: Partial<ResearchExcerpt>) => Promise<ResearchExcerpt | void>;
     deleteExcerpt?: (id: string) => Promise<void>;
     addExcerptToInbox?: (excerpt: ResearchExcerpt) => Promise<any>;
     updateNote?: (id: string, noteData: Partial<Note>) => void;
@@ -149,6 +150,7 @@ export function UnifiedResearchReader({
   const inboxItems = dataContext?.researchInboxItems || [];
   const researchExcerpts = dataContext?.researchExcerpts || [];
   const addExcerpt = dataContext?.addExcerpt;
+  const updateExcerpt = dataContext?.updateExcerpt;
   const deleteExcerpt = dataContext?.deleteExcerpt;
   const addExcerptToInbox = dataContext?.addExcerptToInbox;
   const deleteInboxItem = dataContext?.deleteInboxItem;
@@ -354,7 +356,7 @@ export function UnifiedResearchReader({
 
   const handleToolbarAction = async (
     action: SelectionToolbarAction,
-    payload: { text: string; success?: boolean }
+    payload: { text: string; success?: boolean; color?: string }
   ) => {
     const selectedText = payload.text || activeSelection?.text || '';
     if (!selectedText) return;
@@ -374,7 +376,7 @@ export function UnifiedResearchReader({
         pageNumber: activeSelection?.page,
         cfi: activeSelection?.cfi || currentPosition,
       },
-      highlightColor: '#fef08a',
+      highlightColor: payload.color || '#fef08a',
       citationSnapshot,
       status: 'inbox',
       createdAt: now,
@@ -850,6 +852,7 @@ export function UnifiedResearchReader({
           }}
           excerpts={documentHighlights}
           onSelectExcerpt={handleSelectExcerpt}
+          onUpdateExcerpt={updateExcerpt}
           onDeleteExcerpt={(excerptId) => {
             if (deleteExcerpt) {
               deleteExcerpt(excerptId);

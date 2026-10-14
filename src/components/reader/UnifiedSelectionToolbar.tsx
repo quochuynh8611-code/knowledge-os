@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Highlighter, Copy, Quote, FilePlus, Inbox, Check, Brain } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Highlighter, Copy, Quote, FilePlus, Inbox, Check, Brain, ChevronDown } from 'lucide-react';
 import { copyTextToClipboard } from '../../lib/clipboard';
 
 export type SelectionToolbarAction =
@@ -10,11 +10,21 @@ export type SelectionToolbarAction =
   | 'add_to_inbox'
   | 'create_flashcard';
 
+export const HIGHLIGHT_COLOR_PALETTE = [
+  { id: 'yellow', label: 'Vàng', color: '#fef08a' },
+  { id: 'green', label: 'Xanh lá', color: '#bbf7d0' },
+  { id: 'blue', label: 'Xanh dương', color: '#bae6fd' },
+  { id: 'pink', label: 'Hồng', color: '#fbcfe8' },
+] as const;
+
 export interface UnifiedSelectionToolbarProps {
   isOpen: boolean;
   position: { top: number; left: number } | null;
   selectedText: string;
-  onAction: (action: SelectionToolbarAction, payload: { text: string; success?: boolean }) => void;
+  onAction: (
+    action: SelectionToolbarAction,
+    payload: { text: string; success?: boolean; color?: string }
+  ) => void;
   onClose: () => void;
 }
 
@@ -25,20 +35,25 @@ export function UnifiedSelectionToolbar({
   onAction,
   onClose,
 }: UnifiedSelectionToolbarProps) {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (isPaletteOpen) {
+          setIsPaletteOpen(false);
+        } else {
+          onClose();
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, isPaletteOpen, onClose]);
 
   if (!isOpen || !position || !selectedText || !selectedText.trim()) {
     return null;
@@ -71,17 +86,60 @@ export function UnifiedSelectionToolbar({
       }}
       className="transform -translate-y-full -translate-x-1/2 mb-2.5 flex items-center gap-1 p-1.5 bg-stone-900/95 dark:bg-stone-100/95 text-stone-100 dark:text-stone-900 rounded-2xl shadow-2xl border border-stone-700/60 dark:border-stone-300/60 backdrop-blur-md text-xs font-sans animate-in fade-in zoom-in-95 duration-150 select-none"
     >
-      {/* 1. Highlight */}
-      <button
-        type="button"
-        onClick={() => onAction('highlight', { text: selectedText })}
-        className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-stone-800 dark:hover:bg-stone-200 text-amber-400 dark:text-amber-700 font-medium rounded-xl transition cursor-pointer"
-        aria-label="Highlight"
-        title="Đánh dấu đoạn văn bản"
-      >
-        <Highlighter className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">Highlight</span>
-      </button>
+      {/* 1. Highlight & Color Palette */}
+      <div className="relative flex items-center">
+        <button
+          type="button"
+          onClick={() => onAction('highlight', { text: selectedText, color: '#fef08a' })}
+          className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-stone-800 dark:hover:bg-stone-200 text-amber-400 dark:text-amber-700 font-medium rounded-xl transition cursor-pointer"
+          aria-label="Highlight"
+          title="Đánh dấu đoạn văn bản (Mặc định: Vàng)"
+        >
+          <Highlighter className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Highlight</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsPaletteOpen((prev) => !prev);
+          }}
+          className="p-1 hover:bg-stone-800 dark:hover:bg-stone-200 text-amber-400 dark:text-amber-700 rounded-lg transition cursor-pointer -ml-1 mr-0.5"
+          aria-label="Chọn màu đánh dấu"
+          aria-expanded={isPaletteOpen}
+          title="Chọn màu đánh dấu"
+          data-testid="highlight-palette-toggle"
+        >
+          <ChevronDown className={`w-3 h-3 transition-transform duration-150 ${isPaletteOpen ? 'rotate-180' : ''}`} />
+        </button>
+
+        {isPaletteOpen && (
+          <div
+            role="dialog"
+            aria-label="Bảng màu đánh dấu"
+            className="absolute left-0 bottom-full mb-2 flex items-center gap-1.5 p-1.5 bg-stone-900/95 dark:bg-stone-100/95 rounded-xl shadow-xl border border-stone-700/60 dark:border-stone-300/60 backdrop-blur-md z-10 animate-in fade-in zoom-in-95 duration-100"
+            data-testid="highlight-color-palette"
+          >
+            {HIGHLIGHT_COLOR_PALETTE.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction('highlight', { text: selectedText, color: item.color });
+                  setIsPaletteOpen(false);
+                }}
+                className="w-5 h-5 rounded-full border border-stone-400/40 hover:scale-110 transition-transform cursor-pointer shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                style={{ backgroundColor: item.color }}
+                aria-label={`Highlight màu ${item.label}`}
+                title={`Màu ${item.label} (${item.color})`}
+                data-testid={`highlight-color-${item.id}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 2. Copy */}
       <button

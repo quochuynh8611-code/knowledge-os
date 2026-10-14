@@ -36,6 +36,10 @@ export interface ReaderSidebarProps {
   onOpenBacklinkNote?: (noteId: string, locator?: string) => void;
   excerpts?: ResearchExcerpt[];
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
+  onUpdateExcerpt?: (
+    id: string,
+    updates: Partial<Pick<ResearchExcerpt, 'userNote' | 'highlightColor' | 'status' | 'targetNoteId'>>
+  ) => void;
   onDeleteExcerpt?: (id: string) => void;
   inboxItems?: ResearchInboxItem[];
   onDeleteInboxItem?: (id: string) => void;
@@ -65,6 +69,7 @@ export function ReaderSidebar({
   onOpenBacklinkNote,
   excerpts = [],
   onSelectExcerpt,
+  onUpdateExcerpt,
   onDeleteExcerpt,
   inboxItems = [],
   onDeleteInboxItem,
@@ -72,6 +77,9 @@ export function ReaderSidebar({
   onOpenArchiveLink,
   onOpenNoteDetail,
 }: ReaderSidebarProps) {
+  const [editingExcerptId, setEditingExcerptId] = React.useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = React.useState<string>('');
+
   if (!isOpen) return null;
 
   const outlineBadge = formatBadgeCount(tocItems.length);
@@ -397,8 +405,10 @@ export function ReaderSidebar({
               excerpts.map((excerpt) => (
                 <div
                   key={excerpt.id}
+                  data-testid={`excerpt-card-${excerpt.id}`}
                   onClick={() => onSelectExcerpt?.(excerpt)}
-                  className="p-3 bg-amber-50/50 dark:bg-amber-950/30 border-l-2 border-amber-500 dark:border-amber-400 rounded-r-xl space-y-1 shadow-2xs hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition cursor-pointer"
+                  style={{ borderLeftColor: excerpt.highlightColor || '#fef08a' }}
+                  className="p-3 bg-stone-50/70 dark:bg-stone-900/60 border-l-4 rounded-r-xl space-y-1.5 shadow-2xs hover:bg-stone-100/80 dark:hover:bg-stone-800/60 transition cursor-pointer"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -411,24 +421,103 @@ export function ReaderSidebar({
                   <blockquote className="text-xs italic text-stone-800 dark:text-stone-200 line-clamp-4">
                     "{excerpt.selectedText}"
                   </blockquote>
+
+                  {excerpt.userNote && editingExcerptId !== excerpt.id && (
+                    <div
+                      data-testid={`excerpt-note-display-${excerpt.id}`}
+                      className="mt-1.5 p-2 bg-stone-100/90 dark:bg-stone-800/90 rounded-lg text-xs text-stone-700 dark:text-stone-300 border border-stone-200/60 dark:border-stone-700/60 flex items-start gap-1.5"
+                    >
+                      <StickyNote className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                      <span className="whitespace-pre-wrap break-words">{excerpt.userNote}</span>
+                    </div>
+                  )}
+
+                  {editingExcerptId === excerpt.id && (
+                    <div
+                      data-testid={`excerpt-note-editor-${excerpt.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-2 space-y-2 p-2 bg-white dark:bg-stone-900 rounded-lg border border-amber-400 dark:border-amber-600 shadow-sm"
+                    >
+                      <textarea
+                        data-testid={`excerpt-note-textarea-${excerpt.id}`}
+                        autoFocus
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            e.stopPropagation();
+                            setEditingExcerptId(null);
+                          } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            e.preventDefault();
+                            const trimmed = noteDraft.trim();
+                            onUpdateExcerpt?.(excerpt.id, { userNote: trimmed.length > 0 ? trimmed : undefined });
+                            setEditingExcerptId(null);
+                          }
+                        }}
+                        placeholder="Nhập ghi chú cho đoạn trích này... (Esc để hủy, Cmd+Enter để lưu)"
+                        className="w-full text-xs p-1.5 bg-transparent border border-stone-200 dark:border-stone-700 rounded text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none h-16"
+                      />
+                      <div className="flex items-center justify-end gap-1.5 text-xs">
+                        <button
+                          type="button"
+                          data-testid={`excerpt-note-cancel-${excerpt.id}`}
+                          onClick={() => setEditingExcerptId(null)}
+                          className="px-2 py-1 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded transition cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`excerpt-note-save-${excerpt.id}`}
+                          onClick={() => {
+                            const trimmed = noteDraft.trim();
+                            onUpdateExcerpt?.(excerpt.id, { userNote: trimmed.length > 0 ? trimmed : undefined });
+                            setEditingExcerptId(null);
+                          }}
+                          className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-medium rounded transition cursor-pointer"
+                        >
+                          Lưu
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-[10px] text-stone-400 dark:text-stone-500 font-mono pt-1">
                     <span>
                       {excerpt.positionSelector?.headingId || (excerpt.positionSelector?.pageNumber ? `Trang ${excerpt.positionSelector.pageNumber}` : excerpt.positionSelector?.cfi || '–')}
                     </span>
-                    {onDeleteExcerpt && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteExcerpt(excerpt.id);
-                        }}
-                        aria-label="Xóa điểm trích"
-                        className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
-                        title="Xóa điểm trích"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {onUpdateExcerpt && (
+                        <button
+                          type="button"
+                          data-testid={`excerpt-note-toggle-${excerpt.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingExcerptId(excerpt.id);
+                            setNoteDraft(excerpt.userNote || '');
+                          }}
+                          aria-label={excerpt.userNote ? "Sửa ghi chú" : "Thêm ghi chú"}
+                          title={excerpt.userNote ? "Sửa ghi chú" : "Thêm ghi chú"}
+                          className="p-1 text-stone-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition cursor-pointer"
+                        >
+                          <StickyNote className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {onDeleteExcerpt && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteExcerpt(excerpt.id);
+                          }}
+                          aria-label="Xóa điểm trích"
+                          className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                          title="Xóa điểm trích"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

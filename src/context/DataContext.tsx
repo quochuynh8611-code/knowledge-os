@@ -111,9 +111,10 @@ interface DataContextType {
   deleteInboxItem: (id: string) => Promise<void>;
   unprocessedInboxCount: number;
 
-  // Dedicated Research Excerpts (Phase R5A)
+  // Dedicated Research Excerpts (Phase R5A / R3b)
   researchExcerpts: ResearchExcerpt[];
   addExcerpt: (excerpt: ResearchExcerpt) => Promise<ResearchExcerpt>;
+  updateExcerpt: (id: string, updates: Partial<ResearchExcerpt>) => Promise<ResearchExcerpt | void>;
   deleteExcerpt: (id: string) => Promise<void>;
 
   // Actions - Navigation
@@ -399,6 +400,60 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       return changed ? updated : prev;
     });
   }, []);
+
+  const updateExcerpt = useCallback(
+    async (id: string, updates: Partial<ResearchExcerpt>): Promise<ResearchExcerpt | void> => {
+      let updatedItem: ResearchExcerpt | undefined;
+      const now = new Date().toISOString();
+
+      setResearchExcerpts((prev) => {
+        const target = prev.find((e) => e.id === id);
+        if (!target) return prev;
+
+        updatedItem = {
+          ...target,
+          ...updates,
+          id: target.id,
+          updatedAt: now,
+        };
+
+        const updated = prev.map((e) => (e.id === id ? updatedItem! : e));
+        safeSetLocalStorageItem(`${STORAGE_KEY}_research_excerpts`, JSON.stringify(updated));
+        return updated;
+      });
+
+      // Synchronize embedded excerpt reference in researchInboxItems if present
+      setResearchInboxItems((prev) => {
+        let changed = false;
+        const updated = prev.map((item) => {
+          if (item.excerpt?.id === id || item.excerptId === id) {
+            changed = true;
+            return {
+              ...item,
+              excerpt: item.excerpt
+                ? {
+                    ...item.excerpt,
+                    ...updates,
+                    id: item.excerpt.id,
+                    updatedAt: now,
+                  }
+                : undefined,
+              updatedAt: now,
+            };
+          }
+          return item;
+        });
+        if (changed) {
+          safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
+          return updated;
+        }
+        return prev;
+      });
+
+      return updatedItem;
+    },
+    [],
+  );
 
   // Focus Domain State (Phase 14B)
   const [focusDomainId, setFocusDomainIdState] = useState<string | null>(() => {
@@ -1235,13 +1290,14 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       unprocessedInboxCount,
       researchExcerpts,
       addExcerpt,
+      updateExcerpt,
       deleteExcerpt,
       exportAllDataJSON,
       importAllDataJSON,
       resetToDefaultData,
       reloadAllData,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount, researchExcerpts, addExcerpt, deleteExcerpt],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount, researchExcerpts, addExcerpt, updateExcerpt, deleteExcerpt],
   );
 
   return (

@@ -1,14 +1,14 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-12<br>
+> **Cập nhật lần cuối:** 2026-10-14<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟡 **MILESTONE M7 (M7a, M7b, M7c) DIRECT ON-CANVAS CROSS-LINK INSPECTION & QUICK ACTIONS: Đã hoàn tất implementation, kiểm thử toàn diện và commit local thành công (HEAD Commit `675046a`, LOCAL COMMIT COMPLETE — CHƯA PUSH REMOTE, branch `main` ahead `origin/main` 8 commits); toàn bộ 28/28 targeted tests (21 unit tests, 7 integration tests), 30/30 cross-link regression gate và TypeScript typecheck đạt 100% GREEN (0 errors). Working tree sạch; sẵn sàng cho các quyết định điều hành tiếp theo.**
+> **Trạng thái tổng thể:** 🟢 **PHASE R3b — READER HIGHLIGHTS & ANNOTATION POLISH: Đã hoàn tất implementation core scope, kiểm thử toàn diện TDD và stabilization (53/53 tests reader suites GREEN, 0 lỗi TypeScript typecheck, Zero DB Migration, Zero Mindmap Blast Radius). Sẵn sàng chốt phase và chờ phê duyệt commit local (HEAD commit hiện tại `acb686c`, branch `main` ahead `origin/main` 9 commits).**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `675046a` (`docs(mindmap): add M7c closure report`).
+- **Current Baseline / HEAD:** Commit `acb686c` (`docs(status): reconcile project status with milestone M7 closure`).
 - **Product Implementation Commits (Milestone M7):**
   - M7a: `6f50935` (`feat(mindmap): add on-canvas crosslink inspect and quick delete (M7a)`)
   - M7b: `9c85033` (`feat(mindmap): add inline crosslink type mutation (M7b)`)
@@ -17,17 +17,15 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 8 commits** (`6d6b2c1`, `46bc047`, `6f50935`, `6573799`, `9c85033`, `530a5dc`, `9920333`, `675046a`).
-- **Remote Policy:** **LOCAL COMMIT COMPLETE — CHƯA PUSH REMOTE** (Origin HEAD tại commit `caa1504`).
-- **Working Tree:** Tracked sạch hoàn toàn (Clean). Đúng 1 file session log untracked ngoài scope (`docs/session-logs/...`) được giữ nguyên ngoài commit boundary.
-- **Quality Gates Baseline (Milestone M7):**
-  - Phase M7 Targeted tests: 28/28 PASS (`tests/unit/mindmap-crosslink-canvas-inspect.test.tsx` 21/21, `tests/integration/mindmap-crosslink-quick-action-history.test.tsx` 7/7).
-    - M7a (Quick Inspect & Delete): 9/9 PASS.
-    - M7b (Inline `edgeType` Mutation): +9 PASS (18/18 cumulative).
-    - M7c (Inline Label Renaming): +10 PASS (28/28 cumulative).
-  - Cross-Link Regression Gate: 30/30 PASS across 4 suites (`tests/unit/mindmap-crosslinks-overlay.test.tsx` 9/9, `tests/unit/mindmap-crosslink-drawer.test.tsx` 6/6, `tests/unit/mindmap-crosslink-drag-connect.test.tsx` 13/13, `tests/integration/mindmap-crosslink-drag-history.test.tsx` 2/2).
-  - Wide Regression Gate: 120/120 PASS (toàn bộ các test suites liên quan đến canvas, viewport, keyboard, crosslinks, document save/history).
-  - TypeScript Typecheck: 0 errors (`npx tsc --noEmit`).
+- **Phase R3b Status:** Core scope complete (DataContext `updateExcerpt`, Selection Toolbar 4-Color Palette, ReaderSidebar Annotations & Inline Note Editor). Working tree ready for phase closure approval.
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 9 commits** (`6d6b2c1`, `46bc047`, `6f50935`, `6573799`, `9c85033`, `530a5dc`, `9920333`, `675046a`, `acb686c`).
+- **Remote Policy:** **LOCAL COMMIT COMPLETE / IN-PROGRESS — CHƯA PUSH REMOTE** (Origin HEAD tại commit `caa1504`).
+- **Quality Gates Baseline (Phase R3b):**
+  - Phase R3b Targeted Test Suites: 16/16 PASS across 3 suites (`tests/unit/data-context-excerpt-update.test.tsx` 4/4, `tests/unit/selection-toolbar-color-palette.test.tsx` 6/6, `tests/unit/reader-sidebar-annotations.test.tsx` 6/6).
+  - Reader Regression Gate: 24/24 PASS across 5 related suites (`tests/unit/reader-document-resolver.test.ts` 10/10, `tests/unit/reader-selection-toolbar.test.tsx` 6/6, `tests/unit/reader-sidebar-highlights.test.tsx` 3/3, `tests/unit/reader-sidebar-navigation.test.tsx` 3/3, `tests/unit/unified-selection-toolbar-flashcard.test.tsx` 2/2).
+  - Reader Subsystem Total: 40/40 PASS across 8 suites (100% GREEN).
+  - TypeScript Typecheck: 0 errors (`npx tsc --noEmit` hoàn tất thành công, Exit Code 0).
+  - Cross-Link & Canvas Wide Regression: 120/120 PASS.
 
 ---
 
@@ -36,29 +34,63 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và roadmap ứng viên tiếp theo. |
-| **2** | [`docs/reports/mindmap-phase-m7c-closure-report.md`](docs/reports/mindmap-phase-m7c-closure-report.md) | Báo cáo đóng Phase M7c: Inline Cross-Link Label Renaming trên Canvas, commit protocol `Enter`/`Blur`, `Escape` revert guard, whitespace normalization, strict same-value no-op. |
-| **3** | [`docs/reports/mindmap-phase-m7b-closure-report.md`](docs/reports/mindmap-phase-m7b-closure-report.md) | Báo cáo đóng Phase M7b: Inline Cross-Link `edgeType` Mutation trên Canvas, native `<select>`, validation `excludeEdgeId`, duplicate/cycle rejection, atomic history. |
-| **4** | [`docs/reports/mindmap-phase-m7a-closure-report.md`](docs/reports/mindmap-phase-m7a-closure-report.md) | Báo cáo đóng Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Delete, 16px hit-target, floating popover, M6 keyboard isolation, M5b drag isolation. |
-| **5** | [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md) | Báo cáo đóng Phase M6: Focus-aware keyboard shortcut reconciliation giữa Canvas và Drawer, loại bỏ blanket guard, phục hồi 20/20 multi-selection test. |
-| **6** | [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md) | Báo cáo đóng Phase M5b: Canvas direct drag-to-connect interaction, pointer capture gesture, live Bézier preview, DOM hit-testing, history integration. |
-| **7** | [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md) | Quyết định kiến trúc ADR-M5-003: Dedicated connection handle, pointer capture lifecycle, fixed SVG preview, live validation. |
-| **8** | [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md) | Đặc tả kỹ thuật M5b: Gherkin scenarios, event isolation, undo/redo atomic contract cho canvas connection. |
-| **9** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
-| **10** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
-| **11** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
-| **12** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
-| **13** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
+| **2** | [`docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`](docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md) | **Quyết định kiến trúc ADR-101**: Reader Highlights & Annotation Polish, `updateExcerpt` contract, 4-color palette core scope, non-goals justification. |
+| **3** | [`docs/reports/mindmap-phase-m7c-closure-report.md`](docs/reports/mindmap-phase-m7c-closure-report.md) | Báo cáo đóng Phase M7c: Inline Cross-Link Label Renaming trên Canvas, commit protocol `Enter`/`Blur`, `Escape` revert guard, whitespace normalization, strict same-value no-op. |
+| **4** | [`docs/reports/mindmap-phase-m7b-closure-report.md`](docs/reports/mindmap-phase-m7b-closure-report.md) | Báo cáo đóng Phase M7b: Inline Cross-Link `edgeType` Mutation trên Canvas, native `<select>`, validation `excludeEdgeId`, duplicate/cycle rejection, atomic history. |
+| **5** | [`docs/reports/mindmap-phase-m7a-closure-report.md`](docs/reports/mindmap-phase-m7a-closure-report.md) | Báo cáo đóng Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Delete, 16px hit-target, floating popover, M6 keyboard isolation, M5b drag isolation. |
+| **6** | [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md) | Báo cáo đóng Phase M6: Focus-aware keyboard shortcut reconciliation giữa Canvas và Drawer, loại bỏ blanket guard, phục hồi 20/20 multi-selection test. |
+| **7** | [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md) | Báo cáo đóng Phase M5b: Canvas direct drag-to-connect interaction, pointer capture gesture, live Bézier preview, DOM hit-testing, history integration. |
+| **8** | [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md) | Quyết định kiến trúc ADR-M5-003: Dedicated connection handle, pointer capture lifecycle, fixed SVG preview, live validation. |
+| **9** | [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md) | Đặc tả kỹ thuật M5b: Gherkin scenarios, event isolation, undo/redo atomic contract cho canvas connection. |
+| **10** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
+| **11** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
+| **12** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
+| **13** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
+| **14** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
 
 ---
 
 ## 🎯 3. Các Ứng Viên Nâng Cấp Tiếp Theo (Next Upgrade Candidates)
 
-> ⚠️ **LƯU Ý QUẢN TRỊ:** Milestone M7 (M7a, M7b, M7c) đã hoàn tất implementation, kiểm thử toàn diện và commit local thành công. Các hạng mục dưới đây là **ứng viên roadmap tiếp theo**, chưa mở phase và chưa được duyệt implementation.
-
-| Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Mức Ưu Tiên |
+| Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Trạng Thái / Ưu Tiên |
 | :--- | :--- | :--- | :--- | :---: |
-| **Candidate 1** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Tinh chỉnh trải nghiệm đánh dấu và xem lại highlight trong Reader. | Nâng cao hiệu suất trích xuất tri thức từ tài liệu đọc. | Trung bình | 🥇 **Cao nhất (P1)** |
-| **Candidate 2** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥈 **P2** |
+| **Candidate 1** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **ĐÃ HOÀN THÀNH (Pending Commit)** |
+| **Candidate 2** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
+| **Candidate 3** | **Phase R3c — Reader Highlights Filtering & Color Management**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar, ghi nhớ tùy chọn màu sắc cá nhân hóa. | Tìm kiếm và phân loại nhanh trích đoạn trên tài liệu dài. | Thấp - Trung bình | 🥈 **P2** |
+
+---
+
+## 🎨 Reader Highlights & Annotation Polish — Phase R3b Closure (2026-10-14)
+
+- **Trạng thái:** 🟢 Complete & Verified Locally (Sẵn sàng commit local, CHƯA PUSH REMOTE)
+- **Tests & Quality Gate:** 16/16 Targeted tests PASS (3 suites), 24/24 Reader regression tests PASS (5 suites), Tổng cộng 40/40 tests Reader subsystem PASS (100% GREEN), TypeScript typecheck 0 errors (`npx tsc --noEmit` hoàn tất thành công).
+- **Mục tiêu phase:** Cung cấp trải nghiệm highlight đa màu sắc và ghi chú inline trọn vẹn cho tài liệu nghiên cứu trong UnifiedResearchReader, tận dụng 100% schema có sẵn mà không làm thay đổi database/Prisma schema và không ảnh hưởng đến Mind Map subsystem.
+- **Tập tin đã thay đổi:**
+  - `src/context/DataContext.tsx`: Thêm hợp đồng `updateExcerpt` immutable, cập nhật `updatedAt`, đồng bộ `safeSetLocalStorageItem`, đồng bộ embedded inbox reference.
+  - `src/components/reader/UnifiedSelectionToolbar.tsx`: Thêm color palette 4 màu (`#fef08a`, `#bbf7d0`, `#bae6fd`, `#fbcfe8`), popover swatch, trigger `aria-label="Chọn màu đánh dấu"`, phím `Escape` đóng popover.
+  - `src/components/reader/UnifiedResearchReader.tsx`: Nối payload color vào `addExcerpt` và truyền callback `onUpdateExcerpt={updateExcerpt}` xuống `ReaderSidebar`.
+  - `src/components/reader/ReaderSidebar.tsx`: Render viền card theo `excerpt.highlightColor`, hiển thị khối `excerpt.userNote`, thêm inline note editor với nút thêm/sửa, phím `Escape` hủy draft, submit chuỗi rỗng để xóa note.
+- **Tập tin kiểm thử đã tạo:**
+  - `tests/unit/data-context-excerpt-update.test.tsx` (4 tests PASS)
+  - `tests/unit/selection-toolbar-color-palette.test.tsx` (6 tests PASS)
+  - `tests/unit/reader-sidebar-annotations.test.tsx` (6 tests PASS)
+- **Tài liệu kiến trúc đã tạo:**
+  - `docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`
+- **Hành vi đã được kiểm chứng (Behaviors Delivered):**
+  1. ✅ **DataContext `updateExcerpt`**: Cập nhật trích đoạn nguyên tử, không làm đổi ID, tự động cập nhật `updatedAt`, fail-safe khi ID không tồn tại.
+  2. ✅ **1-Click Default Highlight**: Nút Highlight chính luôn dùng màu vàng mặc định (`#fef08a`) nhanh chóng và xác định (deterministic).
+  3. ✅ **4-Color Popover Palette**: Bấm nút bảng màu mở 4 swatch (Vàng, Xanh lá, Xanh dương, Hồng); chọn màu lập tức tạo highlight với màu đó và đóng bảng màu.
+  4. ✅ **Dynamic Sidebar Highlighting**: Từng trích đoạn trong tab Highlights hiển thị đường viền bên trái có màu sắc tương ứng với `excerpt.highlightColor`.
+  5. ✅ **Note Rendering & Inline Editor**: Trích đoạn hiển thị ghi chú `userNote`; nút "Thêm ghi chú" / "Sửa ghi chú" mở inline editor với `<textarea>` tự động focus; nhấn `Escape` hủy nháp; lưu ghi chú rỗng tự động xóa note về `undefined`.
+- **Non-Goals giữ nguyên:**
+  - Không triển khai Quick Filter (lọc theo màu sắc hoặc tìm kiếm trích đoạn trong Sidebar) để giữ blast radius tối thiểu.
+  - Không lưu Last-used Color vào `localStorage` nhằm tránh làm thay đổi hành vi mặc định của nút Highlight chính giữa các phiên đọc.
+  - Không can thiệp cơ sở dữ liệu (Zero DB Migration).
+  - Không can thiệp Mind Map subsystem (`src/components/mindmap/*`).
+  - Không render tô màu trực tiếp lên DOM text layer của Markdown/PDF.
+- **Follow-up Candidates:**
+  - Phase R3c: Quick filter trích đoạn theo màu sắc, tìm kiếm text trong ReaderSidebar.
+  - Phase R3d: Persistent color highlight rendering trên rendered Markdown / PDF text layer nếu cần thiết.
 
 ---
 
