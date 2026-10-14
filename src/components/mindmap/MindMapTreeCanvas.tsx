@@ -1861,6 +1861,59 @@ export function MindMapTreeCanvas({
         </button>
       </div>
 
+      {/* Phase M8b: Floating Cross-Link Batch Action Bar */}
+      {selectedCrossLinkIds.size >= 2 && (
+        <div
+          data-testid="crosslink-batch-action-bar"
+          data-stacked={selectedNodeIds && selectedNodeIds.size >= 2 ? "true" : "false"}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          className={`absolute left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border border-stone-200 dark:border-stone-700 rounded-2xl px-4 py-2.5 shadow-xl animate-in fade-in slide-in-from-bottom-3 duration-200 pointer-events-auto select-none ${
+            selectedNodeIds && selectedNodeIds.size >= 2 ? "bottom-20" : "bottom-6"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              data-testid="crosslink-batch-selection-count"
+              className="text-xs font-semibold text-stone-800 dark:text-stone-200"
+            >
+              Đã chọn {selectedCrossLinkIds.size} liên kết
+            </span>
+          </div>
+          <div className="h-4 w-px bg-stone-200 dark:bg-stone-700" />
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              data-testid="btn-crosslink-batch-delete"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onDeleteCrossLink) {
+                  const ids = Array.from(selectedCrossLinkIds);
+                  onDeleteCrossLink(ids.length === 1 ? ids[0] : ids);
+                }
+                setSelectedCrossLinkIds(new Set());
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa liên kết</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-crosslink-batch-deselect"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedCrossLinkIds(new Set());
+              }}
+              className="px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Phase M5b: Drag-to-Connect Preview Overlay */}
       {connectingState && (
         <svg

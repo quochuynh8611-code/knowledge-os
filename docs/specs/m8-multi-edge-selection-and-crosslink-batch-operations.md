@@ -48,6 +48,17 @@ selectedCrossLinkIds: Set<string>
 | **Shift/Cmd/Ctrl + Click vào Edge A** (đã chọn) | Đang chọn `[A, B]` | `new Set([B])` (Set mới) | Mở lại popover M7 tại Edge B |
 | **Phím `Escape`** | Đang chọn $\ge 1$ cạnh | `new Set()` (Rỗng) | Hủy chọn toàn bộ cạnh; giữ nguyên node selection |
 
+### 2.4. Hợp Đồng Giao Diện M8b (Cross-Link Batch Action Bar UI Contract)
+Khi `selectedCrossLinkIds.size >= 2`, hệ thống hiển thị thanh công cụ tác vụ hàng loạt chuyên biệt cho liên kết chéo:
+- **Container Test ID:** `data-testid="crosslink-batch-action-bar"`
+- **Badge số lượng:** `data-testid="crosslink-batch-selection-count"` hiển thị định dạng `Đã chọn N liên kết`
+- **Nút xóa hàng loạt:** `data-testid="btn-crosslink-batch-delete"` kích hoạt `onDeleteCrossLink(selectedIds)` và xóa trắng `selectedCrossLinkIds`
+- **Nút bỏ chọn:** `data-testid="btn-crosslink-batch-deselect"` reset `selectedCrossLinkIds` về `new Set()`, bảo toàn `selectedNodeIds`
+- **Vertical Stacking Guard (Ngăn ngừa đè chồng UI):**
+  - Khi chỉ có cạnh được chọn (`selectedNodeIds.size < 2`): Batch Action Bar neo tại `bottom-6 left-1/2 -translate-x-1/2` (`data-stacked="false"`).
+  - Khi đồng thời có node multi-selection (`selectedNodeIds.size >= 2`): Batch Action Bar tự động nâng lên `bottom-20 left-1/2 -translate-x-1/2` (`data-stacked="true"`), bảo đảm hai thanh công cụ xếp tầng trực quan, không che khuất nhau.
+  - Sự kiện click chuột trên toolbar có `stopPropagation()` và `pointer-events-auto` để không kích hoạt pan canvas hay marquee selection.
+
 ### 2.3. Hợp Đồng Tác Vụ Hàng Loạt (Batch Operations Contract)
 1. **Batch Delete Cross-Links (`handleBatchDeleteCrossLinks`):**
    - Lọc bỏ tất cả các cạnh có `id` thuộc `selectedCrossLinkIds` khỏi `workingDocumentCrossLinks`.

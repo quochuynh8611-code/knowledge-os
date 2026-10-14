@@ -18,8 +18,7 @@ import { MindMapTreeCanvas } from "../../src/components/mindmap/MindMapTreeCanva
 import { MindMapCrossLinksLayer } from "../../src/components/mindmap/MindMapCrossLinksLayer";
 import { MindMapTreeNode, MindMapCrossEdge } from "../../src/lib/mindmapProjection";
 
-describe("Phase M8a — Multi-Edge Selection & Canvas Interactions (Test-First)", () => {
-  const SAMPLE_TREE: MindMapTreeNode = {
+const SAMPLE_TREE: MindMapTreeNode = {
     id: "node-root",
     title: "Tứ Diệu Đế",
     type: "topic",
@@ -94,8 +93,9 @@ describe("Phase M8a — Multi-Edge Selection & Canvas Interactions (Test-First)"
       label: "Quan hệ 1-3",
       isCycle: false,
     },
-  ];
+];
 
+describe("Phase M8a — Multi-Edge Selection & Canvas Interactions (Test-First)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -352,5 +352,170 @@ describe("Phase M8a — Multi-Edge Selection & Canvas Interactions (Test-First)"
     expect(onSelect).not.toHaveBeenCalled();
 
     document.body.removeChild(containerDiv);
+  });
+});
+
+describe("Phase M8b — Cross-Link Batch Action Bar (Test-First)", () => {
+
+  it("1. Batch bar xuất hiện khi chọn >= 2 cạnh", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+
+    fireEvent.click(hit1);
+    expect(screen.queryByTestId("crosslink-batch-action-bar")).toBeNull();
+
+    fireEvent.click(hit2, { shiftKey: true });
+    expect(screen.getByTestId("crosslink-batch-action-bar")).toBeInTheDocument();
+  });
+
+  it("2. Không xuất hiện khi chỉ chọn 1 cạnh hoặc 0 cạnh", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    expect(screen.queryByTestId("crosslink-batch-action-bar")).toBeNull();
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    fireEvent.click(hit1);
+    expect(screen.queryByTestId("crosslink-batch-action-bar")).toBeNull();
+  });
+
+  it("3. Hiển thị đúng số lượng cạnh đã chọn", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    const hit3 = screen.getByTestId("crosslink-hit-target-edge-1-3");
+
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+    expect(screen.getByTestId("crosslink-batch-selection-count")).toHaveTextContent("Đã chọn 2 liên kết");
+
+    fireEvent.click(hit3, { shiftKey: true });
+    expect(screen.getByTestId("crosslink-batch-selection-count")).toHaveTextContent("Đã chọn 3 liên kết");
+  });
+
+  it("4. Nút clear selection xóa edge selection nhưng giữ node selection", () => {
+    const onClearSelectionSpy = vi.fn();
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        selectedNodeIds={new Set(["node-1", "node-2"])}
+        onClearSelection={onClearSelectionSpy}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    expect(screen.getByTestId("crosslink-batch-action-bar")).toBeInTheDocument();
+
+    const deselectBtn = screen.getByTestId("btn-crosslink-batch-deselect");
+    fireEvent.click(deselectBtn);
+
+    expect(screen.queryByTestId("crosslink-batch-action-bar")).toBeNull();
+    expect(onClearSelectionSpy).not.toHaveBeenCalled();
+  });
+
+  it("5. Nút batch delete gọi đúng contract xóa hàng loạt", () => {
+    const onDeleteCrossLink = vi.fn();
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onDeleteCrossLink={onDeleteCrossLink}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const deleteBtn = screen.getByTestId("btn-crosslink-batch-delete");
+    fireEvent.click(deleteBtn);
+
+    expect(onDeleteCrossLink).toHaveBeenCalledTimes(1);
+    expect(onDeleteCrossLink).toHaveBeenCalledWith(
+      expect.arrayContaining(["edge-1-2", "edge-2-3"])
+    );
+    expect(screen.queryByTestId("crosslink-batch-action-bar")).toBeNull();
+  });
+
+  it("6. Vertical Stacking Guard: Điều chỉnh vị trí không render đè chồng với node batch bar", () => {
+    const { rerender } = render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        selectedNodeIds={new Set()}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const barDefault = screen.getByTestId("crosslink-batch-action-bar");
+    expect(barDefault).toHaveAttribute("data-stacked", "false");
+    expect(barDefault.className).toContain("bottom-6");
+
+    rerender(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        selectedNodeIds={new Set(["node-1", "node-2"])}
+      />
+    );
+
+    const barStacked = screen.getByTestId("crosslink-batch-action-bar");
+    expect(barStacked).toHaveAttribute("data-stacked", "true");
+    expect(barStacked.className).toContain("bottom-20");
   });
 });

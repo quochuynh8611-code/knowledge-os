@@ -35,9 +35,11 @@ Sau khi hoàn tất Milestone M7 (M7a, M7b, M7c), người dùng có thể thao 
 
 ### 2.2. Quyết định hai chiều (Two-Way Doors)
 
-#### A. Bố trí Giao diện Batch Action Bar
-- **Quyết định:** Tận dụng pattern Floating Action Bar tương tự như Node Batch Bar (`MindMapView.tsx`), hiển thị nổi ở phía dưới màn hình khi `selectedCrossLinkIds.size >= 2`.
-- **Lý do:** Dễ nhìn, nhất quán về mặt thị giác với Node Batch Bar, dễ dàng điều chỉnh vị trí hoặc gom nhóm sau này nếu cần.
+#### A. Bố trí Giao diện Batch Action Bar & Vertical Stacking Guard
+- **Quyết định:**
+  - Tận dụng pattern Floating Action Bar tương tự như Node Batch Bar, hiển thị nổi ở phía dưới màn hình khi `selectedCrossLinkIds.size >= 2` (`data-testid="crosslink-batch-action-bar"`).
+  - Áp dụng **Vertical Stacking Guard**: Khi chỉ chọn cạnh (`selectedNodeIds.size < 2`), thanh neo ở `bottom-6` (`data-stacked="false"`). Khi đồng thời chọn $\ge 2$ nodes (`selectedNodeIds.size >= 2`), thanh tự động dời lên `bottom-20` (`data-stacked="true"`), ngăn chặn che lấp thanh node batch bar.
+- **Lý do:** Dễ nhìn, nhất quán về mặt thị giác với Node Batch Bar, tránh overlap va chạm giao diện khi người dùng thao tác đa vùng chọn đồng thời.
 
 #### B. Phím Bổ Trợ (Modifier Keys) Cho Multi-Selection
 - **Quyết định:** Hỗ trợ linh hoạt cả `e.shiftKey`, `e.metaKey` (macOS ⌘), và `e.ctrlKey` (Windows/Linux) khi click trên hit-target của cạnh.
@@ -50,10 +52,12 @@ Sau khi hoàn tất Milestone M7 (M7a, M7b, M7c), người dùng có thể thao 
 1. **Tránh Xung Đột Giữa Popover M7 và Batch Bar M8:**
    - Khi `selectedCrossLinkIds.size === 1`: hiển thị Popover M7 (đầy đủ rename input, select type, delete button).
    - Khi `selectedCrossLinkIds.size >= 2`: ẩn hoàn toàn Popover M7, chuyển sang hiển thị Batch Action Bar.
-2. **Cycle & Duplicate Validation Khi Batch Mutation Type:**
+2. **Vertical Stacking Guard giữa CrossLink Batch Bar và Node Batch Bar:**
+   - Đảm bảo khi cả node batch bar và crosslink batch bar cùng xuất hiện, cả 2 thanh đều nhìn thấy được và bấm được mà không che khuất nhau (`bottom-6` vs `bottom-20`).
+3. **Cycle & Duplicate Validation Khi Batch Mutation Type:**
    - Khi chuyển đổi loại quan hệ cho một danh sách cạnh, việc đổi đồng loạt có thể tạo chu trình nếu có cạnh phụ thuộc lẫn nhau.
    - Hàm `validateCrossLinkMutation` cần được áp dụng tuần tự kiểm tra từng cạnh hợp lệ trước khi commit toàn bộ danh sách, bảo đảm tính toàn vẹn của đồ thị tri thức.
-3. **M5b Drag-to-Connect Isolation:**
+4. **M5b Drag-to-Connect Isolation:**
    - Trong quá trình kéo thả tạo liên kết mới (`isConnecting === true`), toàn bộ tương tác chọn cạnh (kể cả Shift-click) đều bị vô hiệu hóa (`pointer-events: none`).
 
 ---
