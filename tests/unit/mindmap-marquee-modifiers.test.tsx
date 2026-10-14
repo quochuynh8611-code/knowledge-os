@@ -558,7 +558,7 @@ describe("Phase P7.B — Additive & Subtractive Marquee Selection", () => {
 
     // Open saved doc
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("P7B Marquee Modifiers Doc"));
+    fireEvent.click(screen.getByTestId("btn-open-doc-p7b"));
 
     const node1 = document.querySelector('[data-node-id="child-1"]') as HTMLElement;
     const node2 = document.querySelector('[data-node-id="child-2"]') as HTMLElement;

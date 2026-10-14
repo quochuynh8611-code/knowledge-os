@@ -98,8 +98,7 @@ describe("Mind Map Canvas Undo/Redo Component Integration (Phase P5)", () => {
     const openDocBtn = screen.getByTestId("btn-open-mindmap-browser");
     fireEvent.click(openDocBtn);
 
-    const docItem = screen.getByText("Test Saved Doc");
-    fireEvent.click(docItem);
+    fireEvent.click(screen.getByTestId("btn-open-doc-123"));
 
     const undoBtn = screen.getByTestId("mindmap-undo-button");
     const redoBtn = screen.getByTestId("mindmap-redo-button");
@@ -115,7 +114,7 @@ describe("Mind Map Canvas Undo/Redo Component Integration (Phase P5)", () => {
 
     // Open saved doc
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Test Saved Doc"));
+    fireEvent.click(screen.getByTestId("btn-open-doc-123"));
 
     const undoBtn = screen.getByTestId("mindmap-undo-button");
     const redoBtn = screen.getByTestId("mindmap-redo-button");
@@ -141,7 +140,7 @@ describe("Mind Map Canvas Undo/Redo Component Integration (Phase P5)", () => {
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Test Saved Doc"));
+    fireEvent.click(screen.getByTestId("btn-open-doc-123"));
 
     const undoBtn = screen.getByTestId("mindmap-undo-button");
     const redoBtn = screen.getByTestId("mindmap-redo-button");
@@ -175,7 +174,7 @@ describe("Mind Map Canvas Undo/Redo Component Integration (Phase P5)", () => {
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Test Saved Doc"));
+    fireEvent.click(screen.getByTestId("btn-open-doc-123"));
 
     const undoBtn = screen.getByTestId("mindmap-undo-button");
 

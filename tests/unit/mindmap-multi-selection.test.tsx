@@ -134,7 +134,7 @@ describe('Mind Map Multi-Node Selection & Batch Operations (Phase P6a)', () => {
 
   function openSavedDocument() {
     fireEvent.click(screen.getByTestId('btn-open-mindmap-browser'));
-    fireEvent.click(screen.getByText('Batch Selection Doc'));
+    fireEvent.click(screen.getByTestId('btn-open-doc-123'));
   }
 
   it('1. Single click on a node card sets selection count to 1 and does not show action bar', () => {

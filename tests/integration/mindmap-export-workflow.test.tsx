@@ -122,8 +122,7 @@ describe("Phase M4a: Mind Map Export UX Hardening Integration Workflow", () => {
     const openDocBrowserBtn = screen.getByTestId("btn-open-mindmap-browser");
     fireEvent.click(openDocBrowserBtn);
 
-    const docItem = screen.getByText("Chuyên Đề Trí Tuệ Nhân Tạo 2026");
-    fireEvent.click(docItem);
+    fireEvent.click(screen.getByTestId("btn-open-doc-kienthuc-2026"));
   };
 
   it("1. SVG export triggers download with sanitized filename matching active document title in saved-document mode", () => {
