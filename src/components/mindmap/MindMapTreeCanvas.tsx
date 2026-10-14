@@ -83,8 +83,8 @@ interface MindMapTreeCanvasProps {
     label?: string;
   }) => void;
 
-  // Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Action
-  onDeleteCrossLink?: (edgeId: string) => void;
+  // Phase M7a / M8a: Direct On-Canvas Cross-Link Inspection & Quick Action
+  onDeleteCrossLink?: (edgeId: string | string[]) => void;
   onOpenDrawerForNode?: (nodeId: string) => void;
 
   // Phase M7b: Inline Cross-Link edgeType Mutation
@@ -286,8 +286,9 @@ export function MindMapTreeCanvas({
   const [internalFocusedNodeId, setInternalFocusedNodeId] = useState<string | null>(null);
   const focusedNodeId = propFocusedNodeId !== undefined ? propFocusedNodeId : internalFocusedNodeId;
 
-  // Phase M7a: Cross-Link Inspection & Quick Action State
-  const [selectedCrossLinkId, setSelectedCrossLinkId] = useState<string | null>(null);
+  // Phase M7a & M8a: Cross-Link Inspection, Selection & Quick Action State
+  const [selectedCrossLinkIds, setSelectedCrossLinkIds] = useState<Set<string>>(new Set());
+  const selectedCrossLinkId = selectedCrossLinkIds.size === 1 ? Array.from(selectedCrossLinkIds)[0] : null;
   const [selectedCrossLinkMidPos, setSelectedCrossLinkMidPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Phase M5b: Direct Drag-to-Connect State
@@ -482,13 +483,13 @@ export function MindMapTreeCanvas({
     const currentId = focusedNodeId || tree.id;
     const currentNode = nodeMap.get(currentId);
 
-    // Phase M7a: Cross-link selection keyboard precedence
-    if (selectedCrossLinkId) {
+    // Phase M7a & M8a: Cross-link selection keyboard precedence
+    if (selectedCrossLinkIds.size > 0) {
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation?.();
-        setSelectedCrossLinkId(null);
+        setSelectedCrossLinkIds(new Set());
         return;
       }
 
@@ -497,9 +498,10 @@ export function MindMapTreeCanvas({
         e.stopPropagation();
         e.nativeEvent.stopImmediatePropagation?.();
         if (onDeleteCrossLink) {
-          onDeleteCrossLink(selectedCrossLinkId);
+          const ids = Array.from(selectedCrossLinkIds);
+          onDeleteCrossLink(ids.length === 1 ? ids[0] : ids);
         }
-        setSelectedCrossLinkId(null);
+        setSelectedCrossLinkIds(new Set());
         return;
       }
     }
@@ -953,15 +955,16 @@ export function MindMapTreeCanvas({
     };
   }, [focusedCrossLinkNodeId]);
 
-  // Phase M7a: Auto-dismiss cross-link popover when edge no longer exists in crossEdges
+  // Phase M7a & M8a: Auto-dismiss cross-link popover when edges no longer exist in crossEdges
   useEffect(() => {
-    if (selectedCrossLinkId && crossEdges) {
-      const exists = crossEdges.some((e) => e.id === selectedCrossLinkId);
-      if (!exists) {
-        setSelectedCrossLinkId(null);
+    if (selectedCrossLinkIds.size > 0 && crossEdges) {
+      const activeIds = new Set(crossEdges.map((e) => e.id));
+      const remainingIds = new Set(Array.from(selectedCrossLinkIds).filter((id) => activeIds.has(id)));
+      if (remainingIds.size !== selectedCrossLinkIds.size) {
+        setSelectedCrossLinkIds(remainingIds);
       }
     }
-  }, [selectedCrossLinkId, crossEdges]);
+  }, [selectedCrossLinkIds, crossEdges]);
 
   // Phase M7c: Local Draft State for Cross-Link Label Renaming
   const [draftLabel, setDraftLabel] = useState<string>("");
@@ -987,9 +990,9 @@ export function MindMapTreeCanvas({
     onUpdateCrossLinkLabel?.(selectedCrossLinkId, trimmed);
   }, [selectedCrossLinkId, draftLabel, onUpdateCrossLinkLabel]);
 
-  // Phase M7a & M6 Protection: Window listener for cross-link selection shortcuts
+  // Phase M7a & M8a Protection: Window listener for cross-link selection shortcuts
   useEffect(() => {
-    if (!selectedCrossLinkId) return;
+    if (selectedCrossLinkIds.size === 0) return;
 
     const handleWindowKeyDown = (e: KeyboardEvent) => {
       if (shouldIgnoreCanvasShortcut(e.target)) return;
@@ -1006,7 +1009,7 @@ export function MindMapTreeCanvas({
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        setSelectedCrossLinkId(null);
+        setSelectedCrossLinkIds(new Set());
         return;
       }
 
@@ -1014,9 +1017,10 @@ export function MindMapTreeCanvas({
         e.preventDefault();
         e.stopPropagation();
         if (onDeleteCrossLink) {
-          onDeleteCrossLink(selectedCrossLinkId);
+          const ids = Array.from(selectedCrossLinkIds);
+          onDeleteCrossLink(ids.length === 1 ? ids[0] : ids);
         }
-        setSelectedCrossLinkId(null);
+        setSelectedCrossLinkIds(new Set());
         return;
       }
     };
@@ -1025,7 +1029,7 @@ export function MindMapTreeCanvas({
     return () => {
       window.removeEventListener("keydown", handleWindowKeyDown);
     };
-  }, [selectedCrossLinkId, onDeleteCrossLink]);
+  }, [selectedCrossLinkIds, onDeleteCrossLink]);
 
   const peerNodeIds = useMemo(() => {
     if (!showCrossLinks || !activeCrossLinkNodeId || !crossEdges) return new Set<string>();
@@ -1557,7 +1561,7 @@ export function MindMapTreeCanvas({
       tabIndex={0}
       data-testid="mindmap-canvas-backdrop"
       onClick={() => {
-        setSelectedCrossLinkId(null);
+        setSelectedCrossLinkIds(new Set());
         setFocusedCrossLinkNodeId(null);
         const wasPanOrMarquee = dragDistanceRef.current > 5 || wasMarqueeRef.current;
         wasMarqueeRef.current = false;
@@ -1621,8 +1625,19 @@ export function MindMapTreeCanvas({
             containerRef={containerRef}
             hoveredNodeId={activeCrossLinkNodeId}
             selectedEdgeId={selectedCrossLinkId}
-            onSelectEdge={(edgeId, midPos) => {
-              setSelectedCrossLinkId(edgeId);
+            selectedEdgeIds={selectedCrossLinkIds}
+            onSelectEdge={(edgeId, midPos, modifiers) => {
+              if (modifiers?.shiftKey || modifiers?.metaKey || modifiers?.ctrlKey) {
+                const next = new Set(selectedCrossLinkIds);
+                if (next.has(edgeId)) {
+                  next.delete(edgeId);
+                } else {
+                  next.add(edgeId);
+                }
+                setSelectedCrossLinkIds(next);
+              } else {
+                setSelectedCrossLinkIds(new Set([edgeId]));
+              }
               setSelectedCrossLinkMidPos(midPos);
             }}
             isConnecting={Boolean(connectingState)}
@@ -1689,7 +1704,7 @@ export function MindMapTreeCanvas({
                       e.stopPropagation();
                       if (onOpenDrawerForNode) {
                         onOpenDrawerForNode(selectedEdge.sourceNodeId);
-                        setSelectedCrossLinkId(null);
+                        setSelectedCrossLinkIds(new Set());
                       }
                     }}
                     className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 transition cursor-pointer"
@@ -1705,7 +1720,7 @@ export function MindMapTreeCanvas({
                       if (onDeleteCrossLink) {
                         onDeleteCrossLink(selectedEdge.id);
                       }
-                      setSelectedCrossLinkId(null);
+                      setSelectedCrossLinkIds(new Set());
                     }}
                     className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition cursor-pointer"
                     title="Xóa liên kết"
@@ -1717,7 +1732,7 @@ export function MindMapTreeCanvas({
                     data-testid="crosslink-close-popover"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedCrossLinkId(null);
+                      setSelectedCrossLinkIds(new Set());
                     }}
                     className="p-1 rounded hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition cursor-pointer"
                     title="Đóng popover"

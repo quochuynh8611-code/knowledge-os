@@ -1068,13 +1068,20 @@ export function MindMapView() {
     ]
   );
 
-  // Phase M7a: Direct On-Canvas Cross-Link Delete with Atomic History
+  // Phase M7a / M8a: Direct On-Canvas Cross-Link Delete with Atomic History
   const handleDeleteCrossLinkFromCanvas = useCallback(
-    (edgeId: string) => {
+    (edgeIdOrIds: string | string[]) => {
       const currentTree = workingDocumentTree || projection?.tree;
       if (!currentTree) return;
 
-      const nextLinks = workingDocumentCrossLinks.filter((e) => e.id !== edgeId);
+      const idsToDelete = new Set(
+        Array.isArray(edgeIdOrIds) ? edgeIdOrIds : [edgeIdOrIds]
+      );
+      if (idsToDelete.size === 0) return;
+
+      const nextLinks = workingDocumentCrossLinks.filter(
+        (e) => !idsToDelete.has(e.id)
+      );
       applyMutation(currentTree, nextLinks);
     },
     [

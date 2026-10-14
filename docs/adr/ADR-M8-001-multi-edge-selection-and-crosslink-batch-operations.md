@@ -1,0 +1,65 @@
+# ADR-M8-001: Multi-Edge Selection & Cross-Link Batch Operations Architecture
+
+- **Trạng thái:** Proposed / Pending Approval
+- **Ngày lập:** 2026-10-14
+- **Phạm vi:** Mind Map Subsystem (`MindMapCrossLinksLayer`, `MindMapTreeCanvas`, `MindMapView`)
+- **Tác giả:** Staff Software Engineer / Technical Architect
+
+---
+
+## 1. Bối Cảnh (Context)
+
+Sau khi hoàn tất Milestone M7 (M7a, M7b, M7c), người dùng có thể thao tác với từng cạnh liên kết chéo trên Canvas thông qua floating inspect popover. Tuy nhiên:
+1. `selectedCrossLinkId` trong `MindMapTreeCanvas.tsx` và `MindMapCrossLinksLayer.tsx` hiện chỉ là một giá trị đơn lẻ (`string | null`).
+2. Khi người dùng cần dọn dẹp hoặc chuyển đổi quan hệ ngữ nghĩa cho nhiều liên kết chéo cùng lúc, việc click từng cạnh mở popover rồi xóa/sửa gây mệt mỏi nhận thức và tạo ra nhiều snapshot lịch sử vụn vặt.
+3. Cần thiết kế cơ chế chọn nhiều cạnh (Multi-Edge Selection) và thực thi tác vụ hàng loạt (Batch Operations) đáp ứng tính toàn vẹn của lịch sử hoàn tác (Atomic Undo/Redo) và không xung đột với cơ chế chọn node hàng loạt (Node Multi-Selection M6).
+
+---
+
+## 2. Quyết Định Kiến Trúc (Architectural Decisions)
+
+### 2.1. Quyết định một chiều (One-Way Doors)
+
+#### A. Cấu trúc State Selection: Orthogonal State Isolation & Immutable Set Update
+- **Quyết định:** Giữ `selectedCrossLinkIds: Set<string>` tách biệt hoàn toàn với `selectedNodeIds: Set<string>`, và mọi cập nhật state `selectedCrossLinkIds` bắt buộc tuân thủ nguyên tắc bất biến (luôn trả về một `new Set(...)` mới).
+- **Lý do (Trade-off):**
+  - Tránh gộp chung vào một "UnifiedSelection" trừu tượng phức tạp gây phình to blast radius và nguy cơ hồi quy (regression) các bộ test M6 đã ổn định (20/20 test multi-node selection).
+  - Tách bạch rõ ràng hành vi bàn phím: khi có cạnh đang chọn, phím `Delete` ưu tiên xóa cạnh trước; khi không có cạnh chọn, phím `Delete` xóa node. Phím `Escape` xóa cạnh trước mà không xóa node selection.
+  - Việc luôn tạo `new Set(...)` đảm bảo React hooks re-render nhất quán và ngăn ngừa các lỗi đột biến trạng thái ngầm (accidental mutation).
+
+#### B. Tính Nguyên Tử Của Lịch Sử & Quy Tắc All-or-Nothing (Atomic & All-or-Nothing Rule)
+- **Quyết định:**
+  - Mọi thao tác hàng loạt (xóa $N$ cạnh, đổi loại $N$ cạnh) **BẮT BUỘC** gọi `applyMutation` đúng một lần duy nhất.
+  - Đối với Batch Type Mutation (M8c): Áp dụng triệt để quy tắc **All-or-Nothing** — nếu bất kỳ cạnh nào trong danh sách được chọn vi phạm tính hợp lệ (chu trình hoặc trùng lặp), toàn bộ lệnh chuyển đổi sẽ bị hủy bỏ, không thực hiện cập nhật phân mảnh và không tạo snapshot lịch sử rác.
+- **Lý do:** Một thao tác xóa hoặc đổi loại $N$ cạnh phải mang tính chất giao dịch (transactional) và được hoàn tác (`⌘Z`) trong đúng 1 bước để khôi phục trạng thái ban đầu một cách toàn vẹn.
+
+### 2.2. Quyết định hai chiều (Two-Way Doors)
+
+#### A. Bố trí Giao diện Batch Action Bar
+- **Quyết định:** Tận dụng pattern Floating Action Bar tương tự như Node Batch Bar (`MindMapView.tsx`), hiển thị nổi ở phía dưới màn hình khi `selectedCrossLinkIds.size >= 2`.
+- **Lý do:** Dễ nhìn, nhất quán về mặt thị giác với Node Batch Bar, dễ dàng điều chỉnh vị trí hoặc gom nhóm sau này nếu cần.
+
+#### B. Phím Bổ Trợ (Modifier Keys) Cho Multi-Selection
+- **Quyết định:** Hỗ trợ linh hoạt cả `e.shiftKey`, `e.metaKey` (macOS ⌘), và `e.ctrlKey` (Windows/Linux) khi click trên hit-target của cạnh.
+- **Lý do:** Thân thiện đa nền tảng và dễ dàng tùy biến mà không ảnh hưởng logic cốt lõi.
+
+---
+
+## 3. Quản Lý Điểm Nhạy Cảm (Sensitivity Points & Defense)
+
+1. **Tránh Xung Đột Giữa Popover M7 và Batch Bar M8:**
+   - Khi `selectedCrossLinkIds.size === 1`: hiển thị Popover M7 (đầy đủ rename input, select type, delete button).
+   - Khi `selectedCrossLinkIds.size >= 2`: ẩn hoàn toàn Popover M7, chuyển sang hiển thị Batch Action Bar.
+2. **Cycle & Duplicate Validation Khi Batch Mutation Type:**
+   - Khi chuyển đổi loại quan hệ cho một danh sách cạnh, việc đổi đồng loạt có thể tạo chu trình nếu có cạnh phụ thuộc lẫn nhau.
+   - Hàm `validateCrossLinkMutation` cần được áp dụng tuần tự kiểm tra từng cạnh hợp lệ trước khi commit toàn bộ danh sách, bảo đảm tính toàn vẹn của đồ thị tri thức.
+3. **M5b Drag-to-Connect Isolation:**
+   - Trong quá trình kéo thả tạo liên kết mới (`isConnecting === true`), toàn bộ tương tác chọn cạnh (kể cả Shift-click) đều bị vô hiệu hóa (`pointer-events: none`).
+
+---
+
+## 4. Hệ Quả & Kế Hoạch Triển Khai (Consequences & Phasing)
+
+- **Phase M8a**: Nâng cấp `selectedCrossLinkId` thành `selectedCrossLinkIds: Set<string>` trong `MindMapCrossLinksLayer` và `MindMapTreeCanvas`, hỗ trợ `Shift/Cmd+Click` chọn nhiều cạnh, highlight đồng thời và phím tắt `Delete` xóa hàng loạt.
+- **Phase M8b**: Floating Cross-Link Batch Action Bar ở `MindMapView` / `MindMapTreeCanvas` với giao diện đếm số lượng, nút xóa hàng loạt, và nút hủy chọn.
+- **Phase M8c**: Hỗ trợ chuyển đổi loại quan hệ hàng loạt (`Batch edgeType mutation`) với kiểm tra an toàn chu trình/trùng lặp.

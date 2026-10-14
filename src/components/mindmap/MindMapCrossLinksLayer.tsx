@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MindMapCrossEdge } from "../../lib/mindmapProjection";
 
+export interface EdgeSelectionModifiers {
+  shiftKey?: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
+}
+
 interface MindMapCrossLinksLayerProps {
   crossEdges: MindMapCrossEdge[];
   collapsedNodeIds?: Set<string>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   hoveredNodeId?: string | null;
   selectedEdgeId?: string | null;
-  onSelectEdge?: (edgeId: string, midPos: { x: number; y: number }) => void;
+  selectedEdgeIds?: Set<string>;
+  onSelectEdge?: (
+    edgeId: string,
+    midPos: { x: number; y: number },
+    modifiers?: EdgeSelectionModifiers
+  ) => void;
   isConnecting?: boolean;
 }
 
@@ -29,6 +40,7 @@ export function MindMapCrossLinksLayer({
   containerRef,
   hoveredNodeId,
   selectedEdgeId,
+  selectedEdgeIds,
   onSelectEdge,
   isConnecting = false,
 }: MindMapCrossLinksLayerProps) {
@@ -154,7 +166,9 @@ export function MindMapCrossLinksLayer({
         const isConnected =
           Boolean(hoveredNodeId) &&
           (p.sourceNodeId === hoveredNodeId || p.targetNodeId === hoveredNodeId);
-        const isSelected = selectedEdgeId === p.id;
+        const isSelected = selectedEdgeIds
+          ? selectedEdgeIds.has(p.id)
+          : selectedEdgeId === p.id;
         const isDimmed = Boolean(hoveredNodeId) && !isConnected && !isSelected;
 
         const colorClasses = p.isMultiParent
@@ -219,7 +233,11 @@ export function MindMapCrossLinksLayer({
               onClick={(e) => {
                 if (isConnecting) return;
                 e.stopPropagation();
-                onSelectEdge?.(p.id, { x: p.midX, y: p.midY });
+                onSelectEdge?.(
+                  p.id,
+                  { x: p.midX, y: p.midY },
+                  { shiftKey: e.shiftKey, metaKey: e.metaKey, ctrlKey: e.ctrlKey }
+                );
               }}
             />
 
