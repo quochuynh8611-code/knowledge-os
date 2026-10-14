@@ -130,7 +130,7 @@ describe("Phase M5a — Cross-Link Save & Cascade Prune Workflow Integration Tes
 
     // 1. Open document via browser modal
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Open drawer by clicking node "doc-node-a"
     const nodeAEl = document.querySelector('[data-node-id="doc-node-a"]');
@@ -186,7 +186,7 @@ describe("Phase M5a — Cross-Link Save & Cascade Prune Workflow Integration Tes
 
     // 1. Open document via browser modal
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Delete node "doc-node-b" from canvas
     const deleteBtn = screen.getByTestId("btn-delete-node-doc-node-b");

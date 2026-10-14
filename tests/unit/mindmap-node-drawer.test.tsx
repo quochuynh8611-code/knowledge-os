@@ -130,9 +130,9 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
     // 1. Open saved document via browser modal
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
     const browserModal = screen.getByTestId("mindmap-browser-modal");
-    fireEvent.click(within(browserModal).getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(within(browserModal).getByTestId(`btn-open-${mockDocSummary.id}`));
 
-    // Document is opened
+    // Document is opened and browser modal closes automatically
     expect(screen.queryByTestId("mindmap-browser-modal")).not.toBeInTheDocument();
 
     // 2. Click node "doc-child-kho" on canvas
@@ -159,7 +159,7 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
 
     // Open document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Click node
     const nodeEl = document.querySelector('[data-node-id="doc-child-kho"]');
@@ -185,7 +185,7 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
 
     // Open document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Click node
     const nodeEl = document.querySelector('[data-node-id="doc-child-kho"]');
@@ -229,7 +229,7 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
 
     // Open document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Edit node title
     const nodeEl = document.querySelector('[data-node-id="doc-child-kho"]');
@@ -260,7 +260,7 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
 
     // Open document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Edit title to make document dirty
     const nodeEl = document.querySelector('[data-node-id="doc-child-kho"]');
@@ -283,7 +283,7 @@ describe("Phase M2 — Inline Node Drawer for Saved Mind Map Documents", () => {
 
     // Open document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Click node to select and open drawer
     const nodeEl = document.querySelector('[data-node-id="doc-child-kho"]');

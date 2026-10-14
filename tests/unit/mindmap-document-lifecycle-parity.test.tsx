@@ -12,7 +12,7 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MindMapView } from "../../src/components/mindmap/MindMapView";
 import * as mindmapDocumentStorage from "../../src/lib/mindmapDocumentStorage";
@@ -113,7 +113,7 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
 
     // 1. Open saved document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Sơ đồ Tứ Diệu Đế"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Add child node under doc-root to modify workingDocumentTree (default title is "Nút mới")
     fireEvent.click(screen.getByTestId("btn-add-child-doc-root"));
@@ -170,7 +170,7 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
 
     // 1. Open saved doc and mutate
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Sơ đồ Tứ Diệu Đế"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
     fireEvent.click(screen.getByTestId("btn-add-child-doc-root"));
 
     // Confirm dirty badge is present
@@ -203,7 +203,7 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
 
     // Open saved doc
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Sơ đồ Tứ Diệu Đế"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // When projection is null, btn-save-mindmap should NOT be disabled in the hardened P7.C implementation
     const saveBtn = screen.getByTestId("btn-save-mindmap");
@@ -233,7 +233,7 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
 
     // Open saved doc and add a child
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Sơ đồ Tứ Diệu Đế"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
     fireEvent.click(screen.getByTestId("btn-add-child-doc-root"));
 
     // Copy Markdown
@@ -254,7 +254,7 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
 
     // Open saved doc and add a child
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByText("Sơ đồ Tứ Diệu Đế"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
     fireEvent.click(screen.getByTestId("btn-add-child-doc-root"));
 
     // Export SVG
@@ -286,5 +286,81 @@ describe("Phase P7.C — Document Persistence & Export Parity Hardening", () => 
     fireEvent.click(copyBtn);
 
     expect(copiedText).toContain("Tứ Diệu Đế");
+  });
+
+  // Scenario 8: Opening a saved document from browser modal closes the browser modal
+  it("Scenario 8: Opening a saved document from browser modal closes the browser modal", async () => {
+    render(<MindMapView />);
+
+    // 1. Open browser modal
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    expect(screen.getByTestId("mindmap-browser-modal")).toBeInTheDocument();
+
+    // 2. Click explicit open button
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
+
+    // 3. Document is loaded, and browser modal is closed
+    await waitFor(() => {
+      expect(screen.queryByTestId("mindmap-browser-modal")).not.toBeInTheDocument();
+    });
+  });
+
+  // Scenario 9: Discarding unsaved changes to open a document closes browser modal
+  it("Scenario 9: Confirming discard to open another saved document closes browser modal", async () => {
+    const mockDoc2: MindMapDocumentSummary = {
+      id: "doc-bat-chanh-dao",
+      title: "Bát Chánh Đạo",
+      description: "Con đường tám nhánh",
+      tags: ["dao-de"],
+      currentVersionNumber: 1,
+      totalVersionsCount: 1,
+      isArchived: false,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+
+    const versionDoc2: MindMapVersion = {
+      ...initialVersion,
+      id: "ver-doc2",
+      documentId: "doc-bat-chanh-dao",
+      treeData: {
+        id: "doc2-root",
+        title: "Bát Chánh Đạo Gốc",
+        nodeType: "topic",
+        children: [],
+      },
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "listMindMapDocuments").mockReturnValue([mockDocSummary, mockDoc2]);
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockImplementation((id: string) => {
+      if (id === "doc-bat-chanh-dao") return versionDoc2;
+      return initialVersion;
+    });
+
+    render(<MindMapView />);
+
+    // Open first document (modal closes automatically)
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
+
+    // Mutate tree to make it dirty
+    fireEvent.click(screen.getByTestId("btn-add-child-doc-root"));
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument();
+
+    // Open browser modal again
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    expect(screen.getByTestId("mindmap-browser-modal")).toBeInTheDocument();
+
+    // Attempt to open doc-bat-chanh-dao -> triggers confirm discard dialog
+    fireEvent.click(screen.getByTestId("btn-open-doc-bat-chanh-dao"));
+    expect(screen.getByTestId("unsaved-changes-confirm-dialog")).toBeInTheDocument();
+
+    // Confirm discard and leave
+    fireEvent.click(screen.getByTestId("btn-confirm-discard-and-leave"));
+
+    // Browser modal must be closed
+    await waitFor(() => {
+      expect(screen.queryByTestId("mindmap-browser-modal")).not.toBeInTheDocument();
+    });
   });
 });

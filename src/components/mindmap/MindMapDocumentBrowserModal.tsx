@@ -162,9 +162,8 @@ export function MindMapDocumentBrowserModal({
               return (
                 <div
                   key={doc.id}
-                  onClick={() => onOpenDocument(doc.id)}
                   data-testid={`doc-card-${doc.id}`}
-                  className={`group relative rounded-xl border p-4 transition-all cursor-pointer ${
+                  className={`group relative rounded-xl border p-4 transition-all ${
                     isActive
                       ? 'border-emerald-500/50 bg-emerald-500/5 dark:bg-emerald-500/10 shadow-xs'
                       : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800/60'
@@ -229,6 +228,14 @@ export function MindMapDocumentBrowserModal({
 
                     {/* Actions */}
                     <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => onOpenDocument(doc.id)}
+                        data-testid={`btn-open-${doc.id}`}
+                        className="inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+                      >
+                        Mở
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => handleStartRename(doc, e)}

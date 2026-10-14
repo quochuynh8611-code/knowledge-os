@@ -193,7 +193,7 @@ describe('Mind Map Persistence UI Modals (Phase P1)', () => {
       expect(screen.getByText('Bát Chánh Đạo Toàn Diện')).toBeInTheDocument();
     });
 
-    it('triggers onOpenDocument when clicking a document card', () => {
+    it('does not trigger onOpenDocument when clicking document card background', () => {
       const onOpen = vi.fn();
       render(
         <MindMapDocumentBrowserModal
@@ -207,6 +207,23 @@ describe('Mind Map Persistence UI Modals (Phase P1)', () => {
       );
 
       fireEvent.click(screen.getByTestId('doc-card-doc-bat-chanh-dao'));
+      expect(onOpen).not.toHaveBeenCalled();
+    });
+
+    it('triggers onOpenDocument when clicking explicit open button', () => {
+      const onOpen = vi.fn();
+      render(
+        <MindMapDocumentBrowserModal
+          isOpen={true}
+          onClose={vi.fn()}
+          documents={SAMPLE_DOCS}
+          onOpenDocument={onOpen}
+          onRenameDocument={vi.fn()}
+          onArchiveDocument={vi.fn()}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('btn-open-doc-bat-chanh-dao'));
       expect(onOpen).toHaveBeenCalledWith('doc-bat-chanh-dao');
     });
 

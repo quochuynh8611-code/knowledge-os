@@ -97,7 +97,7 @@ describe("Phase M5b — Canvas Drag-to-Connect Studio Integration & History Test
 
     // 1. Open saved document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Locate node A handle and node B card
     const handleA = screen.getByTestId("connector-handle-doc-node-a");
@@ -137,7 +137,7 @@ describe("Phase M5b — Canvas Drag-to-Connect Studio Integration & History Test
 
     // 1. Open saved document
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Drag from handle A but drop onto empty canvas (null)
     const handleA = screen.getByTestId("connector-handle-doc-node-a");

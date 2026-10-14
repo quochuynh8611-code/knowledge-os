@@ -127,7 +127,7 @@ describe("Phase M3 — Mind Map Keyboard Authoring for Saved Documents", () => {
   const openSavedDocument = () => {
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
     const browserModal = screen.getByTestId("mindmap-browser-modal");
-    fireEvent.click(within(browserModal).getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(within(browserModal).getByTestId(`btn-open-${mockDocSummary.id}`));
   };
 
   const focusNodeOnCanvas = (nodeId: string) => {

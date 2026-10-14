@@ -401,7 +401,7 @@ describe('Mind Map AI Node Expansion UI & Integration (Phase P3)', () => {
 
       // Open document
       fireEvent.click(screen.getByTestId('btn-open-mindmap-browser'));
-      fireEvent.click(screen.getByTestId(`doc-card-${mockSummary.id}`));
+      fireEvent.click(screen.getByTestId(`btn-open-${mockSummary.id}`));
 
       // Click AI Expansion button on root node
       const aiBtn = screen.getByTestId('btn-ai-expand-node-doc-root');

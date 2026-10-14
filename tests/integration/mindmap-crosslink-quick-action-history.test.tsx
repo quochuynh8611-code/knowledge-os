@@ -113,7 +113,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
 
     // 1. Mở tài liệu có sẵn liên kết
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Định vị hit target của cross-link
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
@@ -149,7 +149,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
 
     // 1. Mở tài liệu có sẵn liên kết
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Định vị hit target của cross-link và mở quick action popover
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
@@ -181,7 +181,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     fireEvent.click(hitTarget);
@@ -225,7 +225,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Chọn edge-test-a-b
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
@@ -253,7 +253,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
 
     // 1. Mở tài liệu có sẵn liên kết
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // 2. Click chọn cross-link để mở quick action popover
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
@@ -287,7 +287,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     fireEvent.click(hitTarget);
@@ -312,7 +312,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hitTarget = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     fireEvent.click(hitTarget);
@@ -355,7 +355,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Chọn edge-1 và Shift-click edge-2
     const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
@@ -408,7 +408,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
@@ -454,7 +454,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
@@ -518,7 +518,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
     const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
@@ -559,7 +559,7 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
     render(<MindMapView />);
 
     fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
-    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+    fireEvent.click(screen.getByTestId(`btn-open-${mockDocSummary.id}`));
 
     // Chọn 2 nodes trước
     const nodeA = document.querySelector('[data-node-id="doc-node-a"]') as HTMLElement;
