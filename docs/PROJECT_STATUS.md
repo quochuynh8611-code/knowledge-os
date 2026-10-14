@@ -327,6 +327,8 @@
 - **ADR**: [`docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md`](docs/adr/ADR-096-phase-m3-keyboard-authoring-for-saved-documents.md)
 - **Closure Report**: [`docs/reports/mindmap-phase-m3-closure-report.md`](docs/reports/mindmap-phase-m3-closure-report.md)
 - **Primary Tests**: [`tests/unit/mindmap-keyboard-authoring.test.tsx`](tests/unit/mindmap-keyboard-authoring.test.tsx)
+- **Hardening Spec & Tests (2026-10-14)**: [`docs/gherkin/mindmap-phase-m3-keyboard-authoring-hardening.feature`](docs/gherkin/mindmap-phase-m3-keyboard-authoring-hardening.feature) & [`tests/unit/mindmap-keyboard-authoring-hardening.test.tsx`](tests/unit/mindmap-keyboard-authoring-hardening.test.tsx) (10/10 PASS)
+- **Session Log**: [`docs/session-logs/2026-10-14-phase-m3-reopen-audit-hardening.md`](docs/session-logs/2026-10-14-phase-m3-reopen-audit-hardening.md)
 
 ---
 

@@ -553,6 +553,9 @@ export function MindMapTreeCanvas({
     }
 
     if (e.key === "Enter") {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+        return;
+      }
       e.preventDefault();
       if (isEditable) {
         // Phase M3: Enter creates sibling if not root, strict no-op on root
@@ -579,6 +582,9 @@ export function MindMapTreeCanvas({
       }
 
       if (e.key === "Tab" || e.key === "Insert") {
+        if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) {
+          return;
+        }
         e.preventDefault();
         if (currentId && onAddChild) {
           if (onAddSibling) {
@@ -591,6 +597,9 @@ export function MindMapTreeCanvas({
       }
 
       if (e.key === "Delete" || e.key === "Backspace") {
+        if (e.metaKey || e.ctrlKey || e.altKey) {
+          return;
+        }
         e.preventDefault();
         if (selectedNodeIds && selectedNodeIds.size >= 2 && onBatchDelete) {
           onBatchDelete();
