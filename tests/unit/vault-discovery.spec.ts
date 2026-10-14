@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -146,11 +146,40 @@ describe("Vault Auto-Discovery & Merging (P1)", () => {
   });
 
   it("createServerApp integrates discovery and serves all active system vaults", async () => {
-    const { createServerApp } = await import("../../server");
-    const serverApp = createServerApp();
-    const res = await request(serverApp).get("/api/obsidian/vaults");
-    expect(res.status).toBe(200);
-    // User system has 10 valid markdown/obsidian vaults in /Users/mr.chem/Documents/Obsidian
-    expect(res.body.vaults.length).toBeGreaterThanOrEqual(10);
+    // 1. Create additional 6 dummy vaults in tempBaseDir to have 10 deterministic vaults (vaultA-D + 6)
+    for (let i = 1; i <= 6; i++) {
+      const extraVault = path.join(tempBaseDir, `System-Vault-${i}`);
+      fs.mkdirSync(path.join(extraVault, ".obsidian"), { recursive: true });
+    }
+
+    // 2. Isolate environment from developer's real machine and CI host differences
+    const origRoot = process.env.OBSIDIAN_VAULT_ROOT;
+    const origConfig = process.env.OBSIDIAN_VAULTS_CONFIG;
+    const homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(tempBaseDir);
+
+    try {
+      process.env.OBSIDIAN_VAULT_ROOT = vaultA;
+      process.env.OBSIDIAN_VAULTS_CONFIG = "[]";
+
+      const { createServerApp } = await import("../../server");
+      const serverApp = createServerApp();
+      const res = await request(serverApp).get("/api/obsidian/vaults");
+      expect(res.status).toBe(200);
+      expect(res.body.vaults.length).toBeGreaterThanOrEqual(10);
+      expect(res.body.vaults.map((v: any) => v.label)).toContain("AI Obsidian");
+      expect(res.body.vaults.map((v: any) => v.label)).toContain("System Vault 1");
+    } finally {
+      homedirSpy.mockRestore();
+      if (origRoot !== undefined) {
+        process.env.OBSIDIAN_VAULT_ROOT = origRoot;
+      } else {
+        delete process.env.OBSIDIAN_VAULT_ROOT;
+      }
+      if (origConfig !== undefined) {
+        process.env.OBSIDIAN_VAULTS_CONFIG = origConfig;
+      } else {
+        delete process.env.OBSIDIAN_VAULTS_CONFIG;
+      }
+    }
   });
 });
