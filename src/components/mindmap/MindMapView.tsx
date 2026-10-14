@@ -150,7 +150,7 @@ function findDocumentNodeById(
 }
 
 export function MindMapView() {
-  const { topics, notes, resources, selectedTopicId, openTopicDetail } = useData();
+  const { topics, notes, resources, selectedTopicId } = useData();
 
   const [layoutMode, setLayoutMode] =
     useState<MindMapLayoutMode>("tree_horizontal");
@@ -2098,7 +2098,6 @@ export function MindMapView() {
           showCrossLinks={showCrossLinks}
           highlightedNodeId={highlightedNodeId}
           onToggleCollapse={handleToggleCollapse}
-          onSelectTopic={(topicId) => openTopicDetail(topicId)}
           onFocusNode={handleFocusNode}
           isEditable={activeMode === "saved-document"}
           isDrawerOpen={activeDrawerNodeId !== null}
