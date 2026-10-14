@@ -48,10 +48,14 @@ selectedCrossLinkIds: Set<string>
 | **Shift/Cmd/Ctrl + Click vào Edge A** (đã chọn) | Đang chọn `[A, B]` | `new Set([B])` (Set mới) | Mở lại popover M7 tại Edge B |
 | **Phím `Escape`** | Đang chọn $\ge 1$ cạnh | `new Set()` (Rỗng) | Hủy chọn toàn bộ cạnh; giữ nguyên node selection |
 
-### 2.4. Hợp Đồng Giao Diện M8b (Cross-Link Batch Action Bar UI Contract)
+### 2.4. Hợp Đồng Giao Diện M8b & M8c (Cross-Link Batch Action Bar UI Contract)
 Khi `selectedCrossLinkIds.size >= 2`, hệ thống hiển thị thanh công cụ tác vụ hàng loạt chuyên biệt cho liên kết chéo:
 - **Container Test ID:** `data-testid="crosslink-batch-action-bar"`
 - **Badge số lượng:** `data-testid="crosslink-batch-selection-count"` hiển thị định dạng `Đã chọn N liên kết`
+- **Dropdown đổi loại quan hệ hàng loạt (M8c):**
+  - Test ID: `data-testid="crosslink-batch-type-select"`
+  - Tùy chọn: Placeholder vô hiệu hóa `Đổi loại...`, cùng 4 loại `LinkType` chuẩn: `related` (Liên quan), `prerequisite` (Tiên quyết), `advanced` (Nâng cao), `contradicts` (Đối chiếu).
+  - Tương tác: Khi người dùng chọn một `newType`, gọi callback `onBatchUpdateCrossLinkType(edgeIds: string[], newType: LinkType)`.
 - **Nút xóa hàng loạt:** `data-testid="btn-crosslink-batch-delete"` kích hoạt `onDeleteCrossLink(selectedIds)` và xóa trắng `selectedCrossLinkIds`
 - **Nút bỏ chọn:** `data-testid="btn-crosslink-batch-deselect"` reset `selectedCrossLinkIds` về `new Set()`, bảo toàn `selectedNodeIds`
 - **Vertical Stacking Guard (Ngăn ngừa đè chồng UI):**
@@ -60,14 +64,24 @@ Khi `selectedCrossLinkIds.size >= 2`, hệ thống hiển thị thanh công cụ
   - Sự kiện click chuột trên toolbar có `stopPropagation()` và `pointer-events-auto` để không kích hoạt pan canvas hay marquee selection.
 
 ### 2.3. Hợp Đồng Tác Vụ Hàng Loạt (Batch Operations Contract)
-1. **Batch Delete Cross-Links (`handleBatchDeleteCrossLinks`):**
+1. **Batch Delete Cross-Links (`handleDeleteCrossLinkFromCanvas`):**
    - Lọc bỏ tất cả các cạnh có `id` thuộc `selectedCrossLinkIds` khỏi `workingDocumentCrossLinks`.
-   - Gọi `applyMutation(currentTree, nextLinks)` đúng **1 lần**.
+   - Gọi `applyMutation(currentTree, nextLinks)` đúng **1 lần duy nhất**.
    - Xóa sạch `selectedCrossLinkIds` (`new Set()`).
    - Hỗ trợ `⌘Z` khôi phục lại toàn bộ danh sách cạnh đã xóa trong đúng 1 bước hoàn tác.
-2. **Batch Type Mutation (`handleBatchUpdateCrossLinkType` — Chuẩn bị cho M8c):**
-   - **Quy tắc All-or-Nothing (Đã chốt trước cho M8c):** Khi thực hiện đổi loại quan hệ hàng loạt, việc xác thực được kiểm tra trên toàn thể. Nếu **bất kỳ cạnh nào** vi phạm chu trình (`CYCLE_DETECTED`) hoặc trùng lặp (`DUPLICATE_CROSS_LINK`), toàn bộ transaction bị hủy bỏ (Abort), không có cạnh nào bị đột biến nửa vời (zero partial mutation), không làm bẩn tài liệu, và tạo đúng 0 history snapshot.
-   - Khi tất cả các cạnh đều hợp lệ, commit toàn bộ trong đúng **1 snapshot history nguyên tử**.
+2. **Batch Type Mutation (`handleBatchUpdateCrossLinkType` — Phase M8c):**
+   - **Signature Callback:** `onBatchUpdateCrossLinkType: (edgeIds: string[], newType: LinkType) => void` (chỉ nhận mảng `string[]`).
+   - **Quy tắc Strict No-Op:** Nếu **tất cả** các cạnh trong `edgeIds` đều đã mang `edgeType === newType`, hàm thoát ngay lập tức (no-op), không gọi `applyMutation`, không thông báo lỗi Toast, và không tạo snapshot lịch sử rác.
+   - **Quy tắc All-or-Nothing:**
+     - Tạo danh sách cạnh ứng viên tạm thời `candidateCrossLinks`.
+     - Xác thực toàn bộ từng cạnh cập nhật: kiểm tra trùng lặp (`DUPLICATE_CROSS_LINK`) và kiểm tra chu trình đồ thị (`CYCLE_DETECTED`).
+     - Nếu **bất kỳ cạnh nào** vi phạm, toàn bộ transaction bị **HỦY BỎ (Abort)**:
+       - 0 cạnh bị sửa đổi dở dang (Zero Partial Mutation).
+       - 0 snapshot lịch sử được tạo (`applyMutation` không được gọi).
+       - Hiển thị Toast error cảnh báo người dùng.
+       - Bảo toàn nguyên vẹn đồ thị và `selectedCrossLinkIds` (không tự ý bỏ chọn để người dùng sửa đổi hoặc chọn loại khác).
+       - `selectedNodeIds` hoàn toàn độc lập, không bị ảnh hưởng.
+   - **Commit Nguyên Tử:** Khi tất cả các cạnh cập nhật đều vượt qua validation, gọi `applyMutation(currentTree, candidateCrossLinks)` **tối đa đúng 1 lần duy nhất**, tạo 1 entry duy nhất trong Undo stack.
 
 ---
 

@@ -519,3 +519,95 @@ describe("Phase M8b — Cross-Link Batch Action Bar (Test-First)", () => {
     expect(barStacked.className).toContain("bottom-20");
   });
 });
+
+describe("Phase M8c — Cross-Link Batch Type Mutation (Test-First)", () => {
+  it("1. Batch type select chỉ xuất hiện khi >= 2 edges", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+
+    // Single edge selected -> No batch type select
+    fireEvent.click(hit1);
+    expect(screen.queryByTestId("crosslink-batch-type-select")).toBeNull();
+
+    // Two edges selected -> Batch type select appears
+    fireEvent.click(hit2, { shiftKey: true });
+    expect(screen.getByTestId("crosslink-batch-type-select")).toBeInTheDocument();
+  });
+
+  it("2. Hiển thị đúng các LinkType hợp lệ và placeholder", () => {
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const select = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    expect(select).toBeInTheDocument();
+
+    const options = Array.from(select.options).map((o) => ({
+      value: o.value,
+      text: o.text,
+      disabled: o.disabled,
+    }));
+
+    expect(options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: "", disabled: true }),
+        expect.objectContaining({ value: "related", text: "Liên quan" }),
+        expect.objectContaining({ value: "prerequisite", text: "Tiên quyết" }),
+        expect.objectContaining({ value: "advanced", text: "Nâng cao" }),
+        expect.objectContaining({ value: "contradicts", text: "Đối chiếu" }),
+      ])
+    );
+  });
+
+  it("3. Batch type select gọi callback onBatchUpdateCrossLinkType với mảng edgeIds và newType", () => {
+    const onBatchUpdateCrossLinkType = vi.fn();
+    render(
+      <MindMapTreeCanvas
+        tree={SAMPLE_TREE}
+        layoutMode="tree_horizontal"
+        collapsedNodeIds={new Set()}
+        crossEdges={SAMPLE_CROSS_EDGES}
+        showCrossLinks={true}
+        isEditable={true}
+        onBatchUpdateCrossLinkType={onBatchUpdateCrossLinkType}
+      />
+    );
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-1-2");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-2-3");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const select = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "prerequisite" } });
+
+    expect(onBatchUpdateCrossLinkType).toHaveBeenCalledTimes(1);
+    expect(onBatchUpdateCrossLinkType).toHaveBeenCalledWith(
+      expect.arrayContaining(["edge-1-2", "edge-2-3"]),
+      "prerequisite"
+    );
+  });
+});

@@ -27,11 +27,13 @@ Sau khi hoàn tất Milestone M7 (M7a, M7b, M7c), người dùng có thể thao 
   - Tách bạch rõ ràng hành vi bàn phím: khi có cạnh đang chọn, phím `Delete` ưu tiên xóa cạnh trước; khi không có cạnh chọn, phím `Delete` xóa node. Phím `Escape` xóa cạnh trước mà không xóa node selection.
   - Việc luôn tạo `new Set(...)` đảm bảo React hooks re-render nhất quán và ngăn ngừa các lỗi đột biến trạng thái ngầm (accidental mutation).
 
-#### B. Tính Nguyên Tử Của Lịch Sử & Quy Tắc All-or-Nothing (Atomic & All-or-Nothing Rule)
+#### B. Tính Nguyên Tử Của Lịch Sử, Strict No-Op & Quy Tắc All-or-Nothing (Phase M8c)
 - **Quyết định:**
-  - Mọi thao tác hàng loạt (xóa $N$ cạnh, đổi loại $N$ cạnh) **BẮT BUỘC** gọi `applyMutation` đúng một lần duy nhất.
-  - Đối với Batch Type Mutation (M8c): Áp dụng triệt để quy tắc **All-or-Nothing** — nếu bất kỳ cạnh nào trong danh sách được chọn vi phạm tính hợp lệ (chu trình hoặc trùng lặp), toàn bộ lệnh chuyển đổi sẽ bị hủy bỏ, không thực hiện cập nhật phân mảnh và không tạo snapshot lịch sử rác.
-- **Lý do:** Một thao tác xóa hoặc đổi loại $N$ cạnh phải mang tính chất giao dịch (transactional) và được hoàn tác (`⌘Z`) trong đúng 1 bước để khôi phục trạng thái ban đầu một cách toàn vẹn.
+  - **Data Contract:** Tách bạch callback `onBatchUpdateCrossLinkType?: (edgeIds: string[], newType: LinkType) => void` chỉ nhận mảng `string[]` để tránh mập mờ kiểu dữ liệu.
+  - **Strict No-Op:** Nếu toàn bộ các cạnh trong `edgeIds` đã có loại trùng với `newType`, thoát ngay lập tức (không gọi `applyMutation`, không tạo history entry, không trigger toast).
+  - **Quy tắc All-or-Nothing:** Kiểm tra tính toàn vẹn (chu trình và trùng lặp) trên toàn bộ danh sách cạnh cập nhật. Nếu có bất kỳ cạnh nào vi phạm, toàn bộ thao tác bị hủy bỏ (Abort), không có cạnh nào bị thay đổi dở dang, không tạo snapshot lịch sử, hiển thị Toast cảnh báo, và bảo toàn nguyên vẹn selection/đồ thị.
+  - **Commit Tối Đa 1 Lần:** Khi toàn bộ danh sách hợp lệ, `applyMutation` được gọi duy nhất 1 lần để tạo đúng 1 transaction nguyên tử cho Undo/Redo (`⌘Z`).
+- **Lý do:** Đảm bảo đồ thị tri thức luôn ở trạng thái nhất quán, lịch sử hoàn tác không bị phân mảnh thành nhiều bước rác, và trải nghiệm người dùng hoàn toàn dự đoán được.
 
 ### 2.2. Quyết định hai chiều (Two-Way Doors)
 

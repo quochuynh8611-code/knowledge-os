@@ -50,6 +50,17 @@ const docTree: MindMapDocumentNode = {
   ],
 };
 
+const docTree3Nodes: MindMapDocumentNode = {
+  id: "doc-root",
+  title: "Gốc Triết Học",
+  nodeType: "topic",
+  children: [
+    { id: "doc-node-a", title: "Khái Niệm A", nodeType: "topic", children: [] },
+    { id: "doc-node-b", title: "Khái Niệm B", nodeType: "topic", children: [] },
+    { id: "doc-node-c", title: "Khái Niệm C", nodeType: "topic", children: [] },
+  ],
+};
+
 const initialVersionWithCrossLink: MindMapVersion = {
   id: "ver-1",
   documentId: "doc-quick-delete-test",
@@ -315,5 +326,267 @@ describe("Phase M7a — On-Canvas Cross-Link Quick Delete History Integration", 
 
     // Không làm bẩn document, không tạo history entry
     expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+  });
+
+  it("Scenario 8: Batch relation type mutation updates all selected edges and creates 1 atomic history snapshot (Undo/Redo)", async () => {
+    const versionWithTwoEdges: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      treeData: docTree3Nodes,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+          label: "Quan hệ 1",
+        },
+        {
+          id: "edge-test-b-c",
+          sourceNodeId: "doc-node-b",
+          targetNodeId: "doc-node-c",
+          edgeType: "related",
+          label: "Quan hệ 2",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithTwoEdges);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    // Chọn edge-1 và Shift-click edge-2
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    // Floating batch bar xuất hiện với batch type select
+    expect(screen.getByTestId("crosslink-batch-action-bar")).toBeInTheDocument();
+    const batchSelect = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    expect(batchSelect).toBeInTheDocument();
+
+    // Chọn loại quan hệ mới "advanced"
+    fireEvent.change(batchSelect, { target: { value: "advanced" } });
+
+    // Document dirty indicator xuất hiện
+    expect(screen.getByTestId("dirty-indicator")).toBeInTheDocument();
+
+    // Undo (Cmd+Z) khôi phục cả 2 cạnh trong đúng 1 bước
+    fireEvent.keyDown(window, { key: "z", metaKey: true });
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+
+    // Redo (Cmd+Shift+Z) áp dụng lại
+    fireEvent.keyDown(window, { key: "z", metaKey: true, shiftKey: true });
+    expect(screen.getByTestId("dirty-indicator")).toBeInTheDocument();
+  });
+
+  it("Scenario 9: Batch relation type mutation strict no-op when all selected edges already have target type", async () => {
+    const versionWithTwoEdges: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      treeData: docTree3Nodes,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+        },
+        {
+          id: "edge-test-b-c",
+          sourceNodeId: "doc-node-b",
+          targetNodeId: "doc-node-c",
+          edgeType: "related",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithTwoEdges);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const batchSelect = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    fireEvent.change(batchSelect, { target: { value: "related" } });
+
+    // Không làm bẩn document, không tạo history entry, không báo lỗi
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("Scenario 10: All-or-Nothing rule: Duplicate link on any edge in batch aborts entire transaction, creates zero history snapshot, displays error Toast, and preserves selection", async () => {
+    const versionWithExistingPrereq: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      treeData: docTree3Nodes,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+        },
+        {
+          id: "edge-test-b-c",
+          sourceNodeId: "doc-node-b",
+          targetNodeId: "doc-node-c",
+          edgeType: "related",
+        },
+        {
+          id: "edge-existing-prereq",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "prerequisite",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithExistingPrereq);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const batchSelect = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    // Đổi cả 2 sang "prerequisite" -> cạnh A-B bị trùng lặp với edge-existing-prereq
+    fireEvent.change(batchSelect, { target: { value: "prerequisite" } });
+
+    // Transaction bị hủy bỏ (All-or-Nothing):
+    // 1. Toast lỗi xuất hiện
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    // 2. Không làm bẩn document / không tạo history snapshot
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+    // 3. Selection và batch bar vẫn giữ nguyên để người dùng chọn lại
+    expect(screen.getByTestId("crosslink-batch-action-bar")).toBeInTheDocument();
+  });
+
+  it("Scenario 11: All-or-Nothing rule: Directed cycle on any edge in batch aborts entire transaction, creates zero history snapshot, displays error Toast, and preserves selection", async () => {
+    const docTree3Nodes: MindMapDocumentNode = {
+      id: "doc-root",
+      title: "Gốc",
+      nodeType: "topic",
+      children: [
+        { id: "doc-node-a", title: "A", nodeType: "topic", children: [] },
+        { id: "doc-node-b", title: "B", nodeType: "topic", children: [] },
+        { id: "doc-node-c", title: "C", nodeType: "topic", children: [] },
+      ],
+    };
+
+    // Đã có cạnh C -> A
+    // Nếu thêm B -> C và A -> B => tạo chu trình A -> B -> C -> A
+    const versionWithCycleCandidate: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      treeData: docTree3Nodes,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+        },
+        {
+          id: "edge-test-b-c",
+          sourceNodeId: "doc-node-b",
+          targetNodeId: "doc-node-c",
+          edgeType: "related",
+        },
+        {
+          id: "edge-test-c-a",
+          sourceNodeId: "doc-node-c",
+          targetNodeId: "doc-node-a",
+          edgeType: "prerequisite",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithCycleCandidate);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    const batchSelect = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    fireEvent.change(batchSelect, { target: { value: "prerequisite" } });
+
+    // Hủy bỏ vì chu trình (All-or-Nothing):
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByTestId("dirty-indicator")).not.toBeInTheDocument();
+    expect(screen.getByTestId("crosslink-batch-action-bar")).toBeInTheDocument();
+  });
+
+  it("Scenario 12: Node multi-selection remains independent during batch crosslink type mutation", async () => {
+    const versionWithTwoEdges: MindMapVersion = {
+      ...initialVersionWithCrossLink,
+      treeData: docTree3Nodes,
+      crossLinks: [
+        {
+          id: "edge-test-a-b",
+          sourceNodeId: "doc-node-a",
+          targetNodeId: "doc-node-b",
+          edgeType: "related",
+        },
+        {
+          id: "edge-test-b-c",
+          sourceNodeId: "doc-node-b",
+          targetNodeId: "doc-node-c",
+          edgeType: "related",
+        },
+      ],
+    };
+
+    vi.spyOn(mindmapDocumentStorage, "getMindMapVersion").mockReturnValue(versionWithTwoEdges);
+
+    render(<MindMapView />);
+
+    fireEvent.click(screen.getByTestId("btn-open-mindmap-browser"));
+    fireEvent.click(screen.getByTestId(`doc-card-${mockDocSummary.id}`));
+
+    // Chọn 2 nodes trước
+    const nodeA = document.querySelector('[data-node-id="doc-node-a"]') as HTMLElement;
+    const nodeB = document.querySelector('[data-node-id="doc-node-b"]') as HTMLElement;
+    fireEvent.click(nodeA);
+    fireEvent.click(nodeB, { shiftKey: true });
+
+    // Node batch action bar hiển thị
+    expect(screen.getByTestId("mindmap-batch-action-bar")).toBeInTheDocument();
+    expect(screen.getByTestId("batch-selection-count")).toHaveTextContent("2");
+
+    // Chọn 2 edges
+    const hit1 = screen.getByTestId("crosslink-hit-target-edge-test-a-b");
+    const hit2 = screen.getByTestId("crosslink-hit-target-edge-test-b-c");
+    fireEvent.click(hit1);
+    fireEvent.click(hit2, { shiftKey: true });
+
+    // Crosslink batch bar hiển thị với trạng thái stacked
+    const edgeBar = screen.getByTestId("crosslink-batch-action-bar");
+    expect(edgeBar).toHaveAttribute("data-stacked", "true");
+
+    // Thực hiện đổi loại cạnh
+    const batchSelect = screen.getByTestId("crosslink-batch-type-select") as HTMLSelectElement;
+    fireEvent.change(batchSelect, { target: { value: "advanced" } });
+
+    // Node batch bar vẫn tồn tại độc lập
+    expect(screen.getByTestId("mindmap-batch-action-bar")).toBeInTheDocument();
+    expect(screen.getByTestId("batch-selection-count")).toHaveTextContent("2");
   });
 });

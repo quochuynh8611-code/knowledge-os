@@ -1139,6 +1139,61 @@ export function MindMapView() {
     ]
   );
 
+  // Phase M8c: Batch Cross-Link edgeType Mutation with All-or-Nothing Validation and Atomic History
+  const handleBatchUpdateCrossLinkTypeFromCanvas = useCallback(
+    (edgeIds: string[], newType: LinkType) => {
+      const currentTree = workingDocumentTree || projection?.tree;
+      if (!currentTree) return;
+
+      const targetIdSet = new Set(edgeIds);
+      const edgesToUpdate = workingDocumentCrossLinks.filter((e) => targetIdSet.has(e.id));
+      if (edgesToUpdate.length === 0) return;
+
+      // Strict no-op if all target edges already have newType
+      const hasAnyChange = edgesToUpdate.some((e) => e.edgeType !== newType);
+      if (!hasAnyChange) return;
+
+      // Candidate next crossLinks
+      const candidateCrossLinks = workingDocumentCrossLinks.map((e) =>
+        targetIdSet.has(e.id) ? { ...e, edgeType: newType } : e
+      );
+
+      // All-or-nothing validation for each updated edge
+      for (const edge of edgesToUpdate) {
+        const validation = validateCrossLinkMutation(
+          edge.sourceNodeId,
+          edge.targetNodeId,
+          newType,
+          candidateCrossLinks,
+          currentTree,
+          { excludeEdgeId: edge.id }
+        );
+
+        if (!validation.valid) {
+          setToast({
+            message:
+              validation.error === "DUPLICATE_CROSS_LINK"
+                ? "Đã tồn tại liên kết cùng loại giữa hai nút này"
+                : validation.error === "CYCLE_DETECTED"
+                ? "Không thể đổi loại liên kết: phát hiện chu trình"
+                : validation.error || "Không thể cập nhật loại liên kết hàng loạt",
+            type: "error",
+          });
+          return; // Abort entire transaction, 0 partial mutation, 0 history snapshot
+        }
+      }
+
+      // All edges valid -> atomic commit exactly once
+      applyMutation(currentTree, candidateCrossLinks);
+    },
+    [
+      workingDocumentTree,
+      projection?.tree,
+      workingDocumentCrossLinks,
+      applyMutation,
+    ]
+  );
+
   // Phase M7c: Inline Cross-Link Label Renaming with Atomic History
   const handleUpdateCrossLinkLabelFromCanvas = useCallback(
     (edgeId: string, rawLabel: string | undefined) => {
@@ -2070,6 +2125,7 @@ export function MindMapView() {
           onDeleteCrossLink={handleDeleteCrossLinkFromCanvas}
           onUpdateCrossLinkType={handleUpdateCrossLinkTypeFromCanvas}
           onUpdateCrossLinkLabel={handleUpdateCrossLinkLabelFromCanvas}
+          onBatchUpdateCrossLinkType={handleBatchUpdateCrossLinkTypeFromCanvas}
           onOpenDrawerForNode={(nodeId) => {
             setActiveDrawerNodeId(nodeId);
           }}

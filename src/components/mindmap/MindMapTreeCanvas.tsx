@@ -92,6 +92,9 @@ interface MindMapTreeCanvasProps {
 
   // Phase M7c: Inline Cross-Link Label Renaming
   onUpdateCrossLinkLabel?: (edgeId: string, newLabel: string | undefined) => void;
+
+  // Phase M8c: Batch Cross-Link edgeType Mutation
+  onBatchUpdateCrossLinkType?: (edgeIds: string[], newType: LinkType) => void;
 }
 
 export type MarqueeSelectionMode = "replace" | "add" | "subtract";
@@ -277,6 +280,7 @@ export function MindMapTreeCanvas({
   onOpenDrawerForNode,
   onUpdateCrossLinkType,
   onUpdateCrossLinkLabel,
+  onBatchUpdateCrossLinkType,
 }: MindMapTreeCanvasProps) {
   const isHorizontal = layoutMode === "tree_horizontal";
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -1883,6 +1887,30 @@ export function MindMapTreeCanvas({
           </div>
           <div className="h-4 w-px bg-stone-200 dark:bg-stone-700" />
           <div className="flex items-center gap-1.5">
+            <select
+              data-testid="crosslink-batch-type-select"
+              defaultValue=""
+              onChange={(e) => {
+                const newType = e.target.value as LinkType;
+                if (!newType) return;
+                const ids = Array.from(selectedCrossLinkIds);
+                if (onBatchUpdateCrossLinkType) {
+                  onBatchUpdateCrossLinkType(ids, newType);
+                } else if (onUpdateCrossLinkType) {
+                  onUpdateCrossLinkType(ids as any, newType);
+                }
+                e.target.value = "";
+              }}
+              className="px-2 py-1 text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-xl focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+            >
+              <option value="" disabled>
+                Đổi loại...
+              </option>
+              <option value="related">Liên quan</option>
+              <option value="prerequisite">Tiên quyết</option>
+              <option value="advanced">Nâng cao</option>
+              <option value="contradicts">Đối chiếu</option>
+            </select>
             <button
               type="button"
               data-testid="btn-crosslink-batch-delete"
