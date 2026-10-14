@@ -3,11 +3,12 @@
  */
 
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { FlashcardCardView } from "../../src/components/flashcards/FlashcardCardView";
 import { FlashcardReviewHistoryModal } from "../../src/components/flashcards/FlashcardReviewHistoryModal";
 import { FlashcardReviewStudio } from "../../src/components/flashcards/FlashcardReviewStudio";
+import { shortcutScope } from "../../src/lib/shortcutScope";
 import type { Flashcard, FlashcardReview } from "../../src/types/flashcard";
 
 vi.mock("canvas-confetti", () => ({
@@ -109,6 +110,11 @@ describe("Phase F6.11 Task 4: View History Modal & Timeline", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    shortcutScope.reset();
+  });
+
+  afterEach(() => {
+    shortcutScope.reset();
   });
 
   describe("FlashcardCardView History Button", () => {
@@ -241,22 +247,24 @@ describe("Phase F6.11 Task 4: View History Modal & Timeline", () => {
 
       render(<FlashcardReviewStudio />);
 
-      // Wait for card to load
+      // Wait for card to load and review session to be interactive
+      expect(await screen.findByText("Tứ Diệu Đế là gì?")).toBeInTheDocument();
+      const historyBtn = await screen.findByTestId("btn-view-card-history");
+      expect(historyBtn).toBeInTheDocument();
       await waitFor(() => {
-        expect(screen.getByText("Tứ Diệu Đế là gì?")).toBeInTheDocument();
+        expect(shortcutScope.isScopeActive("flashcard_review")).toBe(true);
       });
 
       // Press Ctrl+H
       fireEvent.keyDown(window, { key: "h", ctrlKey: true });
 
       // History modal should appear
-      await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: "Lịch sử Ôn tập Thẻ Nhớ" })).toBeInTheDocument();
-        expect(screen.getByTestId("history-stat-interval")).toHaveTextContent("6d");
-      });
+      const modal = await screen.findByRole("dialog", { name: "Lịch sử Ôn tập Thẻ Nhớ" });
+      expect(modal).toBeInTheDocument();
+      expect(await screen.findByTestId("history-stat-interval")).toHaveTextContent("6d");
 
       // Close modal
-      const closeBtn = screen.getByTestId("btn-close-history-footer");
+      const closeBtn = await screen.findByTestId("btn-close-history-footer");
       fireEvent.click(closeBtn);
 
       await waitFor(() => {
@@ -285,19 +293,14 @@ describe("Phase F6.11 Task 4: View History Modal & Timeline", () => {
 
       render(<FlashcardReviewStudio />);
 
-      // Wait for card to load
-      await waitFor(() => {
-        expect(screen.getByText("Tứ Diệu Đế là gì?")).toBeInTheDocument();
-      });
-
-      // Click history button on card
-      const historyBtn = screen.getByTestId("btn-view-card-history");
+      // Wait for card to load and history button to be interactive
+      expect(await screen.findByText("Tứ Diệu Đế là gì?")).toBeInTheDocument();
+      const historyBtn = await screen.findByTestId("btn-view-card-history");
       fireEvent.click(historyBtn);
 
       // Verify modal is open
-      await waitFor(() => {
-        expect(screen.getByRole("dialog", { name: "Lịch sử Ôn tập Thẻ Nhớ" })).toBeInTheDocument();
-      });
+      const modal = await screen.findByRole("dialog", { name: "Lịch sử Ôn tập Thẻ Nhớ" });
+      expect(modal).toBeInTheDocument();
     });
   });
 });
