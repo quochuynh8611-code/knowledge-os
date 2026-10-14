@@ -15,7 +15,6 @@ import {
   AiExpansionPreset,
   MindMapAiClient,
 } from '../../types/mindmapAi';
-import { createMockMindMapAiClient } from '../../lib/mindmapAiService';
 import {
   Sparkles,
   Layers,
@@ -89,12 +88,10 @@ export function MindMapAiExpansionModal({
   const [isStoppedState, setIsStoppedState] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const clientRef = useRef<MindMapAiClient>(aiClient || createMockMindMapAiClient());
+  const clientRef = useRef<MindMapAiClient | undefined>(aiClient);
 
   useEffect(() => {
-    if (aiClient) {
-      clientRef.current = aiClient;
-    }
+    clientRef.current = aiClient;
   }, [aiClient]);
 
   useEffect(() => {
@@ -114,6 +111,12 @@ export function MindMapAiExpansionModal({
     setIsLoading(true);
     setErrorMessage(null);
     setIsStoppedState(false);
+
+    if (!clientRef.current) {
+      setErrorMessage('Dịch vụ AI chưa được cấu hình (thiếu AI client). Vui lòng kiểm tra lại cấu hình.');
+      setIsLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
     abortControllerRef.current = controller;

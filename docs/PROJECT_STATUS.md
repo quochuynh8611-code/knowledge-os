@@ -2,13 +2,15 @@
 
 > **Cập nhật lần cuối:** 2026-10-14<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **PHASE R3b — READER HIGHLIGHTS & ANNOTATION POLISH: Đã hoàn tất implementation core scope, kiểm thử toàn diện TDD và stabilization (53/53 tests reader suites GREEN, 0 lỗi TypeScript typecheck, Zero DB Migration, Zero Mindmap Blast Radius). Sẵn sàng chốt phase và chờ phê duyệt commit local (HEAD commit hiện tại `acb686c`, branch `main` ahead `origin/main` 9 commits).**
+> **Trạng thái tổng thể:** 🟢 **MIND MAP AI / GEMINI MIGRATION & PHASE R3b: Phase R3b đã commit local thành công tại commit `17d5f50`. Mind Map AI / Gemini Migration đã hoàn tất implementation, kiểm thử toàn diện 59/59 targeted tests GREEN, 0 lỗi TypeScript typecheck, git diff --check sạch. Sẵn sàng commit local (HEAD hiện tại `17d5f50`, branch `main` ahead `origin/main` 10 commits, CHƯA PUSH REMOTE).**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `acb686c` (`docs(status): reconcile project status with milestone M7 closure`).
+- **Current Baseline / HEAD:** Commit `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`).
+- **Recent Product Commits (Phase R3b):**
+  - R3b: `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`)
 - **Product Implementation Commits (Milestone M7):**
   - M7a: `6f50935` (`feat(mindmap): add on-canvas crosslink inspect and quick delete (M7a)`)
   - M7b: `9c85033` (`feat(mindmap): add inline crosslink type mutation (M7b)`)
@@ -17,14 +19,12 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
-- **Phase R3b Status:** Core scope complete (DataContext `updateExcerpt`, Selection Toolbar 4-Color Palette, ReaderSidebar Annotations & Inline Note Editor). Working tree ready for phase closure approval.
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 9 commits** (`6d6b2c1`, `46bc047`, `6f50935`, `6573799`, `9c85033`, `530a5dc`, `9920333`, `675046a`, `acb686c`).
+- **Git Branch Status:** `main` tracking `origin/main` — **ahead 10 commits** (`6d6b2c1`, `46bc047`, `6f50935`, `6573799`, `9c85033`, `530a5dc`, `9920333`, `675046a`, `acb686c`, `17d5f50`).
 - **Remote Policy:** **LOCAL COMMIT COMPLETE / IN-PROGRESS — CHƯA PUSH REMOTE** (Origin HEAD tại commit `caa1504`).
-- **Quality Gates Baseline (Phase R3b):**
-  - Phase R3b Targeted Test Suites: 16/16 PASS across 3 suites (`tests/unit/data-context-excerpt-update.test.tsx` 4/4, `tests/unit/selection-toolbar-color-palette.test.tsx` 6/6, `tests/unit/reader-sidebar-annotations.test.tsx` 6/6).
-  - Reader Regression Gate: 24/24 PASS across 5 related suites (`tests/unit/reader-document-resolver.test.ts` 10/10, `tests/unit/reader-selection-toolbar.test.tsx` 6/6, `tests/unit/reader-sidebar-highlights.test.tsx` 3/3, `tests/unit/reader-sidebar-navigation.test.tsx` 3/3, `tests/unit/unified-selection-toolbar-flashcard.test.tsx` 2/2).
-  - Reader Subsystem Total: 40/40 PASS across 8 suites (100% GREEN).
-  - TypeScript Typecheck: 0 errors (`npx tsc --noEmit` hoàn tất thành công, Exit Code 0).
+- **Quality Gates Baseline:**
+  - Mind Map AI Migration: 59/59 PASS across 4 targeted suites (`gemini-routes.test.ts` 14/14, `mindmap-ai-service.test.ts` 22/22, `mindmap-ai-expansion-ui.test.tsx` 10/10, `phase-4-production-hardening.test.ts` 13/13).
+  - Reader Subsystem (R3b): 40/40 PASS across 8 suites (100% GREEN).
+  - TypeScript Typecheck: 0 errors (`npm run typecheck` / `npx tsc --noEmit` hoàn tất thành công, Exit Code 0).
   - Cross-Link & Canvas Wide Regression: 120/120 PASS.
 
 ---
@@ -34,19 +34,20 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và roadmap ứng viên tiếp theo. |
-| **2** | [`docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`](docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md) | **Quyết định kiến trúc ADR-101**: Reader Highlights & Annotation Polish, `updateExcerpt` contract, 4-color palette core scope, non-goals justification. |
-| **3** | [`docs/reports/mindmap-phase-m7c-closure-report.md`](docs/reports/mindmap-phase-m7c-closure-report.md) | Báo cáo đóng Phase M7c: Inline Cross-Link Label Renaming trên Canvas, commit protocol `Enter`/`Blur`, `Escape` revert guard, whitespace normalization, strict same-value no-op. |
-| **4** | [`docs/reports/mindmap-phase-m7b-closure-report.md`](docs/reports/mindmap-phase-m7b-closure-report.md) | Báo cáo đóng Phase M7b: Inline Cross-Link `edgeType` Mutation trên Canvas, native `<select>`, validation `excludeEdgeId`, duplicate/cycle rejection, atomic history. |
-| **5** | [`docs/reports/mindmap-phase-m7a-closure-report.md`](docs/reports/mindmap-phase-m7a-closure-report.md) | Báo cáo đóng Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Delete, 16px hit-target, floating popover, M6 keyboard isolation, M5b drag isolation. |
-| **6** | [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md) | Báo cáo đóng Phase M6: Focus-aware keyboard shortcut reconciliation giữa Canvas và Drawer, loại bỏ blanket guard, phục hồi 20/20 multi-selection test. |
-| **7** | [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md) | Báo cáo đóng Phase M5b: Canvas direct drag-to-connect interaction, pointer capture gesture, live Bézier preview, DOM hit-testing, history integration. |
-| **8** | [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md) | Quyết định kiến trúc ADR-M5-003: Dedicated connection handle, pointer capture lifecycle, fixed SVG preview, live validation. |
-| **9** | [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md) | Đặc tả kỹ thuật M5b: Gherkin scenarios, event isolation, undo/redo atomic contract cho canvas connection. |
-| **10** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
-| **11** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
-| **12** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
-| **13** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
-| **14** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
+| **2** | [`docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md`](docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md) | **Quyết định kiến trúc ADR-102**: Chuyển Mind Map AI sang backend proxy `/api/gemini/mindmap-expand`, chuẩn hóa `getGeminiModel()` với `gemini-3.8-flash`, xóa bỏ frontend API key dependency, modal guard. |
+| **3** | [`docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`](docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md) | **Quyết định kiến trúc ADR-101**: Reader Highlights & Annotation Polish, `updateExcerpt` contract, 4-color palette core scope, non-goals justification. |
+| **4** | [`docs/reports/mindmap-phase-m7c-closure-report.md`](docs/reports/mindmap-phase-m7c-closure-report.md) | Báo cáo đóng Phase M7c: Inline Cross-Link Label Renaming trên Canvas, commit protocol `Enter`/`Blur`, `Escape` revert guard, whitespace normalization, strict same-value no-op. |
+| **5** | [`docs/reports/mindmap-phase-m7b-closure-report.md`](docs/reports/mindmap-phase-m7b-closure-report.md) | Báo cáo đóng Phase M7b: Inline Cross-Link `edgeType` Mutation trên Canvas, native `<select>`, validation `excludeEdgeId`, duplicate/cycle rejection, atomic history. |
+| **6** | [`docs/reports/mindmap-phase-m7a-closure-report.md`](docs/reports/mindmap-phase-m7a-closure-report.md) | Báo cáo đóng Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Delete, 16px hit-target, floating popover, M6 keyboard isolation, M5b drag isolation. |
+| **7** | [`docs/reports/mindmap-phase-m6-closure-report.md`](docs/reports/mindmap-phase-m6-closure-report.md) | Báo cáo đóng Phase M6: Focus-aware keyboard shortcut reconciliation giữa Canvas và Drawer, loại bỏ blanket guard, phục hồi 20/20 multi-selection test. |
+| **8** | [`docs/reports/mindmap-phase-m5b-closure-report.md`](docs/reports/mindmap-phase-m5b-closure-report.md) | Báo cáo đóng Phase M5b: Canvas direct drag-to-connect interaction, pointer capture gesture, live Bézier preview, DOM hit-testing, history integration. |
+| **9** | [`docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md`](docs/adr/ADR-M5-003-canvas-drag-to-connect-architecture.md) | Quyết định kiến trúc ADR-M5-003: Dedicated connection handle, pointer capture lifecycle, fixed SVG preview, live validation. |
+| **10** | [`docs/specs/m5b-canvas-drag-to-connect.md`](docs/specs/m5b-canvas-drag-to-connect.md) | Đặc tả kỹ thuật M5b: Gherkin scenarios, event isolation, undo/redo atomic contract cho canvas connection. |
+| **11** | [`docs/reports/mindmap-phase-m4b-closure-report.md`](docs/reports/mindmap-phase-m4b-closure-report.md) | Báo cáo đóng Phase M4b-A: Local component hardening, pure viewport helpers, fail-closed geometry, event isolation. |
+| **12** | [`docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md`](docs/adr/ADR-100-mindmap-phase-m4b-viewport-zoom-polish.md) | Quyết định kiến trúc ADR-100: Hướng A (Local component hardening, zero state lifting), defense-in-depth isolation. |
+| **13** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
+| **14** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
+| **15** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
 
 ---
 
@@ -54,9 +55,10 @@
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Trạng Thái / Ưu Tiên |
 | :--- | :--- | :--- | :--- | :---: |
-| **Candidate 1** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **ĐÃ HOÀN THÀNH (Pending Commit)** |
-| **Candidate 2** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
-| **Candidate 3** | **Phase R3c — Reader Highlights Filtering & Color Management**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar, ghi nhớ tùy chọn màu sắc cá nhân hóa. | Tìm kiếm và phân loại nhanh trích đoạn trên tài liệu dài. | Thấp - Trung bình | 🥈 **P2** |
+| **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **ĐÃ COMMIT LOCAL (`17d5f50`)** |
+| **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **SẴN SÀNG COMMIT LOCAL** |
+| **Candidate 1** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
+| **Candidate 2** | **Phase R3c — Reader Highlights Filtering & Color Management**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar, ghi nhớ tùy chọn màu sắc cá nhân hóa. | Tìm kiếm và phân loại nhanh trích đoạn trên tài liệu dài. | Thấp - Trung bình | 🥈 **P2** |
 
 ---
 
@@ -91,6 +93,41 @@
 - **Follow-up Candidates:**
   - Phase R3c: Quick filter trích đoạn theo màu sắc, tìm kiếm text trong ReaderSidebar.
   - Phase R3d: Persistent color highlight rendering trên rendered Markdown / PDF text layer nếu cần thiết.
+
+---
+
+## 🤖 Mind Map AI Backend Proxy & Gemini 3.8 Flash Migration Closure (2026-10-14)
+
+- **Trạng thái:** 🟢 Complete & Verified Locally (Local-only, CHƯA PUSH REMOTE)
+- **Mục tiêu migration:** Di chuyển toàn bộ luồng gọi mở rộng Mind Map bằng AI từ client-side trực tiếp sang backend proxy bảo mật (`POST /api/gemini/mindmap-expand`), khắc phục triệt để lỗi deprecation model cũ `gemini-2.5-flash` (`404 NOT_FOUND`), chuyển sang model `gemini-3.8-flash`, xóa bỏ phụ thuộc `GEMINI_API_KEY` ở browser, và ngăn chặn silent mock fallback trên modal.
+- **Phạm vi tập tin (10 files migration + 1 ADR):**
+  - Production (7 files):
+    - `src/server/services/geminiService.ts`: Thêm `DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"` và `getGeminiModel()`.
+    - `src/lib/resilience.ts`: Mở rộng `CANDIDATE_MODELS` với `gemini-3.8-flash`.
+    - `src/lib/validation.ts`: Thêm Zod schema `MindMapAiExpansionInputSchema` và enum `MindMapAiExpansionPresetEnum`.
+    - `src/lib/mindmapAiService.ts`: Export `buildMindMapAiExpansionPrompt()`, chuyển default endpoint sang `/api/gemini/mindmap-expand`, bỏ frontend `GEMINI_API_KEY`.
+    - `src/server/routes/geminiRoutes.ts`: Thêm endpoint `POST /gemini/mindmap-expand` với Zod validation, resilience engine, fallback bullet points parser.
+    - `src/components/mindmap/MindMapView.tsx`: Khởi tạo `createGeminiMindMapAiClient()` và truyền qua prop `aiClient`.
+    - `src/components/mindmap/MindMapAiExpansionModal.tsx`: Chặn silent mock fallback, hiển thị lỗi cấu hình rõ ràng nếu thiếu client.
+  - Tests (3 files):
+    - `tests/unit/gemini-routes.test.ts`: 14 tests PASS (400 validation, 503 missing key, 200 success, 500/503 retryable).
+    - `tests/unit/mindmap-ai-service.test.ts`: 22 tests PASS (prompt building, proxy routing, error propagation).
+    - `tests/unit/mindmap-ai-expansion-ui.test.tsx`: 10 tests PASS (UI integration modal, loading, error, cancel).
+  - Architecture Decision Record:
+    - `docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md`.
+- **Quality Gates Baseline:**
+  - Targeted Test Suites: **59/59 PASS** (100% GREEN) trên 4 test suites liên quan (`gemini-routes.test.ts` 14/14, `mindmap-ai-service.test.ts` 22/22, `mindmap-ai-expansion-ui.test.tsx` 10/10, `phase-4-production-hardening.test.ts` 13/13).
+  - TypeScript Typecheck: **0 errors** (`npm run typecheck` / `tsc --noEmit` hoàn tất thành công, Exit Code 0).
+  - Git Diff Check: **0 trailing whitespace**, không có xung đột syntax.
+  - Bảo mật: **0 occurrences** của `GEMINI_API_KEY` trong frontend source code; loại bỏ hoàn toàn `generativelanguage.googleapis.com` ở client.
+- **Hành vi đã được kiểm chứng (Behaviors Delivered):**
+  1. ✅ **Secure Backend Proxy Routing**: Client gửi request ngữ cảnh tới `/api/gemini/mindmap-expand`, server dùng `getGenAI()` với key an toàn trên server.
+  2. ✅ **Gemini 3.8 Flash Support**: Sử dụng `getGeminiModel()` (mặc định `gemini-3.8-flash`) giải quyết triệt để lỗi 404 model cũ.
+  3. ✅ **Structured Output & Fallback Parsing**: Hỗ trợ JSON response và fallback parser cho dạng bullet points nếu model trả text thô.
+  4. ✅ **Resilience Integration**: Tích hợp retry có giới hạn (bounded retry) và fallback model khi gặp mã lỗi 429/503.
+  5. ✅ **Explicit Modal Error State**: Modal không còn fallback ngầm sang mock data; nếu backend thiếu API key, thông báo 503 tiếng Việt hiển thị rõ ràng.
+- **Non-Goals & Follow-up Items:**
+  - Route `/api/gemini/cards` (Flashcard Generation) hiện vẫn giữ model hardcode `"gemini-3.6-flash"`. Do model này vẫn hoạt động bình thường, việc đồng bộ sang `getGeminiModel()` được ghi nhận là follow-up rủi ro thấp.
 
 ---
 

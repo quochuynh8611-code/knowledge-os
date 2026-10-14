@@ -102,6 +102,7 @@ import {
 } from "../../lib/mindmapTreeMutations";
 import { MindMapAiExpansionModal } from "./MindMapAiExpansionModal";
 import { AiExpansionContext, AiCandidateNode } from "../../types/mindmapAi";
+import { createGeminiMindMapAiClient } from "../../lib/mindmapAiService";
 
 export type MindMapEdgeTypeFilter = "all" | LinkType;
 
@@ -1387,6 +1388,8 @@ export function MindMapView() {
     };
   }, [aiExpansionTargetNodeId, workingDocumentTree, projection?.tree]);
 
+  const mindMapAiClient = useMemo(() => createGeminiMindMapAiClient(), []);
+
   // Persistence Actions (Phase P1 & P2)
   const handleSaveNewDocument = useCallback(
     (title: string, description?: string, changeSummary?: string) => {
@@ -2222,6 +2225,7 @@ export function MindMapView() {
         <MindMapAiExpansionModal
           isOpen={Boolean(aiExpansionTargetNodeId)}
           context={aiExpansionContext}
+          aiClient={mindMapAiClient}
           onClose={() => setAiExpansionTargetNodeId(null)}
           onInsertCandidates={handleInsertAiCandidates}
         />

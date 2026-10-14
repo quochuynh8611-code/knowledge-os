@@ -291,4 +291,120 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
       expect(res.body.error).toBe("GEMINI_API_KEY chưa được cấu hình.");
     });
   });
+
+  describe("POST /api/gemini/mindmap-expand", () => {
+    it("11. Trả về 400 VALIDATION_ERROR khi payload thiếu targetNodeTitle hoặc rootTopicTitle", async () => {
+      const app = express();
+      app.use(express.json());
+      app.use("/api", createGeminiRouter(() => mockGenAI));
+
+      const res = await request(app)
+        .post("/api/gemini/mindmap-expand")
+        .send({
+          targetNodeTitle: "", // Trống -> invalid
+          rootTopicTitle: "Tứ Diệu Đế",
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe("VALIDATION_ERROR");
+      expect(res.body.details).toBeDefined();
+    });
+
+    it("12. Trả về 503 khi getGenAI() null (GEMINI_API_KEY chưa cấu hình trên server)", async () => {
+      const app = express();
+      app.use(express.json());
+      app.use("/api", createGeminiRouter(() => null));
+
+      const res = await request(app)
+        .post("/api/gemini/mindmap-expand")
+        .send({
+          targetNodeTitle: "Khổ Đế",
+          rootTopicTitle: "Tứ Diệu Đế",
+          ancestorTitles: ["Tứ Diệu Đế"],
+          existingSiblingTitles: ["Sinh Lão Bệnh Tử"],
+          preset: "sub_components",
+        });
+
+      expect(res.status).toBe(503);
+      expect(res.body.error).toMatch(/GEMINI_API_KEY chưa được cấu hình/);
+    });
+
+    it("13. Happy path: Trả về 200 với candidates JSON khi Gemini phản hồi hợp lệ", async () => {
+      const app = express();
+      app.use(express.json());
+
+      mockGenerateContent.mockResolvedValueOnce({
+        text: JSON.stringify({
+          candidates: [
+            { title: "Khổ Khổ", description: "Đau đớn thân tâm" },
+            { title: "Hoại Khổ", description: "Biến đổi vô thường" },
+          ],
+        }),
+      });
+
+      app.use("/api", createGeminiRouter(() => mockGenAI));
+
+      const res = await request(app)
+        .post("/api/gemini/mindmap-expand")
+        .send({
+          targetNodeTitle: "Khổ Đế",
+          rootTopicTitle: "Tứ Diệu Đế",
+          ancestorTitles: ["Tứ Diệu Đế"],
+          existingSiblingTitles: [],
+          preset: "sub_components",
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.candidates).toHaveLength(2);
+      expect(res.body.candidates[0].title).toBe("Khổ Khổ");
+      expect(res.body.candidates[1].title).toBe("Hoại Khổ");
+      expect(res.body.model).toBe("gemini-3.8-flash");
+      expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+      expect(mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "gemini-3.8-flash",
+        }),
+      );
+    });
+
+    it("14. Tôn trọng GEMINI_MODEL env override khi được cấu hình", async () => {
+      const originalEnv = process.env.GEMINI_MODEL;
+      try {
+        process.env.GEMINI_MODEL = "gemini-custom-model";
+        const app = express();
+        app.use(express.json());
+
+        mockGenerateContent.mockResolvedValueOnce({
+          text: JSON.stringify({
+            candidates: [{ title: "Khổ Khổ" }],
+          }),
+        });
+
+        app.use("/api", createGeminiRouter(() => mockGenAI));
+
+        const res = await request(app)
+          .post("/api/gemini/mindmap-expand")
+          .send({
+            targetNodeTitle: "Khổ Đế",
+            rootTopicTitle: "Tứ Diệu Đế",
+            ancestorTitles: [],
+            existingSiblingTitles: [],
+          });
+
+        expect(res.status).toBe(200);
+        expect(res.body.model).toBe("gemini-custom-model");
+        expect(mockGenerateContent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            model: "gemini-custom-model",
+          }),
+        );
+      } finally {
+        if (originalEnv === undefined) {
+          delete process.env.GEMINI_MODEL;
+        } else {
+          process.env.GEMINI_MODEL = originalEnv;
+        }
+      }
+    });
+  });
 });

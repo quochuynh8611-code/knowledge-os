@@ -235,16 +235,54 @@ export function normalizeAiResponse(
 }
 
 /**
+ * Builds the structured prompt for mind map node expansion.
+ * Reusable by both server proxy and direct client integration.
+ */
+export function buildMindMapAiExpansionPrompt(context: {
+  targetNodeTitle: string;
+  rootTopicTitle: string;
+  ancestorTitles?: string[];
+  existingSiblingTitles?: string[];
+  preset?: string;
+  customInstruction?: string;
+  language?: string;
+}): string {
+  const ancestorStr =
+    context.ancestorTitles && context.ancestorTitles.length > 0
+      ? context.ancestorTitles.join(' > ')
+      : 'None';
+  const siblingsStr =
+    context.existingSiblingTitles && context.existingSiblingTitles.length > 0
+      ? context.existingSiblingTitles.join(', ')
+      : 'None';
+  const langStr = context.language === 'en' ? 'English' : 'Tiếng Việt';
+  const presetStr = context.preset || 'sub_components';
+  const customInstructionStr = context.customInstruction || 'None';
+
+  return `Bạn là chuyên gia tư duy và kiến trúc sư tri thức. Nhiệm vụ: Gợi ý các nhánh con chất lượng cao cho sơ đồ tư duy.
+Ngữ cảnh nút mục tiêu: "${context.targetNodeTitle}"
+Chủ đề gốc: "${context.rootTopicTitle}"
+Đường dẫn cha: ${ancestorStr}
+Các nhánh anh em hiện có (tránh trùng lặp): ${siblingsStr}
+Mẫu định hướng: ${presetStr}
+Chỉ dẫn bổ sung: ${customInstructionStr}
+Ngôn ngữ phản hồi: ${langStr}
+
+BẮT BUỘC trả về định dạng JSON thuần túy theo schema:
+{
+  "candidates": [
+    { "title": "Tiêu đề nhánh ngắn gọn", "description": "Giải thích tóm tắt" }
+  ]
+}`;
+}
+
+/**
  * Creates a live Gemini-backed MindMapAiClient implementation.
+ * Calls backend Express proxy (/api/gemini/mindmap-expand) so API keys remain securely on server.
  * Validates provider responses before candidate normalization and respects AbortSignal.
  */
 export function createGeminiMindMapAiClient(options?: GeminiAiClientOptions): MindMapAiClient {
-  const envApiKey =
-    (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined) ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY);
-  const apiKey = options?.apiKey || envApiKey;
-  const model = options?.model || 'gemini-2.5-flash';
-  const apiEndpoint = options?.apiEndpoint || `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const apiEndpoint = options?.apiEndpoint || '/api/gemini/mindmap-expand';
   const fetchFn = options?.customFetch || fetch;
 
   return {
@@ -263,70 +301,65 @@ export function createGeminiMindMapAiClient(options?: GeminiAiClientOptions): Mi
         };
       }
 
-      if (!apiKey && !options?.customFetch) {
-        return {
-          ok: false,
-          candidates: [],
-          error: {
-            code: 'API_ERROR',
-            message: 'GEMINI_API_KEY chưa được cấu hình. Vui lòng cấu hình API Key.',
-          },
-        };
-      }
-
-      const prompt = `Bạn là chuyên gia tư duy và kiến trúc sư tri thức. Nhiệm vụ: Gợi ý các nhánh con chất lượng cao cho sơ đồ tư duy.
-Ngữ cảnh nút mục tiêu: "${context.targetNodeTitle}"
-Chủ đề gốc: "${context.rootTopicTitle}"
-Đường dẫn cha: ${context.ancestorTitles.join(' > ') || 'None'}
-Các nhánh anh em hiện có (tránh trùng lặp): ${context.existingSiblingTitles.join(', ') || 'None'}
-Mẫu định hướng: ${context.preset}
-Chỉ dẫn bổ sung: ${context.customInstruction || 'None'}
-Ngôn ngữ phản hồi: ${context.language === 'en' ? 'English' : 'Tiếng Việt'}
-
-BẮT BUỘC trả về định dạng JSON thuần túy theo schema:
-{
-  "candidates": [
-    { "title": "Tiêu đề nhánh ngắn gọn", "description": "Giải thích tóm tắt" }
-  ]
-}`;
-
       try {
-        const url = new URL(apiEndpoint);
-        if (apiKey) {
-          url.searchParams.set('key', apiKey);
-        }
-
-        const response = await fetchFn(url.toString(), {
+        const response = await fetchFn(apiEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }],
-              },
-            ],
-            generationConfig: {
-              responseMimeType: 'application/json',
-            },
+            targetNodeId: context.targetNodeId,
+            targetNodeTitle: context.targetNodeTitle,
+            rootTopicTitle: context.rootTopicTitle,
+            ancestorTitles: context.ancestorTitles,
+            existingSiblingTitles: context.existingSiblingTitles,
+            preset: context.preset,
+            customInstruction: context.customInstruction,
+            language: context.language,
           }),
           signal,
         });
 
         if (!response.ok) {
+          let errorMessage = `Lỗi kết nối dịch vụ AI (${response.status}: ${response.statusText}).`;
+          try {
+            const errorJson = await response.json();
+            if (errorJson?.error) {
+              errorMessage =
+                typeof errorJson.error === 'string'
+                  ? errorJson.error
+                  : JSON.stringify(errorJson.error);
+            }
+          } catch {
+            // Keep default statusText error message
+          }
           return {
             ok: false,
             candidates: [],
             error: {
               code: 'API_ERROR',
-              message: `Lỗi kết nối Gemini API (${response.status}: ${response.statusText}).`,
+              message: errorMessage,
             },
           };
         }
 
         const data = await response.json();
-        const textResponse = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        let textResponse = '';
+
+        if (typeof data?.rawText === 'string') {
+          textResponse = data.rawText;
+        } else if (
+          Array.isArray(data?.candidates) &&
+          data.candidates[0]?.content?.parts?.[0]?.text
+        ) {
+          // Backward compatibility with direct Google response shape
+          textResponse = data.candidates[0].content.parts[0].text;
+        } else if (Array.isArray(data?.candidates)) {
+          // Backend proxy shape: { candidates: [...] }
+          textResponse = JSON.stringify({ candidates: data.candidates });
+        } else if (typeof data === 'string') {
+          textResponse = data;
+        }
 
         // Check if structured payload is returned
         try {
@@ -378,6 +411,7 @@ BẮT BUỘC trả về định dạng JSON thuần túy theo schema:
     },
   };
 }
+
 
 /**
  * Creates a mockable MindMapAiClient implementation for automated tests and offline development.

@@ -19,10 +19,34 @@ import {
   createMockMindMapAiClient,
   validateAiProviderPayload,
   createGeminiMindMapAiClient,
+  buildMindMapAiExpansionPrompt,
   type AiExpansionContext,
 } from '../../src/lib/mindmapAiService';
 
 describe('Mind Map AI Node Expansion Service (Phase P3)', () => {
+  describe('0. buildMindMapAiExpansionPrompt', () => {
+    it('constructs prompt with target context, ancestors, siblings and preset', () => {
+      const prompt = buildMindMapAiExpansionPrompt({
+        targetNodeTitle: 'Bát Chánh Đạo',
+        rootTopicTitle: 'Tứ Diệu Đế',
+        ancestorTitles: ['Tứ Diệu Đế', 'Đạo Đế'],
+        existingSiblingTitles: ['Chánh Kiến'],
+        preset: 'sub_components',
+        customInstruction: 'Tập trung thuật ngữ Pali',
+        language: 'vi',
+      });
+
+      expect(prompt).toContain('Bát Chánh Đạo');
+      expect(prompt).toContain('Tứ Diệu Đế');
+      expect(prompt).toContain('Tứ Diệu Đế > Đạo Đế');
+      expect(prompt).toContain('Chánh Kiến');
+      expect(prompt).toContain('sub_components');
+      expect(prompt).toContain('Tập trung thuật ngữ Pali');
+      expect(prompt).toContain('Tiếng Việt');
+      expect(prompt).toContain('"candidates"');
+    });
+  });
+
   describe('1. normalizeTitleForComparison', () => {
     it('collapses multiple whitespace characters, trims, and converts to lowercase', () => {
       expect(normalizeTitleForComparison('  Chánh   Kiến  ')).toBe('chánh kiến');
@@ -355,6 +379,60 @@ describe('Mind Map AI Node Expansion Service (Phase P3)', () => {
       const res = await client.generateNodeExpansion(sampleContext);
       expect(res.ok).toBe(false);
       expect(res.error?.code).toBe('API_ERROR');
+    });
+
+    it('defaults to /api/gemini/mindmap-expand without requiring apiKey on client', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            { title: 'Chánh Ngữ', description: 'Lời nói chân thật' },
+            { title: 'Chánh Nghiệp', description: 'Hành động chân chính' },
+          ],
+        }),
+      });
+
+      // No apiKey passed!
+      const client = createGeminiMindMapAiClient({
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext);
+
+      expect(res.ok).toBe(true);
+      expect(res.candidates).toHaveLength(2);
+      expect(res.candidates[0].title).toBe('Chánh Ngữ');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      const [calledUrl, calledOptions] = mockFetch.mock.calls[0];
+      expect(calledUrl).toBe('/api/gemini/mindmap-expand');
+      expect(calledOptions.method).toBe('POST');
+      expect(calledOptions.headers).toEqual({ 'Content-Type': 'application/json' });
+
+      const parsedBody = JSON.parse(calledOptions.body);
+      expect(parsedBody.targetNodeTitle).toBe('Bát Chánh Đạo');
+      expect(parsedBody.rootTopicTitle).toBe('Tứ Diệu Đế');
+    });
+
+    it('propagates server error message from proxy response (e.g. 503 unconfigured key)', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({
+          error: 'GEMINI_API_KEY chưa được cấu hình trên server.',
+        }),
+      });
+
+      const client = createGeminiMindMapAiClient({
+        customFetch: mockFetch,
+      });
+
+      const res = await client.generateNodeExpansion(sampleContext);
+
+      expect(res.ok).toBe(false);
+      expect(res.error?.code).toBe('API_ERROR');
+      expect(res.error?.message).toBe('GEMINI_API_KEY chưa được cấu hình trên server.');
     });
   });
 });

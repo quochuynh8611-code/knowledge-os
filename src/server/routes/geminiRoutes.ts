@@ -1,11 +1,16 @@
 import { Router } from "express";
 import type { GoogleGenAI } from "@google/genai";
 import type { ObsidianVaultManager } from "../../lib/vault-manager";
-import { GeminiResearchInputSchema } from "../../lib/validation";
+import {
+  GeminiResearchInputSchema,
+  MindMapAiExpansionInputSchema,
+} from "../../lib/validation";
 import {
   isRetryableGeminiError,
   generateContentWithResilience,
 } from "../../lib/resilience";
+import { buildMindMapAiExpansionPrompt } from "../../lib/mindmapAiService";
+import { getGeminiModel } from "../services/geminiService";
 import { logStructuredEvent } from "../../lib/security";
 import {
   buildBoundedSourceRegistry,
@@ -373,6 +378,103 @@ Yêu cầu định dạng JSON:
       const friendlyMsg = isOverloaded
         ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
         : error.message || "Lỗi sinh thẻ ôn tập.";
+      res.status(500).json({ error: friendlyMsg });
+    }
+  });
+
+  // ==========================================
+  // 4. Mind Map AI Node Expansion Endpoint (Proxy)
+  // ==========================================
+  router.post("/gemini/mindmap-expand", async (req, res) => {
+    const parsedInput = MindMapAiExpansionInputSchema.safeParse(req.body);
+    if (!parsedInput.success) {
+      logStructuredEvent("warn", "GEMINI_MINDMAP_EXPAND_VALIDATION_ERROR", {
+        errors: parsedInput.error.issues,
+      });
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        details: parsedInput.error.issues,
+      });
+    }
+
+    try {
+      const ai = getGenAI();
+      if (!ai) {
+        return res.status(503).json({
+          error:
+            "GEMINI_API_KEY chưa được cấu hình. Vui lòng cấu hình API Key trong backend để sử dụng tính năng mở rộng sơ đồ tư duy bằng AI.",
+        });
+      }
+
+      const prompt = buildMindMapAiExpansionPrompt(parsedInput.data);
+      const { text, modelUsed } = await generateContentWithResilience(ai, {
+        primaryModel: getGeminiModel(),
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          systemInstruction:
+            "Bạn là chuyên gia tư duy và kiến trúc sư tri thức gợi ý các nhánh sơ đồ tư duy ở định dạng JSON.",
+        },
+      });
+
+      let candidates: Array<{ title: string; description?: string }> = [];
+      let cleanStr = (text || "").trim();
+      if (cleanStr.includes("```")) {
+        const match = cleanStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (match && match[1]) cleanStr = match[1].trim();
+      }
+
+      try {
+        const parsed = JSON.parse(cleanStr);
+        if (Array.isArray(parsed?.candidates)) {
+          candidates = parsed.candidates
+            .filter(
+              (c: any) =>
+                c && typeof c.title === "string" && c.title.trim().length > 0,
+            )
+            .map((c: any) => ({
+              title: c.title.trim(),
+              description:
+                typeof c.description === "string"
+                  ? c.description.trim()
+                  : undefined,
+            }));
+        }
+      } catch {
+        // Fallback: extract bullet points if JSON parse failed
+      }
+
+      if (candidates.length === 0 && cleanStr) {
+        const lines = cleanStr.split("\n");
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+          const bulletMatch = trimmedLine.match(
+            /^[-*+]\s+(?:(?:\d+[\.\)]\s*)?)(.+)$/,
+          );
+          const numberedMatch = trimmedLine.match(/^\d+[\.\)]\s+(.+)$/);
+          const itemText = bulletMatch?.[1]?.trim() || numberedMatch?.[1]?.trim();
+          if (itemText) {
+            candidates.push({ title: itemText });
+          }
+        }
+      }
+
+      res.json({
+        candidates,
+        rawText: text,
+        model: modelUsed,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      logStructuredEvent("error", "GEMINI_MINDMAP_EXPAND_ERROR", {
+        error: error?.message || String(error),
+      });
+      const isOverloaded = isRetryableGeminiError(error);
+      const friendlyMsg = isOverloaded
+        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
+        : error?.message ||
+          "Lỗi xử lý yêu cầu mở rộng sơ đồ tư duy từ Gemini API.";
       res.status(500).json({ error: friendlyMsg });
     }
   });

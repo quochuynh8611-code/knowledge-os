@@ -1220,3 +1220,30 @@ export type ValidatedArchivedDocumentCreate = z.infer<typeof ArchivedDocumentCre
 export type ValidatedResearchExcerpt = z.infer<typeof ResearchExcerptSchema>;
 export type ValidatedResearchExcerptCreate = z.infer<typeof ResearchExcerptCreateSchema>;
 export type ValidatedResearchInboxItem = z.infer<typeof ResearchInboxItemSchema>;
+
+// ==========================================
+// 15. MIND MAP AI EXPANSION SCHEMAS (PHASE P3 / PROXY)
+// ==========================================
+
+export const MindMapAiExpansionPresetEnum = z.enum([
+  "sub_components",
+  "dimensions",
+  "inquiry_questions",
+  "custom",
+]);
+
+export const MindMapAiExpansionInputSchema = z.object({
+  targetNodeId: z.string().optional(),
+  targetNodeTitle: z.string().trim().min(1, "targetNodeTitle không được để trống"),
+  rootTopicTitle: z.string().trim().min(1, "rootTopicTitle không được để trống"),
+  ancestorTitles: z.array(z.string()).default([]),
+  existingSiblingTitles: z.array(z.string()).default([]),
+  preset: MindMapAiExpansionPresetEnum.default("sub_components"),
+  customInstruction: z.string().max(1000).optional(),
+  language: z.enum(["vi", "en"]).default("vi"),
+  maxCandidates: z.number().int().min(1).max(20).optional(),
+});
+
+export type ValidatedMindMapAiExpansionInput = z.infer<
+  typeof MindMapAiExpansionInputSchema
+>;
