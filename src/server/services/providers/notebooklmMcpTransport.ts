@@ -223,6 +223,9 @@ export interface StdioMcpTransportConfig {
   defaultTimeoutMs?: number;
   spawnFn?: typeof spawn;
   logger?: (level: "info" | "warn" | "error" | "debug", message: string) => void;
+  skipInitialize?: boolean;
+  clientInfo?: { name: string; version: string };
+  protocolVersion?: string;
 }
 
 interface PendingRequestRecord {
@@ -244,6 +247,8 @@ export class StdioMcpTransport implements McpTransport {
   private nextRequestId: number = 0;
   private isConnecting: boolean = false;
   private isClosed: boolean = false;
+  private isInitialized: boolean = false;
+  private connectPromise: Promise<void> | null = null;
 
   constructor(config: StdioMcpTransportConfig = {}) {
     this.config = {
@@ -286,88 +291,124 @@ export class StdioMcpTransport implements McpTransport {
         retryable: false,
       });
     }
-    if (this.isConnecting) {
-      return;
+    if (this.connectPromise) {
+      return this.connectPromise;
     }
 
-    this.isConnecting = true;
+    this.connectPromise = (async () => {
+      try {
+        const { executable, isExplicit } = this.resolveExecutable();
 
-    try {
-      const { executable, isExplicit } = this.resolveExecutable();
+        // If explicit path was given and not using custom spawnFn, check file accessibility before spawning
+        if (isExplicit && !this.config.spawnFn && !fs.existsSync(executable)) {
+          throw new NotebookLMClientError({
+            code: "CONFIGURATION_ERROR",
+            message: `Explicit NotebookLM MCP binary not found at path: ${executable}`,
+            retryable: false,
+          });
+        }
 
-      // If explicit path was given and not using custom spawnFn, check file accessibility before spawning
-      if (isExplicit && !this.config.spawnFn && !fs.existsSync(executable)) {
+        const spawnArgs = this.config.args || [];
+        const spawnEnv = {
+          ...process.env,
+          ...(this.config.env || {}),
+        };
+
+        const proc = this.spawnFn(executable, spawnArgs, {
+          cwd: this.config.cwd,
+          env: spawnEnv,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+
+        this.childProcess = proc;
+
+        // Handle stdout line-buffered streaming
+        proc.stdout?.on("data", (chunk: Buffer | string) => {
+          this.stdoutBuffer += chunk.toString("utf-8");
+          this.processStdoutBuffer();
+        });
+
+        // Handle stderr with strict security sanitization
+        proc.stderr?.on("data", (chunk: Buffer | string) => {
+          const raw = chunk.toString("utf-8");
+          const sanitized = sanitizeProviderErrorMessage(raw);
+          if (this.config.logger) {
+            this.config.logger("debug", `[MCP-STDERR] ${sanitized}`);
+          }
+        });
+
+        // Handle unexpected process exit or crash
+        proc.on("error", (err: Error) => {
+          const sanitizedMsg = sanitizeProviderErrorMessage(err.message);
+          this.handleProcessTermination(
+            new NotebookLMClientError({
+              code: "UNAVAILABLE",
+              message: `MCP process error: ${sanitizedMsg}`,
+              retryable: true,
+            })
+          );
+        });
+
+        proc.on("close", (code: number | null, signal: string | null) => {
+          this.handleProcessTermination(
+            new NotebookLMClientError({
+              code: "UNAVAILABLE",
+              message: `MCP process exited unexpectedly (code: ${code}, signal: ${signal})`,
+              retryable: true,
+            })
+          );
+        });
+
+        if (!this.config.skipInitialize) {
+          await this.performInitializeHandshake();
+        } else {
+          this.isInitialized = true;
+        }
+      } catch (err: unknown) {
+        if (this.childProcess) {
+          try {
+            this.childProcess.kill("SIGTERM");
+          } catch {
+            // Process might already be dead
+          }
+          this.childProcess = null;
+        }
+        this.isInitialized = false;
+        if (err instanceof NotebookLMClientError) {
+          throw err;
+        }
+        const rawMsg = err instanceof Error ? err.message : String(err);
         throw new NotebookLMClientError({
           code: "CONFIGURATION_ERROR",
-          message: `Explicit NotebookLM MCP binary not found at path: ${executable}`,
+          message: `Failed to initialize MCP transport: ${sanitizeProviderErrorMessage(rawMsg)}`,
           retryable: false,
         });
       }
+    })();
 
-      const spawnArgs = this.config.args || [];
-      const spawnEnv = {
-        ...process.env,
-        ...(this.config.env || {}),
-      };
-
-      const proc = this.spawnFn(executable, spawnArgs, {
-        cwd: this.config.cwd,
-        env: spawnEnv,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-
-      this.childProcess = proc;
-
-      // Handle stdout line-buffered streaming
-      proc.stdout?.on("data", (chunk: Buffer | string) => {
-        this.stdoutBuffer += chunk.toString("utf-8");
-        this.processStdoutBuffer();
-      });
-
-      // Handle stderr with strict security sanitization
-      proc.stderr?.on("data", (chunk: Buffer | string) => {
-        const raw = chunk.toString("utf-8");
-        const sanitized = sanitizeProviderErrorMessage(raw);
-        if (this.config.logger) {
-          this.config.logger("debug", `[MCP-STDERR] ${sanitized}`);
-        }
-      });
-
-      // Handle unexpected process exit or crash
-      proc.on("error", (err: Error) => {
-        const sanitizedMsg = sanitizeProviderErrorMessage(err.message);
-        this.handleProcessTermination(
-          new NotebookLMClientError({
-            code: "UNAVAILABLE",
-            message: `MCP process error: ${sanitizedMsg}`,
-            retryable: true,
-          })
-        );
-      });
-
-      proc.on("close", (code: number | null, signal: string | null) => {
-        this.handleProcessTermination(
-          new NotebookLMClientError({
-            code: "UNAVAILABLE",
-            message: `MCP process exited unexpectedly (code: ${code}, signal: ${signal})`,
-            retryable: true,
-          })
-        );
-      });
-    } catch (err: unknown) {
-      this.childProcess = null;
-      if (err instanceof NotebookLMClientError) {
-        throw err;
-      }
-      const rawMsg = err instanceof Error ? err.message : String(err);
-      throw new NotebookLMClientError({
-        code: "CONFIGURATION_ERROR",
-        message: `Failed to initialize MCP transport: ${sanitizeProviderErrorMessage(rawMsg)}`,
-        retryable: false,
-      });
+    try {
+      await this.connectPromise;
     } finally {
-      this.isConnecting = false;
+      this.connectPromise = null;
     }
+  }
+
+  private async performInitializeHandshake(): Promise<void> {
+    const initParams = {
+      protocolVersion: this.config.protocolVersion || "2024-11-05",
+      capabilities: {},
+      clientInfo: this.config.clientInfo || {
+        name: "dashboard-notebooklm-mcp",
+        version: "1.0.0",
+      },
+    };
+
+    await this.sendRawRequest<unknown>("initialize", initParams, {
+      timeoutMs: this.config.defaultTimeoutMs || 30000,
+    });
+
+    this.isInitialized = true;
+    await this.notify("notifications/initialized", {});
   }
 
   public async request<T = unknown>(
@@ -378,7 +419,14 @@ export class StdioMcpTransport implements McpTransport {
     if (!this.isAlive()) {
       await this.connect();
     }
+    return this.sendRawRequest<T>(method, params, options);
+  }
 
+  private sendRawRequest<T = unknown>(
+    method: string,
+    params?: Record<string, unknown>,
+    options?: McpTransportOptions
+  ): Promise<T> {
     if (!this.childProcess || !this.childProcess.stdin || !this.childProcess.stdin.writable) {
       throw new NotebookLMClientError({
         code: "UNAVAILABLE",
@@ -418,6 +466,7 @@ export class StdioMcpTransport implements McpTransport {
         }
         this.pendingRequests.delete(requestId);
       };
+
 
       if (timeoutMs > 0) {
         timeoutTimer = setTimeout(() => {
@@ -491,10 +540,7 @@ export class StdioMcpTransport implements McpTransport {
   }
 
   public async notify(method: string, params?: Record<string, unknown>): Promise<void> {
-    if (!this.isAlive()) {
-      return;
-    }
-    if (!this.childProcess?.stdin?.writable) {
+    if (this.isClosed || !this.childProcess?.stdin?.writable) {
       return;
     }
 
@@ -516,6 +562,7 @@ export class StdioMcpTransport implements McpTransport {
       return;
     }
     this.isClosed = true;
+    this.isInitialized = false;
 
     // Reject all active requests cleanly
     const shutdownError = new NotebookLMClientError({
@@ -551,7 +598,8 @@ export class StdioMcpTransport implements McpTransport {
       !this.isClosed &&
       this.childProcess !== null &&
       this.childProcess.exitCode === null &&
-      !this.childProcess.killed
+      !this.childProcess.killed &&
+      this.isInitialized
     );
   }
 
@@ -607,6 +655,7 @@ export class StdioMcpTransport implements McpTransport {
   }
 
   private handleProcessTermination(cause: NotebookLMClientError): void {
+    this.isInitialized = false;
     for (const record of this.pendingRequests.values()) {
       if (record.timeoutTimer) {
         clearTimeout(record.timeoutTimer);

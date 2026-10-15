@@ -327,6 +327,7 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
       binaryPath: "/fake/path/notebooklm-mcp",
       spawnFn: mockSpawn as unknown as typeof import("node:child_process").spawn,
       defaultTimeoutMs: 5000,
+      skipInitialize: true,
     });
 
     await transport.connect();
@@ -580,6 +581,7 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
       binaryPath: "/fake/path/notebooklm-mcp",
       spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
       defaultTimeoutMs: 5000,
+      skipInitialize: true,
     });
 
     await transport.connect();
@@ -649,6 +651,7 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
       binaryPath: "/fake/path/notebooklm-mcp",
       spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
       defaultTimeoutMs: 5000,
+      skipInitialize: true,
     });
 
     await transport.connect();
@@ -672,5 +675,195 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
         expect(res.reason.message).toContain("StdioMcpTransport is closing");
       }
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 18: MCP initialize-first handshake
+  // -------------------------------------------------------------------------
+  it("performs MCP initialize handshake on connect before sending tool requests", async () => {
+    const fakeChild = new EventEmitter() as ChildProcess & {
+      stdin: Writable;
+      stdout: Readable;
+      stderr: Readable;
+      exitCode: number | null;
+      killed: boolean;
+      kill: (sig?: string) => boolean;
+    };
+
+    const writtenMessages: Array<{ method?: string; id?: number | string; params?: any }> = [];
+    fakeChild.stdin = new Writable({
+      write(chunk, _encoding, callback) {
+        const lines = chunk.toString().trim().split("\n");
+        for (const line of lines) {
+          if (line) {
+            try {
+              const parsed = JSON.parse(line);
+              writtenMessages.push(parsed);
+              // When initialize request arrives, push initialize response
+              if (parsed.method === "initialize") {
+                fakeChild.stdout.push(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    id: parsed.id,
+                    result: {
+                      protocolVersion: "2024-11-05",
+                      capabilities: { tools: { listChanged: true } },
+                      serverInfo: { name: "notebooklm", version: "3.4.0" },
+                    },
+                  }) + "\n"
+                );
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        callback();
+      },
+    });
+    fakeChild.stdout = new Readable({ read() {} });
+    fakeChild.stderr = new Readable({ read() {} });
+    fakeChild.exitCode = null;
+    fakeChild.killed = false;
+    fakeChild.kill = vi.fn().mockReturnValue(true);
+
+    const transport = new StdioMcpTransport({
+      binaryPath: "/fake/path/notebooklm-mcp",
+      spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
+      defaultTimeoutMs: 5000,
+    });
+
+    await transport.connect();
+
+    // The FIRST message sent must be JSON-RPC initialize
+    expect(writtenMessages.length).toBeGreaterThanOrEqual(2);
+    expect(writtenMessages[0].method).toBe("initialize");
+    expect(writtenMessages[0].params?.protocolVersion).toBe("2024-11-05");
+
+    // The SECOND message sent must be notification notifications/initialized
+    expect(writtenMessages[1].method).toBe("notifications/initialized");
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 19: MCP initialize failure rejection
+  // -------------------------------------------------------------------------
+  it("rejects connect when initialize handshake returns protocol error", async () => {
+    const fakeChild = new EventEmitter() as ChildProcess & {
+      stdin: Writable;
+      stdout: Readable;
+      stderr: Readable;
+      exitCode: number | null;
+      killed: boolean;
+      kill: (sig?: string) => boolean;
+    };
+
+    fakeChild.stdin = new Writable({
+      write(chunk, _encoding, callback) {
+        const lines = chunk.toString().trim().split("\n");
+        for (const line of lines) {
+          if (line) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.method === "initialize") {
+                fakeChild.stdout.push(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    id: parsed.id,
+                    error: {
+                      code: -32600,
+                      message: "Unsupported protocol version",
+                    },
+                  }) + "\n"
+                );
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        callback();
+      },
+    });
+    fakeChild.stdout = new Readable({ read() {} });
+    fakeChild.stderr = new Readable({ read() {} });
+    fakeChild.exitCode = null;
+    fakeChild.killed = false;
+    fakeChild.kill = vi.fn().mockReturnValue(true);
+
+    const transport = new StdioMcpTransport({
+      binaryPath: "/fake/path/notebooklm-mcp",
+      spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
+      defaultTimeoutMs: 5000,
+    });
+
+    await expect(transport.connect()).rejects.toThrowError(NotebookLMClientError);
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 20: Concurrent connect calls share the same initialize handshake
+  // -------------------------------------------------------------------------
+  it("deduplicates concurrent connect calls to a single initialize handshake", async () => {
+    const fakeChild = new EventEmitter() as ChildProcess & {
+      stdin: Writable;
+      stdout: Readable;
+      stderr: Readable;
+      exitCode: number | null;
+      killed: boolean;
+      kill: (sig?: string) => boolean;
+    };
+
+    let initCallCount = 0;
+    fakeChild.stdin = new Writable({
+      write(chunk, _encoding, callback) {
+        const lines = chunk.toString().trim().split("\n");
+        for (const line of lines) {
+          if (line) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.method === "initialize") {
+                initCallCount++;
+                setTimeout(() => {
+                  fakeChild.stdout.push(
+                    JSON.stringify({
+                      jsonrpc: "2.0",
+                      id: parsed.id,
+                      result: {
+                        protocolVersion: "2024-11-05",
+                        capabilities: {},
+                        serverInfo: { name: "notebooklm", version: "3.4.0" },
+                      },
+                    }) + "\n"
+                  );
+                }, 10);
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        callback();
+      },
+    });
+    fakeChild.stdout = new Readable({ read() {} });
+    fakeChild.stderr = new Readable({ read() {} });
+    fakeChild.exitCode = null;
+    fakeChild.killed = false;
+    fakeChild.kill = vi.fn().mockReturnValue(true);
+
+    const transport = new StdioMcpTransport({
+      binaryPath: "/fake/path/notebooklm-mcp",
+      spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
+      defaultTimeoutMs: 5000,
+    });
+
+    // Launch multiple concurrent connect calls
+    await Promise.all([
+      transport.connect(),
+      transport.connect(),
+      transport.connect(),
+    ]);
+
+    expect(initCallCount).toBe(1);
+    expect(transport.isAlive()).toBe(true);
   });
 });
