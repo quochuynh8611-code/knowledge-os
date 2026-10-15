@@ -18,6 +18,7 @@ import {
   NOTEBOOKLM_ENTERPRISE_CAPABILITIES,
   ProviderAttemptRecord,
   ProviderCapabilities,
+  ProviderErrorCode,
   ProviderHealthResult,
   ProviderJobStatus,
   ProviderMetadata,
@@ -29,7 +30,11 @@ import {
   ProviderException,
   sanitizeProviderErrorMessage,
 } from "./errors";
-import { NotebookLMClient } from "./notebooklmClient";
+import {
+  NotebookLMClient,
+  NotebookLMClientError,
+  NotebookLMClientErrorCode,
+} from "./notebooklmClient";
 
 export class NotebookLMEnterpriseProvider implements ResearchProvider {
   public readonly metadata: ProviderMetadata = Object.freeze({
@@ -49,7 +54,26 @@ export class NotebookLMEnterpriseProvider implements ResearchProvider {
     return NOTEBOOKLM_ENTERPRISE_CAPABILITIES;
   }
 
-  public async healthCheck(_context: ExecutionContext): Promise<ProviderHealthResult> {
+  public async healthCheck(context: ExecutionContext): Promise<ProviderHealthResult> {
+    if (this.client.checkReadiness) {
+      try {
+        const readiness = await this.client.checkReadiness();
+        return {
+          isHealthy: readiness.isReady,
+          providerId: this.metadata.id,
+          message: readiness.message || "Client boundary ready",
+          latencyMs: readiness.latencyMs,
+        };
+      } catch (err: unknown) {
+        const normalized = this.normalizeClientError(err, context.correlationId);
+        return {
+          isHealthy: false,
+          providerId: this.metadata.id,
+          message: normalized.message,
+        };
+      }
+    }
+
     return {
       isHealthy: true,
       providerId: this.metadata.id,
@@ -255,6 +279,30 @@ export class NotebookLMEnterpriseProvider implements ResearchProvider {
   private normalizeClientError(error: unknown, correlationId?: string): ProviderException {
     if (error instanceof ProviderException) {
       return error;
+    }
+
+    if (error instanceof NotebookLMClientError) {
+      const codeMap: Record<NotebookLMClientErrorCode, ProviderErrorCode> = {
+        CONFIGURATION_ERROR: "INTERNAL_ERROR",
+        PROVIDER_DISABLED: "PROVIDER_UNAVAILABLE",
+        VALIDATION_ERROR: "INVALID_ARGUMENT",
+        TIMEOUT: "PROVIDER_TIMEOUT",
+        UNAVAILABLE: "PROVIDER_UNAVAILABLE",
+        PROTOCOL_ERROR: "INTERNAL_ERROR",
+        MALFORMED_RESPONSE: "INTERNAL_ERROR",
+        CANCELLED: "INTERNAL_ERROR",
+        INTERNAL_ERROR: "INTERNAL_ERROR",
+      };
+
+      const mappedCode = codeMap[error.code] || "INTERNAL_ERROR";
+      return new ProviderException(
+        mappedCode,
+        error.message,
+        correlationId,
+        this.metadata.id,
+        error.retryable,
+        error.rawDetails
+      );
     }
 
     const rawMessage = error instanceof Error ? error.message : String(error);

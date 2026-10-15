@@ -253,18 +253,25 @@ Feature: NotebookLM Direct MCP Execution and Fallback Routing
 
 ---
 
-## 10. Trạng Thái Kết Thúc Phiên (Session Closure State)
+## 10. Trạng Thái & Cập Nhật Tiến Độ Pha 1 (Phase 1 Closure)
 
-### 10.1. Thành Quả Đạt Được
-- Hoàn tất kiểm toán 100% hiện trạng cấu hình máy chủ, routing và composition của hệ thống Research Provider.
-- Xác định chính xác vị trí cần nâng cấp: Thay thế `MockNotebookLMClient` bằng `NotebookLMMcpClient` và mở cờ cấu hình có kiểm soát.
-- Xây dựng bản kế hoạch nâng cấp 4 pha toàn diện, đi kèm 7 kịch bản Gherkin kiểm thử test-first và phân tích vùng ảnh hưởng.
+### 10.1. Thành Quả Hoàn Thành Trong Pha 1
+- **Chuẩn hóa Client Contract:** Mở rộng interface `NotebookLMClient` tại `src/server/services/providers/notebooklmClient.ts` bổ sung `query()`, `checkReadiness()`, `close()`, và hỗ trợ `signal?: AbortSignal` cho toàn bộ các operation.
+- **Phân Lớp Lỗi Chuẩn Hóa:** Triển khai `NotebookLMClientError` với đầy đủ mã phân loại (`CONFIGURATION_ERROR`, `PROVIDER_DISABLED`, `VALIDATION_ERROR`, `TIMEOUT`, `UNAVAILABLE`, `PROTOCOL_ERROR`, `MALFORMED_RESPONSE`, `CANCELLED`, `INTERNAL_ERROR`), cờ `retryable`, `fallbackEligible` và cơ chế tự động che chắn thông tin nhạy cảm (`sanitizeProviderErrorMessage`).
+- **Deadline Guard:** Bổ sung helper `withTimeout()` chống treo tiến trình và fail-fast xác định.
+- **Provider Error Normalization:** Cập nhật `NotebookLMEnterpriseProvider.ts` để map trực tiếp từ `NotebookLMClientError` sang `ProviderException` với mã lỗi và trạng thái retryable chính xác mà không phụ thuộc vào regex parsing lỏng lẻo.
+- **Bộ Contract Tests Toàn Diện:** Tạo mới `tests/unit/notebooklm-client-contract.test.ts` bao phủ 10 kịch bản kiểm thử hợp đồng (10/10 PASS).
+- **Zero Regression:** 504/504 test suites của toàn bộ dự án PASS (4.315 passed, 3 skipped, 0 failed), TypeScript typecheck 0 errors.
 
-### 10.2. Những Việc Chưa Thực Hiện Trong Phiên Này
-- Chưa tạo mới file code implementation nào.
-- Chưa thay đổi file `src/server/config/researchProviderConfig.ts` hay `src/server/bootstrap/researchProviderComposition.ts`.
-- Chưa thay đổi biến môi trường thực tế.
+### 10.2. Những Việc Cố Ý Chưa Thực Hiện Trong Pha 1
+- Chưa kết nối NotebookLM MCP server thật.
+- Chưa spawn child process MCP hay gọi stdio/HTTP MCP runtime.
+- Chưa viết code `NotebookLMMcpClient`.
+- Chưa thay đổi `DEFAULT_RESEARCH_PROVIDER_CONFIG` hay `DEFAULT_RESEARCH_EXECUTION_POLICY`.
+- Chưa đổi default provider từ `antigravity-legacy`.
+- Chưa can thiệp database hay UI.
 
-### 10.3. Bước Tiếp Theo Đề Xuất
-- Trình người phụ trách phê duyệt kế hoạch nâng cấp kiến trúc Direct MCP.
-- Sau khi được duyệt, tiến hành **Pha 1 & Pha 2**: Khởi tạo `tests/unit/notebooklm-mcp-client.test.ts` và hiện thực hóa `NotebookLMMcpClient` theo quy trình test-first.
+### 10.3. Kế Hoạch Chuyển Sang Pha 2
+- Hiện thực hóa `NotebookLMMcpClient` tại `src/server/services/providers/notebooklmMcpClient.ts` tuân thủ 100% interface `NotebookLMClient` vừa được chuẩn hóa.
+- Tích hợp transport MCP (stdio / child process hoặc JSON-RPC client).
+- Ghép nối `NotebookLMMcpClient` vào `src/server/bootstrap/researchProviderComposition.ts` dưới cờ tính năng an toàn.
