@@ -1,15 +1,16 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-14<br>
+> **Cập nhật lần cuối:** 2026-10-15<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **MIND MAP AI / GEMINI MIGRATION & PHASE R3b: Phase R3b đã commit local thành công tại commit `17d5f50`. Mind Map AI / Gemini Migration đã hoàn tất implementation, kiểm thử toàn diện 59/59 targeted tests GREEN, 0 lỗi TypeScript typecheck, git diff --check sạch. Sẵn sàng commit local (HEAD hiện tại `17d5f50`, branch `main` ahead `origin/main` 10 commits, CHƯA PUSH REMOTE).**
+> **Trạng thái tổng thể:** 🟢 **READER SUBSYSTEM & MIND MAP AI: Phase R3c (Reader Highlights Filtering & Quick Search) đã hoàn tất implementation, kiểm thử toàn diện, commit `5bd554e`, push lên `origin/main` và GitHub Actions CI đã SUCCESS. Reader subsystem hiện hỗ trợ highlight 4 màu, inline annotation, quick search và color filtering. Toàn bộ 503/503 test files GREEN (4,305 passed), 0 lỗi TypeScript typecheck, build pass.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`).
-- **Recent Product Commits (Phase R3b):**
+- **Current Baseline / HEAD:** Commit `5bd554e` (`feat(reader): add highlights filtering and quick search`).
+- **Recent Product Commits (Reader Subsystem):**
+  - R3c: `5bd554e` (`feat(reader): add highlights filtering and quick search`)
   - R3b: `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`)
 - **Product Implementation Commits (Milestone M7):**
   - M7a: `6f50935` (`feat(mindmap): add on-canvas crosslink inspect and quick delete (M7a)`)
@@ -19,12 +20,16 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
-- **Git Branch Status:** `main` tracking `origin/main` — **ahead 10 commits** (`6d6b2c1`, `46bc047`, `6f50935`, `6573799`, `9c85033`, `530a5dc`, `9920333`, `675046a`, `acb686c`, `17d5f50`).
-- **Remote Policy:** **LOCAL COMMIT COMPLETE / IN-PROGRESS — CHƯA PUSH REMOTE** (Origin HEAD tại commit `caa1504`).
+- **Git Branch Status:** `main` tracking `origin/main` — **in-sync** (`main...origin/main [ahead 0, behind 0]`).
+- **Remote Policy:** **PUSHED TO REMOTE & CI VERIFIED** (Remote HEAD tại commit `5bd554e`, GitHub Actions CI Run `38677532285` SUCCESS).
 - **Quality Gates Baseline:**
-  - Mind Map AI Migration: 59/59 PASS across 4 targeted suites (`gemini-routes.test.ts` 14/14, `mindmap-ai-service.test.ts` 22/22, `mindmap-ai-expansion-ui.test.tsx` 10/10, `phase-4-production-hardening.test.ts` 13/13).
+  - Reader Subsystem (R3c): 7/7 targeted tests PASS (`reader-sidebar-highlights-filter.test.tsx`), 16/16 related Reader regression tests PASS (100% GREEN).
   - Reader Subsystem (R3b): 40/40 PASS across 8 suites (100% GREEN).
+  - Mind Map AI Migration: 59/59 PASS across 4 targeted suites (`gemini-routes.test.ts` 14/14, `mindmap-ai-service.test.ts` 22/22, `mindmap-ai-expansion-ui.test.tsx` 10/10, `phase-4-production-hardening.test.ts` 13/13).
+  - Full Test Suite: 503/503 test files PASS (4,305 passed, 3 skipped, 0 failed).
   - TypeScript Typecheck: 0 errors (`npm run typecheck` / `npx tsc --noEmit` hoàn tất thành công, Exit Code 0).
+  - Build Gate: Vite production bundle + Node server bundle PASS.
+  - CI Gate: GitHub Actions workflow PASS (Run ID `38677532285`).
   - Cross-Link & Canvas Wide Regression: 120/120 PASS.
 
 ---
@@ -55,10 +60,11 @@
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Trạng Thái / Ưu Tiên |
 | :--- | :--- | :--- | :--- | :---: |
-| **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **ĐÃ COMMIT LOCAL (`17d5f50`)** |
-| **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **SẴN SÀNG COMMIT LOCAL** |
+| **Completed** | **Phase R3c — Reader Highlights Filtering & Quick Search**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar (hỗ trợ tiếng Việt không dấu & hoa thường), bộ lọc kết hợp (AND), reset filters và Escape clear. | Tìm kiếm và lọc nhanh các trích đoạn và ghi chú trên tài liệu dài. | Thấp - Trung bình | 🟢 **COMPLETE & CI VERIFIED (`5bd554e`)** |
+| **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **COMPLETE & VERIFIED (`17d5f50`)** |
+| **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **COMPLETE & VERIFIED** |
 | **Candidate 1** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
-| **Candidate 2** | **Phase R3c — Reader Highlights Filtering & Color Management**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar, ghi nhớ tùy chọn màu sắc cá nhân hóa. | Tìm kiếm và phân loại nhanh trích đoạn trên tài liệu dài. | Thấp - Trung bình | 🥈 **P2** |
+| **Candidate 2** | **Phase R3d — Persistent Color Highlight Layer**<br>- Hiển thị highlight trực tiếp trên rendered Markdown / PDF text layer khi mở lại tài liệu. | Trực quan hóa màu đánh dấu trực tiếp trên văn bản tài liệu. | Trung bình | 🥈 **P2** |
 
 ---
 
@@ -91,7 +97,40 @@
   - Không can thiệp Mind Map subsystem (`src/components/mindmap/*`).
   - Không render tô màu trực tiếp lên DOM text layer của Markdown/PDF.
 - **Follow-up Candidates:**
-  - Phase R3c: Quick filter trích đoạn theo màu sắc, tìm kiếm text trong ReaderSidebar.
+  - Phase R3c: Đã hoàn tất trong commit `5bd554e` (xem chi tiết mục R3c Closure bên dưới).
+  - Phase R3d: Persistent color highlight rendering trên rendered Markdown / PDF text layer nếu cần thiết.
+
+---
+
+## 🔎 Reader Highlights Filtering & Quick Search — Phase R3c Closure (2026-10-15)
+
+- **Trạng thái:** Complete, Pushed & CI Verified (`5bd554e`)
+- **Tests & Quality Gate:**
+  - 7/7 targeted tests PASS cho `reader-sidebar-highlights-filter.test.tsx`
+  - 16/16 related Reader regression tests PASS (`reader-sidebar-annotations.test.tsx`, `selection-toolbar-color-palette.test.tsx`, `data-context-excerpt-update.test.tsx`)
+  - full suite `503/503` test files PASS
+  - `4305 passed`, `3 skipped`, `0 failed`
+  - typecheck 0 errors (`npm run typecheck`)
+  - build PASS (`npm run build`)
+  - GitHub Actions CI SUCCESS trên commit `5bd554e` (Run ID `38677532285`)
+- **Mục tiêu phase:** Bổ sung tính năng tìm kiếm nhanh và lọc trích đoạn theo màu sắc ngay trong ReaderSidebar highlights panel, giúp nâng cao hiệu suất tra cứu trên tài liệu nghiên cứu dài mà không làm thay đổi DataContext contract hay schema lưu trữ.
+- **Tập tin đã thay đổi:**
+  - `src/components/reader/ReaderSidebar.tsx`: Tích hợp shared palette constants `HIGHLIGHT_COLOR_PALETTE`, search input với Escape clear, thanh chip màu kèm số đếm, combined filtering (AND) và empty filtered state kèm nút đặt lại bộ lọc.
+  - `tests/unit/reader-sidebar-highlights-filter.test.tsx`: Bộ kiểm thử đơn vị bao phủ toàn diện 7 kịch bản lọc và tìm kiếm.
+- **Hành vi đã được kiểm chứng (Behaviors Delivered):**
+  1. ✅ **Quick search theo `selectedText` và `userNote`**: Tìm kiếm từ khóa đồng thời trên cả nội dung trích dẫn và ghi chú người dùng.
+  2. ✅ **Tìm kiếm không phân biệt dấu tiếng Việt / hoa thường**: Hàm `normalizeSearchText` chuẩn hóa Unicode NFD giúp tìm kiếm tự nhiên, nhập không dấu vẫn khớp chính xác văn bản có dấu.
+  3. ✅ **Color filter chips với counts cho 4 màu + “Tất cả”**: Hiển thị badge số lượng đoạn trích theo từng màu sắc, toggle chọn/bỏ chọn màu linh hoạt theo chuẩn ARIA.
+  4. ✅ **Combined filtering (AND)**: Kết hợp đồng thời điều kiện màu sắc và từ khóa tìm kiếm.
+  5. ✅ **Empty filtered state + reset action**: Khi không tìm thấy kết quả phù hợp, hiển thị thông báo rõ ràng kèm nút "Đặt lại bộ lọc" để xóa toàn bộ điều kiện lọc.
+  6. ✅ **Escape clears search nhưng không đóng sidebar**: Phím `Escape` trên search input xóa từ khóa và gọi `e.stopPropagation()` để bảo vệ trải nghiệm người dùng, không làm đóng sidebar cha.
+- **Non-Goals giữ nguyên:**
+  - Không lưu filter/search vào localStorage (giữ trạng thái phiên nhẹ nhàng, không lưu vết bộ lọc thừa).
+  - Không có “ghi nhớ tùy chọn màu sắc cá nhân hóa”.
+  - Không đổi DataContext contract, backend, Prisma hoặc DB schema.
+  - Không can thiệp Mind Map subsystem.
+  - Không render highlight trực tiếp lên DOM text layer.
+- **Follow-up Candidates:**
   - Phase R3d: Persistent color highlight rendering trên rendered Markdown / PDF text layer nếu cần thiết.
 
 ---
