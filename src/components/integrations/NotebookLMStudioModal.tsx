@@ -24,7 +24,7 @@ import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
 import { ResearchSessionDTO, GroundedArtifactDTO } from '../../types/researchHub';
 import { ArtifactReviewDrawer } from './ArtifactReviewDrawer';
-import { NotebookLMWorkspaceStep } from './notebooklm/types';
+import { NotebookLMWorkspaceStep, NotebookLMRuntimeStatus } from './notebooklm/types';
 import { NotebookLMHeader } from './notebooklm/NotebookLMHeader';
 import { NotebookLMStepper } from './notebooklm/NotebookLMStepper';
 import { NotebookLMSourceStep } from './notebooklm/NotebookLMSourceStep';
@@ -33,13 +33,19 @@ import { NotebookLMResultsStep } from './notebooklm/NotebookLMResultsStep';
 import { AdvancedTechnicalDetails } from './notebooklm/AdvancedTechnicalDetails';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
-interface NotebookLMStudioModalProps {
+export interface NotebookLMStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
   topic?: Topic;
+  runtimeStatus?: NotebookLMRuntimeStatus;
 }
 
-export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStudioModalProps) {
+export function NotebookLMStudioModal({
+  isOpen,
+  onClose,
+  topic,
+  runtimeStatus = 'unknown',
+}: NotebookLMStudioModalProps) {
   const { topics, notes, resources } = useData();
 
   // 1. Core Workflow Navigation State
@@ -427,6 +433,7 @@ export function NotebookLMStudioModal({ isOpen, onClose, topic }: NotebookLMStud
         <NotebookLMHeader
           onClose={onClose}
           topicTitle={currentTopic?.title}
+          runtimeStatus={runtimeStatus}
         />
 
         {/* 2. Stepper Ba Bước */}

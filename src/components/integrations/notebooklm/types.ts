@@ -29,9 +29,12 @@ export interface StatusBadgeInfo {
   description: string;
 }
 
+export type NotebookLMRuntimeStatus = 'unknown' | 'configured' | 'verified' | 'blocked';
+
 export interface NotebookLMHeaderProps {
   onClose: () => void;
   topicTitle?: string;
+  runtimeStatus?: NotebookLMRuntimeStatus;
 }
 
 export interface NotebookLMStepperProps {
