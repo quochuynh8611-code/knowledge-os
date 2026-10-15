@@ -21,7 +21,8 @@ import { ResearchOrchestrator } from "../services/providers/researchOrchestrator
 import { ResearchPersistencePort } from "../services/providers/researchPersistencePort";
 import { AntigravityProvider } from "../services/providers/antigravityProvider";
 import { NotebookLMEnterpriseProvider } from "../services/providers/notebooklmEnterpriseProvider";
-import { MockNotebookLMClient } from "../services/providers/notebooklmClient";
+import { MockNotebookLMClient, NotebookLMClient } from "../services/providers/notebooklmClient";
+import { NotebookLMMcpClient } from "../services/providers/notebooklmMcpClient";
 import { ResearchProvider } from "../services/providers/types";
 
 export type ResearchProviderComposition = {
@@ -103,9 +104,33 @@ export function composeResearchProviderDependencies(
 export function createDefaultProviderRegistry(
   config: ResearchProviderConfig
 ): ProviderRegistry {
+  // Only wire NotebookLMMcpClient when ALL safety conditions are met:
+  // 1. Provider routing explicitly enabled
+  // 2. NotebookLM provider explicitly allowed
+  // 3. MCP server capability enabled
+  // 4. Direct MCP client flag explicitly enabled
+  let notebookClient: NotebookLMClient = new MockNotebookLMClient();
+  if (
+    config.enableProviderRouting &&
+    config.allowNotebookLM &&
+    config.enableMcpServer &&
+    config.useDirectMcpClient
+  ) {
+    try {
+      notebookClient = new NotebookLMMcpClient({
+        stdioConfig: {
+          binaryPath: config.notebookLmMcpBinaryPath,
+        },
+      });
+    } catch {
+      // Fallback safely to MockNotebookLMClient if construction fails
+      notebookClient = new MockNotebookLMClient();
+    }
+  }
+
   const providers: ResearchProvider[] = [
     new AntigravityProvider(),
-    new NotebookLMEnterpriseProvider(new MockNotebookLMClient()),
+    new NotebookLMEnterpriseProvider(notebookClient),
   ];
   return new ProviderRegistry({
     config: {

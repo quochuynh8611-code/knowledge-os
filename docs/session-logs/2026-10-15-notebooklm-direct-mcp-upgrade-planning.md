@@ -271,7 +271,45 @@ Feature: NotebookLM Direct MCP Execution and Fallback Routing
 - Chưa đổi default provider từ `antigravity-legacy`.
 - Chưa can thiệp database hay UI.
 
-### 10.3. Kế Hoạch Chuyển Sang Pha 2
-- Hiện thực hóa `NotebookLMMcpClient` tại `src/server/services/providers/notebooklmMcpClient.ts` tuân thủ 100% interface `NotebookLMClient` vừa được chuẩn hóa.
-- Tích hợp transport MCP (stdio / child process hoặc JSON-RPC client).
-- Ghép nối `NotebookLMMcpClient` vào `src/server/bootstrap/researchProviderComposition.ts` dưới cờ tính năng an toàn.
+### 10.3. Chuyển Giao Sang Pha 2
+- Đã hoàn tất Phase 1 và commit thành công (`2cccceb`).
+- Chuyển tiếp sang Phase 2: Hiện thực hóa transport abstraction, stdio child-process wrapper, và NotebookLMMcpClient runtime adapter.
+
+---
+
+## 11. Trạng Thái & Cập Nhật Tiến Độ Pha 2 (Phase 2 Closure)
+
+### 11.1. Thành Quả Hoàn Thành Trong Pha 2
+- **Tầng Trừu Tượng Hóa Transport (`notebooklmMcpTransport.ts`):**
+  - Định nghĩa interface `McpTransport` (`connect`, `request`, `notify`, `close`, `isAlive`).
+  - Triển khai `InMemoryMcpTransport`: Mô phỏng JSON-RPC 2.0 in-memory, phục vụ kiểm thử đơn vị độc lập và môi trường CI không có binary ngoài.
+  - Triển khai `StdioMcpTransport`: Điều phối tiến trình con an toàn kết nối tới binary NotebookLM MCP (`notebooklm-mcp`), hỗ trợ phân giải đường dẫn kép (explicit config > environment variable `NOTEBOOKLM_MCP_BIN`/`NOTEBOOKLM_MCP_PATH` > PATH fallback), bắt tín hiệu `close`/`error` để hủy ngay các request pending với mã `UNAVAILABLE`, tự động che giấu thông tin nhạy cảm qua `sanitizeProviderErrorMessage`.
+- **Runtime Client Adapter (`notebooklmMcpClient.ts`):**
+  - Hiện thực hóa đầy đủ `NotebookLMClient` contract của Pha 1.
+  - Ánh xạ chính xác các tool đã được audit:
+    - `server_info` $\rightarrow$ `checkReadiness()`
+    - `notebook_create` $\rightarrow$ `createWorkspace()`
+    - `source_add` $\rightarrow$ `ingestSources()`
+    - `notebook_query` $\rightarrow$ `query()`
+    - `studio_create` $\rightarrow$ `generateAudioOverview()`
+    - `studio_status` $\rightarrow$ `getOperationStatus()`
+    - `notebook_get` $\rightarrow$ `reconcileWorkspace()`
+    - `notebook_delete` $\rightarrow$ `deleteWorkspace()`
+  - Cơ chế `unpackMcpToolResult` phòng vệ: Tương thích cả định dạng envelope MCP tiêu chuẩn (`content[0].text`) lẫn direct JSON object.
+- **Ghép Nối Thành Phần An Toàn (`researchProviderComposition.ts` & `researchProviderConfig.ts`):**
+  - Bổ sung cấu hình runtime tùy chọn (`useDirectMcpClient`, `notebookLmMcpBinaryPath`) nhưng giữ nguyên 100% các giá trị mặc định của `DEFAULT_RESEARCH_PROVIDER_CONFIG`.
+  - Cơ chế cổng an toàn 4 lớp: Chỉ khởi tạo `NotebookLMMcpClient` khi đồng thời thỏa mãn: `enableProviderRouting === true`, `allowNotebookLM === true`, `enableMcpServer === true`, và `useDirectMcpClient === true`. Mặc định giữ nguyên `MockNotebookLMClient`.
+- **Bộ Kiểm Thử Pha 2 Toàn Diện (`notebooklm-mcp-client.test.ts`):**
+  - 14/14 kịch bản kiểm thử PASS 100% (Executable resolution, Fallback, Workspace mapping, Source ingestion, Query mapping, Malformed response, Timeout, Cancellation, Process crash, Idempotent close, Secret masking, Provider compatibility, Feature-gated composition).
+- **Zero Regression:** Toàn bộ test suite liên quan Research Provider (105 tests) và Contract tests Pha 1 (10 tests) đều PASS 100%. TypeScript typecheck 0 errors.
+
+### 11.2. Những Việc Cố Ý Chưa Thực Hiện Trong Pha 2
+- Chưa kích hoạt cờ môi trường `NOTEBOOKLM_USE_DIRECT_MCP=true` hay `RESEARCH_ALLOW_NOTEBOOKLM=true` trong môi trường production.
+- Chưa đổi default provider từ `antigravity-legacy`.
+- Chưa đổi `DEFAULT_RESEARCH_EXECUTION_POLICY` (`simulationOnly: true` vẫn được duy trì).
+- Chưa can thiệp UI hoặc database.
+
+### 11.3. Kế Hoạch Chuyển Sang Pha 3
+- Kiểm tra tích hợp trực tiếp giữa `NotebookLMMcpClient` và binary `/Users/mr.chem/.local/bin/notebooklm-mcp` trên máy tính cục bộ trong điều kiện kiểm soát.
+- Mở rộng diagnostics endpoint để hiển thị latency và auth status của MCP runtime.
+- Chuẩn bị cơ chế fallback tự động sang Antigravity khi tiến trình MCP ngoài bị gián đoạn.

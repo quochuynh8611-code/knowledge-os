@@ -15,6 +15,8 @@ export type ResearchProviderConfig = {
   allowNotebookLM: boolean;
   allowProviderFallback: boolean;
   enableMcpServer: boolean;
+  notebookLmMcpBinaryPath?: string;
+  useDirectMcpClient?: boolean;
 };
 
 export const APPROVED_PROVIDER_IDS = Object.freeze({
@@ -78,13 +80,24 @@ export function readResearchProviderConfig(
   const allowProviderFallback = parseBooleanFlag(env.RESEARCH_ALLOW_PROVIDER_FALLBACK, true);
   const enableMcpServer = parseBooleanFlag(env.ENABLE_RESEARCH_MCP_SERVER, false);
 
-  return {
+  const config: ResearchProviderConfig = {
     enableProviderRouting,
     defaultProviderId,
     allowNotebookLM,
     allowProviderFallback,
     enableMcpServer,
   };
+
+  if (env.NOTEBOOKLM_USE_DIRECT_MCP !== undefined) {
+    config.useDirectMcpClient = parseBooleanFlag(env.NOTEBOOKLM_USE_DIRECT_MCP, false);
+  }
+
+  const rawMcpBinaryPath = env.NOTEBOOKLM_MCP_BIN?.trim() || env.NOTEBOOKLM_MCP_PATH?.trim();
+  if (rawMcpBinaryPath && rawMcpBinaryPath.length > 0) {
+    config.notebookLmMcpBinaryPath = rawMcpBinaryPath;
+  }
+
+  return config;
 }
 
 /**
