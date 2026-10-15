@@ -74,6 +74,7 @@ const AIResearchStudio = React.lazy(() =>
     default: m.AIResearchStudio,
   }))
 );
+import { resolveDefaultRuntimeStatus } from "../integrations/notebooklm/runtimeBridgeConfig";
 import { Breadcrumbs } from "../layout/Breadcrumbs";
 import { EmptyState } from "../ui/EmptyState";
 import { Resource, Note, TopicStatus } from "../../types";
@@ -1547,6 +1548,7 @@ export function TopicDetail() {
             isOpen={showNotebookLMModal}
             onClose={() => setShowNotebookLMModal(false)}
             topic={topic}
+            runtimeStatus={resolveDefaultRuntimeStatus({ isConfigured: true })}
           />
         </React.Suspense>
       )}

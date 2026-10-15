@@ -31,6 +31,7 @@ import {
 } from "./hooks/useCommandPalette";
 import { ActiveLearningSessionBar } from "./components/dashboard/ActiveLearningSessionBar";
 import { SessionWrapupModal } from "./components/modals/SessionWrapupModal";
+import { resolveDefaultRuntimeStatus } from "./components/integrations/notebooklm/runtimeBridgeConfig";
 
 // Lazy-loaded heavy & specialized workspace tabs
 const KnowledgeGraph = React.lazy(() =>
@@ -491,6 +492,7 @@ function AppContent() {
           <NotebookLMStudioModal
             isOpen={showNotebookLMModal}
             onClose={() => setShowNotebookLMModal(false)}
+            runtimeStatus={resolveDefaultRuntimeStatus({ isConfigured: true })}
           />
         </React.Suspense>
       )}

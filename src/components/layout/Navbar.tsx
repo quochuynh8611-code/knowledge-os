@@ -43,6 +43,7 @@ const AntigravityHandoffModal = React.lazy(() =>
     default: m.AntigravityHandoffModal,
   }))
 );
+import { resolveDefaultRuntimeStatus } from "../integrations/notebooklm/runtimeBridgeConfig";
 
 interface NavbarProps {
   onOpenCommandPalette?: () => void;
@@ -466,6 +467,7 @@ export function Navbar({
           <NotebookLMStudioModal
             isOpen={showNotebookLMModal}
             onClose={() => setShowNotebookLMModal(false)}
+            runtimeStatus={resolveDefaultRuntimeStatus({ isConfigured: true })}
           />
         </React.Suspense>
       )}
