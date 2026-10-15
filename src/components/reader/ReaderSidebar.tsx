@@ -13,11 +13,23 @@ import {
   ExternalLink,
   Trash2,
   Brain,
+  Search,
 } from 'lucide-react';
 import { TocItem } from './ReaderTocDrawer';
+import { HIGHLIGHT_COLOR_PALETTE } from './UnifiedSelectionToolbar';
 import { ResearchExcerpt, ResearchInboxItem, Note } from '../../types';
 import { MarkdownReadabilityRenderer } from '../../lib/markdownReadability';
 import { CitationBacklinkEntry } from '../../lib/readerBacklinksSelector';
+
+export function normalizeSearchText(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
 
 export type ReaderSidebarTab = 'outline' | 'notes' | 'highlights' | 'inbox';
 
@@ -79,6 +91,62 @@ export function ReaderSidebar({
 }: ReaderSidebarProps) {
   const [editingExcerptId, setEditingExcerptId] = React.useState<string | null>(null);
   const [noteDraft, setNoteDraft] = React.useState<string>('');
+  const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [selectedColorFilter, setSelectedColorFilter] = React.useState<string | null>(null);
+
+  const normalizedQuery = normalizeSearchText(searchQuery);
+
+  const colorCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: excerpts.length };
+    for (const p of HIGHLIGHT_COLOR_PALETTE) {
+      counts[p.id] = 0;
+    }
+    for (const exc of excerpts) {
+      const effectiveColor = exc.highlightColor || '#fef08a';
+      const matched = HIGHLIGHT_COLOR_PALETTE.find((p) => p.color.toLowerCase() === effectiveColor.toLowerCase());
+      if (matched) {
+        counts[matched.id] = (counts[matched.id] || 0) + 1;
+      } else {
+        counts['yellow'] = (counts['yellow'] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [excerpts]);
+
+  const filteredExcerpts = React.useMemo(() => {
+    return excerpts.filter((excerpt) => {
+      // 1. Color filter
+      if (selectedColorFilter !== null) {
+        const effectiveColor = excerpt.highlightColor || '#fef08a';
+        const matched = HIGHLIGHT_COLOR_PALETTE.find((p) => p.id === selectedColorFilter);
+        if (matched) {
+          if (matched.id === 'yellow') {
+            if (effectiveColor.toLowerCase() !== '#fef08a'.toLowerCase()) return false;
+          } else {
+            if (effectiveColor.toLowerCase() !== matched.color.toLowerCase()) return false;
+          }
+        }
+      }
+
+      // 2. Search query filter
+      if (normalizedQuery) {
+        const textMatch = normalizeSearchText(excerpt.selectedText).includes(normalizedQuery);
+        const noteMatch = excerpt.userNote
+          ? normalizeSearchText(excerpt.userNote).includes(normalizedQuery)
+          : false;
+        if (!textMatch && !noteMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [excerpts, selectedColorFilter, normalizedQuery]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setSelectedColorFilter(null);
+  };
 
   if (!isOpen) return null;
 
@@ -393,16 +461,130 @@ export function ReaderSidebar({
         {/* Highlights Panel */}
         {activeTab === 'highlights' && (
           <div data-testid="sidebar-panel-highlights" className="space-y-3">
-            <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider px-1">
-              Các đoạn trích & Highlight ({excerpts.length})
-            </div>
             {excerpts.length === 0 ? (
-              <div className="p-6 text-center text-xs text-stone-400 dark:text-stone-500 space-y-2">
-                <Highlighter className="w-6 h-6 mx-auto text-stone-300 dark:text-stone-600" />
-                <p>Bôi đen bất kỳ đoạn văn nào để highlight và lưu trích đoạn nghiên cứu.</p>
-              </div>
+              <>
+                <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider px-1">
+                  Các đoạn trích & Highlight (0)
+                </div>
+                <div className="p-6 text-center text-xs text-stone-400 dark:text-stone-500 space-y-2">
+                  <Highlighter className="w-6 h-6 mx-auto text-stone-300 dark:text-stone-600" />
+                  <p>Bôi đen bất kỳ đoạn văn nào để highlight và lưu trích đoạn nghiên cứu.</p>
+                </div>
+              </>
             ) : (
-              excerpts.map((excerpt) => (
+              <>
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    data-testid="highlights-search-input"
+                    aria-label="Tìm kiếm đoạn trích"
+                    placeholder="Tìm trong đoạn trích & ghi chú..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        setSearchQuery('');
+                      }
+                    }}
+                    className="w-full text-xs pl-8 pr-7 py-1.5 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      data-testid="highlights-search-clear"
+                      aria-label="Xóa tìm kiếm"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-0.5 rounded cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Color Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none" role="group" aria-label="Lọc theo màu sắc">
+                  <button
+                    type="button"
+                    data-testid="filter-color-all"
+                    aria-pressed={selectedColorFilter === null}
+                    onClick={() => setSelectedColorFilter(null)}
+                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                      selectedColorFilter === null
+                        ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-xs'
+                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                    }`}
+                  >
+                    <span>Tất cả</span>
+                    <span className="text-[10px] opacity-75 font-mono">{colorCounts.all}</span>
+                  </button>
+                  {HIGHLIGHT_COLOR_PALETTE.map((p) => {
+                    const isActive = selectedColorFilter === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        data-testid={`filter-color-${p.id}`}
+                        aria-pressed={isActive}
+                        onClick={() => setSelectedColorFilter(isActive ? null : p.id)}
+                        className={`px-2 py-1 rounded-md text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                          isActive
+                            ? 'bg-amber-100 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700 text-stone-900 dark:text-stone-100 shadow-xs ring-1 ring-amber-400/50'
+                            : 'bg-stone-100/80 dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-200/80 dark:hover:bg-stone-700/80'
+                        }`}
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0 border border-stone-300 dark:border-stone-600"
+                          style={{ backgroundColor: p.color }}
+                        />
+                        <span>{p.label}</span>
+                        <span className="text-[10px] opacity-75 font-mono">{colorCounts[p.id]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Header counts & Reset filter */}
+                <div className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                  <span>
+                    Các đoạn trích & Highlight ({searchQuery || selectedColorFilter ? `${filteredExcerpts.length}/${excerpts.length}` : excerpts.length})
+                  </span>
+                  {(searchQuery || selectedColorFilter) && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      Đặt lại
+                    </button>
+                  )}
+                </div>
+
+                {filteredExcerpts.length === 0 ? (
+                  <div
+                    data-testid="highlights-empty-filter-state"
+                    className="p-6 text-center text-xs text-stone-500 dark:text-stone-400 space-y-3 bg-stone-50/50 dark:bg-stone-800/30 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700"
+                  >
+                    <Search className="w-6 h-6 mx-auto text-stone-300 dark:text-stone-600" />
+                    <p className="font-medium text-stone-700 dark:text-stone-300">
+                      Không tìm thấy đoạn trích phù hợp với bộ lọc
+                    </p>
+                    <p className="text-[11px] text-stone-400 dark:text-stone-500">
+                      Thử tìm với từ khóa khác hoặc bỏ chọn màu sắc đang lọc.
+                    </p>
+                    <button
+                      type="button"
+                      data-testid="btn-reset-highlights-filter"
+                      onClick={handleResetFilters}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900/80 text-amber-900 dark:text-amber-200 text-xs font-semibold transition cursor-pointer"
+                    >
+                      <span>Đặt lại bộ lọc</span>
+                    </button>
+                  </div>
+                ) : (
+                  filteredExcerpts.map((excerpt) => (
                 <div
                   key={excerpt.id}
                   data-testid={`excerpt-card-${excerpt.id}`}
@@ -522,7 +704,9 @@ export function ReaderSidebar({
                 </div>
               ))
             )}
-          </div>
+          </>
+        )}
+      </div>
         )}
 
         {/* Inbox Panel */}
