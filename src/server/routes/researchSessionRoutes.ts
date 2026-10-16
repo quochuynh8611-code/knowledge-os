@@ -322,7 +322,7 @@ export function createResearchSessionRouter(
           promptArtifactType = "study_guide",
           customInstructions,
           ephemeralWorkspace = true,
-          preferredProviderId,
+          preferredProviderId = "notebooklm-enterprise",
           sources: overrideSources,
         } = req.body || {};
 

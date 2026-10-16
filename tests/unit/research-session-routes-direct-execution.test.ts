@@ -288,6 +288,33 @@ describe("RESEARCH SESSION ROUTES — DIRECT LIVE EXECUTION ENDPOINT (PHASE 2)",
       expect(citeCreateCall.data.sourceTitle).toBe("Kỳ Môn Độn Giáp Toàn Thư");
       expect(citeCreateCall.data.quote).toBe("Trích đoạn thực tế");
     });
+
+    it("defaults preferredProviderId to notebooklm-enterprise when omitted from request body", async () => {
+      process.env.NOTEBOOKLM_DIRECT_EXECUTION = "true";
+
+      app = express();
+      app.use(express.json());
+      app.use(
+        "/api",
+        createResearchSessionRouter(mockPrisma, {
+          sessionService: mockSessionService as any,
+          researchOrchestrator: mockOrchestrator as any,
+        })
+      );
+
+      const res = await request(app)
+        .post(`/api/research-sessions/${validSessionId}/execute-live`)
+        .send({
+          promptArtifactType: "study_guide",
+        });
+
+      expect(res.status).toBe(200);
+      expect(mockOrchestrator.executeDirectResearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferredProviderId: "notebooklm-enterprise",
+        })
+      );
+    });
   });
 
   // =========================================================================

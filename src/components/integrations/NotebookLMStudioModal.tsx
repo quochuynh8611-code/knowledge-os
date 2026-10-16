@@ -320,6 +320,7 @@ export function NotebookLMStudioModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          preferredProviderId: 'notebooklm-enterprise',
           promptArtifactType:
             promptArtifactType === 'audio_overview_summary'
               ? 'study_guide'

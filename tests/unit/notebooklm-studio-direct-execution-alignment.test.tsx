@@ -193,11 +193,12 @@ describe('DIRECT NOTEBOOKLM MCP UI EXECUTION ALIGNMENT (RED SUITE)', () => {
       expect(capturedRequestBody).not.toBeNull();
     });
 
-    // Request must include override sources
+    // Request must include override sources and explicit preferredProviderId
     expect(capturedRequestBody.sources).toBeDefined();
     expect(Array.isArray(capturedRequestBody.sources)).toBe(true);
     expect(capturedRequestBody.sources.length).toBeGreaterThan(0);
     expect(capturedRequestBody.sources[0].textContent).toContain('Kỳ Môn');
+    expect(capturedRequestBody.preferredProviderId).toBe('notebooklm-enterprise');
   });
 
   // =========================================================================
