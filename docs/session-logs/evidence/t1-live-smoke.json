@@ -1,43 +1,43 @@
 {
-  "timestamp": "2026-10-15T12:37:48.945Z",
+  "timestamp": "2026-10-16T09:50:54.085Z",
   "tier": "T1",
   "passed": true,
-  "durationMs": 26876,
-  "workspaceId": "144cdea6-9379-4df2-8207-1e1c3e1bff65",
+  "durationMs": 29506,
+  "workspaceId": "b23407c9-d00e-4aaa-ad4a-f1f1a0e9faf2",
   "cleanupStatus": "CLEANED",
   "steps": [
     {
       "step": "SMK-04: notebook_create",
       "status": "SUCCESS",
-      "durationMs": 1870,
+      "durationMs": 3972,
       "details": {
-        "workspaceId": "144cdea6-9379-4df2-8207-1e1c3e1bff65",
-        "title": "[SMOKE-TEST] 2026-10-15-193723-z5uuoj"
+        "workspaceId": "b23407c9-d00e-4aaa-ad4a-f1f1a0e9faf2",
+        "title": "[SMOKE-TEST] 2026-10-16-165025-63cegt"
       }
     },
     {
       "step": "SMK-05: source_add (ingest)",
       "status": "SUCCESS",
-      "durationMs": 4497,
+      "durationMs": 4608,
       "details": {
         "remoteSourceIds": [
-          "9ecf25ef-d3ce-4703-87f5-08afd39549d5"
+          "0772a68d-81f7-49a7-83dc-4b61c583f458"
         ]
       }
     },
     {
       "step": "SMK-06: notebook_query",
       "status": "SUCCESS",
-      "durationMs": 13916,
+      "durationMs": 14819,
       "details": {
-        "answerLength": 277,
-        "citedSourcesCount": 0
+        "answerLength": 286,
+        "citedSourcesCount": 1
       }
     },
     {
       "step": "SMK-07: reconcileWorkspace (present)",
       "status": "SUCCESS",
-      "durationMs": 1420,
+      "durationMs": 1635,
       "details": {
         "result": "CONFIRMED_PRESENT"
       }
@@ -45,9 +45,9 @@
     {
       "step": "SMK-08 & SMK-09: deleteWorkspace & reconcile absent (cleanup)",
       "status": "SUCCESS",
-      "durationMs": 3968,
+      "durationMs": 3544,
       "details": {
-        "workspaceId": "144cdea6-9379-4df2-8207-1e1c3e1bff65",
+        "workspaceId": "b23407c9-d00e-4aaa-ad4a-f1f1a0e9faf2",
         "cleanupStatus": "CLEANED"
       }
     }
