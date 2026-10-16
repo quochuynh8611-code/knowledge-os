@@ -9,6 +9,7 @@ import { createServerApp } from "../../server";
 import {
   createDefaultProviderRegistry,
   createResearchProviderRuntimeDiagnostics,
+  createResearchProviderRuntimeComposition,
 } from "../../src/server/bootstrap/researchProviderComposition";
 import {
   readResearchProviderConfig,
@@ -16,6 +17,7 @@ import {
 } from "../../src/server/config/researchProviderConfig";
 import { ProviderRegistry } from "../../src/server/services/providers/providerRegistry";
 import { AntigravityProvider } from "../../src/server/services/providers/antigravityProvider";
+import { ResearchOrchestrator } from "../../src/server/services/providers/researchOrchestrator";
 
 describe("SERVER RESEARCH PROVIDER RUNTIME INJECTION (PHASE 5.5)", () => {
   let mockPrisma: any;
@@ -185,5 +187,100 @@ describe("SERVER RESEARCH PROVIDER RUNTIME INJECTION (PHASE 5.5)", () => {
   it("15. does not require Google Cloud connectivity", () => {
     const diag = createResearchProviderRuntimeDiagnostics({});
     expect(diag.config.enableProviderRouting).toBe(false);
+  });
+
+  it("16. createResearchProviderRuntimeComposition returns orchestrator: null when provider routing is disabled", () => {
+    const composition = createResearchProviderRuntimeComposition({
+      ENABLE_PROVIDER_ROUTING: "false",
+    });
+    expect(composition.config.enableProviderRouting).toBe(false);
+    expect(composition.orchestrator).toBeNull();
+  });
+
+  it("17. createResearchProviderRuntimeComposition resolves ResearchOrchestrator when routing is enabled", () => {
+    const composition = createResearchProviderRuntimeComposition({
+      ENABLE_PROVIDER_ROUTING: "true",
+      RESEARCH_DEFAULT_PROVIDER: "antigravity-legacy",
+      RESEARCH_ALLOW_PROVIDER_FALLBACK: "true",
+    });
+    expect(composition.config.enableProviderRouting).toBe(true);
+    expect(composition.providerRegistry).toBeInstanceOf(ProviderRegistry);
+    expect(composition.orchestrator).toBeInstanceOf(ResearchOrchestrator);
+  });
+
+  it("18. server bootstrap wires researchOrchestrator and keeps execute-live fail-closed (403) by default", async () => {
+    const app = createServerApp({ prismaClient: mockPrisma });
+    expect(app).toBeDefined();
+
+    // Default env does not have NOTEBOOKLM_DIRECT_EXECUTION=true
+    const res = await request(app)
+      .post("/api/research-sessions/sess-test/execute-live")
+      .send({ prompt: "test prompt" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("DIRECT_EXECUTION_DISABLED");
+  });
+
+  it("19. execute-live returns 503 ORCHESTRATOR_UNAVAILABLE when explicit orchestrator is null", async () => {
+    const originalFlag = process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+    try {
+      process.env.NOTEBOOKLM_DIRECT_EXECUTION = "true";
+
+      mockPrisma.researchSession.findUnique.mockResolvedValueOnce({
+        id: "sess-test",
+        topicId: "top-1",
+        sourcePackages: [],
+        taskPrompts: [],
+        topic: { title: "Topic 1" },
+      });
+
+      const app = createServerApp({
+        prismaClient: mockPrisma,
+        researchOrchestrator: null,
+      });
+
+      const res = await request(app)
+        .post("/api/research-sessions/sess-test/execute-live")
+        .send({ prompt: "test prompt" });
+
+      expect(res.status).toBe(503);
+      expect(res.body.code).toBe("ORCHESTRATOR_UNAVAILABLE");
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+      } else {
+        process.env.NOTEBOOKLM_DIRECT_EXECUTION = originalFlag;
+      }
+    }
+  });
+
+  it("20. execute-live accesses injected researchOrchestrator when flag is active", async () => {
+    const originalFlag = process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+    try {
+      process.env.NOTEBOOKLM_DIRECT_EXECUTION = "true";
+
+      const mockOrchestrator = {
+        executeDirectResearch: vi.fn(),
+      } as unknown as ResearchOrchestrator;
+
+      const app = createServerApp({
+        prismaClient: mockPrisma,
+        researchOrchestrator: mockOrchestrator,
+      });
+
+      // Session not found in prisma -> returns 404
+      const res = await request(app)
+        .post("/api/research-sessions/sess-test/execute-live")
+        .send({ prompt: "test prompt" });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe("Phiên nghiên cứu không tồn tại");
+    } finally {
+      if (originalFlag === undefined) {
+        delete process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+      } else {
+        process.env.NOTEBOOKLM_DIRECT_EXECUTION = originalFlag;
+      }
+    }
   });
 });

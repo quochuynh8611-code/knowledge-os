@@ -543,6 +543,53 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
   });
 
   // -------------------------------------------------------------------------
+  // Test 15B: reconcileWorkspace maps NOT_FOUND / gRPC code 5 to CONFIRMED_ABSENT
+  // -------------------------------------------------------------------------
+  it("reconcileWorkspace maps NOT_FOUND and gRPC code 5 error to CONFIRMED_ABSENT", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    // Case A: MCP tool error envelope with gRPC code 5 NOT_FOUND
+    transport.registerToolHandler("notebook_get", () => ({
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Failed to get notebook: API error (code 5): NOT_FOUND",
+        },
+      ],
+    }));
+
+    const client = new NotebookLMMcpClient({ transport });
+
+    const statusA = await client.reconcileWorkspace({
+      workspaceId: "ws-deleted-001",
+      expectedSources: [{ sourceId: "s1", contentHash: "h1" }],
+    });
+
+    expect(statusA).toBe("CONFIRMED_ABSENT");
+
+    // Case B: Unpacked error object with NOT_FOUND
+    transport.registerToolHandler("notebook_get", () => ({
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            error: "API error (code 5): NOT_FOUND",
+          }),
+        },
+      ],
+    }));
+
+    const statusB = await client.reconcileWorkspace({
+      workspaceId: "ws-deleted-002",
+      expectedSources: [{ sourceId: "s1", contentHash: "h1" }],
+    });
+
+    expect(statusB).toBe("CONFIRMED_ABSENT");
+  });
+
+  // -------------------------------------------------------------------------
   // Test 16: Out-of-order responses using correlation id
   // -------------------------------------------------------------------------
   it("handles out-of-order responses using correlation id correctly", async () => {
@@ -865,5 +912,118 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
 
     expect(initCallCount).toBe(1);
     expect(transport.isAlive()).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // Test 33: Provenance & Citation Preservation
+  // -------------------------------------------------------------------------
+  it("33. preserves raw citations and references separately from answer content", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    transport.registerToolHandler("notebook_query", () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              answer: "Hàm sóng biểu diễn trạng thái lượng tử [1].",
+              sources_used: ["remote-uuid-src-1"],
+              citations: { "1": "remote-uuid-src-1" },
+              references: [
+                {
+                  source_id: "remote-uuid-src-1",
+                  citation_number: 1,
+                  cited_text: "Trạng thái lượng tử được mô tả bằng hàm sóng phi.",
+                },
+              ],
+            }),
+          },
+        ],
+      };
+    });
+
+    const client = new NotebookLMMcpClient({ transport });
+    const res = await client.query({
+      workspaceId: "ws-test",
+      prompt: "Tiên đề hàm sóng",
+    });
+
+    expect(res.answer).toBe("Hàm sóng biểu diễn trạng thái lượng tử [1].");
+    expect(res.citedSourceIds).toEqual(["remote-uuid-src-1"]);
+    expect(res.citations).toEqual({ "1": "remote-uuid-src-1" });
+    expect(res.references).toHaveLength(1);
+    expect(res.references![0]).toEqual({
+      sourceId: "remote-uuid-src-1",
+      citationNumber: 1,
+      citedText: "Trạng thái lượng tử được mô tả bằng hàm sóng phi.",
+    });
+  });
+
+  it("34. rejects synthetic fallback source IDs in ingestSources and throws MALFORMED_RESPONSE", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    // source_add returns empty object without source_id or id
+    transport.registerToolHandler("source_add", () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ status: "success" }),
+          },
+        ],
+      };
+    });
+
+    const client = new NotebookLMMcpClient({ transport });
+    const res = await client.ingestSources({
+      workspaceId: "ws-test",
+      sources: [
+        {
+          type: "inline-text",
+          sourceId: "src-real-01",
+          title: "Test doc",
+          mimeType: "text/markdown",
+          textContent: "Text",
+          contentHash: "hash-01",
+        },
+      ],
+    });
+
+    // Ingest fails because missing source_id is rejected instead of creating synthetic nlm-src-...
+    expect(res.status).toBe("FAILED");
+    expect(res.remoteSourceIds).toHaveLength(0);
+  });
+
+  it("35. query returns empty citedSourceIds when MCP does not cite sources, rejecting fallback to input sourceIds", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    transport.registerToolHandler("notebook_query", () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              answer: "Câu trả lời chung không trích dẫn nguồn nào cụ thể.",
+              sources_used: [],
+            }),
+          },
+        ],
+      };
+    });
+
+    const client = new NotebookLMMcpClient({ transport });
+    const res = await client.query({
+      workspaceId: "ws-test",
+      prompt: "Hỏi tổng quát",
+      sourceIds: ["input-src-1", "input-src-2"],
+    });
+
+    // Must NOT fall back to ["input-src-1", "input-src-2"]
+    expect(res.citedSourceIds).toEqual([]);
+    expect(res.citations).toBeUndefined();
+    expect(res.references).toBeUndefined();
   });
 });
