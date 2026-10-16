@@ -116,3 +116,21 @@ export interface AdvancedTechnicalDetailsProps {
   onCopyCliCommand: (job?: AntigravityHandoffJob) => void;
   onDeleteJob: (jobId: string) => void;
 }
+
+export interface DirectExecutionResponseDTO {
+  sessionId: string;
+  artifactId: string;
+  artifactType: NotebookLMArtifactType;
+  title: string;
+  content: string;
+  citedSourceIds: string[];
+  citations?: Record<string, string>;
+  references?: Array<{
+    sourceId: string;
+    citationNumber: number;
+    citedText?: string;
+    sourceTitle?: string;
+  }>;
+  cleanupStatus: 'CLEANED' | 'RETAINED';
+  executionDurationMs: number;
+}

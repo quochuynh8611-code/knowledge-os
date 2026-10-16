@@ -24,7 +24,11 @@ import { sanitizeFileName } from '../../lib/obsidian';
 import { Topic } from '../../types';
 import { ResearchSessionDTO, GroundedArtifactDTO } from '../../types/researchHub';
 import { ArtifactReviewDrawer } from './ArtifactReviewDrawer';
-import { NotebookLMWorkspaceStep, NotebookLMRuntimeStatus } from './notebooklm/types';
+import {
+  NotebookLMWorkspaceStep,
+  NotebookLMRuntimeStatus,
+  DirectExecutionResponseDTO,
+} from './notebooklm/types';
 import { NotebookLMHeader } from './notebooklm/NotebookLMHeader';
 import { NotebookLMStepper } from './notebooklm/NotebookLMStepper';
 import { NotebookLMSourceStep } from './notebooklm/NotebookLMSourceStep';
@@ -114,12 +118,20 @@ export function NotebookLMStudioModal({
         const data = await res.json();
         setCurrentSession(data);
         if (data.artifacts) {
-          setSessionArtifacts(
-            data.artifacts.map((a: any) => ({
+          setSessionArtifacts((prev) => {
+            const dbArtifacts: GroundedArtifactDTO[] = data.artifacts.map((a: any) => ({
               ...a,
               sourcePackageVersion: a.sourcePackage?.version || 1,
-            }))
-          );
+            }));
+            const map = new Map<string, GroundedArtifactDTO>();
+            for (const item of prev) {
+              map.set(item.id, item);
+            }
+            for (const item of dbArtifacts) {
+              map.set(item.id, item);
+            }
+            return Array.from(map.values());
+          });
         }
       }
     } catch {
@@ -286,6 +298,20 @@ export function NotebookLMStudioModal({
   const handleExecuteLiveResearch = async () => {
     if (!currentTopic || !currentSession || isLiveExecuting) return;
 
+    const hasActualSourceContent =
+      Boolean(currentTopic.description && currentTopic.description.trim().length > 0) ||
+      Boolean(currentTopic.content && currentTopic.content.trim().length > 0) ||
+      notes.some((n) => n.topicId === currentTopic.id) ||
+      resources.some((r) => r.topicId === currentTopic.id) ||
+      Boolean(currentSession.sourcePackages && currentSession.sourcePackages.length > 0);
+
+    if (!hasActualSourceContent) {
+      setLiveExecutionError(
+        'Vui lòng chuẩn bị tài liệu nguồn ở Bước 1 trước khi thực hiện khảo cứu trực tiếp.'
+      );
+      return;
+    }
+
     setIsLiveExecuting(true);
     setLiveExecutionError(null);
 
@@ -300,27 +326,99 @@ export function NotebookLMStudioModal({
               : promptArtifactType,
           customInstructions: customInstructions || undefined,
           ephemeralWorkspace: true,
+          sources: [
+            {
+              type: 'inline-text',
+              sourceId: `client-src-${currentTopic.id}`,
+              title: `Tài liệu nguồn: ${currentTopic.title}`,
+              mimeType: 'text/markdown',
+              textContent: sourceDocument,
+            },
+          ],
         }),
       });
 
-      const data = await res.json();
+      const data: DirectExecutionResponseDTO & { error?: string; code?: string } =
+        await res.json();
 
       if (!res.ok) {
         if (res.status === 403) {
+          if (
+            data.code === 'AUTHENTICATION_FAILED' ||
+            data.code === 'PERMISSION_DENIED'
+          ) {
+            setLiveExecutionError(
+              data.error ||
+                '🔒 Xác thực NotebookLM thất bại hoặc phiên đăng nhập hết hạn. Vui lòng kiểm tra cookie hoặc chạy nlm login.'
+            );
+          } else {
+            setLiveExecutionError(
+              '🔒 Tính năng Khảo cứu trực tiếp qua MCP chưa được kích hoạt trên hệ thống (Gating: NOTEBOOKLM_DIRECT_EXECUTION flag is OFF). Bạn có thể tiếp tục bằng cách bấm "Chuẩn bị Handoff Antigravity".'
+            );
+          }
+        } else if (res.status === 404) {
           setLiveExecutionError(
-            '🔒 Tính năng Khảo cứu trực tiếp qua MCP chưa được kích hoạt trên hệ thống (Gating: NOTEBOOKLM_DIRECT_EXECUTION flag is OFF). Bạn có thể tiếp tục bằng cách bấm "Chuẩn bị Handoff Antigravity".'
+            data.error || 'Phiên nghiên cứu không tồn tại trên hệ thống.'
           );
+        } else if (res.status === 502 || res.status === 503) {
+          if (data.code === 'PROVIDER_TIMEOUT') {
+            setLiveExecutionError(
+              '⏱️ Yêu cầu khảo cứu trực tiếp vượt quá thời gian xử lý (timeout). Vui lòng thử lại với tài liệu ngắn gọn hơn.'
+            );
+          } else {
+            setLiveExecutionError(
+              data.error ||
+                'Dịch vụ điều phối NotebookLM MCP hiện không khả dụng. Vui lòng thử lại sau.'
+            );
+          }
         } else {
           setLiveExecutionError(
-            data.error || 'Có lỗi xảy ra trong quá trình khảo cứu trực tiếp qua NotebookLM.'
+            data.error ||
+              'Có lỗi xảy ra trong quá trình khảo cứu trực tiếp qua NotebookLM.'
           );
         }
         return;
       }
 
-      // Success: sync session to get new GroundedArtifact & switch to results step
-      await syncSession(currentTopic.id);
+      // Success: Directly map flatten response to UI artifact model without waiting for DB sync
+      const liveArtifact: GroundedArtifactDTO = {
+        id: data.artifactId,
+        sessionId: data.sessionId,
+        topicId: currentTopic.id,
+        artifactType: data.artifactType,
+        title: data.title,
+        rawContent: data.content,
+        status: 'received',
+        citationCount: data.citedSourceIds?.length || 0,
+        sourcePackageVersion: currentSession.sourcePackages?.[0]?.version || 1,
+        createdAt: new Date().toISOString(),
+        metadata: {
+          cleanupStatus: data.cleanupStatus,
+          citedSourceIds: data.citedSourceIds,
+          citations: data.citations,
+          references: data.references,
+          executionDurationMs: data.executionDurationMs,
+        },
+      };
+
+      // Dedup and inject into session artifacts immediately using artifactId
+      setSessionArtifacts((prev) => {
+        const exists = prev.some((a) => a.id === liveArtifact.id);
+        return exists
+          ? prev.map((a) => (a.id === liveArtifact.id ? liveArtifact : a))
+          : [liveArtifact, ...prev];
+      });
+
+      // Switch to results step immediately
       setActiveStep('results');
+
+      // Secondary background reconciliation: sync session from DB without blocking direct render
+      syncSession(currentTopic.id).catch((syncErr) => {
+        console.warn(
+          '[NotebookLMStudioModal] Background syncSession reconciliation failed:',
+          syncErr
+        );
+      });
     } catch (err: unknown) {
       setLiveExecutionError(
         err instanceof Error
