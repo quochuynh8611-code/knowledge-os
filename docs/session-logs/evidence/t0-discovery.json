@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-10-15T12:35:04.990Z",
+  "tier": "T0",
+  "passed": false,
+  "durationMs": 1,
+  "toolsDiscovered": [
+    "server_info",
+    "notebook_create",
+    "source_add",
+    "notebook_query",
+    "notebook_get",
+    "notebook_delete",
+    "studio_create",
+    "studio_status"
+  ],
+  "steps": [
+    {
+      "step": "SMK-01: Handshake connect()",
+      "status": "SUCCESS",
+      "durationMs": 0
+    },
+    {
+      "step": "SMK-02: tools/list verification",
+      "status": "SUCCESS",
+      "durationMs": 0,
+      "details": {
+        "count": 8,
+        "tools": [
+          "server_info",
+          "notebook_create",
+          "source_add",
+          "notebook_query",
+          "notebook_get",
+          "notebook_delete",
+          "studio_create",
+          "studio_status"
+        ]
+      }
+    },
+    {
+      "step": "SMK-03: server_info readiness check",
+      "status": "FAILED",
+      "durationMs": 0,
+      "error": "Critical failure with token Bearer [REDACTED_OAUTH]"
+    }
+  ],
+  "error": "Auth readiness check failed"
+}

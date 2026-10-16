@@ -1,15 +1,19 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-15<br>
+> **Cập nhật lần cuối:** 2026-10-16<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **READER SUBSYSTEM & MIND MAP AI: Phase R3c (Reader Highlights Filtering & Quick Search) đã hoàn tất implementation, kiểm thử toàn diện, commit `5bd554e`, push lên `origin/main` và GitHub Actions CI đã SUCCESS. Reader subsystem hiện hỗ trợ highlight 4 màu, inline annotation, quick search và color filtering. Toàn bộ 503/503 test files GREEN (4,305 passed), 0 lỗi TypeScript typecheck, build pass.**
+> **Trạng thái tổng thể:** 🟢 **DIRECT NOTEBOOKLM MCP INTEGRATION & CITATION PROVENANCE: Hoàn tất tích hợp trực tiếp 2 chiều từ Dashboard UI tới Google NotebookLM qua MCP Stdio Transport. Đã hoàn thành 1-shot Live Verification (HTTP 200, cleanup CLEANED), bảo toàn citation provenance, loại bỏ synthetic fallback IDs, fail-closed gating `NOTEBOOKLM_DIRECT_EXECUTION`. 56/56 unit tests PASS, 0 lỗi TypeScript typecheck.**
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD:** Commit `5bd554e` (`feat(reader): add highlights filtering and quick search`).
-- **Recent Product Commits (Reader Subsystem):**
+- **Current Baseline / HEAD (Local):** Commit `dcd3240` (`feat(notebooklm-ui): wire truthful configured runtime status to parent containers (phase f8.3)`).
+- **Remote Baseline (origin/main):** Commit `06eb74d` (`fix(notebooklm): enforce MCP initialize handshake`).
+- **Recent Product Commits (NotebookLM UI Bridge - Local Only, Chưa Push):**
+  - F8.3: `dcd3240` (`feat(notebooklm-ui): wire truthful configured runtime status to parent containers (phase f8.3)`)
+  - F8.2: `62e15fb` (`feat(notebooklm-ui): add runtime status bridge contract and header badge (phase f8.2)`)
+- **Recent Product Commits (Reader Subsystem - Pushed):**
   - R3c: `5bd554e` (`feat(reader): add highlights filtering and quick search`)
   - R3b: `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`)
 - **Product Implementation Commits (Milestone M7):**
@@ -20,8 +24,8 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
-- **Git Branch Status:** `main` tracking `origin/main` — **in-sync** (`main...origin/main [ahead 0, behind 0]`).
-- **Remote Policy:** **PUSHED TO REMOTE & CI VERIFIED** (Remote HEAD tại commit `5bd554e`, GitHub Actions CI Run `38677532285` SUCCESS).
+- **Git Branch Status:** `main` ahead of `origin/main` by 2 commits (`62e15fb`, `dcd3240`).
+- **Remote Policy:** Remote HEAD tại `06eb74d`. Các commits UI Bridge F8.2 và F8.3 lưu giữ cục bộ, chưa push remote.
 - **Quality Gates Baseline:**
   - Reader Subsystem (R3c): 7/7 targeted tests PASS (`reader-sidebar-highlights-filter.test.tsx`), 16/16 related Reader regression tests PASS (100% GREEN).
   - Reader Subsystem (R3b): 40/40 PASS across 8 suites (100% GREEN).
@@ -53,6 +57,9 @@
 | **13** | [`docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md`](docs/specs/mindmap-phase-m4b-viewport-zoom-polish-spec.md) | Đặc tả kỹ thuật M4b-A: Pure arithmetic contract, zoom steps, fail-closed zero-size, pointer isolation. |
 | **14** | [`docs/reports/mindmap-phase-m4a-closure-report.md`](docs/reports/mindmap-phase-m4a-closure-report.md) | Báo cáo đóng Phase M4a: Filename resolution contract, Toast UX feedback, safe cleanup, state invariants. |
 | **15** | [`docs/reports/phase-d2-global-quick-capture-modal-closure-report.md`](docs/reports/phase-d2-global-quick-capture-modal-closure-report.md) | Baseline Phase D2 (Global Quick-Capture Modal `⌘N`). |
+| **16** | [`docs/specs/phase-f8-3-notebooklm-runtime-status-parent-wiring.md`](docs/specs/phase-f8-3-notebooklm-runtime-status-parent-wiring.md) | Đặc tả Phase F8.3: Nối `runtimeStatus` trung thực từ container cha xuống `NotebookLMStudioModal`, single source of truth helper `resolveDefaultRuntimeStatus`. |
+| **17** | [`docs/specs/phase-f8-4-notebooklm-verified-status-source-of-truth.md`](docs/specs/phase-f8-4-notebooklm-verified-status-source-of-truth.md) | Đặc tả kiến trúc Phase F8.4: Khảo sát nguồn chân lý `verified` status, trade-offs, ranh giới an toàn, quyết định dừng ở `configured`. |
+| **18** | [`docs/specs/notebooklm-direct-mcp-integration-spec.md`](docs/specs/notebooklm-direct-mcp-integration-spec.md) | Đặc tả kỹ thuật Canonical: Tích hợp trực tiếp NotebookLM MCP 2 chiều, fail-closed gating, ephemeral lifecycle, citation provenance, DTO contract. |
 
 ---
 
@@ -545,6 +552,129 @@
 - Additive Prisma Schema: 7 new models (`ResearchSession`, `SourcePackage`, `TaskPrompt`, `GroundedArtifact`, `ArtifactCitation`, `ArtifactImport`, `ResearchTimelineEvent`).
 - REST Endpoints: `/api/research-sessions` & `/api/artifacts` backed by Express and Prisma ORM.
 - Zero Breaking Changes: Full backward compatibility with `localStorage` and existing mock suites.
+
+---
+
+## Phase Direct NotebookLM MCP Integration — Live Execution, Provenance & Safety Gating (2026-10-16)
+
+**Status**: 🟢 Completed, 1-Shot Live-Verified & Citation-Provenance-Hardened (Unstaged Working Tree)<br>
+**Target Canonical Spec**: [`docs/specs/notebooklm-direct-mcp-integration-spec.md`](docs/specs/notebooklm-direct-mcp-integration-spec.md)<br>
+**Tests**: 56/56 Unit Tests PASS (100% GREEN) across 4 core suites (`notebooklm-mcp-client.test.ts`, `notebooklm-direct-execution-orchestrator.test.ts`, `research-session-routes-direct-execution.test.ts`, `server-research-provider-runtime-injection.test.ts`) + 72/72 PASS across all 7 extended suites<br>
+**Typecheck**: 0 errors (`npx tsc --noEmit` hoàn tất thành công, Exit Code 0)<br>
+**Syntax & Whitespace**: `git diff --check` CLEAN (0 issues)
+
+### 1. Runtime Invariants & Architecture Path
+- **Đường truyền bắt buộc:**
+  ```text
+  Dashboard UI (NotebookLMStudioModal Step 2 Prompt)
+    → Backend route (/api/research-sessions/:id/execute-live)
+    → ResearchOrchestrator.executeDirectResearch
+    → NotebookLMEnterpriseProvider.query
+    → NotebookLMMcpClient (JSON-RPC 2.0 over Stdio)
+    → NotebookLM MCP Server (/Users/mr.chem/.local/bin/notebooklm-mcp)
+    → Google NotebookLM
+    → Backend Persistence (GroundedArtifact + ArtifactCitation + ResearchTimelineEvent)
+    → Dashboard UI (Results Step)
+  ```
+- **Ranh giới Antigravity:** Antigravity chỉ là công cụ phát triển/chỉnh sửa trong môi trường dev; tuyệt đối không nằm trên runtime path và không đóng vai trò Control Bridge.
+
+### 2. Fail-Closed Gating & Vòng Đời Tự Giải Phóng (Ephemeral Lifecycle)
+- **Gating Mặc Định Đóng:** Cờ môi trường `NOTEBOOKLM_DIRECT_EXECUTION=true` là điều kiện tiên quyết. Nếu tắt hoặc thiếu, route trả về ngay HTTP 403 Forbidden:
+  ```json
+  {
+    "error": "Tính năng khảo cứu trực tiếp qua NotebookLM MCP chưa được kích hoạt trên hệ thống (Gating: NOTEBOOKLM_DIRECT_EXECUTION is off)",
+    "code": "DIRECT_EXECUTION_DISABLED"
+  }
+  ```
+- **Tự Động Dọn Dẹp (Ephemeral-by-default):** Mọi workspace khảo cứu trực tiếp mặc định có `ephemeralWorkspace: true`. Khối `finally` của `executeDirectResearch` cưỡng chế thực thi `deleteWorkspace` kèm `confirm: true`, đảm bảo giải phóng 100% tài nguyên cloud ngay cả khi truy vấn thất bại. Kết quả trả về `cleanupStatus: "CLEANED"`.
+
+### 3. Exact HTTP Success Contract (Flatten DTO)
+Phản hồi HTTP 200 trả về payload phẳng, không lồng đối tượng `artifact`, không có trường `success`:
+```json
+{
+  "sessionId": "<session-id>",
+  "artifactId": "<grounded-artifact-uuid>",
+  "artifactType": "study_guide",
+  "title": "STUDY_GUIDE: <topic>",
+  "content": "<answer>",
+  "citedSourceIds": ["<real-source-id>"],
+  "citations": { "1": "<real-source-id>" },
+  "references": [
+    {
+      "sourceId": "<real-source-id>",
+      "citationNumber": 1,
+      "citedText": "<quote>",
+      "sourceTitle": "<source-title>"
+    }
+  ],
+  "cleanupStatus": "CLEANED",
+  "executionDurationMs": 30130
+}
+```
+
+### 4. Citation Provenance & Anti-False-Positive Hardening
+- **Fail-Fast Missing ID:** Khi `source_add` không trả về `source_id`/`id` hợp lệ, client ném ngay lỗi `MALFORMED_RESPONSE`, loại bỏ hoàn toàn cơ chế tự sinh ID ngụy tạo `nlm-src-${source.sourceId}`.
+- **Không Fallback Ngầm:** Khi `notebook_query` không trích dẫn nguồn, `citedSourceIds` trả về `[]`, cấm tự động fallback về mảng `params.sourceIds`.
+- **Lọc Sạch Synthetic IDs:** Mọi ID có tiền tố `nlm-src-*` bị loại bỏ dứt điểm cả ở cấp Client và cấp Orchestrator.
+- **Ánh Xạ Real Caller Source ID:** `ResearchOrchestrator` duy trì `remoteToRealSourceMap` để ánh xạ chính xác `remoteSourceId` từ MCP sang `realSourceId` ban đầu của phiên nghiên cứu, đồng thời enrich `sourceTitle` vào danh sách `references`.
+- **Lưu Trữ Bền Vững:** `GroundedArtifact.metadata` lưu giữ đồng thời `rawCitations`, `citations` (mapped), và `references`. Mỗi phần tử trong `references` được ghi vào bảng `ArtifactCitation` trong DB.
+- **Giới Hạn Kỹ Thuật Đã Biết (Known Limitation):** Khi câu trả lời chứa citation marker `[1]` nhưng MCP không trả về source reference tương ứng, hệ thống tuân thủ nguyên tắc trung thực tuyệt đối: ghi nhận `citedSourceIds: []`, không tự suy diễn provenance.
+
+### 5. Xác Minh Bằng Chứng Thực Tế (Evidence Reconciliation)
+- **T0 Discovery:** FAILED (`docs/session-logs/evidence/t0-discovery.json` — SMK-03 `server_info` lỗi token).
+- **T1 Live Smoke:** PASSED (`docs/session-logs/evidence/t1-live-smoke.json` — CRUD, Ingest, Query, Cleanup CLEANED hoàn tất trong 26.8s).
+- **1-Shot Live Verification:** PASSED trên session `28d2014a-530a-4e73-bf91-6914d0f22eef` qua backend route thật (HTTP 200, 30.1s, cleanup CLEANED, đã tạo GroundedArtifact và ResearchTimelineEvent).
+- **Phân Định:** Tuyệt đối không gộp thành "Tier 0/Tier 1 PASS".
+
+---
+
+## Phase F8.2, F8.3 & F8.4 — NotebookLM UI Runtime Status Bridge & Governance Reconciliation (2026-10-15)
+
+
+**Status**: 🟢 Phase F8.2 & F8.3 Completed (Locally Committed) | Phase F8.4 Analysis Complete (Decision: Stop at Configured)<br>
+**Commits (Local-Only, Chưa Push Remote)**:
+- F8.2: `62e15fb` (`feat(notebooklm-ui): add runtime status bridge contract and header badge (phase f8.2)`)
+- F8.3: `dcd3240` (`feat(notebooklm-ui): wire truthful configured runtime status to parent containers (phase f8.3)`)<br>
+**Tests**: 48/48 NotebookLM UI Tests PASS (100% GREEN) across 7 suites<br>
+**Typecheck**: 0 errors (`npm run lint` / `tsc --noEmit` hoàn tất thành công)
+
+### 1. Phase F8.2 — Runtime Status Bridge Contract & Header Badge (Commit `62e15fb`)
+- **Presentation-only Contract:** Bổ sung contract `NotebookLMRuntimeStatus = 'unknown' | 'configured' | 'verified' | 'blocked'` tại [`src/components/integrations/notebooklm/types.ts`](src/components/integrations/notebooklm/types.ts).
+- **Header Status Badge:** Cập nhật [`src/components/integrations/notebooklm/NotebookLMHeader.tsx`](src/components/integrations/notebooklm/NotebookLMHeader.tsx) hiển thị badge tương ứng:
+  - `unknown` $\rightarrow$ `"Chưa kiểm tra"` (mặc định an toàn)
+  - `configured` $\rightarrow$ `"Đã cấu hình"` (xanh dương)
+  - `verified` $\rightarrow$ `"Smoke đã xác minh"` (xanh ngọc emerald)
+  - `blocked` $\rightarrow$ `"Audio Overview: Chưa khả dụng"` (vàng hổ phách)
+- **Kiểm thử độc lập:** 6/6 tests PASS tại [`tests/unit/notebooklm-runtime-status-bridge.test.tsx`](tests/unit/notebooklm-runtime-status-bridge.test.tsx), xác nhận không phát sinh network side-effect và fallback an toàn về `unknown` khi không có prop từ container cha.
+
+### 2. Phase F8.3 — Truthful Parent Wiring & Single Source of Truth (Commit `dcd3240`)
+- **Single Source of Truth Helper:** Xây dựng module thuần túy [`src/components/integrations/notebooklm/runtimeBridgeConfig.ts`](src/components/integrations/notebooklm/runtimeBridgeConfig.ts) với hàm `resolveDefaultRuntimeStatus(options)` và hằng số `NOTEBOOKLM_DEFAULT_RUNTIME_STATUS`.
+- **Harmonized Parent Wiring:** Nối `runtimeStatus={resolveDefaultRuntimeStatus({ isConfigured: true })}` đồng bộ trên cả 3 container cha:
+  - [`src/App.tsx`](src/App.tsx) (Global Command Palette / Header trigger)
+  - [`src/components/layout/Navbar.tsx`](src/components/layout/Navbar.tsx) (Navbar Quick Action button)
+  - [`src/components/topics/TopicDetail.tsx`](src/components/topics/TopicDetail.tsx) (In-context Topic Toolbar trigger)
+- **Truthfulness Guard:** Tuyệt đối không hardcode `verified`, không đọc file JSON artifact dev trong browser, không gọi live fetch khi modal mount.
+- **Kiểm thử:** 5/5 tests PASS tại [`tests/unit/notebooklm-runtime-status-parent-wiring.test.tsx`](tests/unit/notebooklm-runtime-status-parent-wiring.test.tsx); toàn bộ 48/48 tests UI của NotebookLM Research Hub đạt 100% GREEN.
+
+### 3. Phase F8.4 — Verified Status Source-of-Truth Discovery & Decision Gate
+- **Tài liệu phân tích:** Đã ban hành đặc tả kiến trúc [`docs/specs/phase-f8-4-notebooklm-verified-status-source-of-truth.md`](docs/specs/phase-f8-4-notebooklm-verified-status-source-of-truth.md).
+- **Phân tích ranh giới nguồn chân lý:**
+  - Đã phân tích các nguồn có thể cung cấp `verified`: Server-Exposed Diagnostics Endpoint vs Build-time Static Manifest vs Dừng ở `configured` cho End-user UI.
+  - Khẳng định các nguồn BỊ CẤM: Browser đọc `docs/session-logs/evidence/*`, browser tự động chạy live smoke runner, hoặc suy diễn từ feature flags tĩnh.
+  - Chưa tạo diagnostics endpoint mới; chưa có thay đổi nào trong `src/server/**`.
+  - Phân định ngữ nghĩa: `verified` hiện được xem là operator/technical diagnostic state, không phải end-user UI state.
+
+### 4. Quyết Định Quản Trị Hiện Hành (Current Governance Decision)
+- **End-User UI Status:** Cố định ở trạng thái `configured` (`"Đã cấu hình"`). Đây là trạng thái trung thực, đầy đủ và thân thiện nhất với người dùng cuối, phản ánh đúng việc toàn bộ bộ công cụ studio (đóng gói nguồn, template prompt, artifact locker) đã sẵn sàng.
+- **Trạng thái `verified`:** Chưa expose cho end-user UI; không giả định browser có quyền biết smoke test result nếu chưa có contract chính thức.
+- **Trạng thái `blocked`:** Tiếp tục duy trì contract `blocked` khi có ngữ cảnh yêu cầu phản ánh rào cản schema Audio Overview (ADR-103).
+- **Quyết định:** Không mở thêm implementation phase cho `verified` ở thời điểm hiện tại; chỉ mở phase backend diagnostics nếu có yêu cầu sản phẩm rõ ràng.
+
+### 5. Tình Trạng Git Local / Remote (Local/Remote State Reconciliation)
+- **Local Commits:** F8.2 (`62e15fb`) và F8.3 (`dcd3240`) đã được commit local-only trên nhánh `main`.
+- **Remote State:** Remote `origin/main` hiện đang ở commit `06eb74d` (`fix(notebooklm): enforce MCP initialize handshake`). Hai commit UI F8.2 và F8.3 chưa được push lên remote.
+- **Working Tree:** Các thay đổi backend hotfix (`src/server/services/providers/notebooklmMcpClient.ts`, `tests/unit/notebooklm-mcp-client.test.ts`) và các runner scripts/evidence chưa stage và nằm ngoài phạm vi UI commits này.
+- **Scope Exclusion:** Thư mục `docs/books/` được giữ nguyên vẹn ngoài phạm vi quản lý source code.
 
 ---
 
