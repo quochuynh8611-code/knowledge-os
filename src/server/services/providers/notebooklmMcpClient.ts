@@ -34,6 +34,7 @@ export interface NotebookLMMcpClientOptions {
   transport?: McpTransport;
   stdioConfig?: StdioMcpTransportConfig;
   requestTimeoutMs?: number;
+  queryTimeoutMs?: number;
 }
 
 /**
@@ -86,19 +87,43 @@ export function unpackMcpToolResult(raw: unknown): Record<string, unknown> {
   return obj;
 }
 
+/**
+ * Validates and resolves positive finite timeout in milliseconds, falling back safely.
+ */
+export function resolveTimeoutMs(candidate: unknown, fallbackMs: number): number {
+  if (
+    typeof candidate === "number" &&
+    Number.isFinite(candidate) &&
+    candidate > 0
+  ) {
+    return candidate;
+  }
+  return fallbackMs;
+}
+
 export class NotebookLMMcpClient implements NotebookLMClient {
   private readonly transport: McpTransport;
   private readonly defaultTimeoutMs: number;
+  private readonly queryTimeoutMs: number;
   private isClosed: boolean = false;
 
   constructor(options: NotebookLMMcpClientOptions = {}) {
-    this.defaultTimeoutMs = options.requestTimeoutMs || 30000;
+    this.defaultTimeoutMs = resolveTimeoutMs(options.requestTimeoutMs, 30000);
+    this.queryTimeoutMs = resolveTimeoutMs(options.queryTimeoutMs, 90000);
 
     if (options.transport) {
       this.transport = options.transport;
     } else {
       this.transport = new StdioMcpTransport(options.stdioConfig);
     }
+  }
+
+  public getDefaultTimeoutMs(): number {
+    return this.defaultTimeoutMs;
+  }
+
+  public getQueryTimeoutMs(): number {
+    return this.queryTimeoutMs;
   }
 
   /**
@@ -335,7 +360,9 @@ export class NotebookLMMcpClient implements NotebookLMClient {
     return { remoteSourceIds, status: "COMPLETED" };
   }
 
-  public async query(params: NotebookLMQueryInput): Promise<NotebookLMQueryResult> {
+  public async query(
+    params: NotebookLMQueryInput & { timeoutMs?: number }
+  ): Promise<NotebookLMQueryResult> {
     this.assertNotClosed();
 
     if (
@@ -351,6 +378,8 @@ export class NotebookLMMcpClient implements NotebookLMClient {
       });
     }
 
+    const effectiveTimeoutMs = resolveTimeoutMs(params.timeoutMs, this.queryTimeoutMs);
+
     const rawResult = await this.transport.request<unknown>(
       "tools/call",
       {
@@ -362,7 +391,7 @@ export class NotebookLMMcpClient implements NotebookLMClient {
         },
       },
       {
-        timeoutMs: this.defaultTimeoutMs,
+        timeoutMs: effectiveTimeoutMs,
         signal: params.signal,
       }
     );

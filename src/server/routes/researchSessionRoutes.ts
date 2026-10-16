@@ -480,7 +480,12 @@ export function createResearchSessionRouter(
             error.errorCode === "PROVIDER_UNAVAILABLE" ||
             error.errorCode === "PROVIDER_TIMEOUT"
           ) {
-            return res.status(503).json({ error: sanitizedMessage });
+            return res.status(503).json({
+              error: sanitizedMessage,
+              ...(error.errorCode === "PROVIDER_TIMEOUT"
+                ? { code: "PROVIDER_TIMEOUT" }
+                : {}),
+            });
           }
           return res.status(500).json({ error: sanitizedMessage });
         }

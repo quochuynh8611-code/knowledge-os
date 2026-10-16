@@ -321,7 +321,7 @@ describe("RESEARCH SESSION ROUTES — DIRECT LIVE EXECUTION ENDPOINT (PHASE 2)",
   // 4. ERROR TRANSLATION (PROVIDER EXCEPTION)
   // =========================================================================
   describe("Provider Error Translation", () => {
-    it("maps PROVIDER_TIMEOUT to HTTP 503", async () => {
+    it("maps PROVIDER_TIMEOUT to HTTP 503 with error and code: PROVIDER_TIMEOUT", async () => {
       mockOrchestrator.executeDirectResearch = vi.fn().mockRejectedValue(
         new ProviderException(
           "PROVIDER_TIMEOUT",
@@ -349,6 +349,77 @@ describe("RESEARCH SESSION ROUTES — DIRECT LIVE EXECUTION ENDPOINT (PHASE 2)",
 
       expect(res.status).toBe(503);
       expect(res.body.error).toContain("timed out");
+      expect(res.body.code).toBe("PROVIDER_TIMEOUT");
+    });
+
+    it("does not regress other ProviderException error mappings", async () => {
+      // Case A: INVALID_ARGUMENT -> 400
+      mockOrchestrator.executeDirectResearch = vi.fn().mockRejectedValue(
+        new ProviderException(
+          "INVALID_ARGUMENT",
+          "Prompt cannot be empty",
+          "corr-test-02",
+          "notebooklm-enterprise",
+          false
+        )
+      );
+
+      app = express();
+      app.use(express.json());
+      app.use(
+        "/api",
+        createResearchSessionRouter(mockPrisma, {
+          sessionService: mockSessionService as any,
+          researchOrchestrator: mockOrchestrator as any,
+          directExecutionGating: { isEnabled: () => true },
+        })
+      );
+
+      const res400 = await request(app)
+        .post(`/api/research-sessions/${validSessionId}/execute-live`)
+        .send({ promptArtifactType: "study_guide" });
+
+      expect(res400.status).toBe(400);
+      expect(res400.body.error).toBe("Prompt cannot be empty");
+      expect(res400.body.code).toBeUndefined();
+
+      // Case B: PERMISSION_DENIED -> 403
+      mockOrchestrator.executeDirectResearch = vi.fn().mockRejectedValue(
+        new ProviderException(
+          "PERMISSION_DENIED",
+          "Access denied by provider",
+          "corr-test-03",
+          "notebooklm-enterprise",
+          false
+        )
+      );
+
+      const res403 = await request(app)
+        .post(`/api/research-sessions/${validSessionId}/execute-live`)
+        .send({ promptArtifactType: "study_guide" });
+
+      expect(res403.status).toBe(403);
+      expect(res403.body.error).toBe("Access denied by provider");
+      expect(res403.body.code).toBeUndefined();
+
+      // Case C: PROVIDER_UNAVAILABLE -> 503 (must NOT be assigned code: PROVIDER_TIMEOUT)
+      mockOrchestrator.executeDirectResearch = vi.fn().mockRejectedValue(
+        new ProviderException(
+          "PROVIDER_UNAVAILABLE",
+          "Provider service is unavailable",
+          "corr-test-04",
+          "notebooklm-enterprise",
+          true
+        )
+      );
+
+      const res503 = await request(app)
+        .post(`/api/research-sessions/${validSessionId}/execute-live`)
+        .send({ promptArtifactType: "study_guide" });
+
+      expect(res503.status).toBe(503);
+      expect(res503.body.error).toBe("Provider service is unavailable");
+      expect(res503.body.code).toBeUndefined();
     });
   });
 });

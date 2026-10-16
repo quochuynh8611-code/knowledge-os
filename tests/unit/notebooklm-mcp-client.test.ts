@@ -250,6 +250,7 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
     const client = new NotebookLMMcpClient({
       transport,
       requestTimeoutMs: 50,
+      queryTimeoutMs: 50,
     });
 
     await expect(
@@ -1025,5 +1026,245 @@ describe("NOTEBOOKLM DIRECT MCP CLIENT & TRANSPORT (PHASE 2)", () => {
     expect(res.citedSourceIds).toEqual([]);
     expect(res.citations).toBeUndefined();
     expect(res.references).toBeUndefined();
+  });
+
+  it("36. granular timeout: readiness and CRUD operations use 30000ms, notebook_query defaults to 90000ms, and timeoutMs is not leaked to tool arguments", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    transport.registerToolHandler("server_info", () => ({
+      auth_status: "configured",
+      version: "3.4.0",
+    }));
+    transport.registerToolHandler("notebook_create", () => ({
+      content: [{ type: "text", text: JSON.stringify({ notebook_id: "ws-timeout-test" }) }],
+    }));
+    transport.registerToolHandler("source_add", () => ({
+      content: [{ type: "text", text: JSON.stringify({ source_id: "src-timeout-test" }) }],
+    }));
+    transport.registerToolHandler("notebook_get", () => ({
+      content: [{ type: "text", text: JSON.stringify({ id: "ws-timeout-test", title: "Existing" }) }],
+    }));
+    transport.registerToolHandler("notebook_query", () => ({
+      content: [{ type: "text", text: JSON.stringify({ answer: "Grounded answer" }) }],
+    }));
+    transport.registerToolHandler("notebook_delete", () => ({
+      content: [{ type: "text", text: JSON.stringify({ status: "deleted" }) }],
+    }));
+
+    const requestSpy = vi.spyOn(transport, "request");
+    const client = new NotebookLMMcpClient({ transport });
+
+    // 1. Readiness: checkReadiness (server_info) uses default 30000ms
+    await client.checkReadiness();
+    const readinessCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "server_info");
+    expect(readinessCall).toBeDefined();
+    expect(readinessCall![2]?.timeoutMs).toBe(30000);
+
+    // 2. CRUD: createWorkspace (notebook_create) uses default 30000ms
+    await client.createWorkspace({ title: "Timeout Test Workspace" });
+    const createCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "notebook_create");
+    expect(createCall).toBeDefined();
+    expect(createCall![2]?.timeoutMs).toBe(30000);
+
+    // 3. CRUD: ingestSources (source_add) uses default 30000ms
+    await client.ingestSources({
+      workspaceId: "ws-timeout-test",
+      sources: [
+        {
+          type: "inline-text",
+          sourceId: "src-01",
+          title: "Doc",
+          mimeType: "text/plain",
+          textContent: "Text",
+          contentHash: "hash-01",
+        },
+      ],
+    });
+    const ingestCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "source_add");
+    expect(ingestCall).toBeDefined();
+    expect(ingestCall![2]?.timeoutMs).toBe(30000);
+
+    // 4. CRUD: reconcileWorkspace (notebook_get) uses default 30000ms
+    await client.reconcileWorkspace({
+      workspaceId: "ws-timeout-test",
+      expectedSources: [{ sourceId: "src-01", contentHash: "hash-01" }],
+    });
+    const reconcileCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "notebook_get");
+    expect(reconcileCall).toBeDefined();
+    expect(reconcileCall![2]?.timeoutMs).toBe(30000);
+
+    // 5. Query: notebook_query uses granular 90000ms timeout by default
+    await client.query({
+      workspaceId: "ws-timeout-test",
+      prompt: "What is the timeout?",
+    });
+    const queryCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "notebook_query");
+    expect(queryCall).toBeDefined();
+    expect(queryCall![2]?.timeoutMs).toBe(90000);
+
+    // Verify timeoutMs is NOT leaked into tool arguments
+    const queryArgs = (queryCall![1] as any)?.arguments;
+    expect(queryArgs).toBeDefined();
+    expect(queryArgs.timeoutMs).toBeUndefined();
+    expect(queryArgs).toEqual({
+      notebook_id: "ws-timeout-test",
+      query: "What is the timeout?",
+      source_ids: undefined,
+    });
+
+    // 6. CRUD: deleteWorkspace (notebook_delete) uses default 30000ms
+    await client.deleteWorkspace({ workspaceId: "ws-timeout-test" });
+    const deleteCall = requestSpy.mock.calls.find((c) => (c[1] as any)?.name === "notebook_delete");
+    expect(deleteCall).toBeDefined();
+    expect(deleteCall![2]?.timeoutMs).toBe(30000);
+  });
+
+  it("37. granular timeout: supports custom queryTimeoutMs in constructor and per-call timeoutMs override", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    transport.registerToolHandler("notebook_query", () => ({
+      content: [{ type: "text", text: JSON.stringify({ answer: "Custom timeout answer" }) }],
+    }));
+
+    const requestSpy = vi.spyOn(transport, "request");
+
+    // Case A: constructor options queryTimeoutMs = 120000
+    const clientA = new NotebookLMMcpClient({ transport, queryTimeoutMs: 120000 });
+    expect(clientA.getQueryTimeoutMs()).toBe(120000);
+    expect(clientA.getDefaultTimeoutMs()).toBe(30000);
+
+    await clientA.query({
+      workspaceId: "ws-timeout-test-a",
+      prompt: "Query with constructor timeout",
+    });
+    expect(requestSpy.mock.calls[0][2]?.timeoutMs).toBe(120000);
+
+    // Case B: per-call timeoutMs = 45000 overrides queryTimeoutMs
+    requestSpy.mockClear();
+    await clientA.query({
+      workspaceId: "ws-timeout-test-b",
+      prompt: "Query with per-call timeout",
+      timeoutMs: 45000,
+    });
+    expect(requestSpy.mock.calls[0][2]?.timeoutMs).toBe(45000);
+
+    // Ensure arguments did not leak timeoutMs
+    const callArgs = (requestSpy.mock.calls[0][1] as any)?.arguments;
+    expect(callArgs.timeoutMs).toBeUndefined();
+  });
+
+  it("38. StdioMcpTransport initialize handshake uses 30000ms timeout", async () => {
+    const fakeChild = new EventEmitter() as ChildProcess & {
+      stdin: Writable;
+      stdout: Readable;
+      stderr: Readable;
+      exitCode: number | null;
+      killed: boolean;
+      kill: (sig?: string) => boolean;
+    };
+
+    fakeChild.stdin = new Writable({
+      write(chunk, _encoding, callback) {
+        const lines = chunk.toString().trim().split("\n");
+        for (const line of lines) {
+          if (line) {
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.method === "initialize") {
+                fakeChild.stdout.push(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    id: parsed.id,
+                    result: {
+                      protocolVersion: "2024-11-05",
+                      capabilities: {},
+                      serverInfo: { name: "notebooklm", version: "3.4.0" },
+                    },
+                  }) + "\n"
+                );
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+        callback();
+      },
+    });
+    fakeChild.stdout = new Readable({ read() {} });
+    fakeChild.stderr = new Readable({ read() {} });
+    fakeChild.exitCode = null;
+    fakeChild.killed = false;
+    fakeChild.kill = vi.fn().mockReturnValue(true);
+
+    const transport = new StdioMcpTransport({
+      binaryPath: "/fake/path/notebooklm-mcp",
+      spawnFn: vi.fn().mockReturnValue(fakeChild) as unknown as typeof import("node:child_process").spawn,
+    });
+
+    const sendRawSpy = vi.spyOn(transport as any, "sendRawRequest");
+
+    await transport.connect();
+
+    expect(sendRawSpy).toHaveBeenCalledWith(
+      "initialize",
+      expect.objectContaining({ protocolVersion: "2024-11-05" }),
+      { timeoutMs: 30000 }
+    );
+    expect(transport.isAlive()).toBe(true);
+  });
+
+  it("39. granular timeout: invalid timeout values (0, negative, NaN) safely fall back to defaults", async () => {
+    const transport = new InMemoryMcpTransport();
+    await transport.connect();
+
+    transport.registerToolHandler("notebook_query", () => ({
+      content: [{ type: "text", text: JSON.stringify({ answer: "Safe fallback answer" }) }],
+    }));
+
+    // Invalid values in constructor fall back safely to 30000ms and 90000ms
+    const clientZero = new NotebookLMMcpClient({
+      transport,
+      requestTimeoutMs: 0,
+      queryTimeoutMs: -500,
+    });
+    expect(clientZero.getDefaultTimeoutMs()).toBe(30000);
+    expect(clientZero.getQueryTimeoutMs()).toBe(90000);
+
+    const clientNaN = new NotebookLMMcpClient({
+      transport,
+      requestTimeoutMs: NaN,
+      queryTimeoutMs: NaN,
+    });
+    expect(clientNaN.getDefaultTimeoutMs()).toBe(30000);
+    expect(clientNaN.getQueryTimeoutMs()).toBe(90000);
+
+    const requestSpy = vi.spyOn(transport, "request");
+
+    // Invalid override in query() falls back to configured query timeout (90000ms)
+    await clientZero.query({
+      workspaceId: "ws-test",
+      prompt: "Test query with 0 timeout",
+      timeoutMs: 0,
+    });
+    expect(requestSpy.mock.calls[0][2]?.timeoutMs).toBe(90000);
+
+    requestSpy.mockClear();
+    await clientZero.query({
+      workspaceId: "ws-test",
+      prompt: "Test query with negative timeout",
+      timeoutMs: -1000,
+    });
+    expect(requestSpy.mock.calls[0][2]?.timeoutMs).toBe(90000);
+
+    requestSpy.mockClear();
+    await clientZero.query({
+      workspaceId: "ws-test",
+      prompt: "Test query with NaN timeout",
+      timeoutMs: NaN,
+    });
+    expect(requestSpy.mock.calls[0][2]?.timeoutMs).toBe(90000);
   });
 });
