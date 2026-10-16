@@ -83,7 +83,11 @@ export function NotebookLMStudioModal({
   const [notebookUrl, setNotebookUrl] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // 7. Review Drawer State
+  // 7. Live Direct Execution State
+  const [isLiveExecuting, setIsLiveExecuting] = useState(false);
+  const [liveExecutionError, setLiveExecutionError] = useState<string | null>(null);
+
+  // 8. Review Drawer State
   const [reviewingArtifact, setReviewingArtifact] = useState<GroundedArtifactDTO | null>(null);
 
   // Focus trap ref
@@ -276,6 +280,55 @@ export function NotebookLMStudioModal({
       }
     } finally {
       setIsHandoffSubmitting(false);
+    }
+  };
+
+  const handleExecuteLiveResearch = async () => {
+    if (!currentTopic || !currentSession || isLiveExecuting) return;
+
+    setIsLiveExecuting(true);
+    setLiveExecutionError(null);
+
+    try {
+      const res = await fetch(`/api/research-sessions/${currentSession.id}/execute-live`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          promptArtifactType:
+            promptArtifactType === 'audio_overview_summary'
+              ? 'study_guide'
+              : promptArtifactType,
+          customInstructions: customInstructions || undefined,
+          ephemeralWorkspace: true,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 403) {
+          setLiveExecutionError(
+            '🔒 Tính năng Khảo cứu trực tiếp qua MCP chưa được kích hoạt trên hệ thống (Gating: NOTEBOOKLM_DIRECT_EXECUTION flag is OFF). Bạn có thể tiếp tục bằng cách bấm "Chuẩn bị Handoff Antigravity".'
+          );
+        } else {
+          setLiveExecutionError(
+            data.error || 'Có lỗi xảy ra trong quá trình khảo cứu trực tiếp qua NotebookLM.'
+          );
+        }
+        return;
+      }
+
+      // Success: sync session to get new GroundedArtifact & switch to results step
+      await syncSession(currentTopic.id);
+      setActiveStep('results');
+    } catch (err: unknown) {
+      setLiveExecutionError(
+        err instanceof Error
+          ? err.message
+          : 'Lỗi kết nối khi gửi yêu cầu khảo cứu trực tiếp.'
+      );
+    } finally {
+      setIsLiveExecuting(false);
     }
   };
 
@@ -480,6 +533,9 @@ export function NotebookLMStudioModal({
               onPrepareHandoff={handlePrepareHandoff}
               onProceedToResults={() => setActiveStep('results')}
               onBackToSource={() => setActiveStep('source')}
+              isLiveExecuting={isLiveExecuting}
+              liveExecutionError={liveExecutionError}
+              onExecuteLiveResearch={handleExecuteLiveResearch}
             />
           )}
 

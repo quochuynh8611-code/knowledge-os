@@ -75,6 +75,9 @@ export interface NotebookLMPromptStepProps {
   onPrepareHandoff: () => void;
   onProceedToResults: () => void;
   onBackToSource: () => void;
+  isLiveExecuting?: boolean;
+  liveExecutionError?: string | null;
+  onExecuteLiveResearch?: () => void;
 }
 
 export interface NotebookLMResultsStepProps {

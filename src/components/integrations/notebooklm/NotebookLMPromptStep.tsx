@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { NotebookLMPromptStepProps } from './types';
 import { NotebookLMArtifactType } from '../../../lib/notebooklm';
@@ -56,6 +57,9 @@ export function NotebookLMPromptStep({
   onPrepareHandoff,
   onProceedToResults,
   onBackToSource,
+  isLiveExecuting = false,
+  liveExecutionError = null,
+  onExecuteLiveResearch,
 }: NotebookLMPromptStepProps) {
   const selectedTypeConfig =
     ARTIFACT_TYPE_CONFIG.find((t) => t.id === promptArtifactType) ||
@@ -71,12 +75,34 @@ export function NotebookLMPromptStep({
             <span>Task Prompt Cho Antigravity 2.0 (Target: NotebookLM Skill)</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap gap-2">
+            {onExecuteLiveResearch && (
+              <button
+                type="button"
+                data-testid="btn-execute-live-research"
+                onClick={onExecuteLiveResearch}
+                disabled={isLiveExecuting || isHandoffSubmitting || !currentTopic}
+                className="px-3.5 py-1.5 bg-sky-700 hover:bg-sky-800 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLiveExecuting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 text-sky-200 animate-spin" />
+                    <span>Đang khảo cứu trực tiếp...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5 text-sky-200" />
+                    <span>Khảo cứu trực tiếp (Live MCP)</span>
+                  </>
+                )}
+              </button>
+            )}
+
             <button
               type="button"
               data-testid="btn-prepare-antigravity-handoff"
               onClick={onPrepareHandoff}
-              disabled={isHandoffSubmitting || !currentTopic}
+              disabled={isHandoffSubmitting || isLiveExecuting || !currentTopic}
               className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isHandoffSubmitting ? (
@@ -94,6 +120,7 @@ export function NotebookLMPromptStep({
 
             <button
               type="button"
+              data-testid="btn-copy-task-prompt"
               onClick={onCopyPrompt}
               disabled={!currentTopic}
               className="px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs disabled:opacity-50"
@@ -107,6 +134,20 @@ export function NotebookLMPromptStep({
             </button>
           </div>
         </div>
+
+        {/* Live Execution Error / Gating Warning Banner */}
+        {liveExecutionError && (
+          <div
+            data-testid="live-execution-error-banner"
+            className="p-3 bg-amber-100/90 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-xl flex items-start gap-2 text-xs text-amber-950 dark:text-amber-200"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-relaxed">
+              <span className="font-semibold block mb-0.5">Thông báo khảo cứu trực tiếp:</span>
+              <span>{liveExecutionError}</span>
+            </div>
+          </div>
+        )}
 
         {/* Artifact Type Selector */}
         <div className="space-y-1.5">
