@@ -16,9 +16,13 @@ import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createArchiveRouter } from "./src/server/routes/archiveRoutes";
 import { createResearchSessionRouter } from "./src/server/routes/researchSessionRoutes";
-import { createResearchProviderRuntimeDiagnostics } from "./src/server/bootstrap/researchProviderComposition";
+import {
+  createResearchProviderRuntimeDiagnostics,
+  createResearchProviderRuntimeComposition,
+} from "./src/server/bootstrap/researchProviderComposition";
 import { ResearchProviderConfig } from "./src/server/config/researchProviderConfig";
 import { ProviderRegistry } from "./src/server/services/providers/providerRegistry";
+import { ResearchOrchestrator } from "./src/server/services/providers/researchOrchestrator";
 import { createArtifactRouter } from "./src/server/routes/artifactRoutes";
 import { createObsidianVaultRoutes } from "./src/server/routes/obsidianVaultRoutes";
 import { createObsidianVaultTreeRouter } from "./src/server/routes/obsidianVaultTree";
@@ -43,6 +47,7 @@ export interface ServerAppDeps {
     config: ResearchProviderConfig;
     providerRegistry: ProviderRegistry | null;
   };
+  researchOrchestrator?: ResearchOrchestrator | null;
 }
 
 /**
@@ -146,12 +151,31 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
 
   // 7. NotebookLM Research Hub v2.1 Pipeline Endpoints (With Runtime Injection)
   let researchDiagnostics = deps?.researchDiagnostics;
-  if (researchDiagnostics === undefined && (!deps || !("researchDiagnostics" in deps))) {
+  let researchOrchestrator = deps?.researchOrchestrator;
+
+  if (
+    (researchDiagnostics === undefined && (!deps || !("researchDiagnostics" in deps))) ||
+    (researchOrchestrator === undefined && (!deps || !("researchOrchestrator" in deps)))
+  ) {
     try {
-      researchDiagnostics = createResearchProviderRuntimeDiagnostics();
-    } catch (diagError) {
-      console.error("[ResearchProvider] Failed to initialize provider diagnostics:", diagError);
-      researchDiagnostics = undefined;
+      const composition = createResearchProviderRuntimeComposition();
+      if (researchDiagnostics === undefined && (!deps || !("researchDiagnostics" in deps))) {
+        researchDiagnostics = {
+          config: composition.config,
+          providerRegistry: composition.providerRegistry,
+        };
+      }
+      if (researchOrchestrator === undefined && (!deps || !("researchOrchestrator" in deps))) {
+        researchOrchestrator = composition.orchestrator;
+      }
+    } catch (compError) {
+      console.error("[ResearchProvider] Failed to initialize provider composition:", compError);
+      if (researchDiagnostics === undefined && (!deps || !("researchDiagnostics" in deps))) {
+        researchDiagnostics = undefined;
+      }
+      if (researchOrchestrator === undefined && (!deps || !("researchOrchestrator" in deps))) {
+        researchOrchestrator = null;
+      }
     }
   }
 
@@ -159,6 +183,7 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
     "/api",
     createResearchSessionRouter(activePrisma, {
       providerDiagnostics: researchDiagnostics,
+      researchOrchestrator: researchOrchestrator ?? undefined,
     })
   );
   app.use("/api", createArtifactRouter(activePrisma));

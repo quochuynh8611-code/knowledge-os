@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { ResearchSessionService } from "../services/researchSessionService";
@@ -10,6 +11,8 @@ import {
   isProviderAllowed,
 } from "../config/researchProviderConfig";
 import { ProviderRegistry } from "../services/providers/providerRegistry";
+import { ResearchOrchestrator } from "../services/providers/researchOrchestrator";
+import { SourcePayload } from "../services/providers/types";
 import {
   CreateResearchSessionSchema,
   UpdateResearchSessionSchema,
@@ -22,6 +25,10 @@ export interface ResearchSessionRouterDeps {
   providerDiagnostics?: {
     config: ResearchProviderConfig;
     providerRegistry: ProviderRegistry | null;
+  };
+  researchOrchestrator?: ResearchOrchestrator;
+  directExecutionGating?: {
+    isEnabled: () => boolean;
   };
 }
 
@@ -274,6 +281,216 @@ export function createResearchSessionRouter(
       return res.status(500).json({ error: (error as Error).message });
     }
   });
+
+  // POST /api/research-sessions/:sessionId/execute-live — Direct Execution Gated Endpoint
+  router.post(
+    "/research-sessions/:sessionId/execute-live",
+    async (req: Request, res: Response) => {
+      try {
+        // Gating Check: Fail-closed unless explicitly enabled via environment or DI
+        const isGatedEnabled = deps?.directExecutionGating?.isEnabled
+          ? deps.directExecutionGating.isEnabled()
+          : process.env.NOTEBOOKLM_DIRECT_EXECUTION === "true";
+
+        if (!isGatedEnabled) {
+          return res.status(403).json({
+            error:
+              "Tính năng khảo cứu trực tiếp qua NotebookLM MCP chưa được kích hoạt trên hệ thống (Gating: NOTEBOOKLM_DIRECT_EXECUTION is off)",
+            code: "DIRECT_EXECUTION_DISABLED",
+          });
+        }
+
+        const sessionId = req.params.sessionId;
+
+        // Verify session existence
+        const session = await sessionService.getSessionById(sessionId);
+        if (!session) {
+          return res.status(404).json({ error: "Phiên nghiên cứu không tồn tại" });
+        }
+
+        // Verify orchestrator availability
+        const orchestrator = deps?.researchOrchestrator;
+        if (!orchestrator) {
+          return res.status(503).json({
+            error:
+              "Dịch vụ điều phối khảo cứu trực tiếp (ResearchOrchestrator) chưa được cấu hình",
+            code: "ORCHESTRATOR_UNAVAILABLE",
+          });
+        }
+
+        const {
+          promptArtifactType = "study_guide",
+          customInstructions,
+          ephemeralWorkspace = true,
+          preferredProviderId,
+          sources: overrideSources,
+        } = req.body || {};
+
+        // Resolve sources: fallback to session's packaged source if available
+        let sources: SourcePayload[] = [];
+        if (
+          overrideSources &&
+          Array.isArray(overrideSources) &&
+          overrideSources.length > 0
+        ) {
+          sources = overrideSources;
+        } else if (session.sourcePackages && session.sourcePackages.length > 0) {
+          const latestPackage = session.sourcePackages[0];
+          sources.push({
+            type: "inline-text",
+            sourceId: latestPackage.id,
+            title: `Nguồn tài liệu v${latestPackage.version}`,
+            mimeType: "text/markdown",
+            textContent: latestPackage.content,
+            contentHash: latestPackage.contentHash,
+          });
+        }
+
+        // Resolve prompt
+        const queryPrompt =
+          typeof customInstructions === "string" && customInstructions.trim()
+            ? customInstructions.trim()
+            : session.taskPrompts && session.taskPrompts.length > 0
+            ? session.taskPrompts[0].promptText
+            : `Hãy phân tích chuyên sâu tài liệu nguồn và lập một bản ${promptArtifactType} chi tiết với đầy đủ luận điểm.`;
+
+        const workspaceTitle = session.topic?.title
+          ? `[RESEARCH-LIVE] ${session.topic.title}`
+          : `[RESEARCH-LIVE] Phiên ${sessionId}`;
+
+        const startTime = Date.now();
+        const directResult = await orchestrator.executeDirectResearch({
+          workspaceTitle,
+          sources,
+          queryPrompt,
+          ephemeralWorkspace,
+          preferredProviderId,
+          correlationId: `live-${sessionId}-${Date.now()}`,
+        });
+        const executionDurationMs = Date.now() - startTime;
+
+        const contentHash = crypto
+          .createHash("sha256")
+          .update(directResult.answer)
+          .digest("hex");
+        const artifactTitle = `${promptArtifactType.toUpperCase()}: ${
+          session.topic?.title || "Khảo cứu trực tiếp"
+        }`;
+        const idempotencyKey = `live-art-${sessionId}-${directResult.workspaceId}-${Date.now()}`;
+
+        let savedArtifact: any = null;
+        if (prisma?.groundedArtifact) {
+          try {
+            savedArtifact = await prisma.groundedArtifact.create({
+              data: {
+                sessionId,
+                topicId: session.topicId,
+                sourcePackageId: session.sourcePackages?.[0]?.id || null,
+                taskPromptId: session.taskPrompts?.[0]?.id || null,
+                artifactType: promptArtifactType,
+                title: artifactTitle,
+                rawContent: directResult.answer,
+                contentHash,
+                idempotencyKey,
+                status: "received",
+                citationCount: directResult.citedSourceIds.length,
+                metadata: {
+                  providerId: directResult.providerId,
+                  remoteWorkspaceId: directResult.workspaceId,
+                  cleanupStatus: directResult.cleanupStatus,
+                  citedSourceIds: directResult.citedSourceIds,
+                  citations: directResult.citations || null,
+                  references: directResult.references || null,
+                  rawCitations: directResult.rawCitations || null,
+                  executionDurationMs,
+                },
+              },
+            });
+
+            if (prisma?.artifactCitation && Array.isArray(directResult.references)) {
+              for (const ref of directResult.references) {
+                try {
+                  await prisma.artifactCitation.create({
+                    data: {
+                      artifactId: savedArtifact.id,
+                      markerIndex: ref.citationNumber || 1,
+                      sourceTitle: ref.sourceTitle || ref.sourceId || "Nguồn trích dẫn",
+                      quote: ref.citedText || null,
+                    },
+                  });
+                } catch (citeErr) {
+                  console.warn(
+                    "[ResearchSessionRouter] Error saving ArtifactCitation:",
+                    citeErr
+                  );
+                }
+              }
+            }
+
+            if (prisma?.researchTimelineEvent) {
+              await prisma.researchTimelineEvent.create({
+                data: {
+                  sessionId,
+                  topicId: session.topicId,
+                  eventType: "direct_research_executed",
+                  eventData: {
+                    artifactId: savedArtifact.id,
+                    providerId: directResult.providerId,
+                    cleanupStatus: directResult.cleanupStatus,
+                    citedSourceCount: directResult.citedSourceIds.length,
+                    executionDurationMs,
+                  },
+                },
+              });
+            }
+          } catch (dbErr) {
+            console.warn(
+              "[ResearchSessionRouter] Error saving GroundedArtifact to database:",
+              dbErr
+            );
+          }
+        }
+
+        return res.status(200).json({
+          sessionId,
+          artifactId: savedArtifact?.id || `art-live-${Date.now()}`,
+          artifactType: promptArtifactType,
+          title: artifactTitle,
+          content: directResult.answer,
+          citedSourceIds: directResult.citedSourceIds,
+          citations: directResult.citations || {},
+          references: directResult.references || [],
+          cleanupStatus: directResult.cleanupStatus,
+          executionDurationMs,
+        });
+      } catch (error: unknown) {
+        if (error instanceof ProviderException) {
+          const sanitizedMessage = sanitizeProviderErrorMessage(error.message);
+          if (error.errorCode === "INVALID_ARGUMENT") {
+            return res.status(400).json({ error: sanitizedMessage });
+          }
+          if (
+            error.errorCode === "PERMISSION_DENIED" ||
+            error.errorCode === "AUTHENTICATION_FAILED"
+          ) {
+            return res.status(403).json({ error: sanitizedMessage });
+          }
+          if (
+            error.errorCode === "CAPABILITY_UNSUPPORTED" ||
+            error.errorCode === "PROVIDER_UNAVAILABLE" ||
+            error.errorCode === "PROVIDER_TIMEOUT"
+          ) {
+            return res.status(503).json({ error: sanitizedMessage });
+          }
+          return res.status(500).json({ error: sanitizedMessage });
+        }
+
+        const rawMessage = error instanceof Error ? error.message : String(error);
+        const sanitized = sanitizeProviderErrorMessage(rawMessage);
+        return res.status(500).json({ error: sanitized });
+      }
+    }
+  );
 
   return router;
 }

@@ -276,6 +276,66 @@ export class NotebookLMEnterpriseProvider implements ResearchProvider {
     }
   }
 
+  public async query(
+    params: { workspaceId: string; question?: string; prompt?: string; sourceIds?: string[] },
+    context: ExecutionContext
+  ): Promise<{
+    answer: string;
+    citedSourceIds: string[];
+    rawEnvelope?: Record<string, unknown>;
+    citations?: Record<string, string>;
+    references?: Array<{ sourceId: string; citationNumber: number; citedText?: string; sourceTitle?: string }>;
+  }> {
+    if (!this.client.query) {
+      throw new ProviderException(
+        "CAPABILITY_UNSUPPORTED",
+        "Underlying client boundary does not support direct query",
+        context.correlationId,
+        this.metadata.id,
+        false
+      );
+    }
+
+    const promptText = params.prompt || params.question;
+    if (!promptText || !promptText.trim()) {
+      throw new ProviderException(
+        "INVALID_ARGUMENT",
+        "Direct query requires non-empty prompt or question",
+        context.correlationId,
+        this.metadata.id,
+        false
+      );
+    }
+
+    try {
+      const res = await this.client.query({
+        workspaceId: params.workspaceId,
+        prompt: promptText,
+        sourceIds: params.sourceIds,
+      });
+
+      if (!res || typeof res.answer !== "string" || !res.answer.trim()) {
+        throw new ProviderException(
+          "INTERNAL_ERROR",
+          "Provider returned empty or invalid answer for direct research query",
+          context.correlationId,
+          this.metadata.id,
+          false
+        );
+      }
+
+      return {
+        answer: res.answer,
+        citedSourceIds: res.citedSourceIds || [],
+        rawEnvelope: res.rawEnvelope,
+        citations: res.citations,
+        references: res.references,
+      };
+    } catch (error: unknown) {
+      throw this.normalizeClientError(error, context.correlationId);
+    }
+  }
+
   private normalizeClientError(error: unknown, correlationId?: string): ProviderException {
     if (error instanceof ProviderException) {
       return error;

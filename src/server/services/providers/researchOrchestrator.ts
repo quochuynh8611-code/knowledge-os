@@ -267,4 +267,221 @@ export class ResearchOrchestrator {
       throw errorToThrow;
     }
   }
+
+  /**
+   * Executes a direct end-to-end research query against an active provider.
+   * Lifecycle Invariant:
+   * - Ephemeral-by-default: ephemeralWorkspace is true unless explicitly set to false.
+   * - Mandatory cleanup in finally block: deleteWorkspace is guaranteed to run if ephemeral.
+   */
+  public async executeDirectResearch(params: {
+    workspaceTitle: string;
+    sources?: SourcePayload[];
+    queryPrompt: string;
+    ephemeralWorkspace?: boolean;
+    preferredProviderId?: string | null;
+    correlationId?: string;
+  }): Promise<{
+    providerId: string;
+    workspaceId: string;
+    answer: string;
+    citedSourceIds: string[];
+    citations?: Record<string, string>;
+    references?: Array<{
+      sourceId: string;
+      citationNumber: number;
+      citedText?: string;
+      sourceTitle?: string;
+    }>;
+    rawCitations?: Record<string, string>;
+    cleanupStatus: "CLEANED" | "RETAINED";
+    attemptRecords: ProviderAttemptRecord[];
+  }> {
+    const isEphemeral = params.ephemeralWorkspace !== false;
+    const context = this.createExecutionContext({
+      correlationId: params.correlationId,
+    });
+
+    const provider = params.preferredProviderId
+      ? this.registry.resolveProviderForRequest({
+          preferredProviderId: params.preferredProviderId,
+        })
+      : this.registry.getDefaultProvider();
+
+    const attemptRecords: ProviderAttemptRecord[] = [];
+    let workspaceId: string | null = null;
+    const cleanupStatus: "CLEANED" | "RETAINED" = isEphemeral ? "CLEANED" : "RETAINED";
+
+    try {
+      // Step 1: Create workspace
+      const createRes = await provider.createWorkspace(
+        {
+          topicTitle: params.workspaceTitle,
+          topicSlug: `direct-${this.randomId()}`,
+        },
+        context
+      );
+      attemptRecords.push(createRes.attemptRecord);
+      workspaceId = createRes.remoteWorkspaceId;
+
+      // Step 2: Ingest sources if present and track bidirectional mapping
+      const remoteToRealSourceMap = new Map<string, string>();
+      const realSourceTitleMap = new Map<string, string>();
+
+      if (params.sources && params.sources.length > 0) {
+        for (const s of params.sources) {
+          if (s.title) {
+            realSourceTitleMap.set(s.sourceId, s.title);
+          }
+        }
+
+        const ingestRes = await provider.ingestSources(
+          {
+            remoteWorkspaceId: workspaceId,
+            sources: params.sources,
+          },
+          context
+        );
+        attemptRecords.push(ingestRes.attemptRecord);
+
+        if (Array.isArray(ingestRes.remoteSourceIds)) {
+          for (let i = 0; i < params.sources.length; i++) {
+            const realId = params.sources[i]?.sourceId;
+            const remoteId = ingestRes.remoteSourceIds[i];
+            if (realId && remoteId) {
+              remoteToRealSourceMap.set(remoteId, realId);
+            }
+          }
+        }
+      }
+
+      // Step 3: Query provider
+      if (!provider.query) {
+        throw new ProviderException(
+          "CAPABILITY_UNSUPPORTED",
+          `Provider '${provider.metadata.id}' does not implement query method`,
+          context.correlationId,
+          provider.metadata.id,
+          false
+        );
+      }
+
+      const queryRes = (await provider.query(
+        {
+          workspaceId,
+          question: params.queryPrompt,
+        },
+        context
+      )) as {
+        answer: string;
+        citedSourceIds?: string[];
+        citations?: Record<string, string>;
+        references?: Array<{ sourceId: string; citationNumber: number; citedText?: string }>;
+        rawEnvelope?: Record<string, unknown>;
+      };
+
+      if (!queryRes || !queryRes.answer || !queryRes.answer.trim()) {
+        throw new ProviderException(
+          "INTERNAL_ERROR",
+          "Provider returned empty or invalid answer for direct research",
+          context.correlationId,
+          provider.metadata.id,
+          false
+        );
+      }
+
+      // Map citedSourceIds from remote source IDs to real source IDs, rejecting synthetic fallback IDs
+      const rawCited = queryRes.citedSourceIds || [];
+      const resolvedCitedIds: string[] = [];
+      for (const id of rawCited) {
+        if (!id || typeof id !== "string" || id.startsWith("nlm-src-")) {
+          continue; // Reject synthetic/fallback source IDs
+        }
+        const realId = remoteToRealSourceMap.get(id);
+        if (realId) {
+          if (!resolvedCitedIds.includes(realId)) {
+            resolvedCitedIds.push(realId);
+          }
+        } else if (params.sources?.some((s) => s.sourceId === id)) {
+          if (!resolvedCitedIds.includes(id)) {
+            resolvedCitedIds.push(id);
+          }
+        }
+      }
+
+      // Map citations mapping: citationNumber -> realSourceId
+      const resolvedCitations: Record<string, string> = {};
+      if (queryRes.citations && typeof queryRes.citations === "object") {
+        for (const [marker, remoteId] of Object.entries(queryRes.citations)) {
+          if (!remoteId || typeof remoteId !== "string" || remoteId.startsWith("nlm-src-")) {
+            continue; // Reject synthetic IDs
+          }
+          const realId =
+            remoteToRealSourceMap.get(remoteId) ||
+            (params.sources?.some((s) => s.sourceId === remoteId) ? remoteId : null);
+          if (realId) {
+            resolvedCitations[marker] = realId;
+            if (!resolvedCitedIds.includes(realId)) {
+              resolvedCitedIds.push(realId);
+            }
+          }
+        }
+      }
+
+      // Map references: preserve citation references mapped to real source IDs
+      const resolvedReferences = (queryRes.references || [])
+        .map((ref) => {
+          if (
+            !ref.sourceId ||
+            typeof ref.sourceId !== "string" ||
+            ref.sourceId.startsWith("nlm-src-")
+          ) {
+            return null; // Reject synthetic
+          }
+          const realId =
+            remoteToRealSourceMap.get(ref.sourceId) ||
+            (params.sources?.some((s) => s.sourceId === ref.sourceId) ? ref.sourceId : null);
+          if (!realId) return null;
+          return {
+            sourceId: realId,
+            citationNumber: ref.citationNumber,
+            citedText: ref.citedText,
+            sourceTitle: realSourceTitleMap.get(realId),
+          };
+        })
+        .filter((ref): ref is NonNullable<typeof ref> => ref !== null);
+
+      return {
+        providerId: provider.metadata.id,
+        workspaceId,
+        answer: queryRes.answer,
+        citedSourceIds: resolvedCitedIds,
+        citations: Object.keys(resolvedCitations).length > 0 ? resolvedCitations : undefined,
+        references: resolvedReferences.length > 0 ? resolvedReferences : undefined,
+        rawCitations: queryRes.citations,
+        cleanupStatus,
+        attemptRecords,
+      };
+    } finally {
+      // Ephemeral cleanup semantics: MANDATORY in finally block
+      if (isEphemeral && workspaceId) {
+        try {
+          const cleanupContext = this.createExecutionContext({
+            correlationId: context.correlationId,
+            approvalProof: {
+              intent: "delete_workspace",
+              actorId: "system",
+              reason: "ephemeral_research_cleanup",
+            },
+          });
+          await provider.deleteWorkspace(
+            { remoteWorkspaceId: workspaceId, expectedSlug: "ephemeral" },
+            cleanupContext
+          );
+        } catch (cleanupErr) {
+          console.warn("[ResearchOrchestrator] Ephemeral workspace cleanup error:", cleanupErr);
+        }
+      }
+    }
+  }
 }

@@ -300,14 +300,22 @@ export class NotebookLMMcpClient implements NotebookLMClient {
         );
 
         const unpacked = unpackMcpToolResult(rawResult);
-        const sourceId =
-          typeof unpacked.source_id === "string"
-            ? unpacked.source_id
-            : typeof unpacked.id === "string"
-            ? unpacked.id
-            : `nlm-src-${source.sourceId}`;
+        const candidateSourceId =
+          typeof unpacked.source_id === "string" && unpacked.source_id.trim().length > 0
+            ? unpacked.source_id.trim()
+            : typeof unpacked.id === "string" && unpacked.id.trim().length > 0
+            ? unpacked.id.trim()
+            : null;
 
-        remoteSourceIds.push(sourceId);
+        if (!candidateSourceId) {
+          throw new NotebookLMClientError({
+            code: "MALFORMED_RESPONSE",
+            message: `source_add response missing valid remote source_id for source '${source.sourceId}'`,
+            rawDetails: unpacked,
+          });
+        }
+
+        remoteSourceIds.push(candidateSourceId);
       } catch (err: unknown) {
         failureCount++;
         if (params.signal?.aborted) {
@@ -378,16 +386,67 @@ export class NotebookLMMcpClient implements NotebookLMClient {
       });
     }
 
-    const citedSourceIds: string[] = Array.isArray(unpacked.cited_sources)
-      ? unpacked.cited_sources.map(String)
-      : Array.isArray(unpacked.source_ids)
-      ? unpacked.source_ids.map(String)
-      : params.sourceIds || [];
+    // 1. Extract citedSourceIds strictly from MCP output without synthetic/input fallback
+    let rawCitedSourceIds: string[] = [];
+    if (Array.isArray(unpacked.sources_used)) {
+      rawCitedSourceIds = unpacked.sources_used.map(String);
+    } else if (Array.isArray(unpacked.cited_sources)) {
+      rawCitedSourceIds = unpacked.cited_sources.map(String);
+    } else if (Array.isArray(unpacked.source_ids)) {
+      rawCitedSourceIds = unpacked.source_ids.map(String);
+    } else if (unpacked.citations && typeof unpacked.citations === "object") {
+      rawCitedSourceIds = Object.values(unpacked.citations as Record<string, unknown>).map(String);
+    }
+
+    const citedSourceIds = Array.from(
+      new Set(
+        rawCitedSourceIds
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0 && !s.startsWith("nlm-src-"))
+      )
+    );
+
+    // 2. Preserve raw citations map (citationNumber -> remoteSourceId)
+    const rawCitations: Record<string, string> = {};
+    if (unpacked.citations && typeof unpacked.citations === "object") {
+      for (const [key, val] of Object.entries(unpacked.citations as Record<string, unknown>)) {
+        if (typeof val === "string" && val.trim().length > 0 && !val.startsWith("nlm-src-")) {
+          rawCitations[String(key)] = val.trim();
+        }
+      }
+    }
+
+    // 3. Preserve raw references array
+    const rawReferences: Array<{
+      sourceId: string;
+      citationNumber: number;
+      citedText?: string;
+    }> = [];
+    if (Array.isArray(unpacked.references)) {
+      for (const ref of unpacked.references) {
+        if (ref && typeof ref === "object") {
+          const rawId = (ref as any).source_id || (ref as any).sourceId;
+          const rawNum = (ref as any).citation_number ?? (ref as any).citationNumber;
+          const rawText = (ref as any).cited_text || (ref as any).citedText;
+          if (typeof rawId === "string" && rawId.trim().length > 0 && !rawId.startsWith("nlm-src-")) {
+            rawReferences.push({
+              sourceId: rawId.trim(),
+              citationNumber: Number(rawNum) || 1,
+              ...(typeof rawText === "string" && rawText.trim().length > 0
+                ? { citedText: rawText.trim() }
+                : {}),
+            });
+          }
+        }
+      }
+    }
 
     return {
       answer,
       citedSourceIds,
       rawEnvelope: unpacked,
+      citations: Object.keys(rawCitations).length > 0 ? rawCitations : undefined,
+      references: rawReferences.length > 0 ? rawReferences : undefined,
     };
   }
 
@@ -530,6 +589,10 @@ export class NotebookLMMcpClient implements NotebookLMClient {
         const lowerErr = unpacked.error.toLowerCase();
         if (
           lowerErr.includes("not found") ||
+          lowerErr.includes("not_found") ||
+          lowerErr.includes("not-found") ||
+          lowerErr.includes("code 5") ||
+          lowerErr.includes("code: 5") ||
           lowerErr.includes("404") ||
           lowerErr.includes("does not exist")
         ) {
@@ -545,9 +608,17 @@ export class NotebookLMMcpClient implements NotebookLMClient {
       return "CONFIRMED_PRESENT";
     } catch (err: unknown) {
       if (err instanceof NotebookLMClientError) {
+        if (err.code === "TIMEOUT" || err.code === "UNAVAILABLE") {
+          throw err;
+        }
+
         const lowerMsg = err.message.toLowerCase();
         if (
           lowerMsg.includes("not found") ||
+          lowerMsg.includes("not_found") ||
+          lowerMsg.includes("not-found") ||
+          lowerMsg.includes("code 5") ||
+          lowerMsg.includes("code: 5") ||
           lowerMsg.includes("404") ||
           lowerMsg.includes("does not exist")
         ) {

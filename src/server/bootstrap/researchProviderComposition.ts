@@ -229,3 +229,32 @@ export function createResearchProviderRuntimeDiagnostics(
   };
 }
 
+/**
+ * Creates the runtime composition dependency bundle including ResearchOrchestrator
+ * for server bootstrap and research session routing.
+ * Reuses createResearchProviderRuntimeDiagnostics to avoid duplicate composition logic.
+ * Fail-safe and side-effect free: returns orchestrator: null when provider routing is disabled.
+ */
+export function createResearchProviderRuntimeComposition(
+  env: NodeJS.ProcessEnv = process.env
+): {
+  config: ResearchProviderConfig;
+  providerRegistry: ProviderRegistry | null;
+  orchestrator: ResearchOrchestrator | null;
+} {
+  const diagnostics = createResearchProviderRuntimeDiagnostics(env);
+  let orchestrator: ResearchOrchestrator | null = null;
+  if (diagnostics.providerRegistry && diagnostics.config.enableProviderRouting) {
+    try {
+      orchestrator = new ResearchOrchestrator({
+        registry: diagnostics.providerRegistry,
+      });
+    } catch {
+      orchestrator = null;
+    }
+  }
+  return {
+    ...diagnostics,
+    orchestrator,
+  };
+}

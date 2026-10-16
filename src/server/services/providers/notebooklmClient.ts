@@ -120,10 +120,19 @@ export interface NotebookLMQueryInput {
   readonly signal?: AbortSignal;
 }
 
+export interface NotebookLMCitationReference {
+  readonly citationNumber: number;
+  readonly sourceId: string;
+  readonly citedText?: string;
+  readonly sourceTitle?: string;
+}
+
 export interface NotebookLMQueryResult {
   readonly answer: string;
   readonly citedSourceIds?: string[];
   readonly rawEnvelope?: Record<string, unknown>;
+  readonly citations?: Record<string, string>;
+  readonly references?: NotebookLMCitationReference[];
 }
 
 /**
