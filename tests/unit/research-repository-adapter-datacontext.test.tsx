@@ -2,6 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act } from "@testing-library/react";
 import { DataProvider, useData } from "../../src/context/DataContext";
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY } from "../../src/lib/storage";
 import { Note } from "../../src/types";
 
 // Consumer Component to interact with DataContext
@@ -64,8 +65,24 @@ function TestNoteConsumer() {
 }
 
 describe("Phase P1.3 — ResearchRepositoryV2 DataContext Integration", () => {
+  const STORAGE_KEY = STORAGE_ROOT_KEY;
+
+  const sampleNoteFixture: Note = {
+    id: "note-adapter-fixture-1",
+    title: "Ghi Chú Ban Đầu",
+    content: "Nội dung ghi chú ban đầu",
+    topicId: "topic-initial-1",
+    topicIds: ["topic-initial-1"],
+    type: "study",
+    isPrivate: false,
+    tags: ["Test"],
+    createdAt: "2026-10-17T00:00:00.000Z",
+    updatedAt: "2026-10-17T00:00:00.000Z",
+  };
+
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, "4");
     vi.clearAllMocks();
   });
 
@@ -86,7 +103,7 @@ describe("Phase P1.3 — ResearchRepositoryV2 DataContext Integration", () => {
     expect(Number(screen.getByTestId("notes-count").textContent)).toBe(initialCount + 1);
 
     // Verify in localStorage that the newly saved note has topicId = "topic-primary-new"
-    const rawNotes = localStorage.getItem("phat_hoc_huyen_hoc_clean_v3_notes");
+    const rawNotes = localStorage.getItem(`${STORAGE_KEY}_notes`);
     expect(rawNotes).toBeTruthy();
     const parsedNotes: Note[] = JSON.parse(rawNotes!);
     const added = parsedNotes.find((n) => n.title === "Ghi Chú Đa Chủ Đề");
@@ -96,11 +113,20 @@ describe("Phase P1.3 — ResearchRepositoryV2 DataContext Integration", () => {
   });
 
   it("2. updateNote with topicIds normalizes primary topicId = topicIds[0]", async () => {
+    // Given: Inject explicit note fixture prior to DataProvider mount so notes[0] exists
+    localStorage.setItem(
+      `${STORAGE_KEY}_notes`,
+      JSON.stringify([sampleNoteFixture])
+    );
+
     render(
       <DataProvider>
         <TestNoteConsumer />
       </DataProvider>
     );
+
+    // Wait for bootstrap loadInitialData to resolve
+    await act(async () => {});
 
     const updateBtn = screen.getByTestId("btn-update-multi-note");
 
@@ -108,7 +134,7 @@ describe("Phase P1.3 — ResearchRepositoryV2 DataContext Integration", () => {
       updateBtn.click();
     });
 
-    const rawNotes = localStorage.getItem("phat_hoc_huyen_hoc_clean_v3_notes");
+    const rawNotes = localStorage.getItem(`${STORAGE_KEY}_notes`);
     expect(rawNotes).toBeTruthy();
     const parsedNotes: Note[] = JSON.parse(rawNotes!);
     expect(parsedNotes[0].topicId).toBe("topic-updated-first");

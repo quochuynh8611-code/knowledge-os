@@ -2,13 +2,42 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
-import { INITIAL_TOPICS } from '../../src/data/initialData';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY } from '../../src/lib/storage';
+import { Topic } from '../../src/types';
 
 describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
-  const STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3';
+  const STORAGE_KEY = STORAGE_ROOT_KEY;
+
+  const mockTopicFixture: Topic = {
+    id: 'topic-rehydration-1',
+    title: 'Chủ Đề Kiểm Thử Rehydration',
+    slug: 'chu-de-kiem-thu-rehydration',
+    categoryId: 'cat-test-1',
+    type: 'general',
+    description: 'Mô tả chủ đề phục vụ test rehydration',
+    content: 'Nội dung test',
+    tags: ['test'],
+    links: [],
+    studyProgress: {
+      topicId: 'topic-rehydration-1',
+      status: 'not_started',
+      progress: 0,
+      interval: 1,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
+    visibility: 'active',
+    createdAt: '2026-10-17T00:00:00.000Z',
+    updatedAt: '2026-10-17T00:00:00.000Z',
+  };
+
+  const mockTopics: Topic[] = [mockTopicFixture];
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, '4');
     vi.restoreAllMocks();
   });
 
@@ -24,7 +53,7 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     // Given: Mock server API phản hồi thành công danh sách topics
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => INITIAL_TOPICS,
+      json: async () => mockTopics,
     } as Response);
 
     const { result } = renderHook(() => useData(), { wrapper });
@@ -47,7 +76,7 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     // Given: Mock server API phản hồi thành công
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => INITIAL_TOPICS,
+      json: async () => mockTopics,
     } as Response);
 
     const { result } = renderHook(() => useData(), { wrapper });
@@ -86,6 +115,6 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     expect(typeof result.current.reloadAllData).toBe('function');
     expect(outcome).toBe(false);
     expect(result.current.topics).toEqual(originalTopics);
-    expect(result.current.topics.length).toBe(INITIAL_TOPICS.length);
+    expect(result.current.topics.length).toBe(originalTopics.length);
   });
 });
