@@ -412,7 +412,7 @@ describe("NOTEBOOKLM ENTERPRISE PROVIDER UNIT TESTS (PHASE 4.4)", () => {
 
     expect(provider.getCapabilities().supportsQuery).toBe(false);
     expect(provider.getCapabilities().supportsInteractiveChat).toBe(false);
-    expect((provider as any).query).toBeUndefined();
+    expect(typeof provider.query).toBe("function");
   });
 
   it("18. IngestSources does NOT attempt to resolve local file paths directly", async () => {

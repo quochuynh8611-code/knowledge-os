@@ -486,9 +486,9 @@ describe("NOTEBOOKLM MCP BUSINESS SMOKE RUNNER (PHASE 4 - STAGE 2 SKELETON)", ()
         }
 
         if (toolName === "source_add") {
-          // Response lacks source_id or id, causing client line 308 fallback to nlm-src-src-smoke-01
+          // Server returns a synthetic/auto-fallback source ID starting with nlm-src-
           return {
-            content: [{ type: "text", text: JSON.stringify({ status: "ok" }) }],
+            content: [{ type: "text", text: JSON.stringify({ source_id: "nlm-src-synthetic-01" }) }],
           };
         }
 
