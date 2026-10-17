@@ -39,6 +39,9 @@ const mockNote: Note = {
   topicId: 'topic-ky-mon',
   title: 'Ghi chép Bát Môn',
   content: 'Nội dung chi tiết Bát Môn định vị thiên địa.',
+  type: 'study',
+  isPrivate: false,
+  tags: [],
   createdAt: '2026-08-21T10:00:00Z',
   updatedAt: '2026-08-21T10:00:00Z',
 };
@@ -50,7 +53,6 @@ const mockResource: Resource = {
   type: 'book',
   url: 'https://example.com/kymon.pdf',
   createdAt: '2026-08-21T10:00:00Z',
-  updatedAt: '2026-08-21T10:00:00Z',
 };
 
 let currentMockNotes: Note[] = [mockNote];

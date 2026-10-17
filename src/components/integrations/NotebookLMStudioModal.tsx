@@ -35,6 +35,7 @@ import { NotebookLMSourceStep } from './notebooklm/NotebookLMSourceStep';
 import { NotebookLMPromptStep } from './notebooklm/NotebookLMPromptStep';
 import { NotebookLMResultsStep } from './notebooklm/NotebookLMResultsStep';
 import { AdvancedTechnicalDetails } from './notebooklm/AdvancedTechnicalDetails';
+import { mapLocalArtifactTypeToDTO } from './notebooklm/utils';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 export interface NotebookLMStudioModalProps {
@@ -381,18 +382,21 @@ export function NotebookLMStudioModal({
         return;
       }
 
-      // Success: Directly map flatten response to UI artifact model without waiting for DB sync
+      const now = new Date().toISOString();
       const liveArtifact: GroundedArtifactDTO = {
         id: data.artifactId,
         sessionId: data.sessionId,
         topicId: currentTopic.id,
-        artifactType: data.artifactType,
+        artifactType: mapLocalArtifactTypeToDTO(data.artifactType),
         title: data.title,
         rawContent: data.content,
+        contentHash: `live-${data.artifactId}`,
+        idempotencyKey: `direct-${data.artifactId}`,
         status: 'received',
         citationCount: data.citedSourceIds?.length || 0,
         sourcePackageVersion: currentSession.sourcePackages?.[0]?.version || 1,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
+        updatedAt: now,
         metadata: {
           cleanupStatus: data.cleanupStatus,
           citedSourceIds: data.citedSourceIds,
