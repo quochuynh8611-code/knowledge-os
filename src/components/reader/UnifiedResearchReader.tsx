@@ -758,6 +758,9 @@ export function UnifiedResearchReader({
               onTextSelection={handleTextSelection}
               fontSize={fontSize}
               pageMode={pageMode}
+              excerpts={documentHighlights}
+              activeExcerptId={activeExcerptId}
+              onSelectExcerpt={handleSelectExcerpt}
             />
           ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
             <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">

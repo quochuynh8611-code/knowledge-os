@@ -5,6 +5,7 @@ import type { Rendition } from 'epubjs';
 import { sanitizeEpubArchive } from '../../../lib/epubXhtmlSanitizer';
 import { resolveReaderFileUrl } from '../../../lib/readerDocumentResolver';
 import { TocItem } from '../ReaderTocDrawer';
+import { ResearchExcerpt } from '../../../types';
 
 export interface EpubReaderSelectionDetails {
   text: string;
@@ -22,6 +23,9 @@ export interface EpubReaderAdapterProps {
   fontSize?: number;
   pageMode?: 'single' | 'double';
   className?: string;
+  excerpts?: ResearchExcerpt[];
+  activeExcerptId?: string | null;
+  onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
 }
 
 interface ErrorBoundaryProps {
@@ -65,6 +69,9 @@ export function EpubReaderAdapter({
   fontSize = 100,
   pageMode = 'double',
   className = '',
+  excerpts = [],
+  activeExcerptId = null,
+  onSelectExcerpt,
 }: EpubReaderAdapterProps) {
   console.log('[EPUB Debug] 0. EpubReaderAdapter mounted/rendered with:', { fileUrl, documentId });
   const [location, setLocation] = useState<string | number>(initialLocation);
@@ -72,8 +79,11 @@ export function EpubReaderAdapter({
   const [isSanitizing, setIsSanitizing] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [renditionInstance, setRenditionInstance] = useState<Rendition | null>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const onTextSelectionRef = useRef(onTextSelection);
+  const onSelectExcerptRef = useRef(onSelectExcerpt);
+  const activeAnnotationsRef = useRef<Map<string, { cfi: string; color: string }>>(new Map());
   const listenersRef = useRef<{ selected?: Function; click?: Function; rendition?: Rendition } | null>(null);
 
   useEffect(() => {
@@ -81,11 +91,103 @@ export function EpubReaderAdapter({
   }, [onTextSelection]);
 
   useEffect(() => {
+    onSelectExcerptRef.current = onSelectExcerpt;
+  }, [onSelectExcerpt]);
+
+  const syncAnnotations = useCallback(
+    (rendition: Rendition | null, currentExcerpts: ResearchExcerpt[] | undefined, activeId: string | null | undefined) => {
+      if (!rendition || !rendition.annotations || typeof rendition.annotations.highlight !== 'function') {
+        return;
+      }
+
+      const activeMap = activeAnnotationsRef.current;
+      const incomingMap = new Map<string, ResearchExcerpt>();
+
+      (currentExcerpts || []).forEach((exc) => {
+        if (exc.positionSelector?.cfi && typeof exc.positionSelector.cfi === 'string' && exc.positionSelector.cfi.trim()) {
+          incomingMap.set(exc.id, exc);
+        }
+      });
+
+      // 1. Remove deleted or modified annotations
+      const toRemove: string[] = [];
+      activeMap.forEach((meta, excerptId) => {
+        const incoming = incomingMap.get(excerptId);
+        const incomingColor = incoming?.highlightColor || '#fef08a';
+        if (!incoming || incoming.positionSelector?.cfi !== meta.cfi || incomingColor !== meta.color) {
+          try {
+            rendition.annotations?.remove?.(meta.cfi, 'highlight');
+          } catch (err) {
+            console.warn('[EpubReaderAdapter] Error removing annotation:', err);
+          }
+          toRemove.push(excerptId);
+        }
+      });
+      toRemove.forEach((id) => activeMap.delete(id));
+
+      // 2. Add new or updated annotations
+      incomingMap.forEach((excerpt, excerptId) => {
+        const color = excerpt.highlightColor || '#fef08a';
+        if (!activeMap.has(excerptId)) {
+          const cfi = excerpt.positionSelector.cfi!;
+          try {
+            const isActive = activeId === excerptId;
+            const styles = {
+              fill: color,
+              'fill-opacity': isActive ? '0.6' : '0.35',
+              'mix-blend-mode': 'multiply',
+            };
+            const className = isActive ? 'epubjs-hl epubjs-hl-active' : 'epubjs-hl';
+
+            rendition.annotations?.highlight?.(
+              cfi,
+              { excerptId },
+              (e: any) => {
+                if (e && typeof e.stopPropagation === 'function') {
+                  e.stopPropagation();
+                }
+                onSelectExcerptRef.current?.(excerpt);
+              },
+              className,
+              styles
+            );
+            activeMap.set(excerptId, { cfi, color });
+          } catch (err) {
+            console.warn('[EpubReaderAdapter] Fail-closed: unable to highlight CFI:', cfi, err);
+          }
+        }
+      });
+    },
+    []
+  );
+
+  // Synchronize persistent highlights whenever rendition, excerpts, or activeExcerptId changes
+  useEffect(() => {
+    const rendition = renditionInstance || renditionRef.current;
+    if (rendition) {
+      syncAnnotations(rendition, excerpts, activeExcerptId);
+    }
+  }, [renditionInstance, excerpts, activeExcerptId, syncAnnotations]);
+
+  // Clean up all annotations and listeners on unmount
+  useEffect(() => {
     return () => {
       if (listenersRef.current?.rendition) {
         const { rendition, selected, click } = listenersRef.current;
         if (selected) rendition.off('selected', selected as any);
         if (click) rendition.off('click', click as any);
+      }
+
+      const rendition = renditionRef.current;
+      if (rendition && rendition.annotations && typeof rendition.annotations.remove === 'function') {
+        activeAnnotationsRef.current.forEach(({ cfi }) => {
+          try {
+            rendition.annotations?.remove?.(cfi, 'highlight');
+          } catch (err) {
+            console.warn('[EpubReaderAdapter] Error cleaning up annotation:', err);
+          }
+        });
+        activeAnnotationsRef.current.clear();
       }
     };
   }, []);
@@ -179,10 +281,23 @@ export function EpubReaderAdapter({
     }
   };
 
+  const excerptsRef = useRef(excerpts);
+  const activeExcerptIdRef = useRef(activeExcerptId);
+
+  useEffect(() => {
+    excerptsRef.current = excerpts;
+  }, [excerpts]);
+
+  useEffect(() => {
+    activeExcerptIdRef.current = activeExcerptId;
+  }, [activeExcerptId]);
+
   const handleRendition = useCallback(
     (rendition: Rendition) => {
       console.log('[EPUB Debug] 1. handleRendition called with rendition:', Boolean(rendition));
       renditionRef.current = rendition;
+      setRenditionInstance(rendition);
+      syncAnnotations(rendition, excerptsRef.current, activeExcerptIdRef.current);
 
       if (rendition.display) {
         const originalDisplay = rendition.display.bind(rendition);
