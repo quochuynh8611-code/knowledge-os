@@ -1,9 +1,10 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TodayLearningHero } from '../../src/components/dashboard/TodayLearningHero';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { Topic, Category } from '../../src/types';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
 
 describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
   const mockCategories: Category[] = [
@@ -37,12 +38,19 @@ describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
     ...overrides,
   });
 
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(mockCategories));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([createTopic()]));
+    vi.clearAllMocks();
+  });
+
   it('1. Renders review_due state with "Ôn tập ngay" CTA when reviews are due', () => {
     const handleOpenReview = vi.fn();
 
     // Custom DataProvider wrapper injecting mock topic with review due
     function TestWrapper() {
-      const { topics, addTopic } = useData();
       return (
         <TodayLearningHero
           onOpenReviewModal={handleOpenReview}
@@ -79,7 +87,7 @@ describe('Phase 13 Wave 2: TodayLearningHero Component', () => {
     function FocusTestWrapper() {
       const { setFocusDomainId } = useData();
       React.useEffect(() => {
-        setFocusDomainId('cat-root-dong-y');
+        setFocusDomainId('cat-dy');
       }, [setFocusDomainId]);
 
       return <TodayLearningHero />;

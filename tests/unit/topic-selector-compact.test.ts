@@ -46,16 +46,8 @@ describe('ADR-073.1: Compact Topic Selector Unit Tests', () => {
     createMockTopic('top-ngonngu-2', 'Devanagari & Phạn Pāli', 'ngon-ngu'),
   ];
 
-  it('1. DEFAULT_PRIORITY_TOPIC_IDS contains exactly 8 curated anchor topics', () => {
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toHaveLength(8);
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('topic-abhidharma-tong-quan');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('topic-thien-vipassana');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('topic-ky-mon-don-giap');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('topic-kinh-dich');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('top-dongy-1');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('top-dongy-2');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('top-ngonngu-1');
-    expect(DEFAULT_PRIORITY_TOPIC_IDS).toContain('top-ngonngu-2');
+  it('1. DEFAULT_PRIORITY_TOPIC_IDS starts clean with zero default hardcoded topics', () => {
+    expect(DEFAULT_PRIORITY_TOPIC_IDS).toHaveLength(0);
   });
 
   it('2. getCompactTopicOptions returns exactly 8 priority topics by default when showAll is false and selected topic is inside priority list', () => {

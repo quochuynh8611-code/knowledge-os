@@ -4,23 +4,7 @@ import { Topic } from '../types';
  * Curated Top 2 Priority / Core Anchor Topics per Domain
  * Total: 8 priority topics across 4 domains
  */
-export const DEFAULT_PRIORITY_TOPIC_IDS: string[] = [
-  // Phật Học (2 topics tiêu biểu)
-  'topic-abhidharma-tong-quan', // Abhidharma - Vi Diệu Pháp Toàn Tập
-  'topic-thien-vipassana', // Thiền Vipassana (Minh Sát Tuệ) & Tứ Niệm Xứ
-
-  // Huyền Học (2 topics tiêu biểu)
-  'topic-ky-mon-don-giap', // Kỳ Môn Độn Giáp - Môn Dự Trắc Địa Lý & Bát Trận
-  'topic-kinh-dich', // Kinh Dịch - Đạo Biến Dịch & 64 Quẻ
-
-  // Đông Y (2 topics tiêu biểu)
-  'top-dongy-1', // Âm Dương Ngũ Hành & Học Thuyết Tạng Tượng
-  'top-dongy-2', // Tứ Khí Ngũ Vị & Bát Cương Biện Chứng
-
-  // Học Ngôn Ngữ (2 topics tiêu biểu)
-  'top-ngonngu-1', // 214 Bộ Thủ Chữ Hán & Phương Pháp Chiết Tự
-  'top-ngonngu-2', // Bảng Chữ Cái Devanāgarī & Hệ Thống Ngữ Âm Phạn-Pāli
-];
+export const DEFAULT_PRIORITY_TOPIC_IDS: string[] = [];
 
 /**
  * Filter topic list for compact selector display:
@@ -84,16 +68,5 @@ export function getCompactTopicOptions(
  */
 export function getTopicDomainLabel(topic?: Topic): string {
   if (!topic) return 'Nghiên Cứu';
-  switch (topic.type) {
-    case 'phat-hoc':
-      return 'Phật Học';
-    case 'huyen-hoc':
-      return 'Huyền Học';
-    case 'dong-y':
-      return 'Đông Y';
-    case 'ngon-ngu':
-      return 'Ngôn Ngữ';
-    default:
-      return topic.categoryName || topic.type || 'Nghiên Cứu';
-  }
+  return topic.categoryName || topic.type || 'Nghiên Cứu';
 }

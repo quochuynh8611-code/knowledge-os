@@ -9,6 +9,9 @@ import { DataProvider } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
 import { Sidebar } from '../../src/components/layout/Sidebar';
 
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
+import { Category, Topic } from '../../src/types';
+
 describe('Wave 16.0: Root Domain Sorting Priority (isFocus -> totalTopics desc -> name A-Z)', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -84,6 +87,43 @@ describe('Wave 16.0: Root Domain Sorting Priority (isFocus -> totalTopics desc -
   });
 
   describe('2. UI Integration: DashboardHome & Sidebar Root Domain Ordering', () => {
+    const mockCategories: Category[] = [
+      { id: 'cat-root-dong-y', name: 'Đông Y', slug: 'dong-y', type: 'dong-y', parentId: null },
+    ];
+    const mockTopics: Topic[] = [
+      {
+        id: 'topic-dong-y-1',
+        title: 'Lý Luận Đông Y',
+        slug: 'ly-luan-dong-y',
+        categoryId: 'cat-root-dong-y',
+        type: 'dong-y',
+        description: 'Nội dung Đông Y',
+        content: 'Chi tiết',
+        tags: [],
+        links: [],
+        createdAt: '2026-08-01T00:00:00.000Z',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+        studyProgress: {
+          topicId: 'topic-dong-y-1',
+          status: 'not_started',
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+      },
+    ];
+
+    beforeEach(() => {
+      localStorage.clear();
+      localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(mockCategories));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify(mockTopics));
+      vi.clearAllMocks();
+    });
+
     it('2.1. DashboardHome renders domain cards', () => {
       render(
         <DataProvider>

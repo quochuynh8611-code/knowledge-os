@@ -34,13 +34,6 @@ import { StatusPill } from '../workbench/StatusPill';
 import { SurfaceCard } from '../workbench/SurfaceCard';
 import { ToolbarButton } from '../workbench/ToolbarButton';
 
-// Explicit Safe-Merge Target for legacy economy categories (cat-root-kinh-te, cat-root-kinh-te-hoc).
-// Prevents topic/subcategory orphan risk when users delete legacy economy categories from existing datasets.
-const FIXED_ECONOMY_MERGE_TARGET_ID = 'cat-root-kinh-te-tai-chinh';
-
-const isEconomyMergeSource = (catId: string): boolean => {
-  return catId === 'cat-root-kinh-te' || catId === 'cat-root-kinh-te-hoc';
-};
 
 export function TopicTree() {
   const {
@@ -101,19 +94,6 @@ export function TopicTree() {
 
   const handleCategoryDelete = (e: React.MouseEvent, cat: Category, topicCount: number) => {
     e.stopPropagation();
-
-    if (isEconomyMergeSource(cat.id)) {
-      const confirmed = window.confirm(
-        `Danh mục "${cat.name}" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?`
-      );
-      if (!confirmed) return;
-
-      const result = mergeCategories(cat.id, FIXED_ECONOMY_MERGE_TARGET_ID);
-      if (!result.success) {
-        alert(`Không thể gộp danh mục: ${result.error || 'UNKNOWN_ERROR'}`);
-      }
-      return;
-    }
 
     if (topicCount > 0) {
       if (
@@ -412,16 +392,37 @@ export function TopicTree() {
 
       {/* Hierarchical Categories & Topics Tree */}
       <div className="space-y-4">
-        {categoriesToRender.map((cat) => {
-          const catTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
-          const isExpanded = expandedCategories[cat.id] ?? true;
+        {categoriesToRender.length === 0 ? (
+          <SurfaceCard variant="default" className="p-8 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-stone-100 dark:bg-stone-800 text-stone-400 flex items-center justify-center mx-auto">
+              <Folder className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+              Chưa có lĩnh vực nghiên cứu nào
+            </h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm mx-auto">
+              Không gian nghiên cứu đang sẵn sàng. Hãy bấm nút "Thêm Lĩnh Vực" hoặc "Thêm Chủ Đề" để bắt đầu xây dựng cây tri thức của bạn.
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <button
+                onClick={() => setIsAddingDomain(true)}
+                className="px-3.5 py-2 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" /> Thêm Lĩnh Vực
+              </button>
+            </div>
+          </SurfaceCard>
+        ) : (
+          categoriesToRender.map((cat) => {
+            const catTopics = filteredTopics.filter((t) => t.categoryId === cat.id);
+            const isExpanded = expandedCategories[cat.id] ?? true;
 
-          return (
-            <SurfaceCard
-              key={cat.id}
-              variant="default"
-              className="p-0 overflow-hidden"
-            >
+            return (
+              <SurfaceCard
+                key={cat.id}
+                variant="default"
+                className="p-0 overflow-hidden"
+              >
               {/* Category Group Header */}
               <div
                 onClick={() => toggleCategory(cat.id)}
@@ -453,16 +454,14 @@ export function TopicTree() {
                   <span className="text-xs font-mono text-stone-600 dark:text-stone-400 hidden sm:inline">
                     {catTopics.reduce((acc, t) => acc + (t.studyProgress?.timeSpent || 0), 0)} phút
                   </span>
-                  {!['cat-root-phat-hoc', 'cat-root-huyen-hoc', 'cat-root-dong-y', 'cat-root-ngon-ngu'].includes(cat.id) && (
-                    <button
-                      onClick={(e) => handleCategoryDelete(e, cat, catTopics.length)}
-                      data-testid={`delete-category-${cat.id}`}
-                      className="p-1 text-stone-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
-                      title="Xóa danh mục"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => handleCategoryDelete(e, cat, catTopics.length)}
+                    data-testid={`delete-category-${cat.id}`}
+                    className="p-1 text-stone-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                    title="Xóa danh mục"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
 
@@ -590,7 +589,8 @@ export function TopicTree() {
               )}
             </SurfaceCard>
           );
-        })}
+        })
+      )}
       </div>
 
       {/* Edit Topic Modal */}

@@ -24,6 +24,7 @@ import {
   INITIAL_RESOURCES,
   INITIAL_TAGS,
 } from '../../src/data/initialData';
+import { Topic } from '../../src/types';
 import {
   isRetryableGeminiError,
   generateContentWithResilience,
@@ -220,14 +221,42 @@ describe('Phase 4: Production Readiness, Security Guardrails & Operational Harde
     });
 
     it('8. Scenario 6: Tampered snapshot with modified title triggers CHECKSUM_MISMATCH and blocks restore', () => {
-      const tamperedData = {
+      const sampleTopic: Topic = {
+        id: 'topic-sample-tamper',
+        title: 'Chủ Đề Gốc',
+        slug: 'chu-de-goc',
+        categoryId: 'cat-test-1',
+        type: 'general',
+        description: 'Mô tả',
+        content: 'Nội dung',
+        tags: [],
+        links: [],
+        studyProgress: {
+          topicId: 'topic-sample-tamper',
+          status: 'not_started',
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+        createdAt: '2026-08-01T00:00:00.000Z',
+        updatedAt: '2026-08-01T00:00:00.000Z',
+      };
+      const validDataWithTopic = {
         ...canonicalData,
+        topics: [sampleTopic],
+      };
+      const checksumWithTopic = calculateBackupChecksum(validDataWithTopic);
+
+      const tamperedData = {
+        ...validDataWithTopic,
         topics: [
           {
-            ...canonicalData.topics[0],
+            ...sampleTopic,
             title: 'Tiêu đề đã bị hacker can thiệp',
           },
-          ...canonicalData.topics.slice(1),
         ],
       };
 
@@ -235,7 +264,7 @@ describe('Phase 4: Production Readiness, Security Guardrails & Operational Harde
         ...sampleSnapshot,
         data: tamperedData,
         // Using old checksum to simulate tampering
-        checksum: validChecksum,
+        checksum: checksumWithTopic,
       };
 
       const preflight = validateBackupSnapshotPreflight(tamperedSnapshot);

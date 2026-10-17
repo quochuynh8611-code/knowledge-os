@@ -3,12 +3,69 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
-import { FOCUS_DOMAIN_STORAGE_KEY } from '../../src/lib/storage';
+import { FOCUS_DOMAIN_STORAGE_KEY, STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
+import { Category, Topic } from '../../src/types';
+
+const mockCategories: Category[] = [
+  { id: 'cat-root-dong-y', name: 'Đông Y', slug: 'dong-y', type: 'dong-y', parentId: null },
+  { id: 'cat-root-other', name: 'Khoa Học', slug: 'khoa-hoc', type: 'general', parentId: null },
+];
+
+const mockTopics: Topic[] = [
+  {
+    id: 'topic-dong-y-1',
+    title: 'Lý Luận Đông Y',
+    slug: 'ly-luan-dong-y',
+    categoryId: 'cat-root-dong-y',
+    type: 'dong-y',
+    description: 'Nội dung Đông Y',
+    content: 'Chi tiết',
+    tags: [],
+    links: [],
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+    studyProgress: {
+      topicId: 'topic-dong-y-1',
+      status: 'not_started',
+      progress: 0,
+      interval: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
+  },
+  {
+    id: 'topic-other-1',
+    title: 'Khoa Học Tự Nhiên',
+    slug: 'khoa-hoc-tu-nhien',
+    categoryId: 'cat-root-other',
+    type: 'general',
+    description: 'Mô tả',
+    content: 'Chi tiết',
+    tags: [],
+    links: [],
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+    studyProgress: {
+      topicId: 'topic-other-1',
+      status: 'not_started',
+      progress: 0,
+      interval: 0,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
+  },
+];
 
 describe('Phase 14B: Focus Domain UI Flow Integration Tests (Wave 14B.2)', () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('knowledge_os_storage_version', '3');
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(mockCategories));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify(mockTopics));
     vi.clearAllMocks();
   });
 

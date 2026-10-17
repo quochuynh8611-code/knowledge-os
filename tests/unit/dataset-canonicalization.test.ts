@@ -15,11 +15,11 @@ import {
 import { TopicSchema } from "../../src/lib/validation";
 
 describe("Dataset Canonicalization Test Suite - SSOT Integrity", () => {
-  it("1. Commercial seed cardinalities", () => {
-    expect(INITIAL_CATEGORIES.length).toBeGreaterThanOrEqual(1);
-    expect(INITIAL_TOPICS.length).toBeGreaterThanOrEqual(1);
-    expect(INITIAL_NOTES.length).toBeGreaterThanOrEqual(1);
-    expect(INITIAL_TAGS.length).toBeGreaterThanOrEqual(1);
+  it("1. Commercial seed cardinalities (zero-default baseline)", () => {
+    expect(INITIAL_CATEGORIES.length).toBe(0);
+    expect(INITIAL_TOPICS.length).toBe(0);
+    expect(INITIAL_NOTES.length).toBe(0);
+    expect(INITIAL_TAGS.length).toBe(0);
   });
 
   it("2. Unique topic IDs and slugs across all topics", () => {

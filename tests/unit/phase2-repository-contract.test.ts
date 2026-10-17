@@ -57,19 +57,41 @@ describe("Phase 2A: Repository Layer & Idempotent Hydration Contract Tests", () 
     });
 
     it("Tự động khôi phục dữ liệu từ LocalStorage khi khởi tạo lại repository", async () => {
-      const initialTopic = INITIAL_TOPICS[0];
-      await repository.saveTopic(initialTopic);
+      const sampleTopic = {
+        id: "topic-test-restore-1",
+        title: "Chủ đề khôi phục mẫu",
+        slug: "chu-de-khoi-phuc-mau",
+        categoryId: "cat-test-1",
+        type: "general",
+        description: "Mô tả chủ đề",
+        content: "Nội dung bài học",
+        tags: ["test"],
+        links: [],
+        studyProgress: {
+          topicId: "topic-test-restore-1",
+          status: "not_started" as const,
+          progress: 0,
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          totalNotes: 0,
+          timeSpent: 0,
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await repository.saveTopic(sampleTopic);
 
       // Mô phỏng instance mới được tạo ra
       const newRepoInstance = new LocalStorageDataRepository(TEST_STORAGE_KEY);
       await newRepoInstance.syncHydrate({
         clientSyncId: "boot-sync-1",
-        topics: [initialTopic],
+        topics: [sampleTopic],
       });
 
       const restoredData = await newRepoInstance.loadInitialData();
       expect(restoredData.topics).toHaveLength(1);
-      expect(restoredData.topics[0].id).toBe(initialTopic.id);
+      expect(restoredData.topics[0].id).toBe(sampleTopic.id);
     });
   });
 

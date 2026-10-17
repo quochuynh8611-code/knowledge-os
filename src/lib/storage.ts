@@ -5,9 +5,9 @@
  */
 
 export const FOCUS_DOMAIN_STORAGE_KEY = 'knowledge_os_focus_domain_id_v1';
-export const STORAGE_ROOT_KEY = 'phat_hoc_huyen_hoc_clean_v3';
+export const STORAGE_ROOT_KEY = 'knowledge_os_v4';
 export const STORAGE_VERSION_KEY = 'knowledge_os_storage_version';
-export const CURRENT_STORAGE_VERSION = 3;
+export const CURRENT_STORAGE_VERSION = 4;
 
 /**
  * Safely retrieves an item from localStorage without throwing if storage is blocked or inaccessible.
@@ -55,9 +55,10 @@ export function safeRemoveLocalStorageItem(key: string): boolean {
 
 /**
  * Clears all cached Knowledge OS data state from localStorage.
- * Only targets explicitly audited keys without touching other browser data.
+ * Targets both active knowledge_os_v4 keys and legacy phat_hoc_huyen_hoc keys.
  */
 export function clearAllAppStorage(): void {
+  const legacyPrefix = 'phat_hoc_huyen_hoc_clean_v3';
   const keysToRemove = [
     STORAGE_ROOT_KEY,
     `${STORAGE_ROOT_KEY}_categories`,
@@ -66,6 +67,15 @@ export function clearAllAppStorage(): void {
     `${STORAGE_ROOT_KEY}_resources`,
     `${STORAGE_ROOT_KEY}_tags`,
     `${STORAGE_ROOT_KEY}_research_inbox`,
+    `${STORAGE_ROOT_KEY}_research_excerpts`,
+    legacyPrefix,
+    `${legacyPrefix}_categories`,
+    `${legacyPrefix}_topics`,
+    `${legacyPrefix}_notes`,
+    `${legacyPrefix}_resources`,
+    `${legacyPrefix}_tags`,
+    `${legacyPrefix}_research_inbox`,
+    `${legacyPrefix}_research_excerpts`,
     FOCUS_DOMAIN_STORAGE_KEY,
   ];
 

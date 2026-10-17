@@ -177,7 +177,19 @@ describe("Workstream 5C: Automated Snapshot Maintenance & Headless Backup Core",
     });
 
     it("returns INVALID_CHECKSUM when snapshot data has been altered without updating checksum", async () => {
-      const { snapshot } = createSnapshot(mockSnapshotData);
+      const sampleDataWithCategory: SnapshotDataInput = {
+        ...mockSnapshotData,
+        categories: [
+          {
+            id: "cat-sample-1",
+            name: "Danh Mục Kiểm Thử",
+            slug: "danh-muc-kiem-thu",
+            type: "general",
+            parentId: null,
+          },
+        ],
+      };
+      const { snapshot } = createSnapshot(sampleDataWithCategory);
       const writeResult = await writeSnapshotAtomic(tempDir, snapshot);
 
       // Tamper file content (modify category name)

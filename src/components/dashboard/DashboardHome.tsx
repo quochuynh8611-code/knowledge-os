@@ -12,6 +12,7 @@ import { DailyDueReviewWidget } from './DailyDueReviewWidget';
 import { PageHeader } from '../workbench/PageHeader';
 import { SectionHeader } from '../workbench/SectionHeader';
 import { ToolbarButton } from '../workbench/ToolbarButton';
+import { SurfaceCard } from '../workbench/SurfaceCard';
 import {
   getDomainLearningStates,
   getWeeklyLearningCadence,
@@ -201,21 +202,29 @@ export function DashboardHome() {
         />
 
         {/* Dynamic Multi-Disciplinary Learning State Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
-          {domainLearningStates.map((domainState) => (
-            <LearningStateCard
-              key={domainState.rootCategory.id}
-              state={domainState}
-              onSelectDomain={(catId) => {
-                setSelectedCategoryFilter(catId);
-                setActiveTab('topics');
-              }}
-              onToggleFocus={setFocusDomainId}
-              onStartStudyTopic={handleStartStudy}
-              onOpenTopicDetail={openTopicDetail}
-            />
-          ))}
-        </div>
+        {domainLearningStates.length === 0 ? (
+          <SurfaceCard variant="default" className="p-6 text-center space-y-2">
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              Chưa có lĩnh vực học tập nào. Hãy bấm "Thêm lĩnh vực" để tạo không gian nghiên cứu đầu tiên của bạn.
+            </p>
+          </SurfaceCard>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
+            {domainLearningStates.map((domainState) => (
+              <LearningStateCard
+                key={domainState.rootCategory.id}
+                state={domainState}
+                onSelectDomain={(catId) => {
+                  setSelectedCategoryFilter(catId);
+                  setActiveTab('topics');
+                }}
+                onToggleFocus={setFocusDomainId}
+                onStartStudyTopic={handleStartStudy}
+                onOpenTopicDetail={openTopicDetail}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Khối 4: Resume Study Queue & Recent Context (2-col grid) */}

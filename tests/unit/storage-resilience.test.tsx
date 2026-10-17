@@ -197,23 +197,23 @@ describe('Storage & Schema Resilience (Post-Reset Runtime Crash Prevention)', ()
       expect(safeGetLocalStorageItem(`${STORAGE_ROOT_KEY}_research_inbox`)).toBeNull();
       expect(safeGetLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY)).toBeNull();
 
-      // Version bumped to CURRENT_STORAGE_VERSION (3)
+      // Version bumped to CURRENT_STORAGE_VERSION (4)
       expect(safeGetLocalStorageItem(STORAGE_VERSION_KEY)).toBe(String(CURRENT_STORAGE_VERSION));
-      expect(CURRENT_STORAGE_VERSION).toBe(3);
+      expect(CURRENT_STORAGE_VERSION).toBe(4);
 
       // Unrelated key untouched
       expect(safeGetLocalStorageItem('other_app_unrelated_key')).toBe('keep_me');
     });
 
     it('does not purge keys if storage version matches CURRENT_STORAGE_VERSION', () => {
-      safeSetLocalStorageItem(STORAGE_VERSION_KEY, '3');
-      safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([{ id: 'cat-root-dong-y', name: 'Đông Y' }]));
+      safeSetLocalStorageItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+      safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([{ id: 'cat-root-sample', name: 'Sample' }]));
 
       const migrated = ensureStorageVersionCompatibility();
       expect(migrated).toBe(false);
 
       expect(safeGetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`)).not.toBeNull();
-      expect(safeGetLocalStorageItem(STORAGE_VERSION_KEY)).toBe('3');
+      expect(safeGetLocalStorageItem(STORAGE_VERSION_KEY)).toBe(String(CURRENT_STORAGE_VERSION));
     });
   });
 });
