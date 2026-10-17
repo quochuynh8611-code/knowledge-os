@@ -6,65 +6,72 @@ import { getRootCategories } from '../../src/lib/taxonomyMigration';
 import { getDomainLearningStates } from '../../src/lib/learningStateSelectors';
 import { DataProvider } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
+import { Category, Topic } from '../../src/types';
 
-describe('Commercial Reset: Root Domain Baseline (Đông Y)', () => {
+describe('Commercial Neutralization: Zero-Default Baseline & User Custom Domains', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it('1. INITIAL_CATEGORIES defines default root category (Đông Y)', () => {
+  it('1. INITIAL_CATEGORIES starts clean with zero default domains', () => {
     const rootCategories = getRootCategories(INITIAL_CATEGORIES);
-    expect(rootCategories.length).toBeGreaterThanOrEqual(1);
-
-    const dongY = rootCategories.find((r) => r.id === 'cat-root-dong-y');
-    expect(dongY?.name).toBe('Đông Y');
-    expect(dongY?.slug).toBe('dong-y');
-    expect(dongY?.type).toBe('dong-y');
-    expect(dongY?.parentId).toBeNull();
+    expect(rootCategories.length).toBe(0);
   });
 
-  it('2. getDomainLearningStates returns learning state for Đông Y', () => {
+  it('2. getDomainLearningStates returns empty array when no categories exist', () => {
     const states = getDomainLearningStates(INITIAL_TOPICS, INITIAL_CATEGORIES);
-    expect(states.length).toBeGreaterThanOrEqual(1);
-
-    const dongYState = states.find((s) => s.rootCategory.id === 'cat-root-dong-y');
-    expect(dongYState).toBeDefined();
-    expect(dongYState?.totalTopics).toBe(1);
-    expect(dongYState?.completedTopics).toBe(0);
+    expect(states.length).toBe(0);
   });
 
-  it('3. DashboardHome renders domain card gracefully', () => {
+  it('3. DashboardHome renders empty state gracefully without crash when no domains exist', () => {
     render(
       <DataProvider>
         <DashboardHome />
       </DataProvider>
     );
 
-    expect(screen.getByTestId('learning-state-card-cat-root-dong-y')).toBeInTheDocument();
-    expect(screen.getAllByText('Đông Y').length).toBeGreaterThan(0);
-  });
-
-  it('4. Pinning Đông Y marks it with "Trọng tâm" badge without breaking Hero or Cadence Bar', () => {
-    render(
-      <DataProvider>
-        <DashboardHome />
-      </DataProvider>
-    );
-
-    const pinDongYBtn = screen.getByTestId('pin-btn-cat-root-dong-y');
-    expect(pinDongYBtn).toBeInTheDocument();
-
-    // Pin Đông Y
-    fireEvent.click(pinDongYBtn);
-
-    // Verify Đông Y receives focus badge and is sorted to slot 1
-    expect(screen.getByTestId('focus-badge-cat-root-dong-y')).toBeInTheDocument();
-    const cards = screen.getAllByTestId(/learning-state-card-/i);
-    expect(cards[0]).toHaveAttribute('data-testid', 'learning-state-card-cat-root-dong-y');
-
-    // Verify TodayLearningHero and WeeklyCadenceBar remain intact
+    expect(screen.getByText(/Chưa có lĩnh vực học tập nào/i)).toBeInTheDocument();
     expect(screen.getByTestId('today-learning-hero')).toBeInTheDocument();
     expect(screen.getByTestId('weekly-cadence-bar')).toBeInTheDocument();
+  });
+
+  it('4. User-created domain renders learning state card and supports pinning without breaking layout', () => {
+    const customCategory: Category = {
+      id: 'cat-custom-1',
+      name: 'Khoa Học Máy Tính',
+      slug: 'khoa-hoc-may-tinh',
+      type: 'computer-science',
+      description: 'Lĩnh vực nghiên cứu tự tạo',
+    };
+
+    const customTopic: Topic = {
+      id: 'topic-custom-1',
+      title: 'Cấu Trúc Dữ Liệu & Giải Thuật',
+      slug: 'cau-truc-du-lieu',
+      categoryId: customCategory.id,
+      type: 'computer-science',
+      description: 'Nội dung giải thuật',
+      content: 'Chi tiết bài học',
+      tags: ['algorithms'],
+      links: [],
+      studyProgress: {
+        topicId: 'topic-custom-1',
+        status: 'not_started',
+        progress: 0,
+        interval: 0,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
+      createdAt: '2026-10-16T00:00:00.000Z',
+      updatedAt: '2026-10-16T00:00:00.000Z',
+    };
+
+    const states = getDomainLearningStates([customTopic], [customCategory]);
+    expect(states.length).toBe(1);
+    expect(states[0].rootCategory.name).toBe('Khoa Học Máy Tính');
+    expect(states[0].totalTopics).toBe(1);
   });
 });
