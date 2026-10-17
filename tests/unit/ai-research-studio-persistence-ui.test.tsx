@@ -11,7 +11,12 @@ import {
   getStoredResearchSessions,
 } from '../../src/lib/aiResearchStorage';
 import { Topic, Category } from '../../src/types';
-import { INITIAL_CATEGORIES } from '../../src/data/initialData';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+  safeSetLocalStorageItem,
+} from '../../src/lib/storage';
 
 describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', () => {
   const topicA: Topic = {
@@ -91,18 +96,29 @@ describe('Phase P6.0: AI Research Studio UI Persistence & Export Integration', (
 
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('knowledge_os_storage_version', '3');
     const customCategories: Category[] = [
-      ...INITIAL_CATEGORIES,
+      {
+        id: 'cat-phat-hoc',
+        name: 'Phật Học',
+        slug: 'phat-hoc',
+        parentId: null,
+      },
       {
         id: 'cat-kinh-te',
         name: 'Kinh Tế Học',
         slug: 'kinh-te-hoc',
         parentId: null,
       },
+      {
+        id: 'cat-huyen-hoc',
+        name: 'Huyền Học',
+        slug: 'huyen-hoc',
+        parentId: null,
+      },
     ];
-    localStorage.setItem('phat_hoc_huyen_hoc_clean_v3_categories', JSON.stringify(customCategories));
-    localStorage.setItem('phat_hoc_huyen_hoc_clean_v3_topics', JSON.stringify([topicA, topicB, topicC]));
+    safeSetLocalStorageItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(customCategories));
+    safeSetLocalStorageItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([topicA, topicB, topicC]));
   });
 
   afterEach(() => {

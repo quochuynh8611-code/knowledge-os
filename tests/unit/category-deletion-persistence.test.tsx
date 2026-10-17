@@ -1,14 +1,21 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { safeSetLocalStorageItem, STORAGE_ROOT_KEY } from '../../src/lib/storage';
 import { INITIAL_CATEGORIES, INITIAL_TOPICS } from '../../src/data/initialData';
 
 describe('Category Deletion Persistence & State Integrity Contract', () => {
+  const originalVitestEnv = process.env.VITEST;
+
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    delete process.env.VITEST;
+  });
+
+  afterEach(() => {
+    process.env.VITEST = originalVitestEnv;
   });
 
   it('Scenario 1: Failed persistence preserves category and cascading topics in state', async () => {
@@ -201,12 +208,38 @@ describe('Category Deletion Persistence & State Integrity Contract', () => {
 
   it('Scenario 3: Reload reads server-canonical state - stale local cache does not resurrect server-deleted categories', async () => {
     const staleCatId = 'cat-phan-mem';
+    const canonicalCatId = 'cat-canonical-domain';
+    const canonicalTopicId = 'topic-canonical-1';
+    const canonicalCategory = {
+      id: canonicalCatId,
+      name: 'Lĩnh Vực Nghiên Cứu',
+      slug: 'linh-vuc-nghien-cuu',
+      type: 'domain',
+      parentId: null,
+    };
+    const canonicalTopic = {
+      id: canonicalTopicId,
+      title: 'Chủ Đề Nghiên Cứu',
+      slug: 'chu-de-nghien-cuu',
+      categoryId: canonicalCatId,
+      type: 'domain',
+      parentId: null,
+      description: '',
+      content: '',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: canonicalTopicId,
+        status: 'not_started',
+        progress: 0,
+      },
+    };
 
-    // Stale local storage has an obsolete category
+    // Stale local storage has an obsolete category alongside the canonical category
     safeSetLocalStorageItem(
       `${STORAGE_ROOT_KEY}_categories`,
       JSON.stringify([
-        ...INITIAL_CATEGORIES,
+        canonicalCategory,
         {
           id: staleCatId,
           name: 'Phần Mềm',
@@ -226,7 +259,7 @@ describe('Category Deletion Persistence & State Integrity Contract', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => INITIAL_TOPICS,
+          json: async () => [canonicalTopic],
         } as Response;
       }
 
@@ -234,7 +267,7 @@ describe('Category Deletion Persistence & State Integrity Contract', () => {
         return {
           ok: true,
           status: 200,
-          json: async () => INITIAL_CATEGORIES,
+          json: async () => [canonicalCategory],
         } as Response;
       }
 
@@ -258,7 +291,7 @@ describe('Category Deletion Persistence & State Integrity Contract', () => {
     // After server hydration completes, local stale category must be replaced with server SSOT
     await waitFor(() => {
       expect(result.current.categories.some((c) => c.id === staleCatId)).toBe(false);
-      expect(result.current.categories.some((c) => c.id === 'cat-root-dong-y')).toBe(true);
+      expect(result.current.categories.some((c) => c.id === canonicalCatId)).toBe(true);
     });
   });
 });
