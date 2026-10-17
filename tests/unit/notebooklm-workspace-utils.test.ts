@@ -91,7 +91,7 @@ describe('NotebookLM Workspace Utils Test Suite (Slice 1)', () => {
   it('1. correctly computes TopicSourceSummary for a valid topic with notes and resources', () => {
     const summary = getTopicSourceSummary(mockTopic, mockNotes, mockResources, 'Sample Source Document Text');
     expect(summary.topicTitle).toBe('Kỳ Môn Độn Giáp');
-    expect(summary.domainLabel).toBe('Huyền Học');
+    expect(summary.domainLabel).toBe('Dịch Học');
     expect(summary.notesCount).toBe(1);
     expect(summary.resourcesCount).toBe(1);
     expect(summary.linksCount).toBe(1);

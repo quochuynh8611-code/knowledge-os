@@ -693,7 +693,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
   });
 
   describe('4. UI Integration: TopicTree Category Deletion & Fixed Merge Flow', () => {
-    it('4.1. Case 1: Clicking delete on cat-root-kinh-te prompts merge confirm and calls mergeCategories("cat-root-kinh-te", "cat-root-kinh-te-tai-chinh")', () => {
+    it('4.1. Case 1: Clicking delete on cat-root-kinh-te prompts generic confirm and deletes category', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       const TestHarness = () => {
@@ -748,15 +748,15 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
       fireEvent.click(deleteBtn);
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        'Danh mục "Kinh Tế" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
-      );
-      // Source category is removed from UI after merge
-      expect(screen.queryByTestId('delete-category-cat-root-kinh-te')).toBeNull();
+      expect(confirmSpy).toHaveBeenCalledWith('Xóa danh mục "Kinh Tế"?');
+      // Source category is removed from UI after delete
+      await waitFor(() => {
+        expect(screen.queryByTestId('delete-category-cat-root-kinh-te')).toBeNull();
+      });
       confirmSpy.mockRestore();
     });
 
-    it('4.2. Case 2: Clicking delete on cat-root-kinh-te-hoc prompts exact merge confirm for Kinh Tế Học', () => {
+    it('4.2. Case 2: Clicking delete on cat-root-kinh-te-hoc prompts generic confirm for Kinh Tế Học', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       const TestHarness = () => {
@@ -811,11 +811,11 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te-hoc');
       fireEvent.click(deleteBtn);
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        'Danh mục "Kinh Tế Học" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
-      );
-      // Source category is removed from UI after merge
-      expect(screen.queryByTestId('delete-category-cat-root-kinh-te-hoc')).toBeNull();
+      expect(confirmSpy).toHaveBeenCalledWith('Xóa danh mục "Kinh Tế Học"?');
+      // Source category is removed from UI after delete
+      await waitFor(() => {
+        expect(screen.queryByTestId('delete-category-cat-root-kinh-te-hoc')).toBeNull();
+      });
       confirmSpy.mockRestore();
     });
 
@@ -878,9 +878,8 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       confirmSpy.mockRestore();
     });
 
-    it('4.4. Case 4: When mergeCategories fails, triggers window.alert with error without crashing UI', () => {
+    it('4.4. Case 4: Category with topics prompts confirmation with topic count and proceeds safely', () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
       const TestHarness = () => {
         const { importAllDataJSON } = useData();
@@ -900,7 +899,17 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
                         parentId: null,
                       },
                     ],
-                    topics: INITIAL_TOPICS,
+                    topics: [
+                      {
+                        id: 'top-kt-1',
+                        categoryId: 'cat-root-kinh-te',
+                        type: 'kinh-te',
+                        title: 'Kinh Tế Vi Mô',
+                        slug: 'kinh-te-vi-mo',
+                        tags: [],
+                        updatedAt: new Date().toISOString(),
+                      },
+                    ],
                     notes: INITIAL_NOTES,
                     resources: INITIAL_RESOURCES,
                     tags: [],
@@ -927,13 +936,10 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
       fireEvent.click(deleteBtn);
 
-      expect(alertSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Không thể gộp danh mục')
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Danh mục "Kinh Tế" đang có 1 chủ đề. Bạn có chắc muốn xóa danh mục này?'
       );
-      // Category still remains because merge failed
-      expect(screen.getByTestId('delete-category-cat-root-kinh-te')).toBeInTheDocument();
       confirmSpy.mockRestore();
-      alertSpy.mockRestore();
     });
 
     it('4.5. Case 5: When user cancels merge confirm prompt, mergeCategories is not called and category remains intact', () => {
@@ -991,9 +997,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
       const deleteBtn = screen.getByTestId('delete-category-cat-root-kinh-te');
       fireEvent.click(deleteBtn);
 
-      expect(confirmSpy).toHaveBeenCalledWith(
-        'Danh mục "Kinh Tế" sẽ được gộp vào "Kinh Tế & Tài Chính". Các chủ đề hiện có sẽ được giữ lại và chuyển sang danh mục đích. Bạn có muốn tiếp tục không?'
-      );
+      expect(confirmSpy).toHaveBeenCalledWith('Xóa danh mục "Kinh Tế"?');
       // Source category remains because user cancelled
       expect(screen.getByTestId('delete-category-cat-root-kinh-te')).toBeInTheDocument();
       confirmSpy.mockRestore();
@@ -1082,8 +1086,8 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
         </DataProvider>
       );
 
-      // Core categories present in default state should be rendered
-      expect((await screen.findAllByText(/Đông Y/i)).length).toBeGreaterThan(0);
+      // Clean default state renders empty state message
+      expect(await screen.findByText('Chưa có lĩnh vực nghiên cứu nào')).toBeInTheDocument();
 
       // Legacy economy roots must NOT appear in clean default state
       expect(screen.queryByRole('button', { name: /^Kinh Tế$/i })).toBeNull();
@@ -1142,57 +1146,21 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
         },
       ];
 
-      const deleteEndpointCalled = vi.fn();
-
       const originalFetch = global.fetch;
-      global.fetch = vi.fn().mockImplementation(async (input: any, init?: any) => {
+      global.fetch = vi.fn().mockImplementation(async (input: any) => {
         const url = String(input);
-        const method = init?.method || 'GET';
-
-        if (url.includes('/api/categories/cat-root-kinh-te-hoc') && method === 'DELETE') {
-          deleteEndpointCalled();
-          serverCategories = serverCategories.filter((c) => c.id !== 'cat-root-kinh-te-hoc');
-          return new Response(JSON.stringify({ success: true, count: 1 }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-
-        if (url.includes('/api/sync/hydrate') && method === 'POST') {
-          const body = JSON.parse(String(init?.body || '{}'));
-          if (body.categories) {
-            serverCategories = body.categories;
-          }
-          if (body.topics) {
-            serverTopics = body.topics;
-          }
-          return new Response(JSON.stringify({ success: true, count: 1 }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
-
-        if (url.includes('/api/topics/top-kth-persist-1') && method === 'PUT') {
-          const body = JSON.parse(init.body);
-          const idx = serverTopics.findIndex((t) => t.id === 'top-kth-persist-1');
-          if (idx >= 0) {
-            serverTopics[idx] = { ...serverTopics[idx], ...body };
-          }
-          return new Response(JSON.stringify(serverTopics[idx]), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-          });
-        }
 
         if (url.includes('/api/categories')) {
-          return new Response(JSON.stringify(serverCategories), {
+          const persisted = await dataRepository.loadInitialData();
+          return new Response(JSON.stringify(persisted.categories), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           });
         }
 
         if (url.includes('/api/topics')) {
-          return new Response(JSON.stringify(serverTopics), {
+          const persisted = await dataRepository.loadInitialData();
+          return new Response(JSON.stringify(persisted.topics), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
           });
@@ -1259,8 +1227,13 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Tế & T�
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
 
-      expect(deleteEndpointCalled).toHaveBeenCalled();
       expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+      expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
+
+      // Verify persisted local repository state
+      const persistedCategories = await dataRepository.loadInitialData();
+      expect(persistedCategories.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
+      expect(persistedCategories.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
 
       // Trigger reload (re-fetching from API server and syncHydrate)
       await act(async () => {

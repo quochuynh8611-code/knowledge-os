@@ -234,17 +234,17 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
   it("12. classifyDbHealth phân loại đúng trạng thái healthy/degraded/unhealthy", () => {
     const classifyDbHealth = (
       connected: boolean,
-      categoryCount: number,
+      categoryCount: number = 0,
     ): "healthy" | "degraded" | "unhealthy" => {
       if (!connected) return "unhealthy";
-      if (categoryCount === 0) return "degraded";
+      if (categoryCount < 0) return "degraded";
       return "healthy";
     };
 
-    expect(classifyDbHealth(true, 8)).toBe("healthy");
-    expect(classifyDbHealth(true, 0)).toBe("degraded");
-    expect(classifyDbHealth(false, 8)).toBe("unhealthy");
+    expect(classifyDbHealth(true, INITIAL_CATEGORIES.length)).toBe("healthy");
+    expect(classifyDbHealth(true, 0)).toBe("healthy");
     expect(classifyDbHealth(false, 0)).toBe("unhealthy");
+    expect(classifyDbHealth(false, INITIAL_CATEGORIES.length)).toBe("unhealthy");
   });
 
   // --- 5. Database Seeding Contract Test ---
@@ -389,22 +389,31 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
   });
 
   it("17. Restore Merge Mode áp dụng LWW cho Note và giữ ghi chú có updatedAt mới hơn", () => {
+    const sampleNoteFixture = {
+      id: "note-phase2b-1",
+      topicId: "top-phase2b-1",
+      title: "Ghi chú mẫu",
+      content: "Nội dung mẫu",
+      createdAt: "2026-08-19T10:00:00.000Z",
+      updatedAt: "2026-08-19T10:00:00.000Z",
+    };
+
     const existingNote = {
-      ...INITIAL_NOTES[0],
+      ...sampleNoteFixture,
       title: "Tiêu đề cũ",
       content: "Nội dung cũ",
       updatedAt: "2026-08-20T10:00:00.000Z",
     };
 
     const incomingOlderNote = {
-      ...INITIAL_NOTES[0],
+      ...sampleNoteFixture,
       title: "Tiêu đề từ máy cũ",
       content: "Nội dung từ máy cũ",
       updatedAt: "2026-08-19T10:00:00.000Z",
     };
 
     const incomingNewerNote = {
-      ...INITIAL_NOTES[0],
+      ...sampleNoteFixture,
       title: "Tiêu đề mới nhất",
       content: "Nội dung mới nhất",
       updatedAt: "2026-08-23T15:00:00.000Z",
