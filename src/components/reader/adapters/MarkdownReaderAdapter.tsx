@@ -6,6 +6,14 @@ import {
   sanitizeVaultMarkdown,
 } from '../../../lib/markdownReadability';
 import { TocItem } from '../ReaderTocDrawer';
+import { ResearchExcerpt } from '../../../types';
+import {
+  resolveMarkdownAnchor,
+  AnchorTarget,
+  HeadingSection,
+  extractLinearTextFromDom,
+  clearDomHighlights,
+} from '../../../lib/markdownHighlightAnchor';
 
 export interface MarkdownReaderSelectionDetails {
   text: string;
@@ -22,6 +30,9 @@ export interface MarkdownReaderAdapterProps {
   onPositionChange?: (headingId: string) => void;
   onTextSelection?: (selection: MarkdownReaderSelectionDetails) => void;
   className?: string;
+  excerpts?: ResearchExcerpt[];
+  activeExcerptId?: string | null;
+  onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
 }
 
 export function extractMarkdownToc(rawMarkdown?: string): TocItem[] {
@@ -65,6 +76,9 @@ export function MarkdownReaderAdapter({
   onPositionChange,
   onTextSelection,
   className = '',
+  excerpts = [],
+  activeExcerptId = null,
+  onSelectExcerpt,
 }: MarkdownReaderAdapterProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [fetchedContent, setFetchedContent] = useState<string>('');
@@ -197,6 +211,187 @@ export function MarkdownReaderAdapter({
 
     return () => clearTimeout(timer);
   }, [initialHeadingId]);
+
+  // ─── Phase R3d-A: Persistent Inline Highlights Reconciliation ──────────────
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Always clear existing marks first
+    clearDomHighlights(container);
+
+    if (!excerpts || excerpts.length === 0) return;
+
+    // Extract text nodes and linear string
+    const { linearText, charMap } = extractLinearTextFromDom(container);
+    if (!linearText || charMap.length === 0) return;
+
+    // Collect headings from container for coarse locator
+    const headingElements = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    const sections: HeadingSection[] = [];
+    headingElements.forEach((hEl) => {
+      const id = hEl.getAttribute('id');
+      if (!id) return;
+      const firstTextNode = document.createTreeWalker(hEl, NodeFilter.SHOW_TEXT).nextNode() as Text | null;
+      let startIndex = 0;
+      if (firstTextNode) {
+        const found = charMap.findIndex((c) => c.node === firstTextNode);
+        if (found !== -1) startIndex = found;
+      }
+      sections.push({ id, startIndex, endIndex: undefined });
+    });
+    for (let i = 0; i < sections.length - 1; i++) {
+      sections[i].endIndex = sections[i + 1].startIndex - 1;
+    }
+    if (sections.length > 0) {
+      sections[sections.length - 1].endIndex = linearText.length;
+    }
+
+    // Resolve anchors
+    interface ResolvedItem {
+      excerpt: ResearchExcerpt;
+      startIndex: number;
+      endIndex: number;
+    }
+    const resolvedItems: ResolvedItem[] = [];
+
+    for (const excerpt of excerpts) {
+      const target: AnchorTarget = {
+        selectedText: excerpt.selectedText,
+        contextPrefix: excerpt.contextPrefix,
+        contextSuffix: excerpt.contextSuffix,
+        headingId: excerpt.positionSelector?.headingId,
+      };
+
+      const res = resolveMarkdownAnchor(linearText, target, sections);
+      if (res.success && res.match) {
+        resolvedItems.push({
+          excerpt,
+          startIndex: res.match.startIndex,
+          endIndex: res.match.endIndex,
+        });
+      }
+    }
+
+    // Sort descending by startIndex so text splitting preserves lower indices
+    resolvedItems.sort((a, b) => b.startIndex - a.startIndex);
+
+    for (const item of resolvedItems) {
+      const { excerpt, startIndex, endIndex } = item;
+      if (startIndex >= charMap.length || endIndex > charMap.length || startIndex >= endIndex) {
+        continue;
+      }
+
+      // Collect all TextNodes in [startIndex, endIndex - 1]
+      const nodeMap = new Map<Text, { startOffset: number; endOffset: number }>();
+      for (let i = startIndex; i < endIndex; i++) {
+        const itemChar = charMap[i];
+        if (!itemChar) continue;
+        const { node, offset } = itemChar;
+        const existing = nodeMap.get(node);
+        if (!existing) {
+          nodeMap.set(node, { startOffset: offset, endOffset: offset + 1 });
+        } else {
+          existing.endOffset = Math.max(existing.endOffset, offset + 1);
+        }
+      }
+
+      const isActive = activeExcerptId === excerpt.id;
+      const label = `Điểm trích: ${excerpt.selectedText.slice(0, 50)}${excerpt.selectedText.length > 50 ? '...' : ''}`;
+
+      nodeMap.forEach(({ startOffset, endOffset }, textNode) => {
+        if (!textNode.parentNode) return;
+        try {
+          let nodeToWrap = textNode;
+          if (endOffset < nodeToWrap.data.length) {
+            nodeToWrap.splitText(endOffset);
+          }
+          if (startOffset > 0) {
+            nodeToWrap = nodeToWrap.splitText(startOffset);
+          }
+
+          const mark = document.createElement('mark');
+          mark.setAttribute('data-highlight-id', excerpt.id);
+          mark.setAttribute('data-highlight-color', excerpt.highlightColor || '#fef08a');
+          mark.setAttribute('data-active', isActive ? 'true' : 'false');
+          mark.setAttribute('tabindex', '0');
+          mark.setAttribute('role', 'button');
+          mark.setAttribute('aria-label', label);
+          mark.style.backgroundColor = excerpt.highlightColor || '#fef08a';
+          mark.style.borderRadius = '2px';
+          mark.style.cursor = 'pointer';
+          mark.className = `research-highlight transition-all ${
+            isActive ? 'ring-2 ring-amber-500 shadow-xs' : ''
+          }`;
+
+          nodeToWrap.parentNode?.replaceChild(mark, nodeToWrap);
+          mark.appendChild(nodeToWrap);
+        } catch (e) {
+          console.warn('Failed to wrap text node slice with mark:', e);
+        }
+      });
+    }
+
+    return () => {
+      clearDomHighlights(container);
+    };
+  }, [activeContent, excerpts, activeExcerptId]);
+
+  // Event delegation on container for mark activation (Click and Keyboard Enter/Space)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleMarkActivation = (targetMark: HTMLElement) => {
+      const highlightId = targetMark.getAttribute('data-highlight-id');
+      if (!highlightId) return;
+
+      const allMarks = container.querySelectorAll('mark[data-highlight-id]');
+      allMarks.forEach((m) => m.setAttribute('data-active', 'false'));
+      targetMark.setAttribute('data-active', 'true');
+
+      const matchedExcerpt = excerpts?.find((e) => e.id === highlightId);
+      if (matchedExcerpt && onSelectExcerpt) {
+        onSelectExcerpt(matchedExcerpt);
+      }
+    };
+
+    const handleContainerClick = (e: MouseEvent) => {
+      const mark = (e.target as HTMLElement)?.closest('mark[data-highlight-id]') as HTMLElement | null;
+      if (mark) {
+        handleMarkActivation(mark);
+      }
+    };
+
+    const handleContainerKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const mark = (e.target as HTMLElement)?.closest('mark[data-highlight-id]') as HTMLElement | null;
+        if (mark) {
+          e.preventDefault();
+          handleMarkActivation(mark);
+        }
+      }
+    };
+
+    container.addEventListener('click', handleContainerClick);
+    container.addEventListener('keydown', handleContainerKeyDown);
+
+    return () => {
+      container.removeEventListener('click', handleContainerClick);
+      container.removeEventListener('keydown', handleContainerKeyDown);
+    };
+  }, [excerpts, onSelectExcerpt]);
+
+  // Scroll active excerpt into view when activeExcerptId changes
+  useEffect(() => {
+    if (!activeExcerptId) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const activeMark = container.querySelector(`mark[data-highlight-id="${activeExcerptId}"]`);
+    if (activeMark) {
+      activeMark.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeExcerptId]);
 
   if (isLoading) {
     return (

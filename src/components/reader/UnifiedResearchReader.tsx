@@ -283,8 +283,11 @@ export function UnifiedResearchReader({
   }, [notes, documentHighlights, documentId, title, fileUrl]);
 
 
+  const [activeExcerptId, setActiveExcerptId] = useState<string | null>(null);
+
   const handleSelectExcerpt = useCallback(
     (excerpt: ResearchExcerpt) => {
+      setActiveExcerptId(excerpt.id);
       const locator =
         excerpt.positionSelector?.headingId ||
         (excerpt.positionSelector?.pageNumber !== undefined ? String(excerpt.positionSelector.pageNumber) : undefined) ||
@@ -767,6 +770,9 @@ export function UnifiedResearchReader({
                 onTocGenerated={(items) => setTocItems(items)}
                 onPositionChange={handlePositionChanged}
                 onTextSelection={handleTextSelection}
+                excerpts={documentHighlights}
+                activeExcerptId={activeExcerptId}
+                onSelectExcerpt={handleSelectExcerpt}
               />
             </div>
           ) : normalizedFormat === 'pdf' ? (
