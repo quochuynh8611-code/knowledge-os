@@ -5,9 +5,14 @@ import { UnifiedResearchReader } from '../../src/components/reader/UnifiedResear
 import { DataProvider } from '../../src/context/DataContext';
 import { Note } from '../../src/types';
 import * as clipboardModule from '../../src/lib/clipboard';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+} from '../../src/lib/storage';
 
-const INBOX_STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3_research_inbox';
-const NOTES_STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3_notes';
+const INBOX_STORAGE_KEY = `${STORAGE_ROOT_KEY}_research_inbox`;
+const NOTES_STORAGE_KEY = `${STORAGE_ROOT_KEY}_notes`;
 
 describe('Reader Selection Actions Flow & Persistence', () => {
   beforeEach(() => {
@@ -131,7 +136,7 @@ describe('Reader Selection Actions Flow & Persistence', () => {
         updatedAt: '2026-09-19T08:00:00.000Z',
       },
     ];
-    localStorage.setItem('knowledge_os_storage_version', '3');
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
     localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(initialNotes));
 
     render(
