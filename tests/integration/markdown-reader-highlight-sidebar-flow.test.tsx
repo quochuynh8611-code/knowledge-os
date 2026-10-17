@@ -236,4 +236,122 @@ Cả hai cần phụ thuộc vào sự trừu tượng hóa để duy trì tính
     // onPositionChange is invoked with excerpt 1's heading locator
     expect(onPositionChange).toHaveBeenCalledWith('1-nguyen-ly-clean-architecture');
   });
+
+  it('4. dynamically adapts inline highlights and sidebar when researchExcerpts updates in DataContext', async () => {
+    const initialExcerpts = [mdExcerpt1];
+
+    const { rerender } = render(
+      <DataContext.Provider value={{ ...mockDataContextValue, researchExcerpts: initialExcerpts } as any}>
+        <UnifiedResearchReader
+          documentId="doc-md-flow-001"
+          title="Kiến Trúc Phần Mềm Hiện Đại"
+          format="md"
+          content={sampleMarkdown}
+          onClose={vi.fn()}
+        />
+      </DataContext.Provider>
+    );
+
+    const container = await screen.findByTestId('markdown-selectable-area');
+
+    // Initially: mark1 is rendered, mark2 is NOT
+    await waitFor(() => {
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-1"]')).not.toBeNull();
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-2"]')).toBeNull();
+    });
+
+    // Open sidebar highlights tab
+    fireEvent.click(screen.getByTestId('reader-toggle-sidebar-btn'));
+    fireEvent.click(screen.getByTestId('sidebar-tab-highlights'));
+    const highlightsPanel = screen.getByTestId('sidebar-panel-highlights');
+    expect(within(highlightsPanel).getByTestId('excerpt-card-exc-flow-md-1')).toBeInTheDocument();
+    expect(within(highlightsPanel).queryByTestId('excerpt-card-exc-flow-md-2')).toBeNull();
+
+    // Now dynamically add mdExcerpt2 (e.g. user created a highlight or synced)
+    rerender(
+      <DataContext.Provider value={{ ...mockDataContextValue, researchExcerpts: [mdExcerpt1, mdExcerpt2] } as any}>
+        <UnifiedResearchReader
+          documentId="doc-md-flow-001"
+          title="Kiến Trúc Phần Mềm Hiện Đại"
+          format="md"
+          content={sampleMarkdown}
+          onClose={vi.fn()}
+        />
+      </DataContext.Provider>
+    );
+
+    // Both mark1 and mark2 are now present in DOM and in sidebar
+    await waitFor(() => {
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-1"]')).not.toBeNull();
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-2"]')).not.toBeNull();
+      expect(within(highlightsPanel).getByTestId('excerpt-card-exc-flow-md-2')).toBeInTheDocument();
+    });
+
+    // Now dynamically remove mdExcerpt1 (e.g. user deleted excerpt 1)
+    rerender(
+      <DataContext.Provider value={{ ...mockDataContextValue, researchExcerpts: [mdExcerpt2] } as any}>
+        <UnifiedResearchReader
+          documentId="doc-md-flow-001"
+          title="Kiến Trúc Phần Mềm Hiện Đại"
+          format="md"
+          content={sampleMarkdown}
+          onClose={vi.fn()}
+        />
+      </DataContext.Provider>
+    );
+
+    // mark1 is cleaned up from DOM and sidebar; mark2 remains
+    await waitFor(() => {
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-1"]')).toBeNull();
+      expect(container.querySelector('mark[data-highlight-id="exc-flow-md-2"]')).not.toBeNull();
+      expect(within(highlightsPanel).queryByTestId('excerpt-card-exc-flow-md-1')).toBeNull();
+    });
+  });
+
+  it('5. supports keyboard activation (Enter / Space) on inline <mark> elements to trigger navigation and active state', async () => {
+    const onPositionChange = vi.fn();
+
+    render(
+      <DataContext.Provider value={mockDataContextValue as any}>
+        <UnifiedResearchReader
+          documentId="doc-md-flow-001"
+          title="Kiến Trúc Phần Mềm Hiện Đại"
+          format="md"
+          content={sampleMarkdown}
+          onClose={vi.fn()}
+          onPositionChange={onPositionChange}
+        />
+      </DataContext.Provider>
+    );
+
+    const container = await screen.findByTestId('markdown-selectable-area');
+    const mark1 = container.querySelector('mark[data-highlight-id="exc-flow-md-1"]') as HTMLElement;
+    const mark2 = container.querySelector('mark[data-highlight-id="exc-flow-md-2"]') as HTMLElement;
+    expect(mark1).not.toBeNull();
+    expect(mark2).not.toBeNull();
+
+    // 1. Keyboard 'Enter' on mark2
+    mark2.focus();
+    fireEvent.keyDown(mark2, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      const currentMark2 = container.querySelector('mark[data-highlight-id="exc-flow-md-2"]');
+      expect(currentMark2).toHaveAttribute('data-active', 'true');
+    });
+    expect(onPositionChange).toHaveBeenCalledWith('2-dependency-inversion');
+
+    // 2. Keyboard ' ' (Space) on mark1
+    const targetMark1 = container.querySelector('mark[data-highlight-id="exc-flow-md-1"]') as HTMLElement;
+    expect(targetMark1).not.toBeNull();
+    targetMark1.focus();
+    fireEvent.keyDown(targetMark1, { key: ' ', code: 'Space' });
+
+    await waitFor(() => {
+      const currentMark1 = container.querySelector('mark[data-highlight-id="exc-flow-md-1"]');
+      const currentMark2 = container.querySelector('mark[data-highlight-id="exc-flow-md-2"]');
+      expect(currentMark1).toHaveAttribute('data-active', 'true');
+      expect(currentMark2).toHaveAttribute('data-active', 'false');
+    });
+    expect(onPositionChange).toHaveBeenCalledWith('1-nguyen-ly-clean-architecture');
+  });
 });
