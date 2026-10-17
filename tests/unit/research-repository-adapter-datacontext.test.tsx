@@ -154,6 +154,6 @@ describe("Phase P1.3 — ResearchRepositoryV2 DataContext Integration", () => {
       resetBtn.click();
     });
 
-    expect(Number(screen.getByTestId("notes-count").textContent)).toBeGreaterThan(0);
+    expect(Number(screen.getByTestId("notes-count").textContent)).toBe(0);
   });
 });

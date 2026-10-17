@@ -38,6 +38,30 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
     data: canonicalData,
   };
 
+  const sampleTopicFixture = {
+    id: "top-phase2b-1",
+    title: "Abhidharma - Vi Diệu Pháp",
+    slug: "abhidharma-vi-dieu-phap",
+    categoryId: "cat-1",
+    type: "general",
+    description: "Mô tả",
+    content: "Nội dung",
+    tags: ["test"],
+    links: [],
+    studyProgress: {
+      topicId: "top-phase2b-1",
+      status: "not_started" as const,
+      progress: 0,
+      interval: 1,
+      easeFactor: 2.5,
+      repetitions: 0,
+      totalNotes: 0,
+      timeSpent: 0,
+    },
+    createdAt: "2026-08-01T08:00:00.000Z",
+    updatedAt: "2026-08-01T08:00:00.000Z",
+  };
+
   // --- 1. Checksum & Integrity Tests ---
   it("1. Tính toán SHA-256 Checksum chuẩn xác 64-char hex và có tính tất định", () => {
     const hash1 = calculateBackupChecksum(canonicalData);
@@ -148,21 +172,21 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
 
   it("10. Last-Write-Wins (LWW) Merge cho Topic giữ lại studyProgress cao nhất và cập nhật nội dung mới hơn", () => {
     const existingTopic = {
-      ...INITIAL_TOPICS[0],
+      ...sampleTopicFixture,
       updatedAt: "2026-08-20T10:00:00.000Z",
       studyProgress: {
-        ...INITIAL_TOPICS[0].studyProgress,
+        ...sampleTopicFixture.studyProgress,
         progress: 80,
         timeSpent: 120,
       },
     };
 
     const incomingNewerTopic = {
-      ...INITIAL_TOPICS[0],
+      ...sampleTopicFixture,
       title: "Abhidharma - Vi Diệu Pháp Cập Nhật",
       updatedAt: "2026-08-23T12:00:00.000Z",
       studyProgress: {
-        ...INITIAL_TOPICS[0].studyProgress,
+        ...sampleTopicFixture.studyProgress,
         progress: 60,
         timeSpent: 100,
       },
@@ -217,9 +241,9 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
       return "healthy";
     };
 
-    expect(classifyDbHealth(true, INITIAL_CATEGORIES.length)).toBe("healthy");
+    expect(classifyDbHealth(true, 8)).toBe("healthy");
     expect(classifyDbHealth(true, 0)).toBe("degraded");
-    expect(classifyDbHealth(false, INITIAL_CATEGORIES.length)).toBe("unhealthy");
+    expect(classifyDbHealth(false, 8)).toBe("unhealthy");
     expect(classifyDbHealth(false, 0)).toBe("unhealthy");
   });
 
@@ -283,19 +307,36 @@ describe("Phase 2B Test Suite - Seeding, Backup/Restore Snapshot & DB Health Pro
   });
 
   it("15. Restore Handler từ chối Checksum Mismatch và không thực hiện mutation (Fail-Fast)", () => {
+    const validDataWithTopic = {
+      ...canonicalData,
+      topics: [sampleTopicFixture],
+    };
+    const validSnapshotWithTopic = {
+      version: "2.0.0",
+      exportedAt: new Date().toISOString(),
+      checksum: calculateBackupChecksum(validDataWithTopic),
+      counts: {
+        categories: validDataWithTopic.categories.length,
+        topics: validDataWithTopic.topics.length,
+        notes: validDataWithTopic.notes.length,
+        resources: validDataWithTopic.resources.length,
+        tags: validDataWithTopic.tags.length,
+      },
+      data: validDataWithTopic,
+    };
+
     const corruptedSnapshot = {
-      ...sampleSnapshot,
+      ...validSnapshotWithTopic,
       data: {
-        ...sampleSnapshot.data,
+        ...validSnapshotWithTopic.data,
         topics: [
-          ...sampleSnapshot.data.topics.slice(1),
-          { ...sampleSnapshot.data.topics[0], title: "Hacked Topic" },
+          { ...sampleTopicFixture, title: "Hacked Topic" },
         ],
       },
     };
 
     const verifyAndRestore = (req: {
-      snapshot: typeof sampleSnapshot;
+      snapshot: typeof validSnapshotWithTopic;
       mode: "replace" | "merge";
       confirmReplace?: boolean;
     }) => {

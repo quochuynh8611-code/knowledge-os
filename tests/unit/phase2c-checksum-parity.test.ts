@@ -134,19 +134,19 @@ describe("Phase 2C.1: Cross-Runtime SHA-256 Checksum Parity Tests", () => {
 
   it("4. Bất kỳ thay đổi nào trong 1 ký tự thuộc topics đều làm thay đổi hoàn toàn mã SHA-256", async () => {
     // Given
+    const basePayload = minimalFixedData;
     const modifiedPayload = {
-      ...canonical35TopicsData,
+      ...basePayload,
       topics: [
-        ...canonical35TopicsData.topics.slice(1),
         {
-          ...canonical35TopicsData.topics[0],
-          title: canonical35TopicsData.topics[0].title + " (Sửa đổi)",
+          ...basePayload.topics[0],
+          title: basePayload.topics[0].title + " (Sửa đổi)",
         },
       ],
     };
 
     // When
-    const originalHash = calculateBackupChecksum(canonical35TopicsData);
+    const originalHash = calculateBackupChecksum(basePayload);
     const modifiedHash = calculateBackupChecksum(modifiedPayload);
     const modifiedWebCryptoHash = await computeWebCryptoSHA256(modifiedPayload);
 

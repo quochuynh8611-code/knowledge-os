@@ -162,13 +162,43 @@ describe("Phase 2C.1: Data Management UI State Machine & Confirmation Gate Contr
   it("3. Checksum không khớp chuyển trạng thái sang checksum_invalid và chặn gọi restore API", () => {
     // Given
     const machine = new RestoreStateMachine();
+    const validTopicFixture = {
+      id: "top-ui-fixture-1",
+      title: "Chủ Đề Kiểm Thử UI",
+      slug: "chu-de-kiem-thu-ui",
+      categoryId: "cat-1",
+      type: "general",
+      description: "Mô tả",
+      content: "Nội dung",
+      tags: ["test"],
+      links: [],
+      createdAt: "2026-08-01T08:00:00.000Z",
+      updatedAt: "2026-08-01T08:00:00.000Z",
+    };
+    const validDataWithTopic = {
+      ...canonicalData,
+      topics: [validTopicFixture],
+    };
+    const validSnapshotWithTopic: ValidatedBackupSnapshot = {
+      version: "2.0.0",
+      exportedAt: new Date().toISOString(),
+      checksum: calculateBackupChecksum(validDataWithTopic),
+      counts: {
+        categories: validDataWithTopic.categories.length,
+        topics: validDataWithTopic.topics.length,
+        notes: validDataWithTopic.notes.length,
+        resources: validDataWithTopic.resources.length,
+        tags: validDataWithTopic.tags.length,
+      },
+      data: validDataWithTopic,
+    };
+
     const corruptedSnapshot = {
-      ...sampleValidSnapshot,
+      ...validSnapshotWithTopic,
       data: {
-        ...sampleValidSnapshot.data,
+        ...validSnapshotWithTopic.data,
         topics: [
-          ...sampleValidSnapshot.data.topics.slice(1),
-          { ...sampleValidSnapshot.data.topics[0], title: "Modified" },
+          { ...validTopicFixture, title: "Modified" },
         ],
       },
     };
