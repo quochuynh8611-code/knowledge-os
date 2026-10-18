@@ -5,8 +5,10 @@ import { UnifiedResearchReader } from '../../src/components/reader/UnifiedResear
 import { UnifiedSelectionToolbar } from '../../src/components/reader/UnifiedSelectionToolbar';
 import { DataProvider } from '../../src/context/DataContext';
 import * as clipboardModule from '../../src/lib/clipboard';
+import { STORAGE_ROOT_KEY } from '../../src/lib/storage';
 
-const INBOX_STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3_research_inbox';
+const INBOX_STORAGE_KEY = `${STORAGE_ROOT_KEY}_research_inbox`;
+const EXCERPTS_STORAGE_KEY = `${STORAGE_ROOT_KEY}_research_excerpts`;
 
 describe('Phase R3: Reader Selection Toolbar Actions Persistence & Feedback (Red Stage)', () => {
   beforeEach(() => {
@@ -68,7 +70,7 @@ describe('Phase R3: Reader Selection Toolbar Actions Persistence & Feedback (Red
     expect(await screen.findByText('Đã lưu điểm trích nghiên cứu')).toBeInTheDocument();
 
     // Dữ liệu phải được persist vào localStorage (research excerpts hoặc legacy inbox)
-    const stored = localStorage.getItem('phat_hoc_huyen_hoc_clean_v3_research_excerpts') || localStorage.getItem(INBOX_STORAGE_KEY);
+    const stored = localStorage.getItem(EXCERPTS_STORAGE_KEY) || localStorage.getItem(INBOX_STORAGE_KEY);
     expect(stored).toBeTruthy();
     const items = JSON.parse(stored || '[]');
     expect(items.length).toBeGreaterThan(0);
