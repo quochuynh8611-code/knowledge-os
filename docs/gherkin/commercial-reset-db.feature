@@ -18,18 +18,16 @@ Feature: Commercial Reset Database
     And all 12 notes are cascade deleted
     And all related records (resources, tags, progress, snapshots) are cascade deleted
 
-  Scenario: Seed commercial template
+  Scenario: Seed clean commercial template
     Given the database is empty after reset
     When the seed script runs
-    Then 1 category "Đông Y" is created with slug "dong-y"
-    And 1-2 flashcards are created for the category
-    And 1 onboarding note is created
+    Then 0 default specialized categories are seeded
+    And 0 default specialized topics are seeded
+    And the application database is in a clean, ready-to-customize state for the new user
 
   Scenario: Post-execution verification
-    Given the reset and seed are complete
+    Given the reset and clean seed are complete
     When I query the database
-    Then categories count is 1
-    And the category name is "Đông Y"
-    And the category slug is "dong-y"
-    And flashcards count is 1-2
-    And notes count is 1 (onboarding note)
+    Then categories count is 0
+    And topics count is 0
+    And the user is empowered to create their own first domain via the UI

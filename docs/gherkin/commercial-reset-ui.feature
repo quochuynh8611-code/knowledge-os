@@ -56,6 +56,15 @@ Feature: Commercial Reset UI Pruning
     And command palette tests should pass without matrix/lexicon commands
     And all remaining tests should PASS
 
+  Scenario: Commercial zero-default baseline and domain neutralization
+    Given ứng dụng khởi tạo dữ liệu mặc định
+    When người dùng mở màn hình nghiên cứu
+    Then không còn domain hoặc chủ đề mặc định chuyên biệt trong tab "Lĩnh vực nghiên cứu"
+    And không còn header "Nghiên cứu Phật học & Huyền học" ở khung phần mềm
+    And placeholder ô tìm kiếm không chứa "Vi Diệu Pháp", "Tâm Vương", "Cửu Cung", "Quẻ Càn", "Bát Nhã", "Tứ Niệm Xứ"
+    And placeholder ô nhập chủ đề và tài liệu không chứa các thuật ngữ tôn giáo hoặc huyền học cổ truyền
+    And người dùng mới có thể tự tạo lĩnh vực nghiên cứu đầu tiên của mình
+
   Scenario: Build verification
     Given all code changes are complete
     When running npm run lint

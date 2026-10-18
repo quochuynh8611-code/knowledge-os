@@ -145,19 +145,10 @@ export async function runCommercialReset(options: {
         researchSessionsCascadeDeleted: sessionCount,
       },
       seededRecords: {
-        category: {
-          id: "cat-root-dong-y",
-          name: "Đông Y",
-          slug: "dong-y",
-          type: "dong-y",
-        },
-        topic: {
-          id: "topic-dong-y-co-ban",
-          title: "Lý Luận Cơ Bản Đông Y",
-          slug: "ly-luan-co-ban-dong-y",
-        },
-        flashcardsCount: 2,
-        notesCount: 1,
+        categoriesCount: 0,
+        topicsCount: 0,
+        flashcardsCount: 0,
+        notesCount: 0,
       },
     };
   }
@@ -167,104 +158,7 @@ export async function runCommercialReset(options: {
   const deleteCategoriesResult = await prisma.category.deleteMany({});
   const deleteTagsResult = await prisma.tag.deleteMany({});
 
-  // 2. Seed 1 template category "Đông Y"
-  const createdCategory = await prisma.category.create({
-    data: {
-      id: "cat-root-dong-y",
-      name: "Đông Y",
-      slug: "dong-y",
-      type: "dong-y",
-      description:
-        "Lĩnh vực nghiên cứu Đông Y — Lý luận cơ bản, Tạng tượng, Bát cương, Dược học và Kinh lạc châm cứu.",
-      icon: "Layers",
-      color: "#059669",
-      order: 0,
-      parentId: null,
-    },
-  });
-
-  // 3. Seed 1 starter topic
-  const createdTopic = await prisma.topic.create({
-    data: {
-      id: "topic-dong-y-co-ban",
-      title: "Lý Luận Cơ Bản Đông Y",
-      slug: "ly-luan-co-ban-dong-y",
-      categoryId: createdCategory.id,
-      type: "dong-y",
-      description:
-        "Nền tảng âm dương, ngũ hành, tạng tượng và khí huyết trong Đông Y học cổ truyền.",
-      content: "Nội dung cơ bản về Đông Y học cổ truyền.",
-      tags: ["dong-y", "ly-luan-co-ban"],
-    },
-  });
-
-  // 4. Seed 2 template flashcards with SM-2 schedule
-  const card1 = await prisma.flashcard.create({
-    data: {
-      id: "card-commercial-1",
-      topicId: createdTopic.id,
-      type: "basic",
-      front: "Học thuyết Âm Dương trong Đông Y bao gồm những quy luật cơ bản nào?",
-      back: "Bao gồm 4 quy luật: Âm Dương đối lập, Âm Dương hỗ căn, Âm Dương tiêu trưởng, Âm Dương bình hành.",
-      lifecycleStatus: "active",
-      schedule: {
-        create: {
-          state: "new",
-          interval: 0,
-          easeFactor: 2.5,
-          repetitions: 0,
-          lapses: 0,
-          dueAt: new Date(),
-        },
-      },
-    },
-  });
-
-  const card2 = await prisma.flashcard.create({
-    data: {
-      id: "card-commercial-2",
-      topicId: createdTopic.id,
-      type: "basic",
-      front: "Ngũ hành tương sinh theo thứ tự như thế nào?",
-      back: "Mộc sinh Hỏa -> Hỏa sinh Thổ -> Thổ sinh Kim -> Kim sinh Thủy -> Thủy sinh Mộc.",
-      lifecycleStatus: "active",
-      schedule: {
-        create: {
-          state: "new",
-          interval: 0,
-          easeFactor: 2.5,
-          repetitions: 0,
-          lapses: 0,
-          dueAt: new Date(),
-        },
-      },
-    },
-  });
-
-  // 5. Seed 1 Onboarding Note
-  const createdNote = await prisma.note.create({
-    data: {
-      id: "note-commercial-onboarding",
-      topicId: createdTopic.id,
-      title: "Hướng dẫn bắt đầu sử dụng Knowledge OS",
-      content: `# Chào mừng bạn đến với Knowledge OS!
-
-Đây là không gian học tập, nghiên cứu và quản lý tri thức cá nhân hóa theo phương pháp chuyên sâu.
-
-## Các tính năng chính:
-- **Cây chủ đề (Topic Tree)**: Tổ chức tri thức theo từng lĩnh vực khoa học, chuyên ngành.
-- **Ghi chú thông minh (Notes)**: Hỗ trợ ghi chú Markdown, liên kết đa chiều.
-- **Flashcards & Spaced Repetition (SM-2)**: Ôn tập ngắt quãng thông minh giúp ghi nhớ dài hạn.
-- **Research Hub**: Tích hợp nghiên cứu chuyên sâu và tài liệu tham khảo.
-
-Hãy bắt đầu khám phá bằng cách tạo chủ đề mới hoặc thêm flashcards của riêng bạn!`,
-      type: "summary",
-      isPrivate: false,
-      tags: ["huong-dan", "onboarding"],
-    },
-  });
-
-  // 6. Post-mutation counts
+  // 2. Post-mutation counts
   const [
     afterCategoryCount,
     afterTopicCount,
@@ -308,10 +202,10 @@ Hãy bắt đầu khám phá bằng cách tạo chủ đề mới hoặc thêm f
       tagsDeleted: deleteTagsResult.count,
     },
     seededRecords: {
-      category: createdCategory,
-      topic: createdTopic,
-      flashcards: [card1.id, card2.id],
-      note: createdNote.id,
+      categoriesCount: 0,
+      topicsCount: 0,
+      flashcardsCount: 0,
+      notesCount: 0,
     },
     afterCounts,
   };
