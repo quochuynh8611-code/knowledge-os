@@ -15,7 +15,7 @@ describe("Sync Queue DELETE Incident — Idempotency & Fault Isolation (Phase A)
 
   describe("1. Server-Side DELETE Route Idempotency (P2025 Not Found Handling)", () => {
     // [Phase B2B Pending Approval] Category DELETE P2025 Idempotency
-    it.skip("1.1. [Phase B2B] DELETE /api/categories/:id phản hồi 200 idempotent khi Category đã bị xóa trước đó (Prisma P2025)", async () => {
+    it("1.1. [Phase B2B] DELETE /api/categories/:id phản hồi 200 idempotent khi Category đã bị xóa trước đó (Prisma P2025)", async () => {
       const p2025Error: any = new Error(
         "An operation failed because it depends on one or more records that were required but not found."
       );
@@ -124,7 +124,7 @@ describe("Sync Queue DELETE Incident — Idempotency & Fault Isolation (Phase A)
     });
 
     // [Phase B2C Pending Approval] Note DELETE P2025 Idempotency
-    it.skip("1.3. [Phase B2C] DELETE /api/notes/:id phản hồi 200 idempotent khi Note không tồn tại (Prisma P2025)", async () => {
+    it("1.3. [Phase B2C] DELETE /api/notes/:id phản hồi 200 idempotent khi Note không tồn tại (Prisma P2025)", async () => {
       const p2025Error: any = new Error("Record not found for delete");
       p2025Error.code = "P2025";
 
@@ -148,7 +148,7 @@ describe("Sync Queue DELETE Incident — Idempotency & Fault Isolation (Phase A)
     });
 
     // [Phase B2C Pending Approval] Topic DELETE P2025 Idempotency
-    it.skip("1.4. [Phase B2C] DELETE /api/topics/:id phản hồi 200 idempotent khi Topic không tồn tại (Prisma P2025)", async () => {
+    it("1.4. [Phase B2C] DELETE /api/topics/:id phản hồi 200 idempotent khi Topic không tồn tại (Prisma P2025)", async () => {
       const p2025Error: any = new Error("Topic not found for delete");
       p2025Error.code = "P2025";
 

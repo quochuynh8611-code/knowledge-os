@@ -316,7 +316,11 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
       res.json({ success: true, id: req.params.id });
     } catch (err: any) {
       if (err?.code === "P2025") {
-        return res.status(404).json({ error: "Topic not found" });
+        return res.json({
+          success: true,
+          id: req.params.id,
+          alreadyDeleted: true,
+        });
       }
       const msg = err instanceof Error ? err.message : "Failed to delete topic";
       res.status(500).json({ error: msg });

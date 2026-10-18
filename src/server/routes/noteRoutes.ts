@@ -264,6 +264,18 @@ export function createNoteRouter(prisma: PrismaClient | any): Router {
       });
       res.json({ success: true, id: req.params.id });
     } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        (err as { code: unknown }).code === "P2025"
+      ) {
+        return res.json({
+          success: true,
+          id: req.params.id,
+          alreadyDeleted: true,
+        });
+      }
       const msg = err instanceof Error ? err.message : "Failed to delete note";
       res.status(500).json({ error: msg });
     }
