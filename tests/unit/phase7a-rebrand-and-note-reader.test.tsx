@@ -1,17 +1,22 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { Navbar } from '../../src/components/layout/Navbar';
 import { Sidebar } from '../../src/components/layout/Sidebar';
 import { ShortcutsModal } from '../../src/components/modals/ShortcutsModal';
 import { NotesManager } from '../../src/components/notes/NotesManager';
 import { NoteReaderModal } from '../../src/components/modals/NoteReaderModal';
 import { DataProvider } from '../../src/context/DataContext';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
 import { Note } from '../../src/types';
 
 describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note Reader UX', () => {
   beforeEach(() => {
     localStorage.clear();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as any);
   });
 
   describe('1. Navbar Branding & Surface Rebrand', () => {
@@ -81,20 +86,22 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       updatedAt: new Date().toISOString(),
     };
 
-    it('render đầy đủ tiêu đề lớn, phân loại, nội dung thoáng, wiki link và sourcePath', () => {
+    it('render đầy đủ tiêu đề lớn, phân loại, nội dung thoáng, wiki link và sourcePath', async () => {
       const handleClose = vi.fn();
       const handleEdit = vi.fn();
 
-      render(
-        <DataProvider>
-          <NoteReaderModal
-            isOpen={true}
-            note={mockNote}
-            onClose={handleClose}
-            onEdit={handleEdit}
-          />
-        </DataProvider>
-      );
+      await act(async () => {
+        render(
+          <DataProvider>
+            <NoteReaderModal
+              isOpen={true}
+              note={mockNote}
+              onClose={handleClose}
+              onEdit={handleEdit}
+            />
+          </DataProvider>
+        );
+      });
 
       // Title & Topic
       expect(screen.getByText('Khảo cứu phương pháp học sâu và ghi chép Zettelkasten')).toBeInTheDocument();
@@ -117,35 +124,39 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       expect(handleClose).toHaveBeenCalled();
     });
 
-    it('đóng modal khi nhấn phím Escape', () => {
+    it('đóng modal khi nhấn phím Escape', async () => {
       const handleClose = vi.fn();
-      render(
-        <DataProvider>
-          <NoteReaderModal
-            isOpen={true}
-            note={mockNote}
-            onClose={handleClose}
-            onEdit={vi.fn()}
-          />
-        </DataProvider>
-      );
+      await act(async () => {
+        render(
+          <DataProvider>
+            <NoteReaderModal
+              isOpen={true}
+              note={mockNote}
+              onClose={handleClose}
+              onEdit={vi.fn()}
+            />
+          </DataProvider>
+        );
+      });
 
       fireEvent.keyDown(window, { key: 'Escape' });
       expect(handleClose).toHaveBeenCalledTimes(1);
     });
 
-    it('đóng modal khi click vào overlay nền nhưng KHÔNG đóng khi click bên trong panel', () => {
+    it('đóng modal khi click vào overlay nền nhưng KHÔNG đóng khi click bên trong panel', async () => {
       const handleClose = vi.fn();
-      render(
-        <DataProvider>
-          <NoteReaderModal
-            isOpen={true}
-            note={mockNote}
-            onClose={handleClose}
-            onEdit={vi.fn()}
-          />
-        </DataProvider>
-      );
+      await act(async () => {
+        render(
+          <DataProvider>
+            <NoteReaderModal
+              isOpen={true}
+              note={mockNote}
+              onClose={handleClose}
+              onEdit={vi.fn()}
+            />
+          </DataProvider>
+        );
+      });
 
       const dialog = screen.getByRole('dialog', { name: /Chi tiết ghi chú/i });
       
@@ -161,7 +172,35 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
   });
 
   describe('5. NotesManager Focus Reading & Bubble Prevention', () => {
-    it('mở NoteReaderModal khi người dùng nhấp vào thẻ ghi chú', () => {
+    const sampleNote: Note = {
+      id: 'test-n1',
+      title: 'Ghi chú kiểm thử',
+      content: 'Nội dung ghi chú',
+      topicId: 'top-1',
+      type: 'insight',
+      tags: [],
+      isPrivate: false,
+      createdAt: '2026-08-01',
+      updatedAt: '2026-08-01',
+    };
+
+    beforeEach(() => {
+      localStorage.clear();
+      localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([sampleNote]));
+      localStorage.setItem(
+        STORAGE_ROOT_KEY,
+        JSON.stringify({
+          categories: [],
+          topics: [],
+          notes: [sampleNote],
+          resources: [],
+          tags: [],
+        })
+      );
+    });
+
+    it('mở NoteReaderModal khi người dùng nhấp vào thẻ ghi chú', async () => {
       render(
         <DataProvider>
           <NotesManager />
@@ -176,13 +215,15 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       expect(noteTitles.length).toBeGreaterThan(0);
 
       // Click on note card title
-      fireEvent.click(noteTitles[0]);
+      await act(async () => {
+        fireEvent.click(noteTitles[0]);
+      });
 
       // Reader modal should now be open
       expect(screen.getByRole('dialog', { name: /Chi tiết ghi chú/i })).toBeInTheDocument();
     });
 
-    it('hành động Chỉnh sửa từ NoteReaderModal mở tiếp NoteFormModal', () => {
+    it('hành động Chỉnh sửa từ NoteReaderModal mở tiếp NoteFormModal', async () => {
       render(
         <DataProvider>
           <NotesManager />
@@ -190,14 +231,18 @@ describe('Phase 7A: Nghiên Cứu Rebrand, Neutralized Copywriting & Focus Note 
       );
 
       const noteTitles = screen.getAllByRole('heading', { level: 3 });
-      fireEvent.click(noteTitles[0]);
+      await act(async () => {
+        fireEvent.click(noteTitles[0]);
+      });
 
       // Reader is open
       expect(screen.getByRole('dialog', { name: /Chi tiết ghi chú/i })).toBeInTheDocument();
 
       // Click "Chỉnh sửa" inside Reader
       const editInReaderBtn = screen.getByRole('button', { name: /Chỉnh sửa/i });
-      fireEvent.click(editInReaderBtn);
+      await act(async () => {
+        fireEvent.click(editInReaderBtn);
+      });
 
       // Reader closes and NoteFormModal opens
       expect(screen.queryByRole('dialog', { name: /Chi tiết ghi chú/i })).toBeNull();
