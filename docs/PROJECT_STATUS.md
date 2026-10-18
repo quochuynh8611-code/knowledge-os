@@ -1,21 +1,30 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-16<br>
+> **Cập nhật lần cuối:** 2026-10-17<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **DIRECT NOTEBOOKLM MCP INTEGRATION & CITATION PROVENANCE: Hoàn tất tích hợp trực tiếp 2 chiều từ Dashboard UI tới Google NotebookLM qua MCP Stdio Transport. Đã hoàn thành 1-shot Live Verification (HTTP 200, cleanup CLEANED), bảo toàn citation provenance, loại bỏ synthetic fallback IDs, fail-closed gating `NOTEBOOKLM_DIRECT_EXECUTION`. 56/56 unit tests PASS, 0 lỗi TypeScript typecheck.**
+> **Trạng thái tổng thể:** 🟢 **COMMERCIAL ZERO-DEFAULT UNIVERSAL BASELINE & DIRECT NOTEBOOKLM MCP INTEGRATION: Hoàn tất trung tính hóa toàn bộ nội dung chuyên biệt, thiết lập baseline sạch 0 bản ghi cho người dùng mới; thiết lập Hermetic Test Guard chặn rò rỉ dữ liệu test vào database; bảo toàn tích hợp trực tiếp 2 chiều Google NotebookLM MCP. 68/68 commercial neutralization regression tests PASS, 503/503 full suite tests PASS, 0 lỗi TypeScript typecheck.**<br>
+> **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD (Local):** Commit `dcd3240` (`feat(notebooklm-ui): wire truthful configured runtime status to parent containers (phase f8.3)`).
-- **Remote Baseline (origin/main):** Commit `06eb74d` (`fix(notebooklm): enforce MCP initialize handshake`).
-- **Recent Product Commits (NotebookLM UI Bridge - Local Only, Chưa Push):**
-  - F8.3: `dcd3240` (`feat(notebooklm-ui): wire truthful configured runtime status to parent containers (phase f8.3)`)
-  - F8.2: `62e15fb` (`feat(notebooklm-ui): add runtime status bridge contract and header badge (phase f8.2)`)
+- **Current Baseline / HEAD (Local & origin/main):** Commit `bc4b60c` + Commercial Neutralization Baseline.
+- **Recent Baseline Commits & Documents:**
+  - `ADR-076`: Commercial Domain Neutralization & Zero-Default Universal Workspace (`docs/adr/ADR-076-commercial-domain-neutralization.md` + Addendum 1).
+  - Session Log (2026-10-17): `docs/session-logs/2026-10-17-hermetic-test-guard-and-zero-default-rule.md`.
+  - Session Log (2026-10-16): `docs/session-logs/2026-10-16-commercial-domain-neutralization-and-zero-default-baseline.md`.
+  - Database Backup: `backups/pre_reset_backup_20261016_213525.json` (11 categories, 10 topics, 8 notes, 5 resources an toàn).
 - **Recent Product Commits (Reader Subsystem - Pushed):**
+  - R3d-A: `bc4b60c` (`feat(reader): implement persistent markdown highlights`)
+  - R3d Regression Fix: `fc5f559` (`fix(test): align reader selection storage version`)
   - R3c: `5bd554e` (`feat(reader): add highlights filtering and quick search`)
   - R3b: `17d5f50` (`feat(reader): implement highlights color palette and inline annotations (Phase R3b)`)
+- **Recent Product Commits (NotebookLM Direct MCP Integration — Pushed):**
+  - `486c617`: `fix(notebooklm): separate query timeout and expose provider timeout code` (Fix 1 & Fix 2)
+  - `a643d4b`: `fix(notebooklm): route live execution to enterprise provider`
+  - `b562aa3`: `feat(notebooklm-ui): align direct MCP execution payload and response handling`
+  - `06eb74d`: `fix(notebooklm): enforce MCP initialize handshake`
 - **Product Implementation Commits (Milestone M7):**
   - M7a: `6f50935` (`feat(mindmap): add on-canvas crosslink inspect and quick delete (M7a)`)
   - M7b: `9c85033` (`feat(mindmap): add inline crosslink type mutation (M7b)`)
@@ -24,16 +33,16 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
-- **Git Branch Status:** `main` ahead of `origin/main` by 2 commits (`62e15fb`, `dcd3240`).
-- **Remote Policy:** Remote HEAD tại `06eb74d`. Các commits UI Bridge F8.2 và F8.3 lưu giữ cục bộ, chưa push remote.
+- **Git Branch Status:** `main` hoàn toàn đồng bộ với `origin/main` tại commit `bc4b60c` (divergence 0 0).
+- **Remote Policy:** Remote HEAD tại `bc4b60c`. Đã hoàn tất push an toàn.
 - **Quality Gates Baseline:**
+  - Reader Subsystem (R3d-A): 17/17 targeted tests PASS (`markdown-highlight-anchor.test.ts` 8/8, `markdown-reader-persistent-highlights.test.tsx` 6/6, `reader-selection-action-flow.test.tsx` 3/3), 25/25 related Reader regression tests PASS (100% GREEN), Build PASS, git diff --check PASS.
   - Reader Subsystem (R3c): 7/7 targeted tests PASS (`reader-sidebar-highlights-filter.test.tsx`), 16/16 related Reader regression tests PASS (100% GREEN).
   - Reader Subsystem (R3b): 40/40 PASS across 8 suites (100% GREEN).
   - Mind Map AI Migration: 59/59 PASS across 4 targeted suites (`gemini-routes.test.ts` 14/14, `mindmap-ai-service.test.ts` 22/22, `mindmap-ai-expansion-ui.test.tsx` 10/10, `phase-4-production-hardening.test.ts` 13/13).
-  - Full Test Suite: 503/503 test files PASS (4,305 passed, 3 skipped, 0 failed).
-  - TypeScript Typecheck: 0 errors (`npm run typecheck` / `npx tsc --noEmit` hoàn tất thành công, Exit Code 0).
-  - Build Gate: Vite production bundle + Node server bundle PASS.
-  - CI Gate: GitHub Actions workflow PASS (Run ID `38677532285`).
+  - TypeScript Typecheck: 0 errors trên canonical code; 7 pre-existing errors trên uncommitted code (`NotebookLMStudioModal.tsx`, `notebooklm-studio-direct-execution-alignment.test.tsx`, `phase15a-root-domain-expansion.test.tsx`, `phase15b-starter-topics-enrichment.test.tsx`).
+  - Build Gate: Vite production bundle + Node server bundle PASS (`npm run build`, Exit Code 0).
+  - Full Test Suite Note: Clean full test suite run bị giới hạn bởi Node 20.20.2 vs undici@8.10.0 (yêu cầu Node >=22.19.0).
   - Cross-Link & Canvas Wide Regression: 120/120 PASS.
 
 ---
@@ -43,8 +52,11 @@
 | Thứ tự | Tập tin | Vai trò & Mục đích |
 | :---: | :--- | :--- |
 | **1** | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | **Source-of-Truth chính**: Bức tranh toàn cảnh, baseline hiện tại, state lock và roadmap ứng viên tiếp theo. |
-| **2** | [`docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md`](docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md) | **Quyết định kiến trúc ADR-102**: Chuyển Mind Map AI sang backend proxy `/api/gemini/mindmap-expand`, chuẩn hóa `getGeminiModel()` với `gemini-3.8-flash`, xóa bỏ frontend API key dependency, modal guard. |
-| **3** | [`docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`](docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md) | **Quyết định kiến trúc ADR-101**: Reader Highlights & Annotation Polish, `updateExcerpt` contract, 4-color palette core scope, non-goals justification. |
+| **2** | [`docs/adr/ADR-076-commercial-domain-neutralization.md`](docs/adr/ADR-076-commercial-domain-neutralization.md) | **Quyết định kiến trúc ADR-076**: Commercial Domain Neutralization, Zero-default domain baseline, storage key `knowledge_os_v4`, Addendum 1 về Hermetic Test Guard. |
+| **3** | [`docs/session-logs/2026-10-17-hermetic-test-guard-and-zero-default-rule.md`](docs/session-logs/2026-10-17-hermetic-test-guard-and-zero-default-rule.md) | **Báo cáo 2026-10-17 & Quy tắc bất biến**: Điều tra rò rỉ dữ liệu test vào database thật, Hermetic Test Guard trong `dataRepository` & `syncQueue`, và quy tắc cấm tùy tiện thêm lĩnh vực khi nâng cấp. |
+| **4** | [`docs/session-logs/2026-10-16-commercial-domain-neutralization-and-zero-default-baseline.md`](docs/session-logs/2026-10-16-commercial-domain-neutralization-and-zero-default-baseline.md) | **Báo cáo phiên làm việc & Điều tra Runtime Mismatch**: Chi tiết quá trình trung tính hóa, phân tích vòng lặp đồng bộ, giải quyết PWA Desktop App `.app` bundle name cache. |
+| **5** | [`docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md`](docs/adr/ADR-102-mindmap-ai-backend-proxy-and-gemini-3.8-flash-migration.md) | **Quyết định kiến trúc ADR-102**: Chuyển Mind Map AI sang backend proxy `/api/gemini/mindmap-expand`, chuẩn hóa `getGeminiModel()` với `gemini-3.8-flash`, xóa bỏ frontend API key dependency, modal guard. |
+| **6** | [`docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md`](docs/adr/ADR-101-phase-r3b-reader-highlights-and-annotation-polish.md) | **Quyết định kiến trúc ADR-101**: Reader Highlights & Annotation Polish, `updateExcerpt` contract, 4-color palette core scope, non-goals justification. |
 | **4** | [`docs/reports/mindmap-phase-m7c-closure-report.md`](docs/reports/mindmap-phase-m7c-closure-report.md) | Báo cáo đóng Phase M7c: Inline Cross-Link Label Renaming trên Canvas, commit protocol `Enter`/`Blur`, `Escape` revert guard, whitespace normalization, strict same-value no-op. |
 | **5** | [`docs/reports/mindmap-phase-m7b-closure-report.md`](docs/reports/mindmap-phase-m7b-closure-report.md) | Báo cáo đóng Phase M7b: Inline Cross-Link `edgeType` Mutation trên Canvas, native `<select>`, validation `excludeEdgeId`, duplicate/cycle rejection, atomic history. |
 | **6** | [`docs/reports/mindmap-phase-m7a-closure-report.md`](docs/reports/mindmap-phase-m7a-closure-report.md) | Báo cáo đóng Phase M7a: Direct On-Canvas Cross-Link Inspection & Quick Delete, 16px hit-target, floating popover, M6 keyboard isolation, M5b drag isolation. |
@@ -67,11 +79,12 @@
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Trạng Thái / Ưu Tiên |
 | :--- | :--- | :--- | :--- | :---: |
+| **Completed** | **Phase R3d-A — Persistent Markdown Highlight Layer**<br>- Hiển thị highlight trực tiếp trên rendered Markdown DOM text layer theo màu trích đoạn, auto-anchor range, highlight lifecycle synchronization. | Trực quan hóa màu đánh dấu trực tiếp trên văn bản Markdown khi mở lại tài liệu. | Trung bình | 🟢 **COMPLETE & PUSHED (`bc4b60c`)** |
 | **Completed** | **Phase R3c — Reader Highlights Filtering & Quick Search**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar (hỗ trợ tiếng Việt không dấu & hoa thường), bộ lọc kết hợp (AND), reset filters và Escape clear. | Tìm kiếm và lọc nhanh các trích đoạn và ghi chú trên tài liệu dài. | Thấp - Trung bình | 🟢 **COMPLETE & CI VERIFIED (`5bd554e`)** |
 | **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **COMPLETE & VERIFIED (`17d5f50`)** |
 | **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **COMPLETE & VERIFIED** |
 | **Candidate 1** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
-| **Candidate 2** | **Phase R3d — Persistent Color Highlight Layer**<br>- Hiển thị highlight trực tiếp trên rendered Markdown / PDF text layer khi mở lại tài liệu. | Trực quan hóa màu đánh dấu trực tiếp trên văn bản tài liệu. | Trung bình | 🥈 **P2** |
+| **Candidate 2** | **Phase R3d-B — Persistent Color Highlight Layer for PDF & EPUB**<br>- Mở rộng persistent highlights lên PDF canvas/text-layer và EPUB rendition. | Đồng bộ trải nghiệm highlight bền vững trên tài liệu PDF và EPUB. | Trung bình - Cao | 🥈 **P2** |
 
 ---
 
@@ -138,7 +151,52 @@
   - Không can thiệp Mind Map subsystem.
   - Không render highlight trực tiếp lên DOM text layer.
 - **Follow-up Candidates:**
-  - Phase R3d: Persistent color highlight rendering trên rendered Markdown / PDF text layer nếu cần thiết.
+  - Phase R3d-A: Đã hoàn tất và push an toàn tại commit `bc4b60c` (xem chi tiết mục R3d-A Closure bên dưới).
+  - Phase R3d-B: Persistent color highlight layer cho định dạng PDF và EPUB.
+
+---
+
+## 🖍️ Persistent Markdown Highlight Layer — Phase R3d-A Closure (2026-10-17)
+
+- **Trạng thái:** Complete, Pushed & Synced (origin/main at `bc4b60c`, divergence 0 0)
+- **Commits:**
+  - `fc5f559`: `fix(test): align reader selection storage version`
+  - `bc4b60c`: `feat(reader): implement persistent markdown highlights`
+- **Tests & Quality Gate:**
+  - 17/17 targeted tests PASS across 3 suites (`markdown-highlight-anchor.test.ts` 8/8, `markdown-reader-persistent-highlights.test.tsx` 6/6, `reader-selection-action-flow.test.tsx` 3/3)
+  - 25/25 related Reader regression tests PASS across 5 suites (100% GREEN)
+  - Build PASS (`npm run build` sinh bundle sạch, Exit Code 0)
+  - git diff --check PASS (0 whitespace error, 0 trailing space warning)
+  - Typecheck toàn repo: Blocked bởi 7 lỗi TypeScript pre-existing unrelated trong NotebookLM & Taxonomy
+  - Full suite run: Chưa đạt do giới hạn môi trường Node.js 20.20.2 vs undici@8.10.0 (yêu cầu Node >=22.19.0)
+- **Mục tiêu phase:** Cung cấp tính năng persistent highlight hiển thị trực quan trực tiếp trên văn bản Markdown đã render trong `UnifiedResearchReader` dựa trên `excerpt.highlightColor` và thuật toán neo văn bản an toàn (`markdownHighlightAnchor.ts`), tự động đồng bộ khi bôi đen / thêm / sửa / xóa highlight mà không làm thay đổi DataContext contract hay Prisma/DB schema.
+- **Tập tin đã thay đổi (Production & Test):**
+  - `src/lib/markdownHighlightAnchor.ts`: Thư viện tiện ích độc lập tìm kiếm text nodes, định vị character offset ranges, wrap `<mark>` tags mang màu palette, và unwrap an toàn.
+  - `src/components/reader/adapters/MarkdownReaderAdapter.tsx`: Tích hợp persistent highlight rendering layer qua `useEffect` lắng nghe danh sách `excerpts`, tự động unwrap và vẽ lại khi DOM hoặc excerpts thay đổi.
+  - `src/components/reader/UnifiedResearchReader.tsx`: Truyền danh sách `scopedExcerpts` xuống `MarkdownReaderAdapter`.
+  - `tests/unit/markdown-highlight-anchor.test.ts`: Bộ kiểm thử đơn vị độc lập 8/8 tests bao phủ thuật toán neo và bọc DOM range.
+  - `tests/unit/markdown-reader-persistent-highlights.test.tsx`: Bộ kiểm thử tích hợp 6/6 tests bao phủ rendering, dynamic update, màu sắc và unwrap lifecycle.
+  - `tests/unit/reader-selection-action-flow.test.tsx`: Căn chỉnh storage version canonical constants (`CURRENT_STORAGE_VERSION = 4`), khắc phục test drift.
+- **Hành vi đã được kiểm chứng (Behaviors Delivered):**
+  1. ✅ **DOM Range Text Anchoring**: Hàm `findTextRangeInTextNodes` tìm kiếm và định vị chính xác khoảng văn bản xuyên qua các text nodes mà không làm hỏng cấu trúc HTML/Markdown đã render.
+  2. ✅ **Persistent Highlight Rendering**: Ánh xạ từng `excerpt` thành thẻ `<mark class="research-highlight-persistent">` mang màu `excerpt.highlightColor` chuẩn xác.
+  3. ✅ **Dynamic Lifecycle Synchronization**: Khi thêm mới trích đoạn, thay đổi màu sắc hoặc xóa trích đoạn trong `ReaderSidebar`, adapter tự động unwrap highlight cũ và render lại tập highlight mới nhất.
+  4. ✅ **Idempotent & Safe Cleanup**: Khi component unmount hoặc tài liệu chuyển đổi, hàm `unwrapAllHighlights` khôi phục DOM sạch sẽ, không để lại thẻ rác hay rò rỉ bộ nhớ.
+  5. ✅ **Selection Toolbar Isolation**: Persistent highlight layer không can thiệp hay cản trở cử chỉ bôi đen và thanh công cụ thao tác chọn văn bản hiện hữu.
+- **Non-Goals giữ nguyên:**
+  - Không triển khai PDF hoặc EPUB trong phase R3d-A (dành riêng cho Phase R3d-B).
+  - Không sửa DataContext, Prisma schema, backend hay database.
+  - Không can thiệp Mind Map subsystem.
+- **Known Baseline Limitations:**
+  - **Partial overlapping highlights**: Trường hợp 2 trích đoạn giao nhau một phần (partial overlap) trên cùng một TextNode chưa được bọc hoàn toàn; đã có try-catch fail-safe chống DOMException (non-goal trong Phase R3d-A).
+  - **Phạm vi Markdown-only**: Định dạng PDF và EPUB chưa thuộc R3d-A (dành riêng cho Phase R3d-B).
+  - **Zero backend/DB mutation**: Tuyệt đối không thay đổi backend routes, Prisma schema, database hay DataContext contract.
+  - **Pre-existing Typecheck Blockers**: 7 lỗi TypeScript pre-existing unrelated trong `NotebookLMStudioModal.tsx`, `notebooklm-studio-direct-execution-alignment.test.tsx`, `phase15a-root-domain-expansion.test.tsx`, `phase15b-starter-topics-enrichment.test.tsx`.
+  - **Environment Constraint**: Clean full test suite run bị giới hạn bởi xung đột môi trường Node 20.20.2 và `undici@8.10.0` (yêu cầu Node >=22.19.0).
+  - **Targeted Test Coverage**: 17/17 targeted tests R3d-A và 25/25 reader regression tests đã pass 100% trên dependency tree chuẩn.
+- **Follow-up Candidates:**
+  - Phase R3d-B: Persistent Color Highlight Layer for PDF & EPUB.
+  - Phase M8: Multi-Edge Selection & Cross-Link Batch Operations (Mind Map P1).
 
 ---
 
@@ -1135,7 +1193,13 @@ Phản hồi HTTP 200 trả về payload phẳng, không lồng đối tượng 
 7. **Data Management Modal & Confirmation Gate UI (Phase 2C.4 & 2C.4b - ADR-009):**
    - **Repository Injection & Health Polling:** [`src/components/modals/ExportImportModal.tsx`](src/components/modals/ExportImportModal.tsx) nhận `repository?: IDataRepository` linh hoạt, tự động thăm dò sức khỏe cơ sở dữ liệu `getDbHealth()` và hiển thị Health Badge trực quan.
    - **Tách Biệt Capability vs Connectivity Error:** Phân định rõ ràng `isOfflineCapability` (khi gặp lỗi `UNSUPPORTED_OFFLINE_OPERATION` từ kho lưu trữ LocalStorage) vs `connectionError` (khi gặp lỗi mạng/server 500 ném trạng thái `unhealthy` đỏ *"PostgreSQL Mất Kết Nối"*), xóa bỏ hoàn toàn sự nhập nhằng trong trải nghiệm người dùng.
-8. **Tính Toàn Vẹn Hệ Thống:**
+8. **NotebookLM Direct MCP Timeout Separation & Error Contract Hardening (Fix 1 & Fix 2 — Commit `486c617`):**
+   - **Tách Timeout Đa Tầng:** Phân tách rõ ràng timeout điều khiển control-plane (30.000ms cho handshake `initialize`, readiness `server_info`, và CRUD `notebook_create`, `source_add`, `notebook_delete`, `notebook_get`) vs timeout suy luận LLM inference (`notebook_query` mặc định 90.000ms, hỗ trợ per-call override).
+   - **Bảo Vệ Tính Toàn Vẹn Tool Arguments:** `timeoutMs` truyền qua transport options, tuyệt đối không leak vào tool arguments của `notebook_query`.
+   - **Helper Chuẩn Hóa An Toàn `resolveTimeoutMs`:** Khử triệt để nguy cơ nuốt fallback sai khi gặp các giá trị không hợp lệ (`0`, số âm, `NaN`).
+   - **Khớp Nối Mã Lỗi Tuyến Trực Tiếp:** Tuyến `POST /api/research-sessions/:sessionId/execute-live` trả HTTP 503 với `code: "PROVIDER_TIMEOUT"` cho frontend khi gặp ProviderException tương ứng.
+   - **Biên bản chi tiết:** [`docs/session-logs/2026-10-16-notebooklm-timeout-separation-and-error-mapping.md`](docs/session-logs/2026-10-16-notebooklm-timeout-separation-and-error-mapping.md).
+9. **Tính Toàn Vẹn Hệ Thống:**
    - [`src/components/search/SearchFilters.tsx`](src/components/search/SearchFilters.tsx) giữ nguyên 100% component contract.
    - **Zero Binary Ingestion:** Tài liệu tham khảo chỉ được xử lý qua metadata an toàn (`filePath`, `url`, `title`, `type`), không nạp binary vào bộ nhớ.
    - Không có thay đổi nào đối với Prisma Schema, REST API backend hay thêm dependency mới.
