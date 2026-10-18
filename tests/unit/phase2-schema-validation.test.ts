@@ -159,17 +159,32 @@ describe("Phase 2: Zod Schema Validation & Data Migration Contracts", () => {
     });
 
     it("Mô phỏng Hydration: Chuyển đổi payload localStorage sang cấu trúc quan hệ Database không làm mất dữ liệu", () => {
+      const sampleTopicFixture = {
+        id: "topic-fixture-hydration-1",
+        title: "Chủ đề kiểm thử tính toàn vẹn Hydration",
+        slug: "chu-de-kiem-thu-hydration",
+        categoryId: "cat-fixture-1",
+        categoryName: "Lĩnh vực mẫu",
+        type: "general" as const,
+        description: "Mô tả chủ đề phục vụ hydration validation",
+        content: "Nội dung chi tiết chủ đề",
+        tags: ["Hydration", "Kiểm Thử"],
+        links: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
       const mockLocalStorageState = {
         version: "2.0.0",
         exportedAt: new Date().toISOString(),
         categories: INITIAL_CATEGORIES,
-        topics: INITIAL_TOPICS,
+        topics: [sampleTopicFixture],
         notes: [
           ...INITIAL_NOTES,
           {
             id: "custom-note-user-1",
-            topicId: INITIAL_TOPICS[0].id,
-            topicTitle: INITIAL_TOPICS[0].title,
+            topicId: sampleTopicFixture.id,
+            topicTitle: sampleTopicFixture.title,
             title: "Chiêm nghiệm sâu sắc của người dùng",
             content: "Ghi chép quý giá không được phép bị mất khi migration",
             type: "insight" as const,
@@ -200,6 +215,7 @@ describe("Phase 2: Zod Schema Validation & Data Migration Contracts", () => {
           (t) => t.id === customNote?.topicId,
         );
         expect(targetTopic).toBeDefined();
+        expect(targetTopic?.id).toBe(sampleTopicFixture.id);
       }
     });
   });

@@ -3,6 +3,42 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+} from '../../src/lib/storage';
+
+const sampleDomainCategory = {
+  id: 'cat-test-domain',
+  name: 'Lĩnh Vực Thử Nghiệm',
+  slug: 'linh-vuc-thu-nghiem',
+  parentId: null,
+};
+
+const sampleDomainTopic: import('../../src/types').Topic = {
+  id: 'top-test-domain',
+  title: 'Chủ đề thử nghiệm',
+  slug: 'chu-de-thu-nghiem',
+  categoryId: 'cat-test-domain',
+  type: 'general',
+  description: 'Mô tả chủ đề thử nghiệm',
+  content: 'Nội dung chi tiết',
+  tags: ['domain-test'],
+  links: [],
+  studyProgress: {
+    topicId: 'top-test-domain',
+    status: 'completed' as const,
+    progress: 100,
+    interval: 1,
+    easeFactor: 2.5,
+    repetitions: 1,
+    totalNotes: 0,
+    timeSpent: 30,
+  },
+  createdAt: '2026-08-01T00:00:00Z',
+  updatedAt: '2026-08-01T00:00:00Z',
+};
 
 function TestDashboardHost() {
   const { activeTab, selectedCategoryFilter, addCategory } = useData();
@@ -31,6 +67,22 @@ function TestDashboardHost() {
 describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard Overview)', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    const categoriesFixture = [sampleDomainCategory];
+    const topicsFixture = [sampleDomainTopic];
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(categoriesFixture));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify(topicsFixture));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([]));
+    localStorage.setItem(
+      STORAGE_ROOT_KEY,
+      JSON.stringify({
+        categories: categoriesFixture,
+        topics: topicsFixture,
+        notes: [],
+        resources: [],
+        tags: [],
+      })
+    );
   });
 
   describe('1. Domain Hub Section Header & Overview Presentation', () => {
@@ -47,14 +99,14 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
       ).toBeInTheDocument();
     });
 
-    it('1.2. Hiển thị thẻ Root Domain mặc định (Đông Y)', () => {
+    it('1.2. Hiển thị thẻ Root Domain từ fixture (Lĩnh Vực Thử Nghiệm)', () => {
       render(
         <DataProvider>
           <TestDashboardHost />
         </DataProvider>
       );
 
-      expect(screen.getAllByText(/Đông Y/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/Lĩnh Vực Thử Nghiệm/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -66,11 +118,11 @@ describe('Phase 8A / Phase 13: Multi-Discipline Research Domain Hub (Dashboard O
         </DataProvider>
       );
 
-      const dongYCard = screen.getByTestId('learning-state-card-cat-root-dong-y');
-      fireEvent.click(dongYCard);
+      const domainCard = screen.getByTestId(`learning-state-card-${sampleDomainCategory.id}`);
+      fireEvent.click(domainCard);
 
       expect(screen.getByTestId('current-tab').textContent).toBe('topics');
-      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-dong-y');
+      expect(screen.getByTestId('current-filter').textContent).toBe(sampleDomainCategory.id);
     });
 
     it('2.2. Nhấp vào nút "Tất cả tiến độ" chuyển sang tab "progress"', () => {

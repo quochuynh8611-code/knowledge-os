@@ -10,6 +10,35 @@ import {
   useStudyTimer,
 } from '../../src/context/StudyTimerContext';
 import { DataProvider, useData } from '../../src/context/DataContext';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+} from '../../src/lib/storage';
+
+const sampleTopicFixture: import('../../src/types').Topic = {
+  id: 'topic-timer-test-1',
+  title: 'Chủ đề thử nghiệm timer',
+  slug: 'chu-de-thu-nghiem-timer',
+  categoryId: 'cat-timer-test',
+  type: 'general',
+  description: 'Mô tả chủ đề timer',
+  content: 'Nội dung chi tiết chủ đề timer',
+  tags: ['timer-test'],
+  links: [],
+  studyProgress: {
+    topicId: 'topic-timer-test-1',
+    status: 'in_progress' as const,
+    progress: 50,
+    interval: 1,
+    easeFactor: 2.5,
+    repetitions: 1,
+    totalNotes: 0,
+    timeSpent: 10,
+  },
+  createdAt: '2026-08-01T00:00:00Z',
+  updatedAt: '2026-08-01T00:00:00Z',
+};
 
 describe('Phase P0.1: StudyTimerContext & Isolation Tests', () => {
   beforeEach(() => {
@@ -149,14 +178,30 @@ describe('Phase P0.1: StudyTimerContext & Isolation Tests', () => {
     });
 
     it('useData() timer actions update the timer state and log time to topics', () => {
+      localStorage.clear();
+      localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([sampleTopicFixture]));
+      localStorage.setItem(
+        STORAGE_ROOT_KEY,
+        JSON.stringify({
+          topics: [sampleTopicFixture],
+          categories: [],
+          notes: [],
+          resources: [],
+          tags: [],
+        })
+      );
+
       const { result } = renderHook(() => useData(), {
         wrapper: ({ children }) => <DataProvider>{children}</DataProvider>,
       });
 
-      const targetTopicId = result.current.topics[0]?.id;
+      const targetTopicId = sampleTopicFixture.id;
       expect(targetTopicId).toBeDefined();
 
-      const initialTimeSpent = result.current.topics[0]?.studyProgress?.timeSpent || 0;
+      const initialTopic = result.current.topics.find((t) => t.id === targetTopicId);
+      expect(initialTopic).toBeDefined();
+      const initialTimeSpent = initialTopic?.studyProgress?.timeSpent || 0;
 
       act(() => {
         result.current.startStudyTimer(targetTopicId, 'stopwatch');
@@ -175,6 +220,7 @@ describe('Phase P0.1: StudyTimerContext & Isolation Tests', () => {
 
       expect(result.current.isTimerRunning).toBe(false);
       const updatedTopic = result.current.topics.find((t) => t.id === targetTopicId);
+      expect(updatedTopic).toBeDefined();
       expect(updatedTopic?.studyProgress?.timeSpent).toBe(initialTimeSpent + 3);
     });
   });

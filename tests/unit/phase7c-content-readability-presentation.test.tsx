@@ -10,6 +10,11 @@ import {
   toReadablePlainTextPreview,
   MarkdownReadabilityRenderer,
 } from '../../src/lib/markdownReadability';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+} from '../../src/lib/storage';
 
 describe('Phase 7C: Content Readability Presentation Upgrade', () => {
   describe('1. Utility toReadablePlainTextPreview()', () => {
@@ -178,6 +183,32 @@ Tham chiếu đến [[Kỳ Môn Độn Giáp]] trong chương này.
 
   describe('4. Integration with NotesManager (Compact Card Preview)', () => {
     it('4.1. Card preview hiển thị văn bản sạch, không chứa markdown markup', () => {
+      const sampleNote: Note = {
+        id: 'note-preview-test-1',
+        topicId: 'topic-preview-1',
+        title: 'Ghi chú thử nghiệm preview',
+        type: 'study',
+        isPrivate: false,
+        content: '# Tiêu đề markdown\nNội dung có **in đậm** và [[Liên Kết]].\n---\nNội dung sau phân cách.',
+        tags: ['preview'],
+        createdAt: '2026-08-01T00:00:00Z',
+        updatedAt: '2026-08-01T00:00:00Z',
+      };
+
+      localStorage.clear();
+      localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([sampleNote]));
+      localStorage.setItem(
+        STORAGE_ROOT_KEY,
+        JSON.stringify({
+          notes: [sampleNote],
+          categories: [],
+          topics: [],
+          resources: [],
+          tags: [],
+        })
+      );
+
       const { container } = render(
         <DataProvider>
           <NotesManager />

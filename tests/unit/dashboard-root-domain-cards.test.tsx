@@ -4,8 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
 import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
 import { calculateRootCategoryStats } from '../../src/lib/taxonomyMigration';
-import { INITIAL_CATEGORIES, INITIAL_TOPICS } from '../../src/data/initialData';
-import { normalizeCategories, normalizeTopics } from '../../src/lib/taxonomyMigration';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
 
 // Mock Lucide icons
 vi.mock('lucide-react', async (importOriginal) => {
@@ -14,6 +13,44 @@ vi.mock('lucide-react', async (importOriginal) => {
     ...actual,
   };
 });
+
+const sampleRootCategory = {
+  id: 'cat-test-root',
+  name: 'Nghiên Cứu Mẫu',
+  slug: 'nghien-cuu-mau',
+  parentId: null,
+};
+
+const sampleChildCategory = {
+  id: 'cat-test-child',
+  name: 'Chuyên Đề Mẫu',
+  slug: 'chuyen-de-mau',
+  parentId: 'cat-test-root',
+};
+
+const sampleTopic: import('../../src/types').Topic = {
+  id: 'top-test-1',
+  title: 'Chủ đề mẫu',
+  slug: 'chu-de-mau',
+  categoryId: 'cat-test-child',
+  type: 'general',
+  description: 'Mô tả chủ đề mẫu',
+  content: 'Nội dung chủ đề mẫu',
+  tags: ['test'],
+  links: [],
+  studyProgress: {
+    topicId: 'top-test-1',
+    status: 'completed' as const,
+    progress: 100,
+    interval: 1,
+    easeFactor: 2.5,
+    repetitions: 1,
+    totalNotes: 1,
+    timeSpent: 60,
+  },
+  createdAt: '2026-08-01T00:00:00.000Z',
+  updatedAt: '2026-08-01T00:00:00.000Z',
+};
 
 function TestHarness({ children }: { children: React.ReactNode }) {
   return <DataProvider>{children}</DataProvider>;
@@ -46,39 +83,57 @@ function DynamicDashboardConsumer() {
 describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integration)', () => {
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    const categoriesFixture = [sampleRootCategory, sampleChildCategory];
+    const topicsFixture = [sampleTopic];
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(categoriesFixture));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify(topicsFixture));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([]));
+    localStorage.setItem(
+      STORAGE_ROOT_KEY,
+      JSON.stringify({
+        categories: categoriesFixture,
+        topics: topicsFixture,
+        notes: [],
+        resources: [],
+        tags: [],
+      })
+    );
   });
 
   describe('1. Pure Helper: calculateRootCategoryStats', () => {
     it('calculates totalTopics, completedTopics, and donePercent for root categories with descendants', () => {
-      const normalizedCats = normalizeCategories(INITIAL_CATEGORIES);
-      const normalizedTopics = normalizeTopics(INITIAL_TOPICS);
-
-      const dyStats = calculateRootCategoryStats(normalizedTopics, normalizedCats, 'cat-root-dong-y');
-      expect(dyStats.totalTopics).toBeGreaterThan(0);
-      expect(dyStats.donePercent).toBeGreaterThanOrEqual(0);
-      expect(dyStats.donePercent).toBeLessThanOrEqual(100);
+      const stats = calculateRootCategoryStats(
+        [sampleTopic],
+        [sampleRootCategory, sampleChildCategory],
+        sampleRootCategory.id
+      );
+      expect(stats.totalTopics).toBe(1);
+      expect(stats.completedTopics).toBe(1);
+      expect(stats.donePercent).toBe(100);
 
       // Custom root with no topics
       const customCats = [
-        ...normalizedCats,
+        sampleRootCategory,
+        sampleChildCategory,
         { id: 'cat-root-kinh-te', name: 'Kinh Tế', slug: 'kinh-te', parentId: null },
       ];
-      const ktStats = calculateRootCategoryStats(normalizedTopics, customCats, 'cat-root-kinh-te');
+      const ktStats = calculateRootCategoryStats([sampleTopic], customCats, 'cat-root-kinh-te');
       expect(ktStats.totalTopics).toBe(0);
       expect(ktStats.donePercent).toBe(0);
     });
   });
 
   describe('2. UI Integration: Dynamic Dashboard Domain Cards', () => {
-    it('renders root domain cards for default categories (Đông Y)', () => {
+    it('renders root domain cards for default categories (Nghiên Cứu Mẫu)', async () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
         </TestHarness>
       );
 
-      // Verify domain card is rendered
-      expect(screen.getAllByText(/Đông Y/i).length).toBeGreaterThan(0);
+      // Verify domain card is rendered after async hydration
+      expect((await screen.findAllByText(/Nghiên Cứu Mẫu/i)).length).toBeGreaterThan(0);
     });
 
     it('renders new domain card dynamically when a new root category is added', () => {
@@ -96,20 +151,20 @@ describe('Dynamic Dashboard Domain Cards for Root Categories (Phase 13 Integrati
       expect(screen.getByText(/Kinh tế & Thị trường/i)).toBeInTheDocument();
     });
 
-    it('clicking a root domain card title sets selectedCategoryFilter to root.id and changes activeTab to topics', () => {
+    it('clicking a root domain card title sets selectedCategoryFilter to root.id and changes activeTab to topics', async () => {
       render(
         <TestHarness>
           <DynamicDashboardConsumer />
         </TestHarness>
       );
 
-      // Click "Đông Y" card
-      const dongYCard = screen.getByTestId('learning-state-card-cat-root-dong-y');
-      fireEvent.click(dongYCard);
+      // Click "Nghiên Cứu Mẫu" card
+      const rootCard = await screen.findByTestId(`learning-state-card-${sampleRootCategory.id}`);
+      fireEvent.click(rootCard);
 
       // Verify active tab switched to topics and filter is set
       expect(screen.getByTestId('current-tab').textContent).toBe('topics');
-      expect(screen.getByTestId('current-filter').textContent).toBe('cat-root-dong-y');
+      expect(screen.getByTestId('current-filter').textContent).toBe(sampleRootCategory.id);
     });
 
     it('clicking "Tất cả tiến độ" in Resume Study Queue changes activeTab to progress', () => {
