@@ -153,7 +153,7 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
   // 1. Vault Name Storage & Edge Cases
   // ---------------------------------------------------------------------------
   it('1. getStoredVaultName returns default vault name when localStorage is empty', () => {
-    expect(getStoredVaultName()).toBe('Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    expect(getStoredVaultName()).toBe('Knowledge-Vault');
   });
 
   it('2. setStoredVaultName saves trimmed name and getStoredVaultName retrieves it', () => {
@@ -164,7 +164,7 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
 
   it('3. getStoredVaultName falls back to default when localStorage has empty or whitespace string', () => {
     localStorage.setItem(DEFAULT_OBSIDIAN_VAULT_KEY, '   ');
-    expect(getStoredVaultName()).toBe('Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    expect(getStoredVaultName()).toBe('Knowledge-Vault');
   });
 
   // ---------------------------------------------------------------------------
@@ -225,7 +225,7 @@ describe('ADR-012 Phase 2a: Obsidian Library Contract Tests', () => {
 
   it('7. getObsidianOpenUri falls back to default vault when vaultName is empty or whitespace', () => {
     const uri = getObsidianOpenUri('   ', 'Phat-Hoc/Vi Diệu Pháp');
-    expect(uri).toContain('vault=Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    expect(uri).toContain('vault=Knowledge-Vault');
   });
 
   it('8. getObsidianNewNoteUri creates valid obsidian://new deep link with encoded content', () => {

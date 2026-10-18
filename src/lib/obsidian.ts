@@ -2,7 +2,7 @@ import type JSZip from 'jszip';
 import { Topic, Note, Resource, Category } from '../types';
 
 export const DEFAULT_OBSIDIAN_VAULT_KEY = 'obsidian_vault_name_pref';
-export const DEFAULT_OBSIDIAN_VAULT_NAME = 'Khao-Cuu-Phat-Hoc-Huyen-Hoc';
+export const DEFAULT_OBSIDIAN_VAULT_NAME = 'Knowledge-Vault';
 
 /**
  * Common child folder patterns inside Obsidian vaults to avoid confusing as the vault root

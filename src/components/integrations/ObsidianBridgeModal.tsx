@@ -87,7 +87,7 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
   const openInObsidianLink = currentTopic
     ? getObsidianOpenUri(
         vaultName,
-        `${currentTopic.type === 'phat-hoc' ? 'Phat-Hoc' : 'Huyen-Hoc'}/${sanitizeFileName(currentTopic.title)}`
+        `Research/${sanitizeFileName(currentTopic.title)}`
       )
     : '';
 
@@ -141,7 +141,7 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
                 type="text"
                 value={vaultName}
                 onChange={(e) => handleSaveVaultName(e.target.value)}
-                placeholder="Ví dụ: Khao-Cuu-Phat-Hoc hoặc Obsidian-Vault"
+                placeholder="Ví dụ: Research-Vault hoặc Notes-Vault"
                 className="flex-1 px-3 py-2 text-xs bg-stone-50 border border-stone-300 rounded-xl focus:ring-2 focus:ring-purple-600 focus:outline-hidden"
               />
               <span className="self-center text-[11px] text-stone-500 italic">
@@ -149,7 +149,7 @@ export function ObsidianBridgeModal({ isOpen, onClose, topic }: ObsidianBridgeMo
               </span>
             </div>
             <p className="text-[11px] text-stone-500">
-              Nhập tên Vault (ví dụ: <span className="font-mono text-stone-700">Phat-Hoc-Obsidian</span>) hoặc dán đường dẫn thư mục Vault trên máy tính.
+              Nhập tên Vault (ví dụ: <span className="font-mono text-stone-700">Research-Vault</span>) hoặc dán đường dẫn thư mục Vault trên máy tính.
             </p>
           </div>
 

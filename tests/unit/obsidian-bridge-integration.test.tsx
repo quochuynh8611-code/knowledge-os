@@ -131,7 +131,7 @@ describe('ADR-012 Phase 2a: Obsidian Bridge Modal Integration Tests', () => {
 
     expect(screen.getByText(/Obsidian Real-Time Vault Bridge/i)).toBeInTheDocument();
     expect(screen.getByText(/Tên Obsidian Vault của bạn:/i)).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Khao-Cuu-Phat-Hoc-Huyen-Hoc')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Knowledge-Vault')).toBeInTheDocument();
     expect(screen.getByText(/Chủ đề hiện tại: Vi Diệu Pháp Toàn Tập/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Tạo \/ Mở Ngay trong Obsidian App/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Sao chép Note/i })).toBeInTheDocument();
@@ -144,7 +144,7 @@ describe('ADR-012 Phase 2a: Obsidian Bridge Modal Integration Tests', () => {
   it('3. Modifying vault name updates state and localStorage', () => {
     render(<ObsidianBridgeModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    const vaultInput = screen.getByDisplayValue('Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    const vaultInput = screen.getByDisplayValue('Knowledge-Vault');
     fireEvent.change(vaultInput, { target: { value: 'My-Personal-Brain' } });
 
     expect(vaultInput).toHaveValue('My-Personal-Brain');
@@ -218,14 +218,14 @@ describe('ADR-012 Phase 2a: Obsidian Bridge Modal Integration Tests', () => {
     const openLink = screen.getByRole('link', { name: /Tạo \/ Mở Ngay trong Obsidian App/i });
     const href = openLink.getAttribute('href') || '';
 
-    // The open link must encode the sanitized path 'Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận.md' or 'Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận' without unescaped slashes inside filename
-    expect(decodeURIComponent(href)).toContain('file=Huyen-Hoc/Kỳ Môn Độn Giáp - Bát Môn Trận');
+    // The open link must encode the sanitized path 'Research/Kỳ Môn Độn Giáp - Bát Môn Trận.md' or 'Research/Kỳ Môn Độn Giáp - Bát Môn Trận' without unescaped slashes inside filename
+    expect(decodeURIComponent(href)).toContain('file=Research/Kỳ Môn Độn Giáp - Bát Môn Trận');
   });
 
   it('8. When user enters absolute path in vault input, URI links normalize to vault name without /Users/', () => {
     render(<ObsidianBridgeModal isOpen={true} onClose={vi.fn()} topic={mockTopics[0]} />);
 
-    const vaultInput = screen.getByDisplayValue('Khao-Cuu-Phat-Hoc-Huyen-Hoc');
+    const vaultInput = screen.getByDisplayValue('Knowledge-Vault');
     fireEvent.change(vaultInput, { target: { value: '/Users/mr.chem/Documents/Obsidian/Phat-Hoc-Obsidian' } });
 
     const openLink = screen.getByRole('link', { name: /Tạo \/ Mở Ngay trong Obsidian App/i });
