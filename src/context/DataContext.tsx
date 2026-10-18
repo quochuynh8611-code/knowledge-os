@@ -14,6 +14,7 @@ import {
   safeRemoveLocalStorageItem,
   ensureStorageVersionCompatibility,
   FOCUS_DOMAIN_STORAGE_KEY,
+  STORAGE_ROOT_KEY,
 } from "../lib/storage";
 import {
   Category,
@@ -70,7 +71,7 @@ import { ResearchRepositoryV2 } from "../services/researchRepositoryV2";
 export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation, dataRepository };
 export type { TimerMode, StudyTimerContextType, ActiveTab, NavigationContextType };
 
-const STORAGE_KEY = "phat_hoc_huyen_hoc_clean_v3";
+const STORAGE_KEY = STORAGE_ROOT_KEY;
 const baseDataRepository: IDataRepository =
   typeof window !== "undefined"
     ? new ApiDataRepository("/api", new LocalStorageDataRepository(STORAGE_KEY))

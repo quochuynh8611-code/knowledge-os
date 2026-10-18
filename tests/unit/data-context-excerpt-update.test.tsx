@@ -2,10 +2,11 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY } from '../../src/lib/storage';
 import { ResearchExcerpt, ResearchInboxItem } from '../../src/types';
 
 describe('Phase R3b Stage 1: DataContext.updateExcerpt (Test-First)', () => {
-  const STORAGE_KEY = 'phat_hoc_huyen_hoc_clean_v3';
+  const STORAGE_KEY = STORAGE_ROOT_KEY;
 
   const initialExcerpt: ResearchExcerpt = {
     id: 'exc-r3b-1',
@@ -32,6 +33,7 @@ describe('Phase R3b Stage 1: DataContext.updateExcerpt (Test-First)', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    localStorage.setItem(STORAGE_VERSION_KEY, '4');
     localStorage.setItem(
       `${STORAGE_KEY}_research_excerpts`,
       JSON.stringify([initialExcerpt])

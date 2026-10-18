@@ -377,7 +377,7 @@ describe('Phase 2C.4: Data Management Modal Component Tests', () => {
     expect(screen.getByText(/Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu\?/i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt, sau đó nạp lại bộ dữ liệu mẫu ban đầu: Phật Học, Huyền Học, Đông Y và Học Ngôn Ngữ\./i
+        /Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt và thiết lập lại trạng thái ban đầu sạch cho không gian làm việc\./i
       )
     ).toBeInTheDocument();
 

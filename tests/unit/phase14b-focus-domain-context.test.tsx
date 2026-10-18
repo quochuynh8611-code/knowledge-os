@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { DataProvider, useData } from '../../src/context/DataContext';
-import { FOCUS_DOMAIN_STORAGE_KEY } from '../../src/lib/storage';
+import { FOCUS_DOMAIN_STORAGE_KEY, STORAGE_ROOT_KEY, STORAGE_VERSION_KEY } from '../../src/lib/storage';
 
 function TestConsumer({ onState }: { onState: (ctx: ReturnType<typeof useData>) => void }) {
   const data = useData();
@@ -38,7 +38,19 @@ function TestConsumer({ onState }: { onState: (ctx: ReturnType<typeof useData>) 
 describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('knowledge_os_storage_version', '3');
+    localStorage.setItem(STORAGE_VERSION_KEY, '4');
+    localStorage.setItem(
+      `${STORAGE_ROOT_KEY}_categories`,
+      JSON.stringify([
+        {
+          id: 'cat-root-dong-y',
+          name: 'Đông Y',
+          slug: 'dong-y',
+          parentId: null,
+          order: 1,
+        },
+      ])
+    );
     vi.clearAllMocks();
   });
 
