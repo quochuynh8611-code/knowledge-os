@@ -5,6 +5,7 @@ import { UnifiedResearchReader } from "../../src/components/reader/UnifiedResear
 import { ResearchInboxDrawer } from "../../src/components/research/ResearchInboxDrawer";
 import { Navbar } from "../../src/components/layout/Navbar";
 import { DataContext, DataProvider, dataRepository } from "../../src/context/DataContext";
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from "../../src/lib/storage";
 import { formatExcerptBlockquote } from "../../src/lib/excerptCitationService";
 import { Note, ResearchExcerpt, ResearchInboxItem } from "../../src/types";
 
@@ -165,9 +166,20 @@ describe("Reader Save to Note & Scoped Notes Contract (Red Stage)", () => {
     }
 
     // Set initial storage so DataProvider initializes with mockNote and mockInboxItem
-    localStorage.setItem("knowledge_os_storage_version", "3");
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_notes", JSON.stringify([mockNote]));
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_research_inbox", JSON.stringify([mockInboxItem]));
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([mockNote]));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_research_inbox`, JSON.stringify([mockInboxItem]));
+    localStorage.setItem(
+      STORAGE_ROOT_KEY,
+      JSON.stringify({
+        categories: [],
+        topics: [],
+        notes: [mockNote],
+        resources: [],
+        tags: [],
+        research_inbox: [mockInboxItem],
+      })
+    );
 
     render(
       <DataProvider>
@@ -286,11 +298,12 @@ describe("Reader Save to Note & Scoped Notes Contract (Red Stage)", () => {
       notes: [note1, note2],
       resources: [],
       tags: [],
+      research_inbox: [mockInboxItem],
     };
-    localStorage.setItem("knowledge_os_storage_version", "3");
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3", JSON.stringify(rootData));
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_notes", JSON.stringify([note1, note2]));
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_research_inbox", JSON.stringify([mockInboxItem]));
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(STORAGE_ROOT_KEY, JSON.stringify(rootData));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([note1, note2]));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_research_inbox`, JSON.stringify([mockInboxItem]));
 
     render(
       <DataProvider>
@@ -333,7 +346,7 @@ describe("Reader Save to Note & Scoped Notes Contract (Red Stage)", () => {
     });
 
     // Contract: Persistence verification (simulated page reload reading from localStorage)
-    const storedNotesRaw = localStorage.getItem("phat_hoc_huyen_hoc_clean_v3_notes");
+    const storedNotesRaw = localStorage.getItem(`${STORAGE_ROOT_KEY}_notes`);
     expect(storedNotesRaw).toBeTruthy();
     const storedNotes = JSON.parse(storedNotesRaw || "[]");
     const storedNote2 = storedNotes.find((n: Note) => n.id === "note-2");
@@ -391,9 +404,20 @@ describe("Reader Save to Note & Scoped Notes Contract (Red Stage)", () => {
       );
     }
 
-    localStorage.setItem("knowledge_os_storage_version", "3");
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_notes", JSON.stringify([note1]));
-    localStorage.setItem("phat_hoc_huyen_hoc_clean_v3_research_inbox", JSON.stringify([mockInboxItem]));
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_notes`, JSON.stringify([note1]));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_research_inbox`, JSON.stringify([mockInboxItem]));
+    localStorage.setItem(
+      STORAGE_ROOT_KEY,
+      JSON.stringify({
+        categories: [],
+        topics: [],
+        notes: [note1],
+        resources: [],
+        tags: [],
+        research_inbox: [mockInboxItem],
+      })
+    );
 
     render(
       <DataProvider>
