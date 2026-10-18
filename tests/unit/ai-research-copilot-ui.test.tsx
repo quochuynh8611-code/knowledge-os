@@ -138,7 +138,7 @@ describe('Slice 3: AI Research Copilot UI & Interaction Integration', () => {
     const input = screen.getByPlaceholderText(/Đặt câu hỏi khảo cứu/i);
     fireEvent.change(input, { target: { value: 'Khảo sát bản chất Khổ Đế' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Khảo Cứu/i });
+    const submitBtn = screen.getByRole('button', { name: /^Khảo Cứu$/i });
     fireEvent.click(submitBtn);
 
     // Verify request payload assert độc lập sourceScope.flashcards
@@ -202,7 +202,7 @@ describe('Slice 3: AI Research Copilot UI & Interaction Integration', () => {
     const input = screen.getByPlaceholderText(/Đặt câu hỏi khảo cứu/i);
     fireEvent.change(input, { target: { value: 'Tạo thẻ câu hỏi Khổ Đế' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Khảo Cứu/i });
+    const submitBtn = screen.getByRole('button', { name: /^Khảo Cứu$/i });
     fireEvent.click(submitBtn);
 
     // Verify request payload assert độc lập outputFormat: 'flashcards'

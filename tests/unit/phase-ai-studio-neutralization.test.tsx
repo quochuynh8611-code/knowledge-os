@@ -14,6 +14,11 @@ import {
 import { GeminiResearchInputSchema } from '../../src/lib/validation';
 import { Topic, Note, Resource, Category } from '../../src/types';
 import { INITIAL_CATEGORIES } from '../../src/data/initialData';
+import {
+  STORAGE_ROOT_KEY,
+  STORAGE_VERSION_KEY,
+  CURRENT_STORAGE_VERSION,
+} from '../../src/lib/storage';
 
 describe('Phase AI-Studio-Neutralization: Universal Multi-Discipline AI Layer', () => {
   const economicsTopic: Topic = {
@@ -43,7 +48,7 @@ describe('Phase AI-Studio-Neutralization: Universal Multi-Discipline AI Layer', 
 
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('knowledge_os_storage_version', '3');
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
   });
 
   describe('1. Presentation Neutrality in AIResearchStudio', () => {
@@ -81,8 +86,18 @@ describe('Phase AI-Studio-Neutralization: Universal Multi-Discipline AI Layer', 
           parentId: null,
         },
       ];
-      localStorage.setItem('phat_hoc_huyen_hoc_clean_v3_categories', JSON.stringify(customCategories));
-      localStorage.setItem('phat_hoc_huyen_hoc_clean_v3_topics', JSON.stringify([economicsTopic]));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(customCategories));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([economicsTopic]));
+      localStorage.setItem(
+        STORAGE_ROOT_KEY,
+        JSON.stringify({
+          categories: customCategories,
+          topics: [economicsTopic],
+          notes: [],
+          resources: [],
+          tags: [],
+        })
+      );
 
       render(
         <DataProvider>
