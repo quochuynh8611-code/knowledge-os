@@ -695,6 +695,10 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
   describe('4. UI Integration: TopicTree Category Deletion & Fixed Merge Flow', () => {
     it('4.1. Case 1: Clicking delete on cat-root-kinh-te prompts generic confirm and deletes category', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const deleteRepoSpy = vi.spyOn(dataRepository, 'deleteCategory').mockResolvedValue({
+        status: 'deleted',
+        id: 'cat-root-kinh-te',
+      });
 
       const TestHarness = () => {
         const { importAllDataJSON } = useData();
@@ -754,10 +758,15 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
         expect(screen.queryByTestId('delete-category-cat-root-kinh-te')).toBeNull();
       });
       confirmSpy.mockRestore();
+      deleteRepoSpy.mockRestore();
     });
 
     it('4.2. Case 2: Clicking delete on cat-root-kinh-te-hoc prompts generic confirm for Kinh Táº¿ Há»c', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const deleteRepoSpy = vi.spyOn(dataRepository, 'deleteCategory').mockResolvedValue({
+        status: 'deleted',
+        id: 'cat-root-kinh-te-hoc',
+      });
 
       const TestHarness = () => {
         const { importAllDataJSON } = useData();
@@ -817,6 +826,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
         expect(screen.queryByTestId('delete-category-cat-root-kinh-te-hoc')).toBeNull();
       });
       confirmSpy.mockRestore();
+      deleteRepoSpy.mockRestore();
     });
 
     it('4.3. Case 3: Clicking delete on regular custom category prompts standard deletion confirm and does not merge', async () => {
@@ -876,6 +886,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
         expect(screen.queryByTestId('delete-category-cat-custom-triet-hoc')).toBeNull();
       });
       confirmSpy.mockRestore();
+      deleteRepoSpy.mockRestore();
     });
 
     it('4.4. Case 4: Category with topics prompts confirmation with topic count and proceeds safely', () => {
@@ -1151,7 +1162,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
         const url = String(input);
 
         if (url.includes('/api/categories')) {
-          const persisted = await dataRepository.loadInitialData();
+          const persisted = await (dataRepository as any).base.localFallback.loadInitialData();
           return new Response(JSON.stringify(persisted.categories), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -1159,7 +1170,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
         }
 
         if (url.includes('/api/topics')) {
-          const persisted = await dataRepository.loadInitialData();
+          const persisted = await (dataRepository as any).base.localFallback.loadInitialData();
           return new Response(JSON.stringify(persisted.topics), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -1231,7 +1242,7 @@ describe('Wave 16.1 / 16.2: Taxonomy Cleanup & Safe Merge Helper (Kinh Táº¿ & TÃ
       expect(contextRef.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
 
       // Verify persisted local repository state
-      const persistedCategories = await dataRepository.loadInitialData();
+      const persistedCategories = await (dataRepository as any).base.localFallback.loadInitialData();
       expect(persistedCategories.categories.some((c: Category) => c.id === 'cat-root-kinh-te-hoc')).toBe(false);
       expect(persistedCategories.categories.some((c: Category) => c.id === 'cat-root-kinh-te-tai-chinh')).toBe(true);
 
