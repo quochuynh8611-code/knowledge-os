@@ -43,12 +43,13 @@ import {
 import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
+  STORAGE_ROOT_KEY,
 } from '../../lib/storage';
 
 const defaultRepo: IDataRepository =
   typeof window !== 'undefined'
-    ? new ApiDataRepository('/api', new LocalStorageDataRepository('phat_hoc_huyen_hoc_clean_v3'))
-  : new LocalStorageDataRepository('phat_hoc_huyen_hoc_clean_v3');
+    ? new ApiDataRepository('/api', new LocalStorageDataRepository(STORAGE_ROOT_KEY))
+  : new LocalStorageDataRepository(STORAGE_ROOT_KEY);
 
 interface ExportImportModalProps {
   isOpen: boolean;
@@ -980,7 +981,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                 </div>
                 <h3 className="font-semibold text-stone-900 dark:text-stone-100 text-base">Cài đặt lại dữ liệu nghiên cứu mẫu ban đầu?</h3>
                 <p className="text-xs text-stone-600 dark:text-stone-400 max-w-lg mx-auto mt-1.5 leading-relaxed">
-                  Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt, sau đó nạp lại bộ dữ liệu mẫu ban đầu: Phật Học, Huyền Học, Đông Y và Học Ngôn Ngữ.
+                  Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt và thiết lập lại trạng thái ban đầu sạch cho không gian làm việc.
                 </p>
               </div>
 

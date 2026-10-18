@@ -113,7 +113,7 @@ export function ObsidianTopicResourceLinkModal({
                 setRelativePath(e.target.value);
                 if (errorMessage) setErrorMessage(null);
               }}
-              placeholder="Ví dụ: Phat-Hoc/Bat-Chanh-Dao.md"
+              placeholder="Ví dụ: Notes/Topic-Research.md"
               className="w-full px-3 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
               autoFocus
             />

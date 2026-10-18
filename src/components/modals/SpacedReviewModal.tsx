@@ -84,13 +84,7 @@ export function SpacedReviewModal({ isOpen, onClose, initialTopic }: SpacedRevie
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span
-                className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                  currentTopic.type === 'phat-hoc'
-                    ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                    : currentTopic.type === 'huyen-hoc'
-                    ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-200 border border-stone-300 dark:border-stone-700'
-                }`}
+                className="text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-200 border border-stone-300 dark:border-stone-700"
               >
                 {categories.find((c) => c.slug === currentTopic.type || c.id === currentTopic.categoryId)?.name ||
                   currentTopic.categoryName ||

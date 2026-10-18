@@ -261,7 +261,7 @@ export function NoteFormModal({
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Nhận định về sự sinh diệt của Danh Sắc trong tâm..."
+              placeholder="VD: Nhận định, tóm tắt hoặc ý tưởng nghiên cứu..."
               className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>

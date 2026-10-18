@@ -183,7 +183,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
               required
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
-              placeholder="VD: Bộ Pháp Tụ (Dhammasangani) hoặc Kỳ Môn Độn Giáp..."
+              placeholder="VD: Nhập tên chủ đề hoặc khái niệm nghiên cứu..."
               className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-600 transition"
             />
           </div>
@@ -199,19 +199,23 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               >
-                {rootCategories.map((root) => {
-                  const children = getChildCategories(categories, root.id);
-                  return (
-                    <optgroup key={root.id} label={`📂 ${root.name}`}>
-                      <option value={root.id}>[Gốc] {root.name}</option>
-                      {children.map((child) => (
-                        <option key={child.id} value={child.id}>
-                          &nbsp;&nbsp;↳ {child.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  );
-                })}
+                {rootCategories.length === 0 ? (
+                  <option value="">(Chưa có danh mục - Tạo danh mục mới ở Sidebar)</option>
+                ) : (
+                  rootCategories.map((root) => {
+                    const children = getChildCategories(categories, root.id);
+                    return (
+                      <optgroup key={root.id} label={`📂 ${root.name}`}>
+                        <option value={root.id}>[Gốc] {root.name}</option>
+                        {children.map((child) => (
+                          <option key={child.id} value={child.id}>
+                            &nbsp;&nbsp;↳ {child.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })
+                )}
               </select>
             </div>
 

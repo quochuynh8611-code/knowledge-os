@@ -21,7 +21,7 @@ describe('Post-Phase 6d: Note UI - Source Path Input, Normalization & Boundary W
     );
 
     // Title & Content
-    const titleInput = screen.getByPlaceholderText(/VD: Nhận định về sự sinh diệt/i);
+    const titleInput = screen.getByPlaceholderText(/VD: Nhận định, tóm tắt hoặc ý tưởng nghiên cứu/i);
     fireEvent.change(titleInput, { target: { value: 'Ghi chú khảo cứu tệp Markdown' } });
 
     const contentInput = screen.getByPlaceholderText(/Nhập nội dung suy ngẫm/i);

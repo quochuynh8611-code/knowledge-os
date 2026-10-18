@@ -81,7 +81,7 @@ describe('note-form-modal-provenance', () => {
     );
 
     // Enter note title
-    const titleInput = screen.getByPlaceholderText(/VD: Nhận định về sự sinh diệt/i);
+    const titleInput = screen.getByPlaceholderText(/VD: Nhận định, tóm tắt hoặc ý tưởng nghiên cứu/i);
     fireEvent.change(titleInput, { target: { value: 'Ghi chú Tứ Niệm Xứ' } });
 
     // Submit form

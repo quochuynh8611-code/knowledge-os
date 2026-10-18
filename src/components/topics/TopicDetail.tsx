@@ -431,13 +431,7 @@ export function TopicDetail() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span
-              className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
-                topic.type === "phat-hoc"
-                  ? "bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
-                  : topic.type === "huyen-hoc"
-                  ? "bg-indigo-100 text-indigo-900 border border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
-                  : "bg-stone-100 text-stone-900 border border-stone-300 dark:bg-stone-800 dark:text-stone-200 dark:border-stone-700"
-              }`}
+              className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-900 border border-stone-300 dark:bg-stone-800 dark:text-stone-200 dark:border-stone-700"
             >
               {domainName}
               {topic.categoryName ? ` • ${topic.categoryName}` : ""}
@@ -496,13 +490,7 @@ export function TopicDetail() {
           <div className="flex items-center gap-3">
             <div className="flex-1 bg-stone-100 dark:bg-stone-800 rounded-full h-2.5 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  topic.type === "phat-hoc"
-                    ? "bg-amber-600 dark:bg-amber-500"
-                    : topic.type === "huyen-hoc"
-                    ? "bg-indigo-600 dark:bg-indigo-500"
-                    : "bg-stone-600 dark:bg-stone-400"
-                }`}
+                className="h-full rounded-full transition-all duration-300 bg-amber-600 dark:bg-amber-500"
                 style={{ width: `${topic.studyProgress?.progress || 0}%` }}
               />
             </div>
