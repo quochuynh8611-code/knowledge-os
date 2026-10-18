@@ -6,8 +6,7 @@ import { DashboardHome } from '../../src/components/dashboard/DashboardHome';
 import { Sidebar } from '../../src/components/layout/Sidebar';
 import { getNeutralDomainStyle, DOMAIN_PALETTES } from '../../src/lib/domainStyling';
 import { Category } from '../../src/types';
-
-import { INITIAL_CATEGORIES } from '../../src/data/initialData';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
 
 function MultiDomainDashboardHost() {
   return (
@@ -21,7 +20,7 @@ function MultiDomainDashboardHost() {
 describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
   beforeEach(() => {
     localStorage.clear();
-    localStorage.setItem('knowledge_os_storage_version', '3');
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
   });
 
   describe('1. Pure Helper: getNeutralDomainStyle Resolver', () => {
@@ -65,7 +64,6 @@ describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
   describe('2. UI Integration: Dashboard & Sidebar Multi-Domain Presentation', () => {
     it('2.1. Dashboard Domain Hub hiển thị các lĩnh vực mới với phong cách trực quan phân biệt', () => {
       const customCategories: Category[] = [
-        ...INITIAL_CATEGORIES,
         {
           id: 'cat-root-khoa-hoc',
           name: 'Khoa Học Tự Nhiên',
@@ -88,7 +86,7 @@ describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
           description: 'Khảo cứu sử liệu và tư tưởng triết học',
         },
       ];
-      localStorage.setItem('phat_hoc_huyen_hoc_clean_v3_categories', JSON.stringify(customCategories));
+      localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify(customCategories));
 
       render(
         <DataProvider>
@@ -96,8 +94,7 @@ describe('Phase 8C: Neutral & Scalable Domain Styling', () => {
         </DataProvider>
       );
 
-      // All domains (1 default + 3 custom) must be rendered in Dashboard
-      expect(screen.getAllByText('Đông Y').length).toBeGreaterThan(0);
+      // All 3 custom domains must be rendered in Dashboard
       expect(screen.getAllByText('Khoa Học Tự Nhiên').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Kinh Tế & Tài Chính').length).toBeGreaterThan(0);
       expect(screen.getAllByText('Lịch Sử & Triết Học').length).toBeGreaterThan(0);

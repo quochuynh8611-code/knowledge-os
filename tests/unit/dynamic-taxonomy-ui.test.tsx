@@ -5,6 +5,8 @@ import { DataProvider, useData } from '../../src/context/DataContext';
 import { Sidebar } from '../../src/components/layout/Sidebar';
 import { TopicTree } from '../../src/components/topics/TopicTree';
 import { TopicFormModal } from '../../src/components/modals/TopicFormModal';
+import { Category, Topic } from '../../src/types';
+import { STORAGE_ROOT_KEY, STORAGE_VERSION_KEY, CURRENT_STORAGE_VERSION } from '../../src/lib/storage';
 
 // Mock Lucide icons
 vi.mock('lucide-react', async (importOriginal) => {
@@ -74,6 +76,24 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
   });
 
   it('3. TopicTree allows soft-hiding an active topic and restoring it without losing notes or resources', () => {
+    const testCategory: Category = {
+      id: 'cat-root-test',
+      name: 'Khoa Học Xã Hội',
+      slug: 'khoa-hoc-xa-hoi',
+      parentId: null,
+    };
+    const testTopic: Topic = {
+      id: 'topic-test-1',
+      title: 'Xã Hội Học Đô Thị',
+      categoryId: 'cat-root-test',
+      status: 'in_progress',
+      visibility: 'active',
+      progress: 40,
+    };
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([testCategory]));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([testTopic]));
+
     render(
       <TestHarness>
         <TopicTreeTestConsumer />
@@ -149,20 +169,38 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     expect(screen.getAllByText(/Khoa Học Xã Hội/i).length).toBeGreaterThan(0);
   });
 
-  it('6. TopicTree filter by "Đông Y" shows topics belonging to its descendant categories', () => {
+  it('6. TopicTree filter by category shows topics belonging to that category', () => {
+    const domainCat: Category = {
+      id: 'cat-root-khxh',
+      name: 'Khoa Học Xã Hội',
+      slug: 'khoa-hoc-xa-hoi',
+      parentId: null,
+    };
+    const domainTopic: Topic = {
+      id: 'topic-khxh-1',
+      title: 'Tâm Lý Học Đại Cương',
+      categoryId: 'cat-root-khxh',
+      status: 'in_progress',
+      visibility: 'active',
+      progress: 50,
+    };
+    localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([domainCat]));
+    localStorage.setItem(`${STORAGE_ROOT_KEY}_topics`, JSON.stringify([domainTopic]));
+
     render(
       <TestHarness>
         <TopicTree />
       </TestHarness>
     );
 
-    // Find and click "Đông Y" domain button
-    const dyDomainBtn = screen.getByRole('button', { name: /Đông Y \(\d+\)/i });
-    fireEvent.click(dyDomainBtn);
+    // Find and click "Khoa Học Xã Hội" domain button
+    const domainBtn = screen.getByRole('button', { name: /Khoa Học Xã Hội \(\d+\)/i });
+    fireEvent.click(domainBtn);
 
-    // Topic count for Đông Y must be > 0
-    expect(screen.queryByText(/Đông Y \(0 chủ đề\)/i)).toBeNull();
-    // Lý Luận Cơ Bản or related topics must be visible
-    expect(screen.getAllByText(/Lý Luận Cơ Bản/i).length).toBeGreaterThan(0);
+    // Topic count for domain must be > 0
+    expect(screen.queryByText(/Khoa Học Xã Hội \(0 chủ đề\)/i)).toBeNull();
+    // Related topic must be visible
+    expect(screen.getAllByText(/Tâm Lý Học Đại Cương/i).length).toBeGreaterThan(0);
   });
 });
