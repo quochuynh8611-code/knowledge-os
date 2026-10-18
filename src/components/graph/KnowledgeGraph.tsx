@@ -355,8 +355,6 @@ export function KnowledgeGraph() {
     if (node.type === 'resource') return '#8B5CF6'; // Purple
     const cat = categories.find((c) => c.slug === node.domain || c.id === node.domain || c.type === node.domain);
     if (cat?.color) return cat.color;
-    if (node.domain === 'phat-hoc') return '#D97706'; // Amber / Gold
-    if (node.domain === 'huyen-hoc') return '#4F46E5'; // Indigo
     const hash = (node.domain || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     const colors = ['#059669', '#0284C7', '#7C3AED', '#DB2777', '#EA580C', '#475569'];
     return colors[hash % colors.length] || '#64748B';
@@ -375,7 +373,7 @@ export function KnowledgeGraph() {
             Knowledge Graph (Biểu đồ tri thức)
           </h1>
           <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
-            Trực quan hóa mạng lưới liên kết giữa Vi Diệu Pháp, Thiền định, Kỳ Môn, Thái Ất, Kinh Dịch &amp; Ghi chú
+            Trực quan hóa mạng lưới liên kết giữa các chủ đề, ghi chú và tài liệu nghiên cứu
           </p>
         </div>
 
@@ -419,47 +417,22 @@ export function KnowledgeGraph() {
             >
               Tất cả
             </button>
-            {rootCategories.length > 0 ? (
-              rootCategories.map((cat) => {
-                const isSelected = domainFilter === (cat.slug || cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setDomainFilter(isSelected ? 'all' : (cat.slug || cat.id))}
-                    className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
-                      isSelected
-                        ? 'bg-amber-700 text-white font-bold shadow-2xs'
-                        : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
-                    }`}
-                  >
-                    <span>{cat.name}</span>
-                  </button>
-                );
-              })
-            ) : (
-              <>
+            {rootCategories.map((cat) => {
+              const isSelected = domainFilter === (cat.slug || cat.id);
+              return (
                 <button
-                  onClick={() => setDomainFilter('phat-hoc')}
+                  key={cat.id}
+                  onClick={() => setDomainFilter(isSelected ? 'all' : (cat.slug || cat.id))}
                   className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
-                    domainFilter === 'phat-hoc'
+                    isSelected
                       ? 'bg-amber-700 text-white font-bold shadow-2xs'
-                      : 'text-stone-600 dark:text-stone-400 hover:text-amber-900 dark:hover:text-amber-400'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                   }`}
                 >
-                  <Sparkles className="w-3 h-3" /> Phật Học
+                  <span>{cat.name}</span>
                 </button>
-                <button
-                  onClick={() => setDomainFilter('huyen-hoc')}
-                  className={`px-3 py-1 rounded-lg transition flex items-center gap-1 ${
-                    domainFilter === 'huyen-hoc'
-                      ? 'bg-indigo-700 text-white font-bold shadow-2xs'
-                      : 'text-stone-600 dark:text-stone-400 hover:text-indigo-900 dark:hover:text-indigo-400'
-                  }`}
-                >
-                  <Compass className="w-3 h-3" /> Huyền Học
-                </button>
-              </>
-            )}
+              );
+            })}
           </div>
 
           {/* Tag selector */}
@@ -675,11 +648,7 @@ export function KnowledgeGraph() {
                     className="select-none pointer-events-none"
                   >
                     {node.type === 'topic'
-                      ? node.domain === 'phat-hoc'
-                        ? '佛'
-                        : node.domain === 'huyen-hoc'
-                        ? '易'
-                        : (node.domain ? node.domain[0].toUpperCase() : 'T')
+                      ? (node.domain ? node.domain[0].toUpperCase() : 'T')
                       : node.type === 'note'
                       ? '📝'
                       : '📖'}

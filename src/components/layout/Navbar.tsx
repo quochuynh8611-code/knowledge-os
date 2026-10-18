@@ -188,8 +188,8 @@ export function Navbar({
                   Workbench
                 </span>
               </div>
-              <p className="text-[10px] text-stone-500 dark:text-stone-400 hidden sm:block leading-tight mt-0.5">
-                Hệ thống hóa tri thức đa môn &amp; không gian nghiên cứu
+              <p className="text-[10px] text-stone-500 dark:text-stone-400 font-mono tracking-wider uppercase">
+                hệ thống hóa tri thức đa lĩnh vực
               </p>
             </div>
           </div>

@@ -238,15 +238,12 @@ export function StudyProgressView() {
       return rootCats.map((cat, idx) => ({
         domain: cat.slug || cat.id,
         name: cat.name,
-        color: cat.color || (cat.slug === 'phat-hoc' ? '#D97706' : cat.slug === 'huyen-hoc' ? '#4F46E5' : colors[idx % colors.length]),
+        color: cat.color || colors[idx % colors.length],
         dataKey: `weekly_${cat.slug || cat.id}`,
       }));
     }
 
-    return [
-      { domain: 'phat-hoc', name: 'Phật Học', color: '#D97706', dataKey: 'weekly_phat-hoc' },
-      { domain: 'huyen-hoc', name: 'Huyền Học', color: '#4F46E5', dataKey: 'weekly_huyen-hoc' },
-    ];
+    return [];
   }, [categories]);
 
   const weeklyStudyData = useMemo(() => {

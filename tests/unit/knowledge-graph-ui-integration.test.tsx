@@ -320,8 +320,8 @@ describe("Workstream 5A Gate B: KnowledgeGraph UI Traversal Explorer Integration
     render(<KnowledgeGraph />);
 
     expect(screen.getByRole("button", { name: /Tất cả/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Phật Học/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Huyền Học/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Phật Học/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Huyền Học/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Triết Học Tây Phương/i })).not.toBeInTheDocument();
   });
 
