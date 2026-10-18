@@ -8,6 +8,7 @@ import {
   safeGetLocalStorageItem,
   safeSetLocalStorageItem,
   safeRemoveLocalStorageItem,
+  STORAGE_ROOT_KEY,
 } from "../lib/storage";
 import { SyncQueueService } from "./syncQueue";
 import {
@@ -117,7 +118,7 @@ export interface IDataRepository {
 export class LocalStorageDataRepository implements IDataRepository {
   private storageKey: string;
 
-  constructor(storageKey = "phat_hoc_huyen_hoc_clean_v3") {
+  constructor(storageKey = STORAGE_ROOT_KEY) {
     this.storageKey = storageKey;
   }
 

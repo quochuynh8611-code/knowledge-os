@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { vi } from "vitest";
+import { vi, afterEach } from "vitest";
 
 // Mock localStorage
 const localStorageMock = (function () {
@@ -40,4 +40,35 @@ Object.defineProperty(window, "matchMedia", {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
+});
+
+// Hermetic Test Network Guard (ADR-077)
+// Blocks unmocked live network calls during test execution
+const hermeticFetch = (
+  input: RequestInfo | URL,
+  _init?: RequestInit
+): Promise<Response> => {
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+      ? input.toString()
+      : (input as Request)?.url || String(input);
+
+  return Promise.reject(
+    new Error(`[Hermetic Guard] Unmocked live network call blocked: ${url}`)
+  );
+};
+
+const installHermeticFetch = () => {
+  globalThis.fetch = hermeticFetch as unknown as typeof fetch;
+  if (typeof window !== "undefined") {
+    window.fetch = hermeticFetch as unknown as typeof fetch;
+  }
+};
+
+installHermeticFetch();
+
+afterEach(() => {
+  installHermeticFetch();
 });
