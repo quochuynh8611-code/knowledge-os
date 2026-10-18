@@ -6,6 +6,7 @@ import { useKeyboardShortcuts } from "../../src/hooks/useKeyboardShortcuts";
 import { useCommandPalette } from "../../src/hooks/useCommandPalette";
 import App from "../../src/App";
 import type { ResearchExcerpt } from "../../src/types";
+import { STORAGE_ROOT_KEY } from "../../src/lib/storage";
 
 describe("Phase D2 — Global Quick-Capture Modal Tests", () => {
   describe("1. Keyboard Shortcut (Cmd+N / Ctrl+N)", () => {
@@ -247,7 +248,7 @@ describe("Phase D2 — Global Quick-Capture Modal Tests", () => {
 
       await waitFor(() => {
         expect(screen.queryByText("Ghi Chú Chớp Nhoáng")).not.toBeInTheDocument();
-        const inboxRaw = localStorage.getItem("phat_hoc_huyen_hoc_clean_v3_research_inbox");
+        const inboxRaw = localStorage.getItem(`${STORAGE_ROOT_KEY}_research_inbox`);
         expect(inboxRaw).toBeDefined();
         const items = JSON.parse(inboxRaw || "[]");
         expect(items.length).toBeGreaterThan(0);
