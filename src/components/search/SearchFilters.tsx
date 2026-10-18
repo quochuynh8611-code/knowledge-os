@@ -132,25 +132,11 @@ export function SearchFilters({
                 }
                 className={`px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer flex items-center gap-1.5 ${
                   isSelected
-                    ? root.slug === "phat-hoc"
-                      ? "bg-amber-800 text-white font-bold shadow-2xs"
-                      : root.slug === "huyen-hoc"
-                      ? "bg-indigo-800 text-white font-bold shadow-2xs"
-                      : "bg-stone-900 text-white font-bold shadow-2xs"
-                    : root.slug === "phat-hoc"
-                    ? "bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 hover:bg-amber-100"
-                    : root.slug === "huyen-hoc"
-                    ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-900 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 hover:bg-indigo-100"
+                    ? "bg-amber-800 text-white font-bold shadow-2xs"
                     : "bg-white dark:bg-stone-800 border border-stone-200/90 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:bg-stone-100"
                 }`}
               >
-                {root.slug === "phat-hoc" ? (
-                  <Sparkles className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                ) : root.slug === "huyen-hoc" ? (
-                  <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                ) : (
-                  <Folder className="w-3 h-3" />
-                )}
+                <Folder className="w-3 h-3" />
                 <span>{root.name}</span>
               </button>
             );

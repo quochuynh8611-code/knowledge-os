@@ -203,19 +203,13 @@ export function searchScholarCollections(
         continue;
       }
       if (filters.domain && filters.domain !== "all") {
-        // Topic domain is inferable from categoryId prefix or tags if domain is given
-        const isPhatHoc =
-          topic.categoryId.includes("phat-hoc") ||
-          topic.categoryId.includes("abhidhamma") ||
-          topic.tags.includes("phat-hoc") ||
-          topic.tags.includes("abhidhamma");
-        const isHuyenHoc =
-          topic.categoryId.includes("huyen-hoc") ||
-          topic.categoryId.includes("dich-hoc") ||
-          topic.tags.includes("huyen-hoc");
+        const matchesDomain =
+          topic.categoryId === filters.domain ||
+          topic.categoryId.includes(filters.domain) ||
+          topic.type === filters.domain ||
+          topic.tags.includes(filters.domain);
 
-        if (filters.domain === "phat-hoc" && !isPhatHoc) continue;
-        if (filters.domain === "huyen-hoc" && !isHuyenHoc) continue;
+        if (!matchesDomain) continue;
       }
     }
 

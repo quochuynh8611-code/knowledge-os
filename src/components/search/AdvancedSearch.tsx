@@ -180,7 +180,7 @@ export function AdvancedSearch() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Nhập thuật ngữ: Vi Diệu Pháp, Tâm Vương, Cửu Cung, Quẻ Càn, Bát Nhã, Tứ Niệm Xứ..."
+            placeholder="Nhập thuật ngữ, chủ đề hoặc khái niệm bạn muốn học..."
             className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 font-medium text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition shadow-2xs"
           />
         </div>
@@ -355,11 +355,8 @@ export function AdvancedSearch() {
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[10px]">
-                        <StatusPill
-                          variant={topic.type === "phat-hoc" ? "accent" : "purple"}
-                        >
-                          {topic.type === "phat-hoc" ? "Phật Học" : "Huyền Học"}{" "}
-                          • {topic.categoryName}
+                        <StatusPill variant="neutral">
+                          {topic.categoryName || topic.type || "Chủ đề"}
                         </StatusPill>
                         <span className="text-stone-400 dark:text-stone-500 font-mono">
                           {topic.studyProgress?.progress}%
@@ -487,23 +484,15 @@ export function AdvancedSearch() {
                 ? `Không tìm thấy kết quả cho "${searchQuery}"`
                 : "Không có mục nào khớp bộ lọc"
             }
-            description="Hãy thử điều chỉnh bộ lọc, xóa từ khóa hoặc tìm kiếm các thuật ngữ cốt lõi như 'Abhidharma', 'Kỳ Môn', 'Kinh Dịch', 'Tâm Sở'..."
-            suggestions={[
-              {
-                label: "Abhidharma",
-                onClick: () => setSearchQuery("Abhidharma"),
-              },
-              {
-                label: "Kỳ Môn Độn Giáp",
-                onClick: () => setSearchQuery("Kỳ Môn"),
-              },
-              {
-                label: "Tứ Niệm Xứ",
-                onClick: () => setSearchQuery("Tứ Niệm Xứ"),
-              },
-              { label: "Bát Nhã", onClick: () => setSearchQuery("Bát Nhã") },
-              { label: "Quẻ Dịch", onClick: () => setSearchQuery("Quẻ Dịch") },
-            ]}
+            description="Hãy thử điều chỉnh bộ lọc, kiểm tra lại chính tả hoặc tìm kiếm bằng từ khóa ngắn hơn."
+            suggestions={
+              topics.length > 0
+                ? topics.slice(0, 4).map((t) => ({
+                    label: t.title,
+                    onClick: () => setSearchQuery(t.title),
+                  }))
+                : []
+            }
             primaryAction={{
               label: "Xóa bộ lọc & Đặt lại",
               onClick: () => {
