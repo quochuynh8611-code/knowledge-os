@@ -7,6 +7,34 @@ import { createHealthRouter } from "../../src/server/routes/healthRoutes";
 describe("Server Port Binding & Health Check (Integration Tests)", () => {
   let activeServer: http.Server | null = null;
 
+  const httpGet = (
+    url: string
+  ): Promise<{ status: number; json: () => Promise<any>; body: any }> => {
+    return new Promise((resolve, reject) => {
+      const req = http.get(url, (res) => {
+        let rawData = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          rawData += chunk;
+        });
+        res.on("error", reject);
+        res.on("end", () => {
+          try {
+            const body = JSON.parse(rawData);
+            resolve({
+              status: res.statusCode ?? 0,
+              body,
+              json: async () => body,
+            });
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
+      req.on("error", reject);
+    });
+  };
+
   afterEach(async () => {
     if (activeServer && activeServer.listening) {
       await new Promise<void>((resolve, reject) => {
@@ -44,7 +72,7 @@ describe("Server Port Binding & Health Check (Integration Tests)", () => {
     expect(boundPort).toBeGreaterThan(0);
 
     // Make actual HTTP request to /api/health
-    const response = await fetch(`http://127.0.0.1:${boundPort}/api/health`);
+    const response = await httpGet(`http://127.0.0.1:${boundPort}/api/health`);
     expect(response.status).toBe(200);
 
     const data = await response.json();
