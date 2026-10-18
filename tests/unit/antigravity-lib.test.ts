@@ -208,15 +208,15 @@ describe('Phase 3: Antigravity Library Unit Tests', () => {
 
   it('6. generateAntigravityPrompt sinh prompt chuẩn theo 3 chế độ nghiên cứu', () => {
     const p1 = generateAntigravityPrompt(mockTopic, 'scholar_analysis');
-    expect(p1).toContain('Học giả Nghiên cứu Phật học & Luận Tạng');
+    expect(p1).toContain('Học giả Khảo cứu Học thuật & Phân tích Khái niệm');
     expect(p1).toContain('Vi Diệu Pháp Thắng Nghĩa Luận');
 
     const p2 = generateAntigravityPrompt(mockTopic, 'pali_sanskrit_exegesis');
-    expect(p2).toContain('Ngữ nguyên & Chiết tự');
-    expect(p2).toContain('Pali (IAST)');
+    expect(p2).toContain('Khảo cứu Ngữ nguyên & Định nghĩa Thuật ngữ Chuyên ngành');
+    expect(p2).toContain('Vi Diệu Pháp Thắng Nghĩa Luận');
 
     const p3 = generateAntigravityPrompt(mockTopic, 'cross_domain_link');
-    expect(p3).toContain('Đối chiếu Liên ngành');
-    expect(p3).toContain('Dịch Học');
+    expect(p3).toContain('Khảo cứu & Tổng hợp Tri thức Liên ngành');
+    expect(p3).toContain('Vi Diệu Pháp Thắng Nghĩa Luận');
   });
 });

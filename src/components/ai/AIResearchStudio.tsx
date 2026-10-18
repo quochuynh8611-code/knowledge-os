@@ -189,63 +189,23 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
 
   const topicSessions = activeTopic?.id ? getSessionsForTopic(activeTopic.id) : [];
 
-  const categoryOrType = `${activeTopic?.type || ''} ${activeTopic?.categoryName || ''} ${activeTopic?.categoryId || ''}`.toLowerCase();
-  const isBuddhist = categoryOrType.includes('phat') || categoryOrType.includes('phật') || categoryOrType.includes('buddhis') || categoryOrType.includes('abhidhamma');
-  const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
-
-  const quickPrompts = isBuddhist
-    ? [
-        {
-          label: 'Phân tích Vi Diệu Pháp & Tâm Sở',
-          prompt: 'Hãy phân tích chi tiết các Tâm sở (Cetasika) đồng sanh hoặc tương ưng với chủ đề này, đối chiếu theo Luận tạng Abhidhamma.',
-          mode: 'concept_analysis' as const,
-        },
-        {
-          label: 'Tra Cứu Gốc Từ Pali / Sanskrit / Hán Cổ',
-          prompt: 'Chiết tự và tra cứu nguyên ngữ gốc Pali (IAST), Sanskrit và đối chiếu chữ Hán cổ cho các thuật ngữ trọng tâm trong chủ đề này.',
-          mode: 'terminology_exegesis' as const,
-        },
-        {
-          label: 'Đối Chiếu Phật Học & Dịch Học / Kỳ Môn',
-          prompt: 'Phân tích mối tương quan học thuật và triết lý giữa chủ đề này với quy luật Âm Dương Ngũ Hành, 64 Quẻ Dịch hoặc Kỳ Môn Độn Giáp.',
-          mode: 'cross_domain_synthesis' as const,
-        },
-      ]
-    : isMystic
-    ? [
-        {
-          label: 'Khảo Luận Quẻ Dịch & Hào Từ',
-          prompt: 'Phân tích tượng quẻ, thoán từ, hào từ và biến dịch liên quan đến chủ đề nghiên cứu này.',
-          mode: 'concept_analysis' as const,
-        },
-        {
-          label: 'Ngữ Nguyên & Chiết Tự Hán Cổ',
-          prompt: 'Chiết tự chữ Hán cổ, giải nghĩa gốc từ và bối cảnh triết học cổ điển của các thuật ngữ trọng tâm.',
-          mode: 'terminology_exegesis' as const,
-        },
-        {
-          label: 'Đối Chiếu Ngũ Hành & Lý Khí',
-          prompt: 'Đối chiếu quy luật Âm Dương Ngũ Hành, Thiên Can Địa Chi và quy luật tương sinh tương khắc.',
-          mode: 'cross_domain_synthesis' as const,
-        },
-      ]
-    : [
-        {
-          label: 'Phân Tích Cấu Trúc Khái Niệm & Tiên Đề',
-          prompt: `Hãy phân tích chi tiết các định nghĩa cốt lõi, thành tố cấu thành và khung lý thuyết nền tảng của chủ đề "${activeTopic?.title || ''}".`,
-          mode: 'concept_analysis' as const,
-        },
-        {
-          label: 'Khảo Cứu Ngữ Nguyên & Thuật Ngữ',
-          prompt: `Truy xuất nguồn gốc ngữ nguyên, thuật ngữ chuyên ngành và đối chiếu các dị bản định nghĩa học thuật cho "${activeTopic?.title || ''}".`,
-          mode: 'terminology_exegesis' as const,
-        },
-        {
-          label: 'Tổng Hợp & Đối Chiếu Liên Ngành',
-          prompt: `Khảo cứu mối tương quan học thuật và phương pháp luận giữa "${activeTopic?.title || ''}" với các nhánh tri thức liên quan.`,
-          mode: 'cross_domain_synthesis' as const,
-        },
-      ];
+  const quickPrompts = [
+    {
+      label: 'Phân Tích Cấu Trúc Khái Niệm & Tiên Đề',
+      prompt: `Hãy phân tích chi tiết các định nghĩa cốt lõi, thành tố cấu thành và khung lý thuyết nền tảng của chủ đề "${activeTopic?.title || ''}".`,
+      mode: 'concept_analysis' as const,
+    },
+    {
+      label: 'Khảo Cứu Ngữ Nguyên & Thuật Ngữ',
+      prompt: `Truy xuất nguồn gốc ngữ nguyên, thuật ngữ chuyên ngành và đối chiếu các dị bản định nghĩa học thuật cho "${activeTopic?.title || ''}".`,
+      mode: 'terminology_exegesis' as const,
+    },
+    {
+      label: 'Tổng Hợp & Đối Chiếu Liên Ngành',
+      prompt: `Khảo cứu mối tương quan học thuật và phương pháp luận giữa "${activeTopic?.title || ''}" với các nhánh tri thức liên quan.`,
+      mode: 'cross_domain_synthesis' as const,
+    },
+  ];
 
   const handleExecuteResearch = async (customPrompt?: string) => {
     if (isLoading) return;
@@ -564,12 +524,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               className="w-full text-xs font-medium bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl px-3 py-2 text-stone-900 dark:text-stone-100 focus:ring-2 focus:ring-amber-700/50 focus:outline-hidden disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {topics.map((t) => {
-                const domainLabel =
-                  t.type === 'phat-hoc'
-                    ? 'Phật Học'
-                    : t.type === 'huyen-hoc'
-                    ? 'Huyền Học'
-                    : t.categoryName || t.type || 'Nghiên Cứu';
+                const domainLabel = t.categoryName || t.type || 'Nghiên Cứu';
                 return (
                   <option key={t.id} value={t.id}>
                     [{domainLabel}] {t.title}
@@ -1111,7 +1066,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
             type="text"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={`Đặt câu hỏi khảo cứu cho chủ đề "${activeTopic?.title || 'Phật học & Dịch học'}"...`}
+            placeholder={`Đặt câu hỏi khảo cứu cho chủ đề "${activeTopic?.title || 'nghiên cứu'}"...`}
             className="flex-1 px-4 py-2.5 text-xs bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-hidden focus:ring-2 focus:ring-amber-700/50"
           />
           <button

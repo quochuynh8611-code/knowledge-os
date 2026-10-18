@@ -31,24 +31,13 @@ export function packageHandoffBundleForAntigravity(
   const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
 
   // --- SECTION 1: System Directive & Academic Persona ---
-  let sec1 = `## 1. System Directive & Academic Persona
+  const sec1 = `## 1. System Directive & Academic Persona
 Bạn là **Antigravity AI Scholar** — Học giả Nghiên cứu Cấp cao và Trợ lý Khảo cứu Tri thức uyên bác về phương pháp luận học thuật và phân tích liên ngành.
 
 Nhiệm vụ của bạn là tiếp nhận bối cảnh nghiên cứu có cấu trúc bên dưới, phân tích sâu các mối liên hệ khái niệm, đối chiếu tài liệu nguồn và giải đáp các câu hỏi học thuật với độ chính xác và tính phản biện cao nhất.`;
 
-  if (isBuddhist || isMystic) {
-    sec1 = `## 1. System Directive & Academic Persona
-Bạn là **Antigravity AI Scholar** — Học giả Nghiên cứu Cấp cao và Trợ lý Khảo cứu Tri thức uyên bác về hai kho tàng tư tưởng Phương Đông:
-1. **Phật Học Học Thuật:** Tam Tạng Pali (Tipiṭaka), Luận Tạng Thắng Pháp (Abhidhamma), Duy Thức Học (Yogācāra), và Thiền Định (Samatha - Vipassanā).
-2. **Huyền Học & Dịch Học:** Chu Dịch (64 Quẻ, Thao lược, Tượng số), Kỳ Môn Độn Giáp, Bát Tự Hà Lạc và Phong Thủy Lý Khí.
-
-Nhiệm vụ của bạn là tiếp nhận bối cảnh nghiên cứu có cấu trúc bên dưới, phân tích sâu các mối liên hệ liên ngành, đối chiếu ngữ nguyên kinh điển và giải đáp các câu hỏi học thuật với độ chính xác tuyệt đối.`;
-  }
-
   // --- SECTION 2: Topic Exegesis & Canonical Metadata ---
-  let domainLabel = topic.categoryName || topic.type || 'Nghiên Cứu';
-  if (topic.type === 'phat-hoc') domainLabel = 'Phật Học';
-  else if (topic.type === 'huyen-hoc') domainLabel = 'Huyền Học';
+  const domainLabel = topic.categoryName || topic.type || 'Nghiên Cứu';
 
   const categoryLabel = topic.categoryName || topic.categoryId;
   const tagsFormatted = topic.tags && topic.tags.length > 0 ? `#${topic.tags.join(' #')}` : 'None recorded.';
@@ -178,21 +167,7 @@ export function generateAntigravityPrompt(
   customQuery?: string
 ): string {
   const query = customQuery?.trim() || '';
-  const categoryOrType = `${topic.type || ''} ${topic.categoryName || ''} ${topic.categoryId || ''}`.toLowerCase();
-  const isBuddhist = categoryOrType.includes('phat') || categoryOrType.includes('phật') || categoryOrType.includes('buddhis') || categoryOrType.includes('abhidhamma');
-  const isMystic = categoryOrType.includes('huyen') || categoryOrType.includes('huyền') || categoryOrType.includes('dich') || categoryOrType.includes('dịch');
-
   if (mode === 'concept_analysis' || mode === 'scholar_analysis') {
-    if (isBuddhist) {
-      return `[Học giả Nghiên cứu Phật học & Luận Tạng Abhidhamma]
-Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
-${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
-Yêu cầu:
-1. Phân tích chi tiết các pháp chân đế (Paramattha Dhammā): Tâm (Citta), Tâm sở (Cetasika), Sắc (Rūpa) và Niết-bàn (Nibbāna) liên quan đến chủ đề.
-2. Nêu rõ các chi pháp tâm sở đồng sanh và tiến trình tâm (Citta Vīthi) tương ứng.
-3. Ứng dụng cụ thể vào lộ trình thực hành thiền Định (Samatha) và thiền Tuệ (Vipassanā).`;
-    }
-
     return `[Học giả Khảo cứu Học thuật & Phân tích Khái niệm]
 Chủ đề: "${topic.title}" (${topic.categoryName || topic.type || 'Nghiên cứu'})
 ${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
@@ -203,16 +178,6 @@ Yêu cầu:
   }
 
   if (mode === 'terminology_exegesis' || mode === 'pali_sanskrit_exegesis') {
-    if (isBuddhist || isMystic) {
-      return `[Khảo cứu Ngữ nguyên & Chiết tự Thuật ngữ Cổ]
-Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
-${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
-Yêu cầu:
-1. Truy xuất nguyên ngữ gốc Pali (IAST) và Sanskrit (IAST) của các thuật ngữ trọng tâm trong chủ đề này.
-2. Chiết tự căn tố (Dhātu/Root), tiền tố (Upasagga) và hậu tố (Paccaya) ngữ pháp.
-3. Đối chiếu dịch nghĩa tương đương trong hệ thống Hán văn cổ (Kinh điển Hán tạng và Dịch học).`;
-    }
-
     return `[Khảo cứu Ngữ nguyên & Định nghĩa Thuật ngữ Chuyên ngành]
 Chủ đề: "${topic.title}" (${topic.categoryName || topic.type || 'Nghiên cứu'})
 ${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
@@ -220,16 +185,6 @@ Yêu cầu:
 1. Truy xuất nguồn gốc ngữ nguyên, thuật ngữ chuyên ngành (thuật ngữ gốc tiếng Anh/Latin/Hy Lạp hoặc chữ Hán nếu có).
 2. Chiết tự, phân tích cấu trúc từ và tiến trình biến đổi ngữ nghĩa học thuật.
 3. Đối chiếu định nghĩa tương đương giữa các tài liệu tiêu chuẩn và trường phái nghiên cứu.`;
-  }
-
-  if (isBuddhist || isMystic) {
-    return `[Đối chiếu Liên ngành Phật Học & Dịch Học / Huyền Học Đông Phương]
-Chủ đề: "${topic.title}" (${topic.categoryName || topic.type})
-${query ? `Câu hỏi trọng tâm: ${query}\n` : ''}
-Yêu cầu:
-1. Khảo cứu mối tương quan triết học giữa chủ đề này với đạo biến dịch của Chu Dịch (64 Quẻ, Âm Dương, Ngũ Hành).
-2. Đối chiếu cơ chế vận hành của lý Duyên Khởi (Paṭiccasamuppāda) và quy luật biến dịch của Dịch Học.
-3. Rút ra bài học ứng dụng thực tiễn cho tư duy và nhận thức của người nghiên cứu học thuật.`;
   }
 
   return `[Khảo cứu & Tổng hợp Tri thức Liên ngành]

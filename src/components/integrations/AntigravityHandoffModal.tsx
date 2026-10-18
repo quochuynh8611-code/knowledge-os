@@ -130,9 +130,7 @@ export function AntigravityHandoffModal({
   const topicResourcesCount = (resources || []).filter((r) => r.topicId === currentTopic?.id).length;
   const topicLinksCount = currentTopic?.links?.length || 0;
 
-  let domainLabel = currentTopic?.categoryName || currentTopic?.type || 'Nghiên Cứu';
-  if (currentTopic?.type === 'phat-hoc') domainLabel = 'Phật Học';
-  else if (currentTopic?.type === 'huyen-hoc') domainLabel = 'Huyền Học';
+  const domainLabel = currentTopic?.categoryName || currentTopic?.type || 'Nghiên Cứu';
 
   const handleCopyBundle = async () => {
     try {

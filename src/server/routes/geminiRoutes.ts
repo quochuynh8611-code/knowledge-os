@@ -152,14 +152,6 @@ export function createGeminiRouter(
         };
       }
 
-      const categoryStr = (category || "").toLowerCase();
-      const isBuddhistOrMystic =
-        categoryStr.includes("phật") ||
-        categoryStr.includes("buddhis") ||
-        categoryStr.includes("huyền") ||
-        categoryStr.includes("dịch") ||
-        categoryStr.includes("abhidhamma");
-
       let systemInstruction = `Bạn là một Học Giả Trí Tuệ Nhân Tạo Cấp Cao (Antigravity Universal Research Scholar & Copilot) chuyên sâu về khảo cứu học thuật, phân tích cấu trúc luận thuyết và tổng hợp tri thức có nguồn bằng chứng.
 
 Tiêu chuẩn học thuật & Ràng buộc trích dẫn:
@@ -183,9 +175,6 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
   ]
 }`;
 
-      if (isBuddhistOrMystic) {
-        systemInstruction += `\n\n[Bối cảnh Chuyên sâu - Tri thức Phương Đông]: Khi khảo cứu Phật học hoặc Dịch học/Huyền học, đối chiếu chuẩn xác Tam Tạng Pali (Tipiṭaka), Luận Tạng Abhidhamma, Duy Thức Học hoặc Chu Dịch 64 Quẻ, Âm Dương Ngũ Hành và Tượng Số Lý Khí.`;
-      }
 
       if (mode === "terminology_exegesis" || mode === "pali_sanskrit_exegesis") {
         systemInstruction += `\n\nNhiệm vụ trọng tâm hiện tại: Khảo cứu ngữ nguyên, chiết tự căn tố, tra cứu định nghĩa thuật ngữ chuyên ngành và các dị bản dịch thuật học thuật đối chiếu.`;
@@ -285,7 +274,7 @@ ${JSON.stringify(
   })),
 )}
 
-Hãy phát hiện từ 2 đến 5 liên kết tri thức sâu sắc và có căn cứ nhất giữa chủ đề hiện tại và các chủ đề trong danh sách (đặc biệt ưu tiên các mối liên hệ giao thoa giữa Phật Học và Huyền Học).
+Hãy phát hiện từ 2 đến 5 liên kết tri thức sâu sắc và có căn cứ nhất giữa chủ đề hiện tại và các chủ đề trong danh sách (đặc biệt ưu tiên các mối liên hệ giao thoa giữa các lĩnh vực nghiên cứu).
 Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
 [
   {
@@ -303,7 +292,7 @@ Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
         config: {
           responseMimeType: "application/json",
           systemInstruction:
-            "Bạn là chuyên gia khai phá biểu đồ tri thức (Knowledge Graph AI) cho Phật học và Huyền học Đông phương.",
+            "Bạn là chuyên gia khai phá biểu đồ tri thức (Knowledge Graph AI) và phân tích liên kết học thuật liên ngành.",
         },
       });
 
@@ -360,7 +349,7 @@ Yêu cầu định dạng JSON:
         config: {
           responseMimeType: "application/json",
           systemInstruction:
-            "Bạn là giảng sư Phật học và dịch học tạo giáo trình ôn tập trí nhớ cao cấp.",
+            "Bạn là chuyên gia sư phạm và cố vấn học thuật tạo giáo trình ôn tập trí nhớ cao cấp.",
         },
       });
 
