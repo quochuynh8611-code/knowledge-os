@@ -62,7 +62,7 @@ describe("ResourceFormModal Local Binary Upload Flow", () => {
     });
 
     // Enter/ensure title
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     fireEvent.change(titleInput, { target: { value: "Triết Học Về Tánh Không PDF" } });
 
     // Submit form
@@ -115,7 +115,7 @@ describe("ResourceFormModal Local Binary Upload Flow", () => {
 
     fireEvent.change(fileInput, { target: { files: [sampleFile] } });
 
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     fireEvent.change(titleInput, { target: { value: "Large Book" } });
 
     const submitBtn = screen.getByRole("button", { name: /thêm tài liệu/i });
@@ -143,7 +143,7 @@ describe("ResourceFormModal Local Binary Upload Flow", () => {
     const pathInput = screen.getByPlaceholderText(/đường dẫn tệp|\/Users\/|\.pdf|filePath/i);
     fireEvent.change(pathInput, { target: { value: "vault:phat-hoc:02_PDF_Source/guide.pdf" } });
 
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     fireEvent.change(titleInput, { target: { value: "Vault Guide" } });
 
     const submitBtn = screen.getByRole("button", { name: /thêm tài liệu/i });

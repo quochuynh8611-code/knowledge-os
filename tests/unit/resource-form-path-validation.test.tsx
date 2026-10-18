@@ -21,7 +21,7 @@ describe('Post-Phase 6c: ResourceFormModal - Path Normalization, Validation & Bo
     fireEvent.click(localBtn);
 
     // Fill title
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     fireEvent.change(titleInput, { target: { value: 'Luận Câu Xá Bản Mới' } });
 
     // Fill unnormalized filePath with Windows backslashes and spaces
@@ -47,7 +47,7 @@ describe('Post-Phase 6c: ResourceFormModal - Path Normalization, Validation & Bo
     fireEvent.click(localBtn);
 
     // Fill title
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     fireEvent.change(titleInput, { target: { value: 'Sách Không Có Đường Dẫn' } });
 
     // Clear filePath

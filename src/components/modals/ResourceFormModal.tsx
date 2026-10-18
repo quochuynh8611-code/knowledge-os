@@ -242,11 +242,15 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
               onChange={(e) => setTopicId(e.target.value)}
               className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              {topics.map((t) => (
-                <option key={t.id} value={t.id}>
-                  [{t.type === 'phat-hoc' ? 'Phật Học' : 'Huyền Học'}] {t.title}
-                </option>
-              ))}
+              {topics.length === 0 ? (
+                <option value="">-- Chưa có chủ đề (Hãy tạo chủ đề trước) --</option>
+              ) : (
+                topics.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    [{t.categoryName || t.type || 'Chủ đề'}] {t.title}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -333,7 +337,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Thắng Pháp Tập Yếu Luận hoặc Bát Môn Trận Đồ PDF..."
+              placeholder="VD: Giáo trình, sách tham khảo, tài liệu PDF hoặc báo cáo..."
               className="w-full px-3.5 py-2.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -347,7 +351,7 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
                 type="text"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
-                placeholder="VD: HT. Thích Minh Châu..."
+                placeholder="VD: Tên tác giả, dịch giả hoặc tổ chức..."
                 className="w-full px-3.5 py-2 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>

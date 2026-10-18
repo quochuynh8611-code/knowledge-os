@@ -123,7 +123,7 @@ describe('ADR-012 Phase 1: ResourceFormModal Local File Picker UX Contract Tests
     });
 
     const titleInput = screen.getByPlaceholderText(
-      /VD: Thắng Pháp Tập Yếu Luận/i,
+      /VD:.*PDF/i,
     ) as HTMLInputElement;
     expect(titleInput.value).toMatch(/Kinh[- ]Trung[- ]Bo/i);
   });

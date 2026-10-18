@@ -90,7 +90,7 @@ describe('ResourcesManager - Reader Edit CTA Integration Specification', () => {
       expect(screen.getByRole('button', { name: /Lưu Tài Liệu/i })).toBeInTheDocument();
     });
 
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i) as HTMLInputElement;
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i) as HTMLInputElement;
     expect(titleInput.value).toBe('Kinh Pháp Cú - Lời Phật Dạy');
 
     const pathInput = screen.getByPlaceholderText(/Đường dẫn tệp/i) as HTMLInputElement;

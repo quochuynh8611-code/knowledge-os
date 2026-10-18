@@ -108,7 +108,7 @@ describe("ADR-011: ResourceFormModal UI Interaction & Source Mode Contract Tests
 
     // Fill title
     const titleInput = screen.getByPlaceholderText(
-      /VD: Thắng Pháp Tập Yếu Luận/i,
+      /VD:.*PDF/i,
     );
     fireEvent.change(titleInput, {
       target: { value: "Kinh Điển Scan PDF Local" },
@@ -174,7 +174,7 @@ describe("ADR-011: ResourceFormModal UI Interaction & Source Mode Contract Tests
 
     // Fill title & filePath
     const titleInput = screen.getByPlaceholderText(
-      /VD: Thắng Pháp Tập Yếu Luận/i,
+      /VD:.*PDF/i,
     );
     fireEvent.change(titleInput, {
       target: { value: "Kinh Dịch Bản Dịch PDF" },

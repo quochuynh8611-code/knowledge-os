@@ -40,7 +40,7 @@ describe('Resource Form Modal - Canonical Vault Contract Specification', () => {
     await userEvent.click(localBtn);
 
     // Input Title
-    const titleInput = screen.getByPlaceholderText(/VD: Thắng Pháp Tập Yếu Luận/i);
+    const titleInput = screen.getByPlaceholderText(/VD:.*PDF/i);
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, 'Chánh Niệm Thực Tập PDF');
 
