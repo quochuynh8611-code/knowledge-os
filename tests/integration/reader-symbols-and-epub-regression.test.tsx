@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { UnifiedResearchReader } from '../../src/components/reader/UnifiedResearchReader';
 import { DataContext } from '../../src/context/DataContext';
 import { ResearchExcerpt } from '../../src/types';
@@ -147,15 +147,21 @@ Hệ thống xử lý luồng dữ liệu A -> B với tỷ lệ hoàn thành �
       expect(capturedGetRendition).not.toBeNull();
     });
 
-    capturedGetRendition!(mockRendition);
+    await act(async () => {
+      capturedGetRendition!(mockRendition);
+    });
 
     // Font size controls should be present in header
     const increaseBtn = screen.getByLabelText(/Tăng cỡ chữ/i);
-    fireEvent.click(increaseBtn);
+    await act(async () => {
+      fireEvent.click(increaseBtn);
+    });
 
     // Page mode controls should be present
     const singleModeBtn = screen.getByTitle(/Trang đơn/i);
-    fireEvent.click(singleModeBtn);
+    await act(async () => {
+      fireEvent.click(singleModeBtn);
+    });
 
     expect(mockRendition.spread).toHaveBeenCalledWith('none');
   });

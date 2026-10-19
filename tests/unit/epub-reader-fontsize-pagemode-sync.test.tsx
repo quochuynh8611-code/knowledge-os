@@ -376,50 +376,62 @@ describe('EPUB Reader FontSize & PageMode Sync (Red Stage)', () => {
       hooks: null,
     };
 
-    const { rerender } = render(
-      <EpubReaderAdapter
-        fileUrl="https://example.com/test.epub"
-        documentId="doc-epub-race-zero"
-        initialLocation="epubcfi(/6/14[chap07]!/4/2/10)"
-        pageMode="double"
-      />
-    );
-
-    await waitFor(() => {
-      expect(capturedGetRendition).not.toBeNull();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation((...args: any[]) => {
+      const msg = args.map((a) => (typeof a === 'string' ? a : a?.message || '')).join(' ');
+      if (msg.includes('DOMException: layout reflow pending') || msg.includes('rendition.display failed')) {
+        return;
+      }
+      console.warn(...args);
     });
 
-    act(() => {
-      capturedGetRendition!(mockRendition as any);
-    });
-
-    // Simulate user having read to chapter 7
-    act(() => {
-      capturedProps.locationChanged('epubcfi(/6/14[chap07]!/4/2/10)');
-    });
-
-    // When toggling pageMode, simulate temporary layout failure in rendition.display
-    shouldFailNextDisplay = true;
-
-    // Wrap rerender in act to flush state updates
-    await act(async () => {
-      rerender(
+    try {
+      const { rerender } = render(
         <EpubReaderAdapter
           fileUrl="https://example.com/test.epub"
           documentId="doc-epub-race-zero"
           initialLocation="epubcfi(/6/14[chap07]!/4/2/10)"
-          pageMode="single"
+          pageMode="double"
         />
       );
-    });
 
-    // Current bug: when rendition.display fails on the new spread layout,
-    // the wrapper catch block in handleRendition calls:
-    //   setLocation(0);
-    //   return await originalDisplay(0);
-    // Thus originalDisplayFn was called with 0, resetting user progress to beginning!
-    // The behavioral requirement is: NEVER reset or fallback to location 0 on temporary layout/spread errors.
-    expect(originalDisplayFn).not.toHaveBeenCalledWith(0);
-    expect(capturedProps.location).not.toBe(0);
+      await waitFor(() => {
+        expect(capturedGetRendition).not.toBeNull();
+      });
+
+      act(() => {
+        capturedGetRendition!(mockRendition as any);
+      });
+
+      // Simulate user having read to chapter 7
+      act(() => {
+        capturedProps.locationChanged('epubcfi(/6/14[chap07]!/4/2/10)');
+      });
+
+      // When toggling pageMode, simulate temporary layout failure in rendition.display
+      shouldFailNextDisplay = true;
+
+      // Wrap rerender in act to flush state updates
+      await act(async () => {
+        rerender(
+          <EpubReaderAdapter
+            fileUrl="https://example.com/test.epub"
+            documentId="doc-epub-race-zero"
+            initialLocation="epubcfi(/6/14[chap07]!/4/2/10)"
+            pageMode="single"
+          />
+        );
+      });
+
+      // Current bug: when rendition.display fails on the new spread layout,
+      // the wrapper catch block in handleRendition calls:
+      //   setLocation(0);
+      //   return await originalDisplay(0);
+      // Thus originalDisplayFn was called with 0, resetting user progress to beginning!
+      // The behavioral requirement is: NEVER reset or fallback to location 0 on temporary layout/spread errors.
+      expect(originalDisplayFn).not.toHaveBeenCalledWith(0);
+      expect(capturedProps.location).not.toBe(0);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });
