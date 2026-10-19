@@ -22,3 +22,10 @@ data/archive/**
 # Local Review Docs
 docs/drafts/
 docs/review/
+
+# Local user reading runtime
+docs/books/*
+!docs/books/.gitkeep
+
+# Runtime screenshots
+clean_runtime_dashboard*.png
