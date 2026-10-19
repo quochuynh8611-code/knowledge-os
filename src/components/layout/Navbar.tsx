@@ -23,10 +23,15 @@ import { StudyTimerModal } from "../modals/StudyTimerModal";
 import { SpacedReviewModal } from "../modals/SpacedReviewModal";
 import { ExportImportModal } from "../modals/ExportImportModal";
 import { ResearchInboxDrawer } from "../research/ResearchInboxDrawer";
-import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { TargetNoteSelectorModal } from "../reader/TargetNoteSelectorModal";
 import { dataRepository } from "../../context/DataContext";
 import { formatExcerptBlockquote } from "../../lib/excerptCitationService";
+
+const UnifiedResearchReader = React.lazy(() =>
+  import("../reader/UnifiedResearchReader").then((m) => ({
+    default: m.UnifiedResearchReader,
+  }))
+);
 
 const ObsidianVaultBrowserModal = React.lazy(() =>
   import("../modals/ObsidianVaultBrowserModal").then((m) => ({
@@ -551,25 +556,36 @@ export function Navbar({
 
       {/* Phase 18A Unified Research Reader */}
       {activeReaderDoc && (
-        <UnifiedResearchReader
-          documentId={activeReaderDoc.documentId}
-          title={activeReaderDoc.title}
-          format={activeReaderDoc.format}
-          fileUrl={activeReaderDoc.fileUrl}
-          content={activeReaderDoc.content}
-          sourceType={activeReaderDoc.sourceType}
-          initialPosition={activeReaderDoc.initialPosition}
-          onNavigateToDocument={(target) => {
-            setActiveReaderDoc({
-              documentId: target.documentId,
-              title: target.title,
-              format: target.format,
-              fileUrl: target.fileUrl,
-              initialPosition: target.initialPosition,
-            });
-          }}
-          onClose={() => setActiveReaderDoc(null)}
-        />
+        <React.Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs text-white">
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-stone-900/90 border border-stone-800 shadow-2xl">
+                <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <span className="text-sm font-medium font-sans">Đang mở tài liệu nghiên cứu...</span>
+              </div>
+            </div>
+          }
+        >
+          <UnifiedResearchReader
+            documentId={activeReaderDoc.documentId}
+            title={activeReaderDoc.title}
+            format={activeReaderDoc.format}
+            fileUrl={activeReaderDoc.fileUrl}
+            content={activeReaderDoc.content}
+            sourceType={activeReaderDoc.sourceType}
+            initialPosition={activeReaderDoc.initialPosition}
+            onNavigateToDocument={(target) => {
+              setActiveReaderDoc({
+                documentId: target.documentId,
+                title: target.title,
+                format: target.format,
+                fileUrl: target.fileUrl,
+                initialPosition: target.initialPosition,
+              });
+            }}
+            onClose={() => setActiveReaderDoc(null)}
+          />
+        </React.Suspense>
       )}
     </>
   );

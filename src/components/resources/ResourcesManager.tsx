@@ -18,11 +18,16 @@ import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
-import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget, resolveResourceReaderDescriptor } from '../../lib/resourceOpenResolver';
 import { resolveReaderFileUrl } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
+
+const UnifiedResearchReader = React.lazy(() =>
+  import('../reader/UnifiedResearchReader').then((m) => ({
+    default: m.UnifiedResearchReader,
+  }))
+);
 
 export function ResourcesManager() {
   const { resources, topics, deleteResource, openTopicDetail } = useData();
@@ -296,24 +301,35 @@ export function ResourcesManager() {
 
       {/* Phase 18A Unified Research Reader */}
       {activeReaderDoc && (
-        <UnifiedResearchReader
-          documentId={activeReaderDoc.documentId}
-          title={activeReaderDoc.title}
-          format={activeReaderDoc.format}
-          fileUrl={activeReaderDoc.fileUrl}
-          content={activeReaderDoc.content}
-          sourceType={activeReaderDoc.sourceType}
-          onClose={() => setActiveReaderDoc(null)}
-          onEditResource={() => {
-            const targetResource = activeReaderDoc.resourceId
-              ? resources.find((r) => r.id === activeReaderDoc.resourceId)
-              : resources.find((r) => r.id === activeReaderDoc.documentId);
-            setActiveReaderDoc(null);
-            if (targetResource) {
-              setEditingResource(targetResource);
-            }
-          }}
-        />
+        <React.Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs text-white">
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-stone-900/90 border border-stone-800 shadow-2xl">
+                <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <span className="text-sm font-medium font-sans">Đang mở tài liệu nghiên cứu...</span>
+              </div>
+            </div>
+          }
+        >
+          <UnifiedResearchReader
+            documentId={activeReaderDoc.documentId}
+            title={activeReaderDoc.title}
+            format={activeReaderDoc.format}
+            fileUrl={activeReaderDoc.fileUrl}
+            content={activeReaderDoc.content}
+            sourceType={activeReaderDoc.sourceType}
+            onClose={() => setActiveReaderDoc(null)}
+            onEditResource={() => {
+              const targetResource = activeReaderDoc.resourceId
+                ? resources.find((r) => r.id === activeReaderDoc.resourceId)
+                : resources.find((r) => r.id === activeReaderDoc.documentId);
+              setActiveReaderDoc(null);
+              if (targetResource) {
+                setEditingResource(targetResource);
+              }
+            }}
+          />
+        </React.Suspense>
       )}
     </div>
   );

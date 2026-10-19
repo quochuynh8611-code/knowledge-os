@@ -16,12 +16,22 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
-import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
-import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
 import { globalReadingPositionStore } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
+
+const UnifiedResearchReader = React.lazy(() =>
+  import("../reader/UnifiedResearchReader").then((m) => ({
+    default: m.UnifiedResearchReader,
+  }))
+);
+
+const ObsidianVaultBrowserModal = React.lazy(() =>
+  import("../modals/ObsidianVaultBrowserModal").then((m) => ({
+    default: m.ObsidianVaultBrowserModal,
+  }))
+);
 
 export interface DocItem {
   id: string;
@@ -820,19 +830,30 @@ export function DocsExplorerView({
             </button>
           )}
           {activeReaderDoc ? (
-            <UnifiedResearchReader
-              documentId={activeReaderDoc.documentId}
-              title={activeReaderDoc.title}
-              format={activeReaderDoc.format}
-              fileUrl={activeReaderDoc.fileUrl}
-              content={activeReaderDoc.content}
-              sourceType={activeReaderDoc.sourceType}
-              layoutMode="embedded"
-              onClose={() => {
-                setActiveReaderDoc(null);
-                fetchArchivedDocs();
-              }}
-            />
+            <React.Suspense
+              fallback={
+                <SurfaceCard variant="default" className="flex-1 flex flex-col items-center justify-center p-12 text-stone-400 dark:text-stone-500 animate-pulse">
+                  <div className="w-7 h-7 rounded-full border-2 border-amber-600/30 border-t-amber-600 animate-spin mb-3" />
+                  <span className="text-xs font-semibold tracking-wide text-stone-500 dark:text-stone-400 font-sans">
+                    Đang mở trình đọc nghiên cứu...
+                  </span>
+                </SurfaceCard>
+              }
+            >
+              <UnifiedResearchReader
+                documentId={activeReaderDoc.documentId}
+                title={activeReaderDoc.title}
+                format={activeReaderDoc.format}
+                fileUrl={activeReaderDoc.fileUrl}
+                content={activeReaderDoc.content}
+                sourceType={activeReaderDoc.sourceType}
+                layoutMode="embedded"
+                onClose={() => {
+                  setActiveReaderDoc(null);
+                  fetchArchivedDocs();
+                }}
+              />
+            </React.Suspense>
           ) : isLoadingContent ? (
             <SurfaceCard variant="default" className="flex-1 flex items-center justify-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">
               Đang nạp nội dung...
@@ -987,11 +1008,13 @@ export function DocsExplorerView({
 
       {/* Obsidian Vault Browser Modal */}
       {isVaultModalOpen && (
-        <ObsidianVaultBrowserModal
-          isOpen={isVaultModalOpen}
-          onClose={() => setIsVaultModalOpen(false)}
-          onSelectFile={handleVaultFileSelect}
-        />
+        <React.Suspense fallback={null}>
+          <ObsidianVaultBrowserModal
+            isOpen={isVaultModalOpen}
+            onClose={() => setIsVaultModalOpen(false)}
+            onSelectFile={handleVaultFileSelect}
+          />
+        </React.Suspense>
       )}
     </div>
   );

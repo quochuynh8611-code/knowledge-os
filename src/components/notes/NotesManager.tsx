@@ -15,11 +15,16 @@ import {
 } from 'lucide-react';
 import { NoteFormModal } from '../modals/NoteFormModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
-import { UnifiedResearchReader } from '../reader/UnifiedResearchReader';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { toReadablePlainTextPreview } from '../../lib/markdownReadability';
 import { resolveCitationTargetDocument, ActiveReaderDocument } from '../../lib/readerDocumentResolver';
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from '../workbench';
+
+const UnifiedResearchReader = React.lazy(() =>
+  import('../reader/UnifiedResearchReader').then((m) => ({
+    default: m.UnifiedResearchReader,
+  }))
+);
 
 export function NotesManager() {
   const { notes, topics, resources = [], deleteNote, openTopicDetail } = useData();
@@ -334,24 +339,35 @@ export function NotesManager() {
 
       {/* Phase R3A Unified Research Reader */}
       {activeReaderDoc && (
-        <UnifiedResearchReader
-          documentId={activeReaderDoc.documentId}
-          title={activeReaderDoc.title}
-          format={activeReaderDoc.format}
-          fileUrl={activeReaderDoc.fileUrl}
-          content={activeReaderDoc.content}
-          initialPosition={activeReaderDoc.initialPosition}
-          onNavigateToDocument={(target) => {
-            setActiveReaderDoc({
-              documentId: target.documentId,
-              title: target.title,
-              format: target.format,
-              fileUrl: target.fileUrl,
-              initialPosition: target.initialPosition,
-            });
-          }}
-          onClose={() => setActiveReaderDoc(null)}
-        />
+        <React.Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs text-white">
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-stone-900/90 border border-stone-800 shadow-2xl">
+                <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <span className="text-sm font-medium font-sans">Đang mở tài liệu nghiên cứu...</span>
+              </div>
+            </div>
+          }
+        >
+          <UnifiedResearchReader
+            documentId={activeReaderDoc.documentId}
+            title={activeReaderDoc.title}
+            format={activeReaderDoc.format}
+            fileUrl={activeReaderDoc.fileUrl}
+            content={activeReaderDoc.content}
+            initialPosition={activeReaderDoc.initialPosition}
+            onNavigateToDocument={(target) => {
+              setActiveReaderDoc({
+                documentId: target.documentId,
+                title: target.title,
+                format: target.format,
+                fileUrl: target.fileUrl,
+                initialPosition: target.initialPosition,
+              });
+            }}
+            onClose={() => setActiveReaderDoc(null)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

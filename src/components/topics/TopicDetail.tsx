@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import { NoteFormModal } from "../modals/NoteFormModal";
 import { NoteReaderModal } from "../modals/NoteReaderModal";
-import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
 import { resolveCitationTargetDocument, ActiveReaderDocument } from "../../lib/readerDocumentResolver";
 import { ResourceFormModal } from "../modals/ResourceFormModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
@@ -41,7 +40,6 @@ import { ObsidianVaultBrowserModal } from "../modals/ObsidianVaultBrowserModal";
 import { getStoredVaultName } from "../../lib/obsidian";
 import { useNavigation } from "../../context/NavigationContext";
 import { FlashcardAnalyticsWidget } from "../flashcards/FlashcardAnalyticsWidget";
-import { CardBrowser, StudyLauncher, FlashcardAnalyticsDashboard, DuplicateDetectionDashboard } from "../flashcards";
 import { FlashcardFormModal } from "../modals/FlashcardFormModal";
 import { FlashcardImportModal } from "../modals/FlashcardImportModal";
 import type { FlashcardProgressStats, Flashcard, FlashcardReview } from "../../types/flashcard";
@@ -59,6 +57,32 @@ import { SurfaceCard } from "../workbench/SurfaceCard";
 import { StatusPill } from "../workbench/StatusPill";
 import { ToolbarButton } from "../workbench/ToolbarButton";
 
+const UnifiedResearchReader = React.lazy(() =>
+  import("../reader/UnifiedResearchReader").then((m) => ({
+    default: m.UnifiedResearchReader,
+  }))
+);
+
+const CardBrowser = React.lazy(() =>
+  import("../flashcards/CardBrowser").then((m) => ({
+    default: m.CardBrowser,
+  }))
+);
+const StudyLauncher = React.lazy(() =>
+  import("../flashcards/StudyLauncher").then((m) => ({
+    default: m.StudyLauncher,
+  }))
+);
+const FlashcardAnalyticsDashboard = React.lazy(() =>
+  import("../flashcards/FlashcardAnalyticsDashboard").then((m) => ({
+    default: m.FlashcardAnalyticsDashboard,
+  }))
+);
+const DuplicateDetectionDashboard = React.lazy(() =>
+  import("../flashcards/DuplicateDetectionDashboard").then((m) => ({
+    default: m.DuplicateDetectionDashboard,
+  }))
+);
 const NotebookLMStudioModal = React.lazy(() =>
   import("../integrations/NotebookLMStudioModal").then((m) => ({
     default: m.NotebookLMStudioModal,
@@ -1318,32 +1342,40 @@ export function TopicDetail() {
       )}
 
       {activeTab === "card_browser" && (
-        <CardBrowser topicId={topic.id} />
+        <React.Suspense fallback={null}>
+          <CardBrowser topicId={topic.id} />
+        </React.Suspense>
       )}
 
       {activeTab === "study_launcher" && (
-        <StudyLauncher
-          topicId={topic.id}
-          onLaunchSession={(sessionType) => {
-            if (navigation?.openFlashcardReview) {
-              navigation.openFlashcardReview(topic.id, sessionType);
-            }
-          }}
-          onOpenBrowser={() => {
-            setActiveTab("card_browser");
-            if (navigation?.openCardBrowser) {
-              navigation.openCardBrowser(topic.id);
-            }
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <StudyLauncher
+            topicId={topic.id}
+            onLaunchSession={(sessionType) => {
+              if (navigation?.openFlashcardReview) {
+                navigation.openFlashcardReview(topic.id, sessionType);
+              }
+            }}
+            onOpenBrowser={() => {
+              setActiveTab("card_browser");
+              if (navigation?.openCardBrowser) {
+                navigation.openCardBrowser(topic.id);
+              }
+            }}
+          />
+        </React.Suspense>
       )}
 
       {activeTab === "analytics" && (
-        <FlashcardAnalyticsDashboard topicId={topic.id} />
+        <React.Suspense fallback={null}>
+          <FlashcardAnalyticsDashboard topicId={topic.id} />
+        </React.Suspense>
       )}
 
       {activeTab === "duplicates" && (
-        <DuplicateDetectionDashboard topicId={topic.id} />
+        <React.Suspense fallback={null}>
+          <DuplicateDetectionDashboard topicId={topic.id} />
+        </React.Suspense>
       )}
 
       {activeTab === "research" && (
@@ -1493,32 +1525,34 @@ export function TopicDetail() {
           }
         }}
       />
-      <ObsidianVaultBrowserModal
-        isOpen={showObsidianBrowserModal}
-        onClose={() => setShowObsidianBrowserModal(false)}
-        onSelectFile={(filePath) => {
-          setShowObsidianBrowserModal(false);
-          const fileName = filePath.split("/").pop() || filePath;
-          if (filePath.toLowerCase().endsWith(".epub")) {
-            setActiveReaderDoc({
-              documentId: `vault:${filePath}`,
-              title: fileName.replace(/\.epub$/i, ""),
-              format: "epub",
-              fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
-            });
-            return;
-          }
-          const previewResource: Resource = {
-            id: "preview-" + filePath,
-            topicId: topic.id,
-            title: fileName,
-            type: "md",
-            filePath,
-            createdAt: new Date().toISOString(),
-          };
-          setViewingObsidianResource(previewResource);
-        }}
-      />
+      {showObsidianBrowserModal && (
+        <ObsidianVaultBrowserModal
+          isOpen={showObsidianBrowserModal}
+          onClose={() => setShowObsidianBrowserModal(false)}
+          onSelectFile={(filePath) => {
+            setShowObsidianBrowserModal(false);
+            const fileName = filePath.split("/").pop() || filePath;
+            if (filePath.toLowerCase().endsWith(".epub")) {
+              setActiveReaderDoc({
+                documentId: `vault:${filePath}`,
+                title: fileName.replace(/\.epub$/i, ""),
+                format: "epub",
+                fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+              });
+              return;
+            }
+            const previewResource: Resource = {
+              id: "preview-" + filePath,
+              topicId: topic.id,
+              title: fileName,
+              type: "md",
+              filePath,
+              createdAt: new Date().toISOString(),
+            };
+            setViewingObsidianResource(previewResource);
+          }}
+        />
+      )}
       <ObsidianDocumentViewerModal
         isOpen={Boolean(viewingObsidianResource)}
         onClose={() => setViewingObsidianResource(null)}
@@ -1566,24 +1600,35 @@ export function TopicDetail() {
 
       {/* Phase R3A Unified Research Reader */}
       {activeReaderDoc && (
-        <UnifiedResearchReader
-          documentId={activeReaderDoc.documentId}
-          title={activeReaderDoc.title}
-          format={activeReaderDoc.format}
-          fileUrl={activeReaderDoc.fileUrl}
-          content={activeReaderDoc.content}
-          initialPosition={activeReaderDoc.initialPosition}
-          onNavigateToDocument={(target) => {
-            setActiveReaderDoc({
-              documentId: target.documentId,
-              title: target.title,
-              format: target.format,
-              fileUrl: target.fileUrl,
-              initialPosition: target.initialPosition,
-            });
-          }}
-          onClose={() => setActiveReaderDoc(null)}
-        />
+        <React.Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs text-white">
+              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-stone-900/90 border border-stone-800 shadow-2xl">
+                <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
+                <span className="text-sm font-medium font-sans">Đang mở tài liệu nghiên cứu...</span>
+              </div>
+            </div>
+          }
+        >
+          <UnifiedResearchReader
+            documentId={activeReaderDoc.documentId}
+            title={activeReaderDoc.title}
+            format={activeReaderDoc.format}
+            fileUrl={activeReaderDoc.fileUrl}
+            content={activeReaderDoc.content}
+            initialPosition={activeReaderDoc.initialPosition}
+            onNavigateToDocument={(target) => {
+              setActiveReaderDoc({
+                documentId: target.documentId,
+                title: target.title,
+                format: target.format,
+                fileUrl: target.fileUrl,
+                initialPosition: target.initialPosition,
+              });
+            }}
+            onClose={() => setActiveReaderDoc(null)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

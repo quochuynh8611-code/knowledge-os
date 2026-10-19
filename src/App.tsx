@@ -3,10 +3,6 @@ import { DataProvider, useData } from "./context/DataContext";
 import { AppErrorBoundary } from "./components/error/AppErrorBoundary";
 import { AppShell } from "./components/layout/AppShell";
 import { DashboardHome } from "./components/dashboard/DashboardHome";
-import { TopicTree } from "./components/topics/TopicTree";
-import { TopicDetail } from "./components/topics/TopicDetail";
-import { NotesManager } from "./components/notes/NotesManager";
-import { ResourcesManager } from "./components/resources/ResourcesManager";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useTheme } from "./hooks/useTheme";
 import { CommandPalette } from "./components/search/CommandPalette";
@@ -34,6 +30,26 @@ import { SessionWrapupModal } from "./components/modals/SessionWrapupModal";
 import { resolveDefaultRuntimeStatus } from "./components/integrations/notebooklm/runtimeBridgeConfig";
 
 // Lazy-loaded heavy & specialized workspace tabs
+const TopicTree = React.lazy(() =>
+  import("./components/topics/TopicTree").then((m) => ({
+    default: m.TopicTree,
+  }))
+);
+const TopicDetail = React.lazy(() =>
+  import("./components/topics/TopicDetail").then((m) => ({
+    default: m.TopicDetail,
+  }))
+);
+const NotesManager = React.lazy(() =>
+  import("./components/notes/NotesManager").then((m) => ({
+    default: m.NotesManager,
+  }))
+);
+const ResourcesManager = React.lazy(() =>
+  import("./components/resources/ResourcesManager").then((m) => ({
+    default: m.ResourcesManager,
+  }))
+);
 const KnowledgeGraph = React.lazy(() =>
   import("./components/graph/KnowledgeGraph").then((m) => ({
     default: m.KnowledgeGraph,
@@ -273,7 +289,11 @@ function AppContent() {
       case "dashboard":
         return <DashboardHome />;
       case "topics":
-        return selectedTopicId ? <TopicDetail /> : <TopicTree />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            {selectedTopicId ? <TopicDetail /> : <TopicTree />}
+          </React.Suspense>
+        );
       case "graph":
         return (
           <React.Suspense fallback={<TabLoadingFallback />}>
@@ -293,9 +313,17 @@ function AppContent() {
           </React.Suspense>
         );
       case "notes":
-        return <NotesManager />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <NotesManager />
+          </React.Suspense>
+        );
       case "resources":
-        return <ResourcesManager />;
+        return (
+          <React.Suspense fallback={<TabLoadingFallback />}>
+            <ResourcesManager />
+          </React.Suspense>
+        );
       case "search":
         return (
           <React.Suspense fallback={<TabLoadingFallback />}>
