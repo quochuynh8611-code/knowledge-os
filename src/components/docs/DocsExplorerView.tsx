@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
-import { globalReadingPositionStore } from "../../lib/readingPositionUnified";
+import { globalReadingPositionStore, formatReadingDuration } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
 const UnifiedResearchReader = React.lazy(() =>
@@ -45,6 +45,7 @@ export interface DocItem {
   lastModified: string;
   sourceType?: "docs" | "vault" | "archive";
   sourcePath?: string;
+  lastPosition?: any;
 }
 
 export interface DocDetail extends DocItem {
@@ -491,6 +492,7 @@ export function DocsExplorerView({
         recentList.push({
           ...matched,
           id: arch.id || matched.id,
+          lastPosition: arch.lastPosition,
         });
       } else if (!matched && (arch.fileName || arch.storageRelPath || arch.sourcePath)) {
         const virtualId = arch.id || arch.contentHash || arch.sourceKey;
@@ -513,6 +515,7 @@ export function DocsExplorerView({
             lastModified: arch.lastReadAt || arch.updatedAt || arch.createdAt || new Date().toISOString(),
             sourceType: isVault ? "vault" : "archive",
             sourcePath: isVault ? cleanVaultPath : undefined,
+            lastPosition: arch.lastPosition,
           });
         }
       }
@@ -535,7 +538,10 @@ export function DocsExplorerView({
 
       if (posById || posByPath || hasKey) {
         seenIds.add(docKey);
-        recentList.push(doc);
+        recentList.push({
+          ...doc,
+          lastPosition: posById || posByPath,
+        });
       }
     }
 
@@ -675,10 +681,14 @@ export function DocsExplorerView({
             <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none flex-1 max-w-full">
               {recentDocs.slice(0, 4).map((doc) => {
                 const format = getDocFormat(doc);
+                const totalSeconds = doc.lastPosition?.totalReadingSeconds;
+                const isCompleted = Boolean(doc.lastPosition?.isCompleted);
+                const durationStr = totalSeconds && totalSeconds > 0 ? formatReadingDuration(totalSeconds) : null;
+
                 return (
                   <div
                     key={`recent-${doc.id || doc.relativePath}`}
-                    className="inline-flex items-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-lg transition shadow-2xs shrink-0 max-w-[240px] group overflow-hidden"
+                    className="inline-flex items-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-lg transition shadow-2xs shrink-0 max-w-[280px] group overflow-hidden"
                   >
                     <button
                       type="button"
@@ -693,6 +703,25 @@ export function DocsExplorerView({
                       <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded text-amber-800 dark:text-amber-400 font-semibold shrink-0">
                         {format}
                       </span>
+                      {durationStr && (
+                        <span
+                          data-testid={`recent-read-duration-${doc.id}`}
+                          className="text-[9px] font-mono text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 px-1 py-0.2 rounded font-medium shrink-0 flex items-center gap-0.5"
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                          {durationStr}
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span
+                          data-testid={`recent-read-completion-${doc.id}`}
+                          className="text-[9px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 px-1 py-0.2 rounded font-semibold shrink-0 flex items-center gap-0.5"
+                          title="Đã đọc xong"
+                        >
+                          <Check className="w-2.5 h-2.5" />
+                          <span>Xong</span>
+                        </span>
+                      )}
                     </button>
                     <button
                       data-testid={`remove-recent-read-${doc.id}`}
