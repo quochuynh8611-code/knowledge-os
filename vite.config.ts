@@ -36,7 +36,10 @@ export default defineConfig(() => {
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';
               }
-              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
+              if (id.includes('epubjs') || id.includes('react-reader') || id.includes('jszip') || id.includes('localforage') || id.includes('@xmldom') || id.includes('marks-pane')) {
+                return 'vendor-reader';
+              }
+              if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
                 return 'vendor-react';
               }
               if (id.includes('motion') || id.includes('framer-motion')) {

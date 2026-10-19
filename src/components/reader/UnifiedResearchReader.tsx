@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle } from 'lucide-react';
+import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle, Loader2 } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
 import { ReaderSidebar, ReaderSidebarTab } from './ReaderSidebar';
 import { MarkdownReaderAdapter } from './adapters/MarkdownReaderAdapter';
-import { EpubReaderAdapter } from './adapters/EpubReaderAdapter';
 import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
+
+const EpubReaderAdapter = React.lazy(() =>
+  import('./adapters/EpubReaderAdapter').then((m) => ({
+    default: m.EpubReaderAdapter,
+  }))
+);
 import { UnifiedSelectionToolbar, SelectionToolbarAction } from './UnifiedSelectionToolbar';
 import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
@@ -850,19 +855,28 @@ export function UnifiedResearchReader({
           className="flex-1 relative overflow-hidden flex flex-col p-1 sm:p-2.5 outline-none"
         >
           {normalizedFormat === 'epub' ? (
-            <EpubReaderAdapter
-              fileUrl={fileUrl}
-              documentId={documentId}
-              initialLocation={currentPosition}
-              onLocationChanged={handlePositionChanged}
-              onTocGenerated={(items) => setTocItems(items)}
-              onTextSelection={handleTextSelection}
-              fontSize={fontSize}
-              pageMode={pageMode}
-              excerpts={documentHighlights}
-              activeExcerptId={activeExcerptId}
-              onSelectExcerpt={handleSelectExcerpt}
-            />
+            <React.Suspense
+              fallback={
+                <div className="flex h-full w-full items-center justify-center text-slate-400 gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
+                  <span className="text-sm font-medium">Đang chuẩn bị trình đọc EPUB...</span>
+                </div>
+              }
+            >
+              <EpubReaderAdapter
+                fileUrl={fileUrl}
+                documentId={documentId}
+                initialLocation={currentPosition}
+                onLocationChanged={handlePositionChanged}
+                onTocGenerated={(items) => setTocItems(items)}
+                onTextSelection={handleTextSelection}
+                fontSize={fontSize}
+                pageMode={pageMode}
+                excerpts={documentHighlights}
+                activeExcerptId={activeExcerptId}
+                onSelectExcerpt={handleSelectExcerpt}
+              />
+            </React.Suspense>
           ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (
             <div className="w-full h-full bg-white dark:bg-stone-900 rounded-2xl shadow-2xs border border-stone-200/80 dark:border-stone-800 overflow-hidden flex flex-col">
               <MarkdownReaderAdapter
