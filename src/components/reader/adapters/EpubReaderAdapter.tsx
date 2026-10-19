@@ -73,7 +73,6 @@ export function EpubReaderAdapter({
   activeExcerptId = null,
   onSelectExcerpt,
 }: EpubReaderAdapterProps) {
-  console.log('[EPUB Debug] 0. EpubReaderAdapter mounted/rendered with:', { fileUrl, documentId });
   const [location, setLocation] = useState<string | number>(initialLocation);
   const [processedUrl, setProcessedUrl] = useState<ArrayBuffer | null>(null);
   const [isSanitizing, setIsSanitizing] = useState<boolean>(true);
@@ -253,18 +252,37 @@ export function EpubReaderAdapter({
     loadAndSanitize();
   }, [loadAndSanitize]);
 
+  const currentLocationRef = useRef<string | number>(initialLocation);
+
+  // Reactive font size update: re-apply font size whenever fontSize prop changes
+  useEffect(() => {
+    const rendition = renditionRef.current;
+    if (!rendition || !rendition.themes || typeof rendition.themes.fontSize !== 'function') return;
+    rendition.themes.fontSize(`${fontSize}%`);
+  }, [fontSize]);
+
   // Reactive spread update: re-apply spread mode whenever pageMode changes
-  // after the rendition has already been mounted (renditionRef is populated).
-  // Without this, toggling "Trang đơn / Trang đôi" after book load has no effect.
+  // and preserve current reading location without jumping to beginning
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || !rendition.spread) return;
     rendition.spread(pageMode === 'single' ? 'none' : 'auto');
+
+    const currentLoc = currentLocationRef.current;
+    if (currentLoc !== undefined && currentLoc !== null && rendition.display) {
+      rendition.display(currentLoc as any).catch((err: any) => {
+        console.warn('[EpubReaderAdapter] rendition.display failed during spread toggle:', err);
+      });
+    }
   }, [pageMode]);
 
   // Phase R3: Reactive relocation when initialLocation changes dynamically in active session
   useEffect(() => {
     if (initialLocation === undefined || initialLocation === null) return;
+    // Guard against redundant display loop if location matches current
+    if (String(initialLocation) === String(currentLocationRef.current)) return;
+
+    currentLocationRef.current = initialLocation;
     setLocation(initialLocation);
     const rendition = renditionRef.current;
     if (rendition && rendition.display) {
@@ -275,6 +293,7 @@ export function EpubReaderAdapter({
   }, [initialLocation]);
 
   const handleLocationChanged = (newLocation: string) => {
+    currentLocationRef.current = newLocation;
     setLocation(newLocation);
     if (onLocationChanged) {
       onLocationChanged(newLocation);
@@ -294,7 +313,6 @@ export function EpubReaderAdapter({
 
   const handleRendition = useCallback(
     (rendition: Rendition) => {
-      console.log('[EPUB Debug] 1. handleRendition called with rendition:', Boolean(rendition));
       renditionRef.current = rendition;
       setRenditionInstance(rendition);
       syncAnnotations(rendition, excerptsRef.current, activeExcerptIdRef.current);
@@ -305,9 +323,13 @@ export function EpubReaderAdapter({
           try {
             return await originalDisplay(target);
           } catch (err: any) {
-            console.warn('[EpubReaderAdapter] rendition.display failed, falling back to 0:', err);
-            setLocation(0);
-            return await originalDisplay(0);
+            console.warn('[EpubReaderAdapter] rendition.display failed for target:', target, err);
+            // Never reset location to 0 on temporary layout reflow errors during spread/relocation.
+            // If target is undefined/null and fails, try default unparameterized display as fallback.
+            if (target === undefined || target === null) {
+              return await originalDisplay();
+            }
+            throw err;
           }
         };
       }
@@ -329,7 +351,6 @@ export function EpubReaderAdapter({
 
       // Direct In-Document Text Selection handler
       const handleSelected = (cfiRange: string, contents: any) => {
-        console.log('[EPUB Debug] 3. [EVENT FIRED] rendition.on("selected") fired! cfiRange:', cfiRange, 'hasContents:', Boolean(contents));
         if (!onTextSelectionRef.current) return;
         try {
           let text = '';
@@ -363,8 +384,6 @@ export function EpubReaderAdapter({
             }
           }
 
-          console.log('[EPUB Debug] 3a. Extracted text:', text, 'rangeRect:', rangeRect);
-
           if (!text) return;
 
           // Calculate iframe offset in viewport
@@ -373,8 +392,6 @@ export function EpubReaderAdapter({
 
           const top = iframeRect.top + rangeRect.top;
           const left = iframeRect.left + rangeRect.left + rangeRect.width / 2;
-
-          console.log('[EPUB Debug] 3b. Computed position:', { top, left, iframeRect });
 
           onTextSelectionRef.current({
             text,
@@ -385,12 +402,11 @@ export function EpubReaderAdapter({
             cfi: cfiRange,
           });
         } catch (err) {
-          console.warn('[EPUB Debug] Selection capture error:', err);
+          console.warn('[EpubReaderAdapter] Selection capture error:', err);
         }
       };
 
       const handleClick = () => {
-        console.log('[EPUB Debug] 7. rendition.on("click") fired');
         if (onTextSelectionRef.current) {
           onTextSelectionRef.current(null);
         }
@@ -398,27 +414,6 @@ export function EpubReaderAdapter({
 
       rendition.on('selected', handleSelected);
       rendition.on('click', handleClick);
-      console.log('[EPUB Debug] 2. rendition.on("selected") & ("click") listeners registered');
-
-      // Hook into iframe content loading for DOM-level diagnostics
-      if ((rendition as any).hooks?.content) {
-        (rendition as any).hooks.content.register((contents: any) => {
-          console.log('[EPUB Debug] 4. [HOOK] rendition.hooks.content registered view. Has doc:', Boolean(contents?.document));
-          const doc = contents?.document;
-          if (doc) {
-            doc.addEventListener('mouseup', () => {
-              const sel = contents.window?.getSelection();
-              const selText = sel?.toString()?.trim();
-              console.log('[EPUB Debug] 5. [DOM mouseup] inside iframe document. Selection text:', selText);
-            });
-            doc.addEventListener('selectionchange', () => {
-              const sel = contents.window?.getSelection();
-              const selText = sel?.toString()?.trim();
-              console.log('[EPUB Debug] 6. [DOM selectionchange] inside iframe document. Selection text:', selText);
-            });
-          }
-        });
-      }
 
       listenersRef.current = { rendition, selected: handleSelected, click: handleClick };
 

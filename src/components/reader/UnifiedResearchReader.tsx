@@ -129,7 +129,7 @@ export function UnifiedResearchReader({
 
   // Persist position to server / repository
   const persistPositionAsync = useCallback(
-    async (locator?: string) => {
+    async (locator?: string, options?: { keepalive?: boolean }) => {
       const locToSave = locator || latestPositionRef.current;
       if (!locToSave || !locToSave.trim()) return;
       const safeLoc = locToSave.trim();
@@ -145,6 +145,7 @@ export function UnifiedResearchReader({
         await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
+          keepalive: options?.keepalive ?? false,
           body: JSON.stringify({
             lastPosition: positionData,
             lastReadAt: new Date().toISOString(),
@@ -190,6 +191,21 @@ export function UnifiedResearchReader({
     },
     [documentId, normalizedFormat, onPositionChange, persistPositionAsync]
   );
+
+  // Close handler with guaranteed persist on close
+  const handleCloseReader = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    const loc = latestPositionRef.current || currentPosition;
+    if (loc && loc.trim()) {
+      persistPositionAsync(loc.trim(), { keepalive: true }).catch((err) => {
+        console.warn('[UnifiedResearchReader] Failed to persist position on close:', err);
+      });
+    }
+    onClose();
+  }, [currentPosition, persistPositionAsync, onClose]);
 
   // Handle TOC item selection
   const handleSelectTocItem = (item: TocItem) => {
@@ -437,7 +453,6 @@ export function UnifiedResearchReader({
 
   const handleTextSelection = useCallback(
     (selection: { text: string; position: { top: number; left: number }; page?: number; cfi?: string } | null) => {
-      console.log('[EPUB Debug] 8. UnifiedResearchReader handleTextSelection called with:', selection);
       setActiveSelection(selection);
     },
     []
@@ -726,12 +741,12 @@ export function UnifiedResearchReader({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isTocOpen && !isTargetNoteModalOpen) {
-        onClose();
+        handleCloseReader();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isTocOpen, isTargetNoteModalOpen, onClose]);
+  }, [isTocOpen, isTargetNoteModalOpen, handleCloseReader]);
 
   // EPUB extra controls in header
   const epubExtraControls = normalizedFormat === 'epub' && (
@@ -820,7 +835,7 @@ export function UnifiedResearchReader({
         onToggleToc={() => setIsTocOpen((prev) => !prev)}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        onClose={onClose}
+        onClose={handleCloseReader}
         extraControls={epubExtraControls}
       />
 
