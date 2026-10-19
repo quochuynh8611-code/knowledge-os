@@ -83,13 +83,23 @@ export interface ReadingAnalyticsSummary {
   totalDocsRead: number;
 }
 
+export interface ReadingAnalyticsBreakdown extends ReadingAnalyticsSummary {
+  completionRate: number;
+  completedDocIds: string[];
+  inProgressDocIds: string[];
+}
+
 /**
- * Pure calculation helper to aggregate reading analytics across documents.
+ * Pure calculation helper to break down reading analytics and calculate completion rate in a single pass.
  */
-export function calculateReadingAnalyticsSummary(docs?: Array<{ lastPosition?: any }>): ReadingAnalyticsSummary {
+export function calculateReadingAnalyticsBreakdown(
+  docs?: Array<{ id?: string; sourceKey?: string; fileName?: string; storageRelPath?: string; sourcePath?: string; lastPosition?: any }>
+): ReadingAnalyticsBreakdown {
   let totalReadingSeconds = 0;
   let completedCount = 0;
   let inProgressCount = 0;
+  const completedDocIds: string[] = [];
+  const inProgressDocIds: string[] = [];
 
   if (Array.isArray(docs)) {
     for (const doc of docs) {
@@ -102,8 +112,13 @@ export function calculateReadingAnalyticsSummary(docs?: Array<{ lastPosition?: a
           : 0;
       totalReadingSeconds += sec;
 
+      const id = doc.id || doc.sourceKey || doc.storageRelPath || doc.fileName || doc.sourcePath;
+
       if (lp.isCompleted === true) {
         completedCount++;
+        if (id) {
+          completedDocIds.push(id);
+        }
       } else if (
         sec > 0 ||
         (typeof lp.percentage === 'number' && lp.percentage > 0) ||
@@ -111,67 +126,40 @@ export function calculateReadingAnalyticsSummary(docs?: Array<{ lastPosition?: a
         Boolean(lp.headingId)
       ) {
         inProgressCount++;
+        if (id) {
+          inProgressDocIds.push(id);
+        }
       }
     }
   }
+
+  const totalDocsRead = completedCount + inProgressCount;
+  const completionRate =
+    totalDocsRead > 0 ? Math.round((completedCount / totalDocsRead) * 100) : 0;
 
   return {
     totalReadingSeconds,
     completedCount,
     inProgressCount,
-    totalDocsRead: completedCount + inProgressCount,
-  };
-}
-
-export interface ReadingAnalyticsBreakdown extends ReadingAnalyticsSummary {
-  completionRate: number;
-  completedDocIds: string[];
-  inProgressDocIds: string[];
-}
-
-/**
- * Pure calculation helper to break down reading analytics and calculate completion rate.
- */
-export function calculateReadingAnalyticsBreakdown(
-  docs?: Array<{ id?: string; sourceKey?: string; fileName?: string; storageRelPath?: string; sourcePath?: string; lastPosition?: any }>
-): ReadingAnalyticsBreakdown {
-  const base = calculateReadingAnalyticsSummary(docs);
-  const completedDocIds: string[] = [];
-  const inProgressDocIds: string[] = [];
-
-  if (Array.isArray(docs)) {
-    for (const doc of docs) {
-      const lp = doc?.lastPosition;
-      if (!lp) continue;
-
-      const id = doc.id || doc.sourceKey || doc.storageRelPath || doc.fileName || doc.sourcePath;
-      if (!id) continue;
-
-      const sec =
-        typeof lp.totalReadingSeconds === 'number' && !isNaN(lp.totalReadingSeconds) && lp.totalReadingSeconds > 0
-          ? lp.totalReadingSeconds
-          : 0;
-
-      if (lp.isCompleted === true) {
-        completedDocIds.push(id);
-      } else if (
-        sec > 0 ||
-        (typeof lp.percentage === 'number' && lp.percentage > 0) ||
-        Boolean(lp.cfi) ||
-        Boolean(lp.headingId)
-      ) {
-        inProgressDocIds.push(id);
-      }
-    }
-  }
-
-  const completionRate =
-    base.totalDocsRead > 0 ? Math.round((base.completedCount / base.totalDocsRead) * 100) : 0;
-
-  return {
-    ...base,
+    totalDocsRead,
     completionRate,
     completedDocIds,
     inProgressDocIds,
+  };
+}
+
+/**
+ * Pure calculation helper to aggregate reading analytics across documents.
+ * Delegates to single-pass engine to guarantee single source of truth.
+ */
+export function calculateReadingAnalyticsSummary(
+  docs?: Array<{ id?: string; sourceKey?: string; fileName?: string; storageRelPath?: string; sourcePath?: string; lastPosition?: any }>
+): ReadingAnalyticsSummary {
+  const breakdown = calculateReadingAnalyticsBreakdown(docs);
+  return {
+    totalReadingSeconds: breakdown.totalReadingSeconds,
+    completedCount: breakdown.completedCount,
+    inProgressCount: breakdown.inProgressCount,
+    totalDocsRead: breakdown.totalDocsRead,
   };
 }
