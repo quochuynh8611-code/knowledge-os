@@ -20,14 +20,22 @@ export interface MarkdownReaderSelectionDetails {
   position: { top: number; left: number };
 }
 
+export interface MarkdownReadingPosition {
+  headingId?: string;
+  scrollPercentage?: number;
+  updatedAt?: string;
+}
+
 export interface MarkdownReaderAdapterProps {
   content?: string;
   fileUrl?: string;
   documentId: string;
   sourceType?: 'docs' | 'vault';
   initialHeadingId?: string;
+  initialScrollPercentage?: number;
   onTocGenerated?: (items: TocItem[]) => void;
   onPositionChange?: (headingId: string) => void;
+  onScrollPositionChange?: (position: MarkdownReadingPosition) => void;
   onTextSelection?: (selection: MarkdownReaderSelectionDetails) => void;
   className?: string;
   excerpts?: ResearchExcerpt[];
@@ -72,8 +80,10 @@ export function MarkdownReaderAdapter({
   documentId,
   sourceType,
   initialHeadingId,
+  initialScrollPercentage,
   onTocGenerated,
   onPositionChange,
+  onScrollPositionChange,
   onTextSelection,
   className = '',
   excerpts = [],
@@ -198,19 +208,100 @@ export function MarkdownReaderAdapter({
   }, [tocItems, onTocGenerated]);
 
   // Scroll to initial heading position if provided
+  const handleScroll = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const maxScroll = Math.max(0, scrollHeight - clientHeight);
+    const scrollPercentage = maxScroll > 0
+      ? Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)))
+      : 0;
+
+    const headings = Array.from(container.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'));
+    let activeHeadingId: string | undefined = undefined;
+
+    const hasDistinctOffsets = headings.length > 1 && headings.some((h) => h.offsetTop > 0);
+    if (hasDistinctOffsets) {
+      for (const h of headings) {
+        if (!h.id) continue;
+        if (h.offsetTop <= scrollTop + 80) {
+          activeHeadingId = h.id;
+        } else {
+          break;
+        }
+      }
+    } else if (headings.length > 0) {
+      const pct = maxScroll > 0 ? scrollTop / maxScroll : 0;
+      const index = Math.min(headings.length - 1, Math.floor(pct * headings.length));
+      activeHeadingId = headings[index]?.id;
+    }
+
+    if (activeHeadingId && onPositionChange) {
+      onPositionChange(activeHeadingId);
+    }
+
+    if (onScrollPositionChange) {
+      onScrollPositionChange({
+        headingId: activeHeadingId,
+        scrollPercentage,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }, [onPositionChange, onScrollPositionChange]);
+
+  // Scroll to initial heading position / fine scroll offset if provided
   useEffect(() => {
-    if (!initialHeadingId) return;
+    if (!initialHeadingId && initialScrollPercentage === undefined) return;
 
     const timer = setTimeout(() => {
-      if (!containerRef.current) return;
-      const targetEl = containerRef.current.querySelector(`[id="${initialHeadingId}"]`);
+      const container = containerRef.current;
+      if (!container) return;
+
+      const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+      let targetTop = 0;
+
+      const hasValidScrollPct = typeof initialScrollPercentage === 'number' && Number.isFinite(initialScrollPercentage);
+      if (hasValidScrollPct) {
+        const clampedPct = Math.min(100, Math.max(0, initialScrollPercentage));
+        targetTop = maxScroll > 0 ? (clampedPct / 100) * maxScroll : 0;
+      }
+
+      let targetEl: HTMLElement | null = null;
+      if (initialHeadingId && typeof initialHeadingId === 'string' && initialHeadingId.trim()) {
+        try {
+          targetEl = container.querySelector<HTMLElement>(`[id="${initialHeadingId.trim()}"]`);
+        } catch {
+          targetEl = null;
+        }
+      }
+
+      // If target heading is found
       if (targetEl) {
         targetEl.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+        // If fine scroll percentage is also specified, scroll container to fine position
+        if (hasValidScrollPct) {
+          if (maxScroll === 0 && targetEl.offsetTop > 0) {
+            targetTop = targetEl.offsetTop;
+          }
+          if (typeof container.scrollTo === 'function') {
+            container.scrollTo({ top: targetTop, behavior: 'smooth' });
+          } else {
+            container.scrollTop = targetTop;
+          }
+        }
+      } else if (hasValidScrollPct) {
+        // Fallback: heading renamed/deleted or missing -> restore by fine scroll percentage
+        if (typeof container.scrollTo === 'function') {
+          container.scrollTo({ top: targetTop, behavior: 'smooth' });
+        } else {
+          container.scrollTop = targetTop;
+        }
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [initialHeadingId]);
+  }, [initialHeadingId, initialScrollPercentage]);
 
   // ─── Phase R3d-A: Persistent Inline Highlights Reconciliation ──────────────
   useEffect(() => {
@@ -449,6 +540,7 @@ export function MarkdownReaderAdapter({
   return (
     <div
       ref={containerRef}
+      onScroll={handleScroll}
       onMouseUp={handleMouseUp}
       data-testid="markdown-selectable-area"
       className={`markdown-reader-viewport overflow-y-auto px-6 py-8 sm:px-12 sm:py-10 max-w-4xl mx-auto w-full prose prose-stone dark:prose-invert leading-relaxed ${className}`}

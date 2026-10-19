@@ -227,6 +227,12 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       }
 
       if (!doc) {
+        doc = await prisma.archivedDocument.findFirst({
+          where: { sourceKey: id },
+        });
+      }
+
+      if (!doc) {
         res.status(404).json({
           error: "DOCUMENT_NOT_FOUND",
           message: `Không tìm thấy tài liệu với ID '${id}'.`,
@@ -261,7 +267,7 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         return;
       }
 
-      // 2. Find document by id or contentHash
+      // 2. Find document by id, contentHash, or sourceKey
       let existingDoc = await prisma.archivedDocument.findUnique({
         where: { id },
       });
@@ -269,6 +275,12 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       if (!existingDoc) {
         existingDoc = await prisma.archivedDocument.findFirst({
           where: { contentHash: id },
+        });
+      }
+
+      if (!existingDoc) {
+        existingDoc = await prisma.archivedDocument.findFirst({
+          where: { sourceKey: id },
         });
       }
 
@@ -282,9 +294,41 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
 
       // 3. Prepare update data
       const updateData: any = {};
-      if (parsed.data.lastPosition !== undefined) {
-        updateData.lastPosition = parsed.data.lastPosition;
+      let mergedLastPosition: any = existingDoc.lastPosition || {};
+      if (typeof mergedLastPosition !== "object" || mergedLastPosition === null) {
+        mergedLastPosition = {};
       }
+
+      if (parsed.data.lastPosition !== undefined) {
+        mergedLastPosition = {
+          ...mergedLastPosition,
+          ...parsed.data.lastPosition,
+        };
+      }
+
+      const rawBody = req.body || {};
+      const completed = parsed.data.completed !== undefined ? parsed.data.completed : rawBody.completed;
+      const completedAt = parsed.data.completedAt !== undefined ? parsed.data.completedAt : rawBody.completedAt;
+
+      if (completed !== undefined) {
+        mergedLastPosition.isCompleted = Boolean(completed);
+        mergedLastPosition.completedAt = completed ? (completedAt || new Date().toISOString()) : null;
+      }
+
+      const activeReadingSeconds = parsed.data.activeReadingSeconds !== undefined ? parsed.data.activeReadingSeconds : rawBody.activeReadingSeconds;
+      if (typeof activeReadingSeconds === "number" && !isNaN(activeReadingSeconds) && activeReadingSeconds >= 0) {
+        const roundedSecs = Math.round(activeReadingSeconds);
+        const prevTotal = typeof mergedLastPosition.totalReadingSeconds === "number" ? mergedLastPosition.totalReadingSeconds : 0;
+        mergedLastPosition.totalReadingSeconds = prevTotal + roundedSecs;
+        if (roundedSecs > 0 || mergedLastPosition.lastSessionSeconds === undefined) {
+          mergedLastPosition.lastSessionSeconds = roundedSecs;
+        }
+      }
+
+      if (parsed.data.lastPosition !== undefined || completed !== undefined || typeof activeReadingSeconds === "number") {
+        updateData.lastPosition = mergedLastPosition;
+      }
+
       if (parsed.data.fileName !== undefined) {
         updateData.fileName = parsed.data.fileName;
       }
@@ -341,9 +385,16 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       }
 
       if (doc) {
+        const updatedDoc = await prisma.archivedDocument.update({
+          where: { id: doc.id },
+          data: {
+            lastReadAt: new Date(),
+            readCount: { increment: 1 },
+          },
+        });
         res.status(200).json({
           success: true,
-          document: doc,
+          document: updatedDoc,
         });
         return;
       }
@@ -353,7 +404,7 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       const contentHash = crypto.createHash("sha256").update(sourceKey).digest("hex");
       const storageRelPath = `vault://${cleanPath}`;
 
-      // 3. Create new ArchivedDocument
+      // 3. Create new ArchivedDocument with initial open state
       const newDoc = await prisma.archivedDocument.create({
         data: {
           fileName,
@@ -365,6 +416,8 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
           sourceType: "vault",
           sourcePath: cleanPath,
           sourceKey,
+          lastReadAt: new Date(),
+          readCount: 1,
         },
       });
 
@@ -376,6 +429,82 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       res.status(500).json({
         error: "INTERNAL_ERROR",
         message: err.message || "Lỗi khi đăng ký tài liệu Obsidian Vault.",
+      });
+    }
+  });
+
+  // DELETE /archive/document/:id/history - Clear reading history for a document
+  router.delete("/archive/document/:id/history", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      let existingDoc = await prisma.archivedDocument.findUnique({
+        where: { id },
+      });
+
+      if (!existingDoc) {
+        existingDoc = await prisma.archivedDocument.findFirst({
+          where: { contentHash: id },
+        });
+      }
+
+      if (!existingDoc) {
+        existingDoc = await prisma.archivedDocument.findFirst({
+          where: { sourceKey: id },
+        });
+      }
+
+      if (!existingDoc) {
+        res.status(200).json({
+          success: true,
+          message: `Tài liệu '${id}' không tồn tại hoặc lịch sử đọc đã được xóa trước đó.`,
+        });
+        return;
+      }
+
+      const updated = await prisma.archivedDocument.update({
+        where: { id: existingDoc.id },
+        data: {
+          lastReadAt: null,
+          readCount: 0,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Đã xóa lịch sử đọc thành công.",
+        document: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: err.message || "Lỗi khi xóa lịch sử đọc tài liệu.",
+      });
+    }
+  });
+
+  // DELETE /archive/history - Clear all reading history
+  router.delete("/archive/history", async (_req: Request, res: Response) => {
+    try {
+      const result = await prisma.archivedDocument.updateMany({
+        where: {
+          lastReadAt: { not: null },
+        },
+        data: {
+          lastReadAt: null,
+          readCount: 0,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Đã xóa toàn bộ lịch sử đọc thành công.",
+        count: result.count,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: err.message || "Lỗi khi xóa toàn bộ lịch sử đọc.",
       });
     }
   });

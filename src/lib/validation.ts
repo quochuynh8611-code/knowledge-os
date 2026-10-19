@@ -1099,8 +1099,13 @@ export const ReadingPositionDataSchema = z.object({
   pageNumber: z.number().int().min(1).optional(),
   headingId: z.string().optional(),
   percentage: z.number().min(0).max(100).optional(),
+  scrollPercentage: z.number().min(0).max(100).optional(),
+  isCompleted: z.boolean().optional(),
+  completedAt: z.string().nullable().optional(),
+  totalReadingSeconds: z.number().int().min(0).optional(),
+  lastSessionSeconds: z.number().int().min(0).optional(),
   updatedAt: z.string().optional(),
-});
+}).passthrough();
 
 export const PositionSelectorSchema = z.object({
   cfi: z.string().optional(),
@@ -1175,7 +1180,10 @@ export const ArchivedDocumentUpdateSchema = z.object({
   lastPosition: ReadingPositionDataSchema.optional(),
   lastReadAt: z.string().optional(),
   readCount: z.number().int().min(0).optional(),
-});
+  completed: z.boolean().optional(),
+  completedAt: z.string().nullable().optional(),
+  activeReadingSeconds: z.number().min(0).optional(),
+}).passthrough();
 
 export const ResearchExcerptStatusEnum = z.enum(["active", "inbox", "archived"]);
 

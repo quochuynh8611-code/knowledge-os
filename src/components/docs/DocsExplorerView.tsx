@@ -15,6 +15,8 @@ import {
   List,
   PanelLeftClose,
   PanelLeftOpen,
+  X,
+  Trash2,
 } from "lucide-react";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
@@ -76,21 +78,77 @@ export function DocsExplorerView({
     fileUrl?: string;
     content?: string;
     sourceType?: 'docs' | 'vault';
+    initialPosition?: string;
   } | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
   const [archivedDocs, setArchivedDocs] = useState<any[]>([]);
+  const [recentReadsError, setRecentReadsError] = useState<string | null>(null);
+  const [deletedHistoryIds, setDeletedHistoryIds] = useState<Set<string>>(new Set());
+  const [allHistoryCleared, setAllHistoryCleared] = useState<boolean>(false);
 
   const fetchArchivedDocs = useCallback(async () => {
+    setRecentReadsError(null);
     try {
       const res = await fetch("/api/archive/list");
       if (res.ok) {
         const data = await res.json();
         setArchivedDocs(data.documents || []);
+        setRecentReadsError(null);
+      } else {
+        setRecentReadsError(`Lỗi nạp lịch sử (${res.status})`);
       }
-    } catch {
-      // Ignore if offline
+    } catch (err: any) {
+      setRecentReadsError(err.message || "Không thể kết nối máy chủ");
     }
   }, []);
+
+  const handleDeleteRecentRead = useCallback(
+    async (docId: string, e?: React.MouseEvent) => {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      if (!docId) return;
+
+      setDeletedHistoryIds((prev) => new Set(prev).add(docId));
+      setArchivedDocs((prev) =>
+        prev.map((d) => (d.id === docId || d.sourceKey === docId ? { ...d, lastReadAt: null, readCount: 0 } : d))
+      );
+
+      try {
+        const res = await fetch(`/api/archive/document/${encodeURIComponent(docId)}/history`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          fetchArchivedDocs();
+        }
+      } catch {
+        fetchArchivedDocs();
+      }
+    },
+    [fetchArchivedDocs]
+  );
+
+  const handleClearAllRecentReads = useCallback(async () => {
+    const confirmed = window.confirm("Bạn có chắc chắn muốn xóa tất cả lịch sử đọc gần đây?");
+    if (!confirmed) return;
+
+    setAllHistoryCleared(true);
+    setArchivedDocs((prev) => prev.map((d) => ({ ...d, lastReadAt: null, readCount: 0 })));
+
+    try {
+      const res = await fetch("/api/archive/history", {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        setAllHistoryCleared(false);
+        fetchArchivedDocs();
+      }
+    } catch {
+      setAllHistoryCleared(false);
+      fetchArchivedDocs();
+    }
+  }, [fetchArchivedDocs]);
 
   const fetchDocsList = useCallback(async () => {
     setIsLoadingList(true);
@@ -108,51 +166,74 @@ export function DocsExplorerView({
     }
   }, [fetchArchivedDocs]);
 
-  const fetchDocContent = useCallback(async (relativePath: string, explicitSourceType?: "docs" | "vault", docId?: string) => {
-    setIsLoadingContent(true);
-    setError(null);
-    try {
-      const isVault = explicitSourceType === "vault" || relativePath.startsWith("vault://");
-      const cleanPath = relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+  const fetchDocContent = useCallback(
+    async (
+      relativePath: string,
+      explicitSourceType?: "docs" | "vault",
+      docId?: string,
+      openInReader: boolean = false,
+      initialPos?: string
+    ) => {
+      setIsLoadingContent(true);
+      setError(null);
+      try {
+        const isVault = explicitSourceType === "vault" || relativePath.startsWith("vault://");
+        const cleanPath = relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
 
-      if (isVault) {
-        const res = await fetch(`/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`);
-        if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu Vault (${res.status})`);
-        const data = await res.json();
-        const fileName = cleanPath.split("/").pop() || cleanPath;
-        const detail: DocDetail = {
-          id: docId || `vault:${cleanPath}`,
-          title: fileName.replace(/\.md$/i, ""),
-          category: "guides",
-          relativePath: cleanPath,
-          sizeBytes: (data.content || "").length,
-          lastModified: new Date().toISOString(),
-          content: data.content || "",
-          sourceType: "vault",
-          sourcePath: cleanPath,
-        };
-        setSelectedDoc(detail);
-        setActiveReaderDoc({
-          documentId: docId || `vault:${cleanPath}`,
-          title: detail.title,
-          format: "md",
-          sourceType: "vault",
-          fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`,
-          content: data.content || "",
-        });
-        return;
+        if (isVault) {
+          const res = await fetch(`/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`);
+          if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu Vault (${res.status})`);
+          const data = await res.json();
+          const fileName = cleanPath.split("/").pop() || cleanPath;
+          const detail: DocDetail = {
+            id: docId || `vault:${cleanPath}`,
+            title: fileName.replace(/\.md$/i, ""),
+            category: "guides",
+            relativePath: cleanPath,
+            sizeBytes: (data.content || "").length,
+            lastModified: new Date().toISOString(),
+            content: data.content || "",
+            sourceType: "vault",
+            sourcePath: cleanPath,
+          };
+          setSelectedDoc(detail);
+          setActiveReaderDoc({
+            documentId: docId || `vault:${cleanPath}`,
+            title: detail.title,
+            format: "md",
+            sourceType: "vault",
+            fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`,
+            content: data.content || "",
+            initialPosition: initialPos,
+          });
+          return;
+        }
+
+        const res = await fetch(`/api/docs/content?path=${encodeURIComponent(relativePath)}`);
+        if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu (${res.status})`);
+        const data: DocDetail = await res.json();
+        setSelectedDoc(data);
+
+        if (openInReader) {
+          const sanitizedRelative = relativePath.replace(/^\/+/, "");
+          setActiveReaderDoc({
+            documentId: docId || data.id || relativePath,
+            title: data.title || relativePath.split("/").pop() || relativePath,
+            format: "md",
+            sourceType: "docs",
+            fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+            content: data.content || "",
+            initialPosition: initialPos,
+          });
+        }
+      } catch (err: any) {
+        setError(err.message || "Không thể nạp nội dung tài liệu");
+      } finally {
+        setIsLoadingContent(false);
       }
-
-      const res = await fetch(`/api/docs/content?path=${encodeURIComponent(relativePath)}`);
-      if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu (${res.status})`);
-      const data: DocDetail = await res.json();
-      setSelectedDoc(data);
-    } catch (err: any) {
-      setError(err.message || "Không thể nạp nội dung tài liệu");
-    } finally {
-      setIsLoadingContent(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const getDocFormat = useCallback((doc: DocItem): "pdf" | "epub" | "md" | "other" => {
     const p = (doc.relativePath || "").toLowerCase();
@@ -162,57 +243,81 @@ export function DocsExplorerView({
     return "other";
   }, []);
 
-  const handleDocClick = useCallback((doc: DocItem) => {
-    const format = getDocFormat(doc);
-    const isVault =
-      doc.sourceType === "vault" ||
-      doc.relativePath.startsWith("vault://") ||
-      archivedDocs.some(
+  const handleDocClick = useCallback(
+    (doc: DocItem, openInReader: boolean = false) => {
+      const format = getDocFormat(doc);
+      const isVault =
+        doc.sourceType === "vault" ||
+        doc.relativePath.startsWith("vault://") ||
+        archivedDocs.some(
+          (a) =>
+            (a.id === doc.id || a.sourcePath === doc.relativePath || a.sourceKey === `vault:${doc.relativePath}`) &&
+            (a.sourceType === "vault" || a.storageRelPath?.startsWith("vault://"))
+        );
+
+      const matchingArch = archivedDocs.find(
         (a) =>
-          (a.id === doc.id || a.sourcePath === doc.relativePath || a.sourceKey === `vault:${doc.relativePath}`) &&
-          (a.sourceType === "vault" || a.storageRelPath?.startsWith("vault://"))
+          a.id === doc.id ||
+          a.sourcePath === doc.relativePath ||
+          a.storageRelPath === doc.relativePath ||
+          a.sourceKey === `vault:${doc.relativePath}` ||
+          a.sourceKey === `archive:${doc.relativePath}` ||
+          (a.fileName && doc.relativePath.endsWith(a.fileName))
       );
 
-    if (isVault) {
-      const cleanVaultPath = doc.sourcePath || doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
-      if (format === "epub" || format === "pdf") {
+      let initialPos: string | undefined = undefined;
+      if (matchingArch?.lastPosition && typeof matchingArch.lastPosition === "object") {
+        const lp = matchingArch.lastPosition;
+        if (format === "epub" && lp.cfi) initialPos = lp.cfi;
+        else if (format === "pdf" && lp.pageNumber) initialPos = String(lp.pageNumber);
+        else if (format === "md" && lp.headingId) initialPos = lp.headingId;
+      }
+
+      if (isVault) {
+        const cleanVaultPath = doc.sourcePath || doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+        if (format === "epub" || format === "pdf") {
+          setActiveReaderDoc({
+            documentId: matchingArch?.id || doc.id || `vault:${cleanVaultPath}`,
+            title: doc.title || cleanVaultPath.split("/").pop() || cleanVaultPath,
+            format,
+            sourceType: "vault",
+            fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`,
+            initialPosition: initialPos,
+          });
+          return;
+        }
+        fetchDocContent(cleanVaultPath, "vault", matchingArch?.id || doc.id, true, initialPos);
+        return;
+      }
+
+      if (format === "epub") {
+        const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
         setActiveReaderDoc({
-          documentId: doc.id || `vault:${cleanVaultPath}`,
-          title: doc.title || cleanVaultPath.split("/").pop() || cleanVaultPath,
-          format,
-          sourceType: "vault",
-          fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`,
+          documentId: matchingArch?.id || doc.id || doc.relativePath,
+          title: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
+          format: "epub",
+          sourceType: "docs",
+          fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+          initialPosition: initialPos,
         });
         return;
       }
-      fetchDocContent(cleanVaultPath, "vault", doc.id);
-      return;
-    }
-
-    if (format === "epub") {
-      const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-      setActiveReaderDoc({
-        documentId: doc.id || doc.relativePath,
-        title: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
-        format: "epub",
-        sourceType: "docs",
-        fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
-      });
-      return;
-    }
-    if (format === "pdf") {
-      const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-      setActiveReaderDoc({
-        documentId: doc.id || doc.relativePath,
-        title: doc.title,
-        format: "pdf",
-        sourceType: "docs",
-        fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
-      });
-      return;
-    }
-    fetchDocContent(doc.relativePath, "docs", doc.id);
-  }, [fetchDocContent, getDocFormat, archivedDocs]);
+      if (format === "pdf") {
+        const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
+        setActiveReaderDoc({
+          documentId: matchingArch?.id || doc.id || doc.relativePath,
+          title: doc.title,
+          format: "pdf",
+          sourceType: "docs",
+          fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+          initialPosition: initialPos,
+        });
+        return;
+      }
+      fetchDocContent(doc.relativePath, "docs", matchingArch?.id || doc.id, openInReader, initialPos);
+    },
+    [fetchDocContent, getDocFormat, archivedDocs]
+  );
 
   const handleVaultFileSelect = useCallback(async (filePath: string) => {
     setIsVaultModalOpen(false);
@@ -335,22 +440,34 @@ export function DocsExplorerView({
   ]);
 
   const recentDocs = useMemo(() => {
+    if (allHistoryCleared) return [];
+
     const allPos = globalReadingPositionStore.getAllPositions();
     const keys = Object.keys(allPos);
 
     // 1. Filter persisted reading history from archive metadata
-    const persistedReads = archivedDocs.filter(
-      (a) => a && (a.lastPosition != null || a.lastReadAt != null)
-    );
+    // Accept records with reading progress OR valid registered documents with displayable metadata
+    const persistedReads = archivedDocs.filter((a) => {
+      if (!a) return false;
+      if (deletedHistoryIds.has(a.id) || (a.sourceKey && deletedHistoryIds.has(a.sourceKey))) return false;
+      if (a.lastReadAt === null && a.readCount === 0) return false;
+      if (a.lastReadAt != null) return true;
+      const hasIdent = Boolean(a.sourceKey || a.id);
+      const hasNameOrPath = Boolean(a.fileName || a.storageRelPath || a.sourcePath);
+      const hasFormat =
+        Boolean(a.fileFormat && ["epub", "md", "pdf"].includes(String(a.fileFormat).toLowerCase())) ||
+        /\.(epub|md|pdf)$/i.test(a.fileName || a.storageRelPath || a.sourcePath || "");
+      return hasIdent && hasNameOrPath && hasFormat;
+    });
 
     if (persistedReads.length === 0 && keys.length === 0) {
       return [];
     }
 
-    // Sort persisted reads by lastReadAt desc, then updatedAt desc
+    // Sort persisted reads by recency fallback: lastReadAt -> updatedAt -> createdAt
     const sortedArchived = [...persistedReads].sort((a, b) => {
-      const timeA = new Date(a.lastReadAt || a.updatedAt || 0).getTime();
-      const timeB = new Date(b.lastReadAt || b.updatedAt || 0).getTime();
+      const timeA = new Date(a.lastReadAt || a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.lastReadAt || b.updatedAt || b.createdAt || 0).getTime();
       return timeB - timeA;
     });
 
@@ -371,20 +488,29 @@ export function DocsExplorerView({
 
       if (matched && !seenIds.has(matched.id || matched.relativePath)) {
         seenIds.add(matched.id || matched.relativePath);
-        recentList.push(matched);
-      } else if (!matched && arch.fileName) {
-        const virtualId = arch.id || arch.contentHash;
-        if (!seenIds.has(virtualId)) {
+        recentList.push({
+          ...matched,
+          id: arch.id || matched.id,
+        });
+      } else if (!matched && (arch.fileName || arch.storageRelPath || arch.sourcePath)) {
+        const virtualId = arch.id || arch.contentHash || arch.sourceKey;
+        if (virtualId && !seenIds.has(virtualId)) {
           seenIds.add(virtualId);
           const isVault = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
+          const displayName = (arch.fileName || arch.storageRelPath || arch.sourcePath || "document")
+            .split("/")
+            .pop()!
+            .replace(/\.(epub|md|pdf)$/i, "")
+            .replace(/_/g, " ");
           const cleanVaultPath = arch.sourcePath || arch.storageRelPath?.replace(/^vault:\/\//, "") || arch.fileName;
+          const format = (arch.fileFormat || arch.fileName?.split(".").pop() || "md").toLowerCase();
           recentList.push({
             id: virtualId,
-            title: arch.fileName.replace(/\.(epub|md|pdf)$/i, "").replace(/_/g, " "),
-            category: arch.fileFormat === "epub" ? "books" : "guides",
-            relativePath: isVault ? cleanVaultPath : (arch.storageRelPath || arch.fileName),
+            title: displayName,
+            category: format === "epub" ? "books" : "guides",
+            relativePath: isVault ? cleanVaultPath : (arch.storageRelPath || arch.fileName || cleanVaultPath),
             sizeBytes: arch.fileSize || 0,
-            lastModified: arch.lastReadAt || arch.updatedAt || new Date().toISOString(),
+            lastModified: arch.lastReadAt || arch.updatedAt || arch.createdAt || new Date().toISOString(),
             sourceType: isVault ? "vault" : "archive",
             sourcePath: isVault ? cleanVaultPath : undefined,
           });
@@ -396,6 +522,7 @@ export function DocsExplorerView({
     for (const doc of docs) {
       const docKey = doc.id || doc.relativePath;
       if (seenIds.has(docKey)) continue;
+      if (deletedHistoryIds.has(doc.id) || deletedHistoryIds.has(doc.relativePath)) continue;
 
       const format = getDocFormat(doc);
       const posById = globalReadingPositionStore.getPosition(doc.id, format);
@@ -413,7 +540,7 @@ export function DocsExplorerView({
     }
 
     return recentList;
-  }, [docs, archivedDocs, getDocFormat]);
+  }, [docs, archivedDocs, getDocFormat, allHistoryCleared, deletedHistoryIds]);
 
   const dynamicCategories = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -507,48 +634,101 @@ export function DocsExplorerView({
       />
 
       {/* Recent Reads Shelf (Phase R1 / Reader-First Compact Strip) */}
-      {recentDocs.length > 0 && (
-        <div
-          data-testid="recent-reads-shelf"
-          aria-label="Đọc gần đây"
-          className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200"
-        >
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-5 h-5 rounded-md bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center">
-              <Clock className="w-3 h-3" />
-            </div>
-            <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
-              Đọc gần đây:
-            </span>
+      <div
+        data-testid="recent-reads-shelf"
+        aria-label="Đọc gần đây"
+        className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200"
+      >
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-5 h-5 rounded-md bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center">
+            <Clock className="w-3 h-3" />
           </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none flex-1 max-w-full">
-            {recentDocs.slice(0, 4).map((doc) => {
-              const format = getDocFormat(doc);
-              return (
-                <button
-                  key={`recent-${doc.id || doc.relativePath}`}
-                  aria-label={`Đang đọc ${doc.title}`}
-                  onClick={() => handleDocClick(doc)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-stone-900 hover:bg-amber-100/80 dark:hover:bg-amber-950/80 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-lg transition text-left cursor-pointer shadow-2xs shrink-0 max-w-[220px]"
-                >
-                  <BookOpen className="w-3 h-3 text-amber-800 dark:text-amber-400 shrink-0" />
-                  <span className="text-xs font-medium text-stone-900 dark:text-stone-100 truncate">
-                    {doc.title}
-                  </span>
-                  <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded text-amber-800 dark:text-amber-400 font-semibold shrink-0">
-                    {format}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <span className="text-[10px] font-mono font-semibold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 shrink-0 hidden md:inline-block">
-            {recentDocs.length} {isEpubOnly ? "cuốn sách" : "tài liệu"}
+          <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+            Đọc gần đây:
           </span>
         </div>
-      )}
+
+        {recentReadsError ? (
+          <div
+            data-testid="recent-reads-error"
+            className="flex items-center justify-between gap-2 text-xs text-rose-600 dark:text-rose-400 py-1 flex-1"
+          >
+            <span>{recentReadsError}</span>
+            <button
+              data-testid="recent-reads-retry-btn"
+              type="button"
+              onClick={() => fetchArchivedDocs()}
+              className="px-2 py-0.5 text-xs font-medium bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded hover:bg-rose-200 dark:hover:bg-rose-900/60 transition cursor-pointer"
+            >
+              Thử lại
+            </button>
+          </div>
+        ) : recentDocs.length === 0 ? (
+          <div
+            data-testid="recent-reads-empty"
+            className="flex items-center text-xs text-stone-500 dark:text-stone-400 italic py-1 flex-1"
+          >
+            Chưa có tài liệu nào được đọc gần đây
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0 scrollbar-none flex-1 max-w-full">
+              {recentDocs.slice(0, 4).map((doc) => {
+                const format = getDocFormat(doc);
+                return (
+                  <div
+                    key={`recent-${doc.id || doc.relativePath}`}
+                    className="inline-flex items-center bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 hover:border-amber-400 dark:hover:border-amber-600 rounded-lg transition shadow-2xs shrink-0 max-w-[240px] group overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      aria-label={`Đang đọc ${doc.title}`}
+                      onClick={() => handleDocClick(doc, true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-left cursor-pointer hover:bg-amber-100/80 dark:hover:bg-amber-950/80 flex-1 min-w-0"
+                    >
+                      <BookOpen className="w-3 h-3 text-amber-800 dark:text-amber-400 shrink-0" />
+                      <span className="text-xs font-medium text-stone-900 dark:text-stone-100 truncate">
+                        {doc.title}
+                      </span>
+                      <span className="text-[9px] uppercase font-mono px-1 py-0.2 bg-amber-100/60 dark:bg-amber-950/80 rounded text-amber-800 dark:text-amber-400 font-semibold shrink-0">
+                        {format}
+                      </span>
+                    </button>
+                    <button
+                      data-testid={`remove-recent-read-${doc.id}`}
+                      type="button"
+                      aria-label={`Xóa ${doc.title} khỏi lịch sử đọc`}
+                      title="Xóa khỏi lịch sử đọc"
+                      onClick={(e) => handleDeleteRecentRead(doc.id, e)}
+                      className="p-1 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer shrink-0 border-l border-stone-100 dark:border-stone-800"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-mono font-semibold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 hidden md:inline-block">
+                {recentDocs.length} {isEpubOnly ? "cuốn sách" : "tài liệu"}
+              </span>
+
+              <button
+                data-testid="clear-recent-reads-btn"
+                type="button"
+                onClick={handleClearAllRecentReads}
+                aria-label="Xóa tất cả lịch sử đọc"
+                title="Xóa tất cả lịch sử đọc"
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-stone-500 hover:text-rose-600 dark:text-stone-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 border border-stone-200 dark:border-stone-800 hover:border-rose-200 dark:hover:border-rose-900 rounded-md transition cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span className="hidden sm:inline">Xóa tất cả</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Split-Pane Content Container: Reader-First Flexbox Layout */}
       <div className="flex flex-col lg:flex-row gap-4 items-stretch min-h-[700px] lg:min-h-[calc(100vh-160px)] relative">
@@ -847,6 +1027,7 @@ export function DocsExplorerView({
                 fileUrl={activeReaderDoc.fileUrl}
                 content={activeReaderDoc.content}
                 sourceType={activeReaderDoc.sourceType}
+                initialPosition={activeReaderDoc.initialPosition}
                 layoutMode="embedded"
                 onClose={() => {
                   setActiveReaderDoc(null);

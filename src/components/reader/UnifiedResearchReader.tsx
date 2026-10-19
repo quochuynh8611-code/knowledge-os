@@ -3,7 +3,7 @@ import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, Che
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
 import { ReaderSidebar, ReaderSidebarTab } from './ReaderSidebar';
-import { MarkdownReaderAdapter } from './adapters/MarkdownReaderAdapter';
+import { MarkdownReaderAdapter, MarkdownReadingPosition } from './adapters/MarkdownReaderAdapter';
 import { PdfReaderAdapter } from './adapters/PdfReaderAdapter';
 
 const EpubReaderAdapter = React.lazy(() =>
@@ -54,6 +54,40 @@ export interface UnifiedResearchReaderProps {
   layoutMode?: 'embedded' | 'modal';
 }
 
+export function parseMarkdownPosition(raw?: string): { headingId?: string; scrollPercentage?: number } {
+  if (!raw || typeof raw !== 'string' || !raw.trim()) return {};
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const headingId = typeof parsed.headingId === 'string' && parsed.headingId.trim()
+        ? parsed.headingId.trim()
+        : undefined;
+      const rawPct = typeof parsed.scrollPercentage === 'number'
+        ? parsed.scrollPercentage
+        : typeof parsed.percentage === 'number'
+        ? parsed.percentage
+        : undefined;
+      const scrollPercentage = (rawPct !== undefined && Number.isFinite(rawPct))
+        ? Math.min(100, Math.max(0, Math.round(rawPct)))
+        : undefined;
+      return { headingId, scrollPercentage };
+    } catch {
+      return {};
+    }
+  }
+  if (trimmed.includes('?pct=')) {
+    const [hId, q] = trimmed.split('?pct=');
+    const parsedQ = parseFloat(q);
+    const headingId = (hId && hId.trim()) ? hId.trim() : undefined;
+    const scrollPercentage = Number.isFinite(parsedQ)
+      ? Math.min(100, Math.max(0, Math.round(parsedQ)))
+      : undefined;
+    return { headingId, scrollPercentage };
+  }
+  return { headingId: trimmed };
+}
+
 export function UnifiedResearchReader({
   documentId,
   title,
@@ -76,7 +110,94 @@ export function UnifiedResearchReader({
   const [sidebarTab, setSidebarTab] = useState<ReaderSidebarTab>('outline');
   const [tocItems, setTocItems] = useState<TocItem[]>(initialToc || []);
   const [activeTocId, setActiveTocId] = useState<string | undefined>(undefined);
-  const [targetHeadingId, setTargetHeadingId] = useState<string | undefined>(initialPosition);
+  const [targetHeadingId, setTargetHeadingId] = useState<string | undefined>(() => {
+    if (normalizedFormat === 'md' || normalizedFormat === 'markdown') {
+      const raw = (initialPosition && initialPosition.trim())
+        ? initialPosition.trim()
+        : globalReadingPositionStore.getPosition(documentId, 'md') || undefined;
+      if (raw) {
+        return parseMarkdownPosition(raw).headingId;
+      }
+    }
+    if (initialPosition && initialPosition.trim()) return initialPosition.trim();
+    return undefined;
+  });
+
+  const [targetScrollPercentage, setTargetScrollPercentage] = useState<number | undefined>(() => {
+    if (normalizedFormat === 'md' || normalizedFormat === 'markdown') {
+      const raw = (initialPosition && initialPosition.trim())
+        ? initialPosition.trim()
+        : globalReadingPositionStore.getPosition(documentId, 'md') || undefined;
+      if (raw) {
+        return parseMarkdownPosition(raw).scrollPercentage;
+      }
+    }
+    return undefined;
+  });
+
+  const markdownPositionRef = useRef<MarkdownReadingPosition | undefined>(undefined);
+
+  // Completion state (Slice 4C)
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [completedAt, setCompletedAt] = useState<string | null>(null);
+  const isCompletedRef = useRef<boolean>(false);
+  const completedAtRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    isCompletedRef.current = isCompleted;
+    completedAtRef.current = completedAt;
+  }, [isCompleted, completedAt]);
+
+  // Analytics state (Slice 4D)
+  const isTabVisibleRef = useRef<boolean>(
+    typeof document !== 'undefined' && document.visibilityState ? document.visibilityState === 'visible' : true
+  );
+  const sessionStartTimeRef = useRef<number>(Date.now());
+  const accumulatedVisibleMsRef = useRef<number>(0);
+  const hasFlushedOnCloseRef = useRef<boolean>(false);
+
+  const consumeActiveReadingSeconds = useCallback(() => {
+    const now = Date.now();
+    let totalMs = accumulatedVisibleMsRef.current;
+    if (isTabVisibleRef.current) {
+      const elapsed = now - sessionStartTimeRef.current;
+      if (Number.isFinite(elapsed) && elapsed > 0) {
+        totalMs += elapsed;
+      }
+      sessionStartTimeRef.current = now;
+    }
+    accumulatedVisibleMsRef.current = 0;
+    if (!Number.isFinite(totalMs) || totalMs <= 0) {
+      return 0;
+    }
+    return Math.max(0, Math.round(totalMs / 1000));
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = typeof document !== 'undefined' ? document.visibilityState === 'visible' : true;
+      const now = Date.now();
+      if (isVisible) {
+        if (!isTabVisibleRef.current) {
+          isTabVisibleRef.current = true;
+          sessionStartTimeRef.current = now;
+        }
+      } else {
+        if (isTabVisibleRef.current) {
+          const elapsed = now - sessionStartTimeRef.current;
+          if (Number.isFinite(elapsed) && elapsed > 0) {
+            accumulatedVisibleMsRef.current += elapsed;
+          }
+          isTabVisibleRef.current = false;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // EPUB-specific viewing controls
   const [fontSize, setFontSize] = useState<number>(100);
@@ -91,10 +212,22 @@ export function UnifiedResearchReader({
   const latestPositionRef = useRef<string | undefined>(currentPosition);
   latestPositionRef.current = currentPosition;
 
-  // Hydrate persisted lastPosition from archive if initialPosition was not provided
+  // Sync initialPosition prop updates (e.g. from citation or direct navigation)
   useEffect(() => {
-    if (initialPosition && initialPosition.trim()) return;
+    if (initialPosition && initialPosition.trim()) {
+      const pos = initialPosition.trim();
+      setCurrentPosition(pos);
+      latestPositionRef.current = pos;
+      if (normalizedFormat === 'md' || normalizedFormat === 'markdown') {
+        const parsed = parseMarkdownPosition(pos);
+        if (parsed.headingId) setTargetHeadingId(parsed.headingId);
+        if (parsed.scrollPercentage !== undefined) setTargetScrollPercentage(parsed.scrollPercentage);
+      }
+    }
+  }, [initialPosition, normalizedFormat]);
 
+  // Hydrate persisted lastPosition and completion status from archive
+  useEffect(() => {
     let isCancelled = false;
     async function hydratePersistedPosition() {
       try {
@@ -105,13 +238,48 @@ export function UnifiedResearchReader({
         if (!doc || !doc.lastPosition || isCancelled) return;
 
         const pos = doc.lastPosition;
+        if (pos && typeof pos === 'object' && pos.isCompleted) {
+          setIsCompleted(true);
+          setCompletedAt(pos.completedAt || null);
+          isCompletedRef.current = true;
+          completedAtRef.current = pos.completedAt || null;
+        }
+
+        if (initialPosition && initialPosition.trim()) return;
+
+        // Resume hierarchy: RAM store (active session) takes precedence over persisted DB position
+        const existingRamPos = globalReadingPositionStore.getPosition(documentId, normalizedFormat);
+        if (existingRamPos && existingRamPos.trim()) {
+          return;
+        }
+
         let hydratedLocator: string | undefined = undefined;
 
         if (normalizedFormat === 'epub' && pos.cfi) {
           hydratedLocator = pos.cfi;
-        } else if ((normalizedFormat === 'md' || normalizedFormat === 'markdown') && pos.headingId) {
-          hydratedLocator = pos.headingId;
-          setTargetHeadingId(pos.headingId);
+        } else if (normalizedFormat === 'md' || normalizedFormat === 'markdown') {
+          const heading = typeof pos.headingId === 'string' && pos.headingId.trim()
+            ? pos.headingId.trim()
+            : undefined;
+          const rawPct = typeof pos.scrollPercentage === 'number'
+            ? pos.scrollPercentage
+            : typeof pos.percentage === 'number'
+            ? pos.percentage
+            : undefined;
+          const pct = (rawPct !== undefined && Number.isFinite(rawPct))
+            ? Math.min(100, Math.max(0, Math.round(rawPct)))
+            : undefined;
+
+          if (heading) {
+            setTargetHeadingId(heading);
+          }
+          if (typeof pct === 'number') {
+            setTargetScrollPercentage(pct);
+          }
+
+          if (heading || typeof pct === 'number') {
+            hydratedLocator = heading || (typeof pct === 'number' ? `scroll:${pct}` : undefined);
+          }
         } else if (normalizedFormat === 'pdf' && pos.pageNumber) {
           hydratedLocator = `page=${pos.pageNumber}`;
         }
@@ -132,19 +300,66 @@ export function UnifiedResearchReader({
     };
   }, [documentId, normalizedFormat, initialPosition]);
 
+  // Slice 2: Record document open event on mount if reader remains open without immediate close/change
+  const openTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    openTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastReadAt: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // Fallback gracefully on fetch failure or offline
+      }
+    }, 200);
+
+    return () => {
+      if (openTimerRef.current) {
+        clearTimeout(openTimerRef.current);
+        openTimerRef.current = null;
+      }
+    };
+  }, [documentId]);
+
   // Persist position to server / repository
   const persistPositionAsync = useCallback(
     async (locator?: string, options?: { keepalive?: boolean }) => {
       const locToSave = locator || latestPositionRef.current;
-      if (!locToSave || !locToSave.trim()) return;
-      const safeLoc = locToSave.trim();
+      const safeLoc = locToSave?.trim();
 
-      const positionData = {
-        cfi: normalizedFormat === 'epub' ? safeLoc : undefined,
-        headingId: (normalizedFormat === 'md' || normalizedFormat === 'markdown') ? safeLoc : undefined,
-        pageNumber: normalizedFormat === 'pdf' ? (parseInt(safeLoc.replace('page=', ''), 10) || 1) : undefined,
-        updatedAt: new Date().toISOString(),
-      };
+      let mdHeading: string | undefined = undefined;
+      let mdScrollPct: number | undefined = undefined;
+
+      if (normalizedFormat === 'md' || normalizedFormat === 'markdown') {
+        const parsed = parseMarkdownPosition(safeLoc);
+        mdHeading = markdownPositionRef.current?.headingId || parsed.headingId || targetHeadingId;
+        const candidatePct = markdownPositionRef.current?.scrollPercentage !== undefined
+          ? markdownPositionRef.current.scrollPercentage
+          : (parsed.scrollPercentage !== undefined ? parsed.scrollPercentage : targetScrollPercentage);
+        mdScrollPct = (candidatePct !== undefined && Number.isFinite(candidatePct))
+          ? Math.min(100, Math.max(0, Math.round(candidatePct)))
+          : undefined;
+      }
+
+      const positionData = (safeLoc || mdScrollPct !== undefined || isCompletedRef.current)
+        ? {
+            cfi: normalizedFormat === 'epub' ? safeLoc : undefined,
+            headingId: (normalizedFormat === 'md' || normalizedFormat === 'markdown') ? mdHeading : undefined,
+            percentage: (normalizedFormat === 'md' || normalizedFormat === 'markdown') ? mdScrollPct : undefined,
+            scrollPercentage: (normalizedFormat === 'md' || normalizedFormat === 'markdown') ? mdScrollPct : undefined,
+            pageNumber: normalizedFormat === 'pdf' ? (parseInt(safeLoc?.replace('page=', '') || '1', 10) || 1) : undefined,
+            isCompleted: isCompletedRef.current,
+            completedAt: completedAtRef.current,
+            updatedAt: new Date().toISOString(),
+          }
+        : undefined;
+
+      const activeSecs = consumeActiveReadingSeconds();
 
       try {
         await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
@@ -154,14 +369,92 @@ export function UnifiedResearchReader({
           body: JSON.stringify({
             lastPosition: positionData,
             lastReadAt: new Date().toISOString(),
+            activeReadingSeconds: activeSecs,
           }),
         });
-      } catch (err) {
-        console.warn('[UnifiedResearchReader] Failed to persist reading position:', err);
+      } catch (err: any) {
+        if (!err?.message?.includes('[Hermetic Guard]')) {
+          console.warn('[UnifiedResearchReader] Failed to persist reading position:', err);
+        }
       }
     },
-    [documentId, normalizedFormat]
+    [documentId, normalizedFormat, targetHeadingId, targetScrollPercentage, consumeActiveReadingSeconds]
   );
+
+  const handleMarkdownScrollPositionChange = useCallback(
+    (pos: { headingId?: string; scrollPercentage?: number }) => {
+      if (pos.scrollPercentage !== undefined) {
+        setTargetScrollPercentage(pos.scrollPercentage);
+        if (pos.scrollPercentage >= 100 && !isCompletedRef.current) {
+          isCompletedRef.current = true;
+          setIsCompleted(true);
+          const now = new Date().toISOString();
+          setCompletedAt(now);
+          completedAtRef.current = now;
+          const activeSecs = consumeActiveReadingSeconds();
+          fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              completed: true,
+              completedAt: now,
+              activeReadingSeconds: activeSecs,
+              lastPosition: {
+                headingId: pos.headingId,
+                scrollPercentage: pos.scrollPercentage,
+                isCompleted: true,
+                completedAt: now,
+              },
+              lastReadAt: now,
+            }),
+          }).catch(() => {});
+        }
+      }
+      if (pos.headingId) {
+        setTargetHeadingId(pos.headingId);
+      }
+      markdownPositionRef.current = {
+        headingId: pos.headingId,
+        scrollPercentage: pos.scrollPercentage,
+        updatedAt: new Date().toISOString(),
+      };
+    },
+    [documentId, consumeActiveReadingSeconds]
+  );
+
+  const handleToggleComplete = useCallback(async () => {
+    const nextCompleted = !isCompleted;
+    const nextCompletedAt = nextCompleted ? new Date().toISOString() : null;
+    setIsCompleted(nextCompleted);
+    setCompletedAt(nextCompletedAt);
+    isCompletedRef.current = nextCompleted;
+    completedAtRef.current = nextCompletedAt;
+
+    const activeSecs = consumeActiveReadingSeconds();
+
+    try {
+      await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completed: nextCompleted,
+          completedAt: nextCompletedAt,
+          activeReadingSeconds: activeSecs,
+          lastPosition: {
+            ...(latestPositionRef.current && normalizedFormat === 'epub' ? { cfi: latestPositionRef.current } : {}),
+            ...(latestPositionRef.current && normalizedFormat === 'pdf' ? { pageNumber: parseInt(latestPositionRef.current.replace('page=', '') || '1', 10) || 1 } : {}),
+            ...(markdownPositionRef.current?.headingId ? { headingId: markdownPositionRef.current.headingId } : {}),
+            ...(markdownPositionRef.current?.scrollPercentage !== undefined ? { scrollPercentage: markdownPositionRef.current.scrollPercentage } : {}),
+            isCompleted: nextCompleted,
+            completedAt: nextCompletedAt,
+          },
+          lastReadAt: new Date().toISOString(),
+        }),
+      });
+    } catch (err) {
+      console.warn('[UnifiedResearchReader] Failed to toggle completion:', err);
+    }
+  }, [documentId, isCompleted, normalizedFormat, consumeActiveReadingSeconds]);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -180,6 +473,10 @@ export function UnifiedResearchReader({
     (newLocator: string) => {
       if (!newLocator || !newLocator.trim()) return;
       const safeLoc = newLocator.trim();
+      if (openTimerRef.current) {
+        clearTimeout(openTimerRef.current);
+        openTimerRef.current = null;
+      }
       setCurrentPosition(safeLoc);
       latestPositionRef.current = safeLoc;
       globalReadingPositionStore.setPosition(documentId, normalizedFormat, safeLoc);
@@ -197,17 +494,33 @@ export function UnifiedResearchReader({
     [documentId, normalizedFormat, onPositionChange, persistPositionAsync]
   );
 
+  const persistPositionRef = useRef(persistPositionAsync);
+  persistPositionRef.current = persistPositionAsync;
+
   useEffect(() => {
     return () => {
+      if (openTimerRef.current) {
+        clearTimeout(openTimerRef.current);
+        openTimerRef.current = null;
+      }
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
+      }
+      if (!hasFlushedOnCloseRef.current) {
+        const loc = latestPositionRef.current;
+        persistPositionRef.current?.(loc && loc.trim() ? loc.trim() : undefined, { keepalive: true }).catch(() => {});
       }
     };
   }, []);
 
   // Close handler with guaranteed persist on close
   const handleCloseReader = useCallback(() => {
+    hasFlushedOnCloseRef.current = true;
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
@@ -216,6 +529,10 @@ export function UnifiedResearchReader({
     if (loc && loc.trim()) {
       persistPositionAsync(loc.trim(), { keepalive: true }).catch((err) => {
         console.warn('[UnifiedResearchReader] Failed to persist position on close:', err);
+      });
+    } else {
+      persistPositionAsync(undefined, { keepalive: true }).catch((err) => {
+        console.warn('[UnifiedResearchReader] Failed to persist read timestamp on close:', err);
       });
     }
     onClose();
@@ -850,7 +1167,27 @@ export function UnifiedResearchReader({
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         onClose={handleCloseReader}
-        extraControls={epubExtraControls}
+        extraControls={
+          <div className="flex items-center gap-2">
+            {epubExtraControls}
+            <button
+              data-testid="mark-completed-btn"
+              data-completed={isCompleted ? "true" : "false"}
+              type="button"
+              onClick={handleToggleComplete}
+              aria-label={isCompleted ? "Đánh dấu chưa hoàn thành" : "Đánh dấu đã hoàn thành"}
+              title={isCompleted ? "Đã đọc xong (Click để bỏ đánh dấu)" : "Đánh dấu đã đọc xong"}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-medium text-xs transition cursor-pointer border ${
+                isCompleted
+                  ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 shadow-2xs font-semibold"
+                  : "bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-200/80 dark:hover:bg-stone-700"
+              }`}
+            >
+              <CheckCircle className={`w-4 h-4 ${isCompleted ? "text-emerald-600 dark:text-emerald-400" : "text-stone-400"}`} />
+              <span>{isCompleted ? "Đã hoàn thành" : "Hoàn thành"}</span>
+            </button>
+          </div>
+        }
       />
 
       {/* Reader Workspace: Viewport Area & Multi-Tab Sidebar */}
@@ -894,8 +1231,10 @@ export function UnifiedResearchReader({
                 documentId={documentId}
                 sourceType={sourceType}
                 initialHeadingId={targetHeadingId}
+                initialScrollPercentage={targetScrollPercentage}
                 onTocGenerated={(items) => setTocItems(items)}
                 onPositionChange={handlePositionChanged}
+                onScrollPositionChange={handleMarkdownScrollPositionChange}
                 onTextSelection={handleTextSelection}
                 excerpts={documentHighlights}
                 activeExcerptId={activeExcerptId}

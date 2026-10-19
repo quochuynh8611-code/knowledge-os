@@ -264,7 +264,7 @@ describe("DocsExplorerView Recent Reads Shelf - Persisted Metadata (Red Stage)",
     expect(buttons[0]).toHaveTextContent("Kinh Thiền Cổ Truyền");
   });
 
-  it("should_hide_shelf_when_no_persisted_history_exists", async () => {
+  it("should_render_empty_state_in_shelf_when_no_persisted_history_exists", async () => {
     global.fetch = vi.fn().mockImplementation((url: string) => {
       const urlStr = String(url);
       if (urlStr.includes("/api/archive/list")) {
@@ -295,7 +295,10 @@ describe("DocsExplorerView Recent Reads Shelf - Persisted Metadata (Red Stage)",
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId("recent-reads-shelf")).toBeNull();
+      const shelf = screen.getByTestId("recent-reads-shelf");
+      expect(shelf).toBeInTheDocument();
+      expect(within(shelf).getByText(/Chưa có tài liệu nào được đọc gần đây/i)).toBeInTheDocument();
+      expect(within(shelf).queryAllByRole("button", { name: /Đang đọc/i })).toHaveLength(0);
     });
   });
 });

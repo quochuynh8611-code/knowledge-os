@@ -213,8 +213,8 @@ describeSuite("Phase A: Vault Archive Registration & Position Persistence Integr
       });
 
     assertExpect(secondPatch.status).toBe(200);
-    // Preserves existing project semantics: readCount increments with each position patch
-    assertExpect(secondPatch.body.document.readCount).toBe(2);
+    // Preserves Slice 2 semantics: readCount starts at 1 on open/register and increments with each position patch
+    assertExpect(secondPatch.body.document.readCount).toBe(3);
     assertExpect(secondPatch.body.document.lastReadAt).toBeDefined();
   });
 });
