@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle, Loader2 } from 'lucide-react';
+import { Columns2, Square, Plus, Minus, RotateCcw, AlertTriangle, RefreshCw, CheckCircle, Loader2, Clock } from 'lucide-react';
 import { ReaderHeader } from './ReaderHeader';
 import { ReaderTocDrawer, TocItem } from './ReaderTocDrawer';
 import { ReaderSidebar, ReaderSidebarTab } from './ReaderSidebar';
@@ -19,7 +19,7 @@ import { FlashcardFormModal } from '../modals/FlashcardFormModal';
 import type { FlashcardCitationProvenance, ReaderDocumentFormat } from '../../types/flashcard';
 import type { NoteCitationProvenance, NoteCitationFormat } from '../../types';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
-import { globalReadingPositionStore } from '../../lib/readingPositionUnified';
+import { globalReadingPositionStore, formatReadingDuration } from '../../lib/readingPositionUnified';
 import { DataContext, dataRepository } from '../../context/DataContext';
 import { ResearchExcerpt, ResearchInboxItem, Note, Resource } from '../../types';
 import { copyTextToClipboard } from '../../lib/clipboard';
@@ -143,6 +143,9 @@ export function UnifiedResearchReader({
   const isCompletedRef = useRef<boolean>(false);
   const completedAtRef = useRef<string | null>(null);
 
+  // Analytics display state (Slice 5A)
+  const [totalReadingSeconds, setTotalReadingSeconds] = useState<number | undefined>(undefined);
+
   useEffect(() => {
     isCompletedRef.current = isCompleted;
     completedAtRef.current = completedAt;
@@ -238,11 +241,16 @@ export function UnifiedResearchReader({
         if (!doc || !doc.lastPosition || isCancelled) return;
 
         const pos = doc.lastPosition;
-        if (pos && typeof pos === 'object' && pos.isCompleted) {
-          setIsCompleted(true);
-          setCompletedAt(pos.completedAt || null);
-          isCompletedRef.current = true;
-          completedAtRef.current = pos.completedAt || null;
+        if (pos && typeof pos === 'object') {
+          if (typeof pos.totalReadingSeconds === 'number' && Number.isFinite(pos.totalReadingSeconds)) {
+            setTotalReadingSeconds(pos.totalReadingSeconds);
+          }
+          if (pos.isCompleted) {
+            setIsCompleted(true);
+            setCompletedAt(pos.completedAt || null);
+            isCompletedRef.current = true;
+            completedAtRef.current = pos.completedAt || null;
+          }
         }
 
         if (initialPosition && initialPosition.trim()) return;
@@ -1170,6 +1178,16 @@ export function UnifiedResearchReader({
         extraControls={
           <div className="flex items-center gap-2">
             {epubExtraControls}
+            {totalReadingSeconds !== undefined && totalReadingSeconds > 0 && (
+              <div
+                data-testid="reader-analytics-pill"
+                title={`Thời gian đọc tích lũy: ${formatReadingDuration(totalReadingSeconds)}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl font-medium text-xs bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 shadow-2xs font-mono"
+              >
+                <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                <span>{formatReadingDuration(totalReadingSeconds)}</span>
+              </div>
+            )}
             <button
               data-testid="mark-completed-btn"
               data-completed={isCompleted ? "true" : "false"}
