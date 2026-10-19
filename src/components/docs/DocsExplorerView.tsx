@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
-import { globalReadingPositionStore, formatReadingDuration } from "../../lib/readingPositionUnified";
+import { globalReadingPositionStore, formatReadingDuration, calculateReadingAnalyticsSummary } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
 const UnifiedResearchReader = React.lazy(() =>
@@ -440,6 +440,10 @@ export function DocsExplorerView({
     getDocFormat,
   ]);
 
+  const readingSummary = useMemo(() => {
+    return calculateReadingAnalyticsSummary(allHistoryCleared ? [] : archivedDocs);
+  }, [archivedDocs, allHistoryCleared]);
+
   const recentDocs = useMemo(() => {
     if (allHistoryCleared) return [];
 
@@ -638,6 +642,51 @@ export function DocsExplorerView({
           </div>
         }
       />
+
+      {/* Reading Analytics Summary Surface (Slice 5C) */}
+      <div
+        data-testid="reading-analytics-summary"
+        aria-label="Tổng quan tiến độ đọc"
+        className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-in fade-in duration-200"
+      >
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-5 h-5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center">
+            <BookOpen className="w-3 h-3 text-amber-700 dark:text-amber-400" />
+          </div>
+          <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+            Tổng quan tiến độ đọc:
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 font-mono text-[11px] flex-wrap">
+          <span
+            data-testid="summary-total-reading-time"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/60 text-amber-900 dark:text-amber-300 font-semibold"
+            title="Tổng thời gian đọc"
+          >
+            <Clock className="w-3 h-3 text-amber-700 dark:text-amber-400" />
+            <span>{formatReadingDuration(readingSummary.totalReadingSeconds)}</span>
+          </span>
+
+          <span
+            data-testid="summary-completed-count"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-semibold"
+            title="Số tài liệu đã hoàn thành"
+          >
+            <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+            <span>{readingSummary.completedCount} đã xong</span>
+          </span>
+
+          <span
+            data-testid="summary-in-progress-count"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 text-stone-700 dark:text-stone-300 font-semibold"
+            title="Số tài liệu đang đọc dở"
+          >
+            <Book className="w-3 h-3 text-stone-500 dark:text-stone-400" />
+            <span>{readingSummary.inProgressCount} đang đọc</span>
+          </span>
+        </div>
+      </div>
 
       {/* Recent Reads Shelf (Phase R1 / Reader-First Compact Strip) */}
       <div

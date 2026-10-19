@@ -75,3 +75,50 @@ export function formatReadingDuration(seconds?: number): string {
   }
   return `${hours}g ${minutes}p`;
 }
+
+export interface ReadingAnalyticsSummary {
+  totalReadingSeconds: number;
+  completedCount: number;
+  inProgressCount: number;
+  totalDocsRead: number;
+}
+
+/**
+ * Pure calculation helper to aggregate reading analytics across documents.
+ */
+export function calculateReadingAnalyticsSummary(docs?: Array<{ lastPosition?: any }>): ReadingAnalyticsSummary {
+  let totalReadingSeconds = 0;
+  let completedCount = 0;
+  let inProgressCount = 0;
+
+  if (Array.isArray(docs)) {
+    for (const doc of docs) {
+      const lp = doc?.lastPosition;
+      if (!lp) continue;
+
+      const sec =
+        typeof lp.totalReadingSeconds === 'number' && !isNaN(lp.totalReadingSeconds) && lp.totalReadingSeconds > 0
+          ? lp.totalReadingSeconds
+          : 0;
+      totalReadingSeconds += sec;
+
+      if (lp.isCompleted === true) {
+        completedCount++;
+      } else if (
+        sec > 0 ||
+        (typeof lp.percentage === 'number' && lp.percentage > 0) ||
+        Boolean(lp.cfi) ||
+        Boolean(lp.headingId)
+      ) {
+        inProgressCount++;
+      }
+    }
+  }
+
+  return {
+    totalReadingSeconds,
+    completedCount,
+    inProgressCount,
+    totalDocsRead: completedCount + inProgressCount,
+  };
+}
