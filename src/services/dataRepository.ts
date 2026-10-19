@@ -1,4 +1,13 @@
-import { Category, Topic, Note, Resource, Tag, StudyProgress } from "../types";
+import {
+  Category,
+  Topic,
+  Note,
+  Resource,
+  Tag,
+  StudyProgress,
+  ArchivedDocument,
+  ReadingPositionData,
+} from "../types";
 import {
   normalizeCategories,
   normalizeTopics,
@@ -109,6 +118,13 @@ export interface IDataRepository {
     priority?: FlashcardPriorityFilter;
   }): Promise<Flashcard[]>;
   getFlashcardProgress?(filters?: { topicId?: string }): Promise<FlashcardProgressStats>;
+
+  // 10. Phase 18B: Local Archive & Reading Position Persistence
+  getArchivedDocuments?(): Promise<ArchivedDocument[]>;
+  updateArchivedDocumentPosition?(
+    documentId: string,
+    position: ReadingPositionData
+  ): Promise<ArchivedDocument>;
 }
 
 /**
@@ -605,6 +621,78 @@ export class LocalStorageDataRepository implements IDataRepository {
     };
   }
 
+  // 10. Phase 18B: Local Archive & Reading Position Persistence
+  private _getArchivedDocs(): ArchivedDocument[] {
+    const raw = safeGetLocalStorageItem("knowledge_os_archived_documents");
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private _saveArchivedDocs(docs: ArchivedDocument[]): void {
+    safeSetLocalStorageItem("knowledge_os_archived_documents", JSON.stringify(docs));
+  }
+
+  saveArchivedDocsCache(docs: ArchivedDocument[]): void {
+    this._saveArchivedDocs(docs);
+  }
+
+  async getArchivedDocuments(): Promise<ArchivedDocument[]> {
+    return this._getArchivedDocs();
+  }
+
+  async updateArchivedDocumentPosition(
+    documentId: string,
+    position: ReadingPositionData
+  ): Promise<ArchivedDocument> {
+    const docs = this._getArchivedDocs();
+    const cleanId = (documentId || "").trim();
+    let doc = docs.find(
+      (d) =>
+        d.id === cleanId ||
+        d.contentHash === cleanId ||
+        d.fileName === cleanId ||
+        d.storageRelPath === cleanId
+    );
+    const now = new Date().toISOString();
+    if (!doc) {
+      doc = {
+        id: cleanId,
+        fileName: cleanId.split("/").pop() || cleanId,
+        fileSize: 0,
+        mimeType: cleanId.endsWith(".epub")
+          ? "application/epub+zip"
+          : cleanId.endsWith(".md")
+          ? "text/markdown"
+          : "application/pdf",
+        fileFormat: cleanId.endsWith(".epub") ? "epub" : cleanId.endsWith(".md") ? "md" : "pdf",
+        contentHash: cleanId,
+        storageRelPath: cleanId,
+        lastPosition: position,
+        lastReadAt: now,
+        readCount: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      docs.unshift(doc);
+    } else {
+      doc.lastPosition = position;
+      doc.lastReadAt = now;
+      doc.readCount = (doc.readCount || 0) + 1;
+      doc.updatedAt = now;
+      const idx = docs.findIndex((d) => d.id === doc!.id);
+      if (idx > 0) {
+        docs.splice(idx, 1);
+        docs.unshift(doc);
+      }
+    }
+    this._saveArchivedDocs(docs);
+    return doc;
+  }
 }
 
 /**
@@ -1240,6 +1328,47 @@ export class ApiDataRepository implements IDataRepository {
       // offline fallback
     }
     return this.localFallback.getFlashcardProgress(filters);
+  }
+
+  // 10. Phase 18B: Local Archive & Reading Position Persistence
+  async getArchivedDocuments(): Promise<ArchivedDocument[]> {
+    const url = this.getUrl("/archive/list") || `${this.apiBaseUrl}/archive/list`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const docs = data.documents || [];
+        this.localFallback.saveArchivedDocsCache(docs);
+        return docs;
+      }
+    } catch {
+      // offline fallback
+    }
+    return this.localFallback.getArchivedDocuments();
+  }
+
+  async updateArchivedDocumentPosition(
+    documentId: string,
+    position: ReadingPositionData
+  ): Promise<ArchivedDocument> {
+    const localUpdated = await this.localFallback.updateArchivedDocumentPosition(documentId, position);
+    const url =
+      this.getUrl(`/archive/document/${encodeURIComponent(documentId)}/position`) ||
+      `${this.apiBaseUrl}/archive/document/${encodeURIComponent(documentId)}/position`;
+    try {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lastPosition: position, lastReadAt: new Date().toISOString() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.document || localUpdated;
+      }
+    } catch {
+      // offline fallback handled by localUpdated
+    }
+    return localUpdated;
   }
 }
 

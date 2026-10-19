@@ -1130,8 +1130,20 @@ export const ArchivedDocumentSchema = z.object({
   contentHash: z.string().length(64),
   storageRelPath: z.string().min(1),
   lastPosition: ReadingPositionDataSchema.nullable().optional(),
+  lastReadAt: z.string().nullable().optional(),
+  readCount: z.number().int().min(0).optional(),
+  sourceType: z.string().nullable().optional(),
+  sourcePath: z.string().nullable().optional(),
+  sourceKey: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+});
+
+export const VaultDocumentRegisterSchema = z.object({
+  path: z.string().trim().min(1, "path không được để trống"),
+  fileName: z.string().trim().min(1).optional(),
+  fileFormat: ArchivedDocumentFormatEnum,
+  fileSize: z.number().int().min(0).optional(),
 });
 
 export const ArchivedDocumentCreateSchema = z.object({
@@ -1154,11 +1166,15 @@ export const ArchivedDocumentCreateSchema = z.object({
   contentHash: z.string().length(64, "contentHash phải là chuỗi SHA-256 (64 ký tự hex)"),
   storageRelPath: z.string().trim().min(1, "storageRelPath không được để trống"),
   lastPosition: ReadingPositionDataSchema.optional(),
+  lastReadAt: z.string().optional(),
+  readCount: z.number().int().min(0).optional(),
 });
 
 export const ArchivedDocumentUpdateSchema = z.object({
   fileName: z.string().trim().min(1).optional(),
   lastPosition: ReadingPositionDataSchema.optional(),
+  lastReadAt: z.string().optional(),
+  readCount: z.number().int().min(0).optional(),
 });
 
 export const ResearchExcerptStatusEnum = z.enum(["active", "inbox", "archived"]);

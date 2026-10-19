@@ -31,6 +31,8 @@ export interface DocItem {
   status?: string;
   sizeBytes: number;
   lastModified: string;
+  sourceType?: "docs" | "vault" | "archive";
+  sourcePath?: string;
 }
 
 export interface DocDetail extends DocItem {
@@ -66,11 +68,25 @@ export function DocsExplorerView({
     sourceType?: 'docs' | 'vault';
   } | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
+  const [archivedDocs, setArchivedDocs] = useState<any[]>([]);
+
+  const fetchArchivedDocs = useCallback(async () => {
+    try {
+      const res = await fetch("/api/archive/list");
+      if (res.ok) {
+        const data = await res.json();
+        setArchivedDocs(data.documents || []);
+      }
+    } catch {
+      // Ignore if offline
+    }
+  }, []);
 
   const fetchDocsList = useCallback(async () => {
     setIsLoadingList(true);
     setError(null);
     try {
+      fetchArchivedDocs();
       const res = await fetch("/api/docs");
       if (!res.ok) throw new Error(`Lỗi tải danh mục tài liệu (${res.status})`);
       const data = await res.json();
@@ -80,12 +96,43 @@ export function DocsExplorerView({
     } finally {
       setIsLoadingList(false);
     }
-  }, []);
+  }, [fetchArchivedDocs]);
 
-  const fetchDocContent = useCallback(async (relativePath: string) => {
+  const fetchDocContent = useCallback(async (relativePath: string, explicitSourceType?: "docs" | "vault", docId?: string) => {
     setIsLoadingContent(true);
     setError(null);
     try {
+      const isVault = explicitSourceType === "vault" || relativePath.startsWith("vault://");
+      const cleanPath = relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+
+      if (isVault) {
+        const res = await fetch(`/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`);
+        if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu Vault (${res.status})`);
+        const data = await res.json();
+        const fileName = cleanPath.split("/").pop() || cleanPath;
+        const detail: DocDetail = {
+          id: docId || `vault:${cleanPath}`,
+          title: fileName.replace(/\.md$/i, ""),
+          category: "guides",
+          relativePath: cleanPath,
+          sizeBytes: (data.content || "").length,
+          lastModified: new Date().toISOString(),
+          content: data.content || "",
+          sourceType: "vault",
+          sourcePath: cleanPath,
+        };
+        setSelectedDoc(detail);
+        setActiveReaderDoc({
+          documentId: docId || `vault:${cleanPath}`,
+          title: detail.title,
+          format: "md",
+          sourceType: "vault",
+          fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`,
+          content: data.content || "",
+        });
+        return;
+      }
+
       const res = await fetch(`/api/docs/content?path=${encodeURIComponent(relativePath)}`);
       if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu (${res.status})`);
       const data: DocDetail = await res.json();
@@ -107,6 +154,31 @@ export function DocsExplorerView({
 
   const handleDocClick = useCallback((doc: DocItem) => {
     const format = getDocFormat(doc);
+    const isVault =
+      doc.sourceType === "vault" ||
+      doc.relativePath.startsWith("vault://") ||
+      archivedDocs.some(
+        (a) =>
+          (a.id === doc.id || a.sourcePath === doc.relativePath || a.sourceKey === `vault:${doc.relativePath}`) &&
+          (a.sourceType === "vault" || a.storageRelPath?.startsWith("vault://"))
+      );
+
+    if (isVault) {
+      const cleanVaultPath = doc.sourcePath || doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+      if (format === "epub" || format === "pdf") {
+        setActiveReaderDoc({
+          documentId: doc.id || `vault:${cleanVaultPath}`,
+          title: doc.title || cleanVaultPath.split("/").pop() || cleanVaultPath,
+          format,
+          sourceType: "vault",
+          fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`,
+        });
+        return;
+      }
+      fetchDocContent(cleanVaultPath, "vault", doc.id);
+      return;
+    }
+
     if (format === "epub") {
       const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
       setActiveReaderDoc({
@@ -129,40 +201,53 @@ export function DocsExplorerView({
       });
       return;
     }
-    fetchDocContent(doc.relativePath);
-  }, [fetchDocContent, getDocFormat]);
+    fetchDocContent(doc.relativePath, "docs", doc.id);
+  }, [fetchDocContent, getDocFormat, archivedDocs]);
 
-  const handleVaultFileSelect = useCallback((filePath: string) => {
+  const handleVaultFileSelect = useCallback(async (filePath: string) => {
     setIsVaultModalOpen(false);
     const isEpub = filePath.toLowerCase().endsWith(".epub");
     const isPdf = filePath.toLowerCase().endsWith(".pdf");
+    const format = isEpub ? "epub" : isPdf ? "pdf" : "md";
     const fileName = filePath.split("/").pop() || filePath;
-    if (isEpub) {
-      setActiveReaderDoc({
-        documentId: `vault:${filePath}`,
-        title: fileName.replace(/\.epub$/i, ""),
-        format: "epub",
-        sourceType: "vault",
-        fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+    const title = fileName.replace(/\.(epub|pdf|md)$/i, "");
+    const cleanPath = filePath.replace(/^\/+/, "");
+
+    const fileUrl =
+      format === "md"
+        ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`
+        : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
+
+    let realDocId = `vault:${cleanPath}`;
+    try {
+      const res = await fetch("/api/archive/vault/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: cleanPath,
+          fileName,
+          fileFormat: format,
+        }),
       });
-    } else if (isPdf) {
-      setActiveReaderDoc({
-        documentId: `vault:${filePath}`,
-        title: fileName.replace(/\.pdf$/i, ""),
-        format: "pdf",
-        sourceType: "vault",
-        fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
-      });
-    } else {
-      setActiveReaderDoc({
-        documentId: `vault:${filePath}`,
-        title: fileName.replace(/\.md$/i, ""),
-        format: "md",
-        sourceType: "vault",
-        fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
-      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.document?.id) {
+          realDocId = data.document.id;
+          fetchArchivedDocs();
+        }
+      }
+    } catch {
+      // Degraded mode fallback
     }
-  }, []);
+
+    setActiveReaderDoc({
+      documentId: realDocId,
+      title,
+      format,
+      sourceType: "vault",
+      fileUrl,
+    });
+  }, [fetchArchivedDocs]);
 
   useEffect(() => {
     fetchDocsList();
@@ -242,20 +327,83 @@ export function DocsExplorerView({
   const recentDocs = useMemo(() => {
     const allPos = globalReadingPositionStore.getAllPositions();
     const keys = Object.keys(allPos);
-    if (keys.length === 0) return [];
 
-    return docs.filter((doc) => {
+    // 1. Filter persisted reading history from archive metadata
+    const persistedReads = archivedDocs.filter(
+      (a) => a && (a.lastPosition != null || a.lastReadAt != null)
+    );
+
+    if (persistedReads.length === 0 && keys.length === 0) {
+      return [];
+    }
+
+    // Sort persisted reads by lastReadAt desc, then updatedAt desc
+    const sortedArchived = [...persistedReads].sort((a, b) => {
+      const timeA = new Date(a.lastReadAt || a.updatedAt || 0).getTime();
+      const timeB = new Date(b.lastReadAt || b.updatedAt || 0).getTime();
+      return timeB - timeA;
+    });
+
+    const recentList: DocItem[] = [];
+    const seenIds = new Set<string>();
+
+    for (const arch of sortedArchived) {
+      // Find matching doc in library docs
+      const matched = docs.find(
+        (d) =>
+          d.id === arch.id ||
+          d.relativePath === arch.storageRelPath ||
+          d.relativePath === arch.fileName ||
+          d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
+          (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
+          (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
+      );
+
+      if (matched && !seenIds.has(matched.id || matched.relativePath)) {
+        seenIds.add(matched.id || matched.relativePath);
+        recentList.push(matched);
+      } else if (!matched && arch.fileName) {
+        const virtualId = arch.id || arch.contentHash;
+        if (!seenIds.has(virtualId)) {
+          seenIds.add(virtualId);
+          const isVault = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
+          const cleanVaultPath = arch.sourcePath || arch.storageRelPath?.replace(/^vault:\/\//, "") || arch.fileName;
+          recentList.push({
+            id: virtualId,
+            title: arch.fileName.replace(/\.(epub|md|pdf)$/i, "").replace(/_/g, " "),
+            category: arch.fileFormat === "epub" ? "books" : "guides",
+            relativePath: isVault ? cleanVaultPath : (arch.storageRelPath || arch.fileName),
+            sizeBytes: arch.fileSize || 0,
+            lastModified: arch.lastReadAt || arch.updatedAt || new Date().toISOString(),
+            sourceType: isVault ? "vault" : "archive",
+            sourcePath: isVault ? cleanVaultPath : undefined,
+          });
+        }
+      }
+    }
+
+    // Append any extra in-memory reads from globalReadingPositionStore
+    for (const doc of docs) {
+      const docKey = doc.id || doc.relativePath;
+      if (seenIds.has(docKey)) continue;
+
       const format = getDocFormat(doc);
       const posById = globalReadingPositionStore.getPosition(doc.id, format);
       const posByPath = globalReadingPositionStore.getPosition(doc.relativePath, format);
-      if (posById || posByPath) return true;
-      return keys.some(
+      const hasKey = keys.some(
         (k) =>
           (doc.id && k.includes(doc.id)) ||
           (doc.relativePath && k.includes(doc.relativePath))
       );
-    });
-  }, [docs, getDocFormat]);
+
+      if (posById || posByPath || hasKey) {
+        seenIds.add(docKey);
+        recentList.push(doc);
+      }
+    }
+
+    return recentList;
+  }, [docs, archivedDocs, getDocFormat]);
 
   const dynamicCategories = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -680,7 +828,10 @@ export function DocsExplorerView({
               content={activeReaderDoc.content}
               sourceType={activeReaderDoc.sourceType}
               layoutMode="embedded"
-              onClose={() => setActiveReaderDoc(null)}
+              onClose={() => {
+                setActiveReaderDoc(null);
+                fetchArchivedDocs();
+              }}
             />
           ) : isLoadingContent ? (
             <SurfaceCard variant="default" className="flex-1 flex items-center justify-center text-xs text-stone-400 dark:text-stone-500 animate-pulse">

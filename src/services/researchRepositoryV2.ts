@@ -24,6 +24,8 @@ import {
   Resource,
   Tag,
   StudyProgress,
+  ArchivedDocument,
+  ReadingPositionData,
 } from '../types';
 import {
   ValidatedHydrateInput,
@@ -146,5 +148,22 @@ export class ResearchRepositoryV2 implements IDataRepository {
 
   async resetAllData(): Promise<boolean> {
     return this.base.resetAllData();
+  }
+
+  async getArchivedDocuments(): Promise<ArchivedDocument[]> {
+    if (this.base.getArchivedDocuments) {
+      return this.base.getArchivedDocuments();
+    }
+    return [];
+  }
+
+  async updateArchivedDocumentPosition(
+    documentId: string,
+    position: ReadingPositionData
+  ): Promise<ArchivedDocument> {
+    if (this.base.updateArchivedDocumentPosition) {
+      return this.base.updateArchivedDocumentPosition(documentId, position);
+    }
+    throw new Error('updateArchivedDocumentPosition is not supported by base repository');
   }
 }

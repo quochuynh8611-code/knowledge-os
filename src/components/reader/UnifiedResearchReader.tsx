@@ -79,9 +79,85 @@ export function UnifiedResearchReader({
 
   // Load initial position from in-memory store if not provided directly
   const [currentPosition, setCurrentPosition] = useState<string | undefined>(() => {
-    if (initialPosition) return initialPosition;
+    if (initialPosition && initialPosition.trim()) return initialPosition.trim();
     return globalReadingPositionStore.getPosition(documentId, normalizedFormat) || undefined;
   });
+
+  const latestPositionRef = useRef<string | undefined>(currentPosition);
+  latestPositionRef.current = currentPosition;
+
+  // Hydrate persisted lastPosition from archive if initialPosition was not provided
+  useEffect(() => {
+    if (initialPosition && initialPosition.trim()) return;
+
+    let isCancelled = false;
+    async function hydratePersistedPosition() {
+      try {
+        const res = await fetch(`/api/archive/document/${encodeURIComponent(documentId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const doc = data.document;
+        if (!doc || !doc.lastPosition || isCancelled) return;
+
+        const pos = doc.lastPosition;
+        let hydratedLocator: string | undefined = undefined;
+
+        if (normalizedFormat === 'epub' && pos.cfi) {
+          hydratedLocator = pos.cfi;
+        } else if ((normalizedFormat === 'md' || normalizedFormat === 'markdown') && pos.headingId) {
+          hydratedLocator = pos.headingId;
+          setTargetHeadingId(pos.headingId);
+        } else if (normalizedFormat === 'pdf' && pos.pageNumber) {
+          hydratedLocator = `page=${pos.pageNumber}`;
+        }
+
+        if (hydratedLocator && !isCancelled) {
+          setCurrentPosition(hydratedLocator);
+          latestPositionRef.current = hydratedLocator;
+          globalReadingPositionStore.setPosition(documentId, normalizedFormat, hydratedLocator);
+        }
+      } catch (err) {
+        // Fallback gracefully on fetch failure
+      }
+    }
+
+    hydratePersistedPosition();
+    return () => {
+      isCancelled = true;
+    };
+  }, [documentId, normalizedFormat, initialPosition]);
+
+  // Persist position to server / repository
+  const persistPositionAsync = useCallback(
+    async (locator?: string) => {
+      const locToSave = locator || latestPositionRef.current;
+      if (!locToSave || !locToSave.trim()) return;
+      const safeLoc = locToSave.trim();
+
+      const positionData = {
+        cfi: normalizedFormat === 'epub' ? safeLoc : undefined,
+        headingId: (normalizedFormat === 'md' || normalizedFormat === 'markdown') ? safeLoc : undefined,
+        pageNumber: normalizedFormat === 'pdf' ? (parseInt(safeLoc.replace('page=', ''), 10) || 1) : undefined,
+        updatedAt: new Date().toISOString(),
+      };
+
+      try {
+        await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastPosition: positionData,
+            lastReadAt: new Date().toISOString(),
+          }),
+        });
+      } catch (err) {
+        console.warn('[UnifiedResearchReader] Failed to persist reading position:', err);
+      }
+    },
+    [documentId, normalizedFormat]
+  );
+
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Parse PDF initial page from currentPosition / initialPosition
   const pdfInitialPage = useMemo(() => {
@@ -93,16 +169,26 @@ export function UnifiedResearchReader({
     return isNaN(parsed) || parsed < 1 ? 1 : parsed;
   }, [initialPosition, currentPosition]);
 
-  // Track position change in in-memory store
+  // Track position change in in-memory store and debounced persistence
   const handlePositionChanged = useCallback(
     (newLocator: string) => {
-      setCurrentPosition(newLocator);
-      globalReadingPositionStore.setPosition(documentId, normalizedFormat, newLocator);
+      if (!newLocator || !newLocator.trim()) return;
+      const safeLoc = newLocator.trim();
+      setCurrentPosition(safeLoc);
+      latestPositionRef.current = safeLoc;
+      globalReadingPositionStore.setPosition(documentId, normalizedFormat, safeLoc);
       if (onPositionChange) {
-        onPositionChange(newLocator);
+        onPositionChange(safeLoc);
       }
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+      debounceTimerRef.current = setTimeout(() => {
+        persistPositionAsync(safeLoc);
+      }, 1000);
     },
-    [documentId, normalizedFormat, onPositionChange]
+    [documentId, normalizedFormat, onPositionChange, persistPositionAsync]
   );
 
   // Handle TOC item selection

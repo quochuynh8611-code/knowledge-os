@@ -171,6 +171,11 @@ export interface ArchivedDocument {
   contentHash: string;
   storageRelPath: string;
   lastPosition?: ReadingPositionData | null;
+  lastReadAt?: string | null;
+  readCount?: number;
+  sourceType?: string | null;
+  sourcePath?: string | null;
+  sourceKey?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -385,12 +385,19 @@ model ArchivedDocument {
   contentHash    String            // SHA-256 hash
   storageRelPath String            // e.g. 'pdf/aa/file.pdf'
   lastPosition   Json?             // { cfi?: string, pageNumber?: number, headingId?: string, percentage?: number }
+  lastReadAt     DateTime?
+  readCount      Int               @default(0)
+  sourceType     String?           // 'archive' | 'vault'
+  sourcePath     String?           // relative path within source (e.g. '01_Notes/foo.md')
+  sourceKey      String?           @unique // unique idempotency key e.g. 'vault:01_Notes/foo.md'
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   excerpts       ResearchExcerpt[]
 
   @@index([contentHash])
   @@index([fileFormat])
+  @@index([lastReadAt])
+  @@index([sourceType, sourcePath])
 }
 
 model ResearchExcerpt {

@@ -1,9 +1,12 @@
+import crypto from "crypto";
 import { Router, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { LocalArchiveStorage } from "../../lib/localArchiveStorage";
 import {
   ArchiveUploadQuerySchema,
   ArchivedDocumentCreateSchema,
+  ArchivedDocumentUpdateSchema,
+  VaultDocumentRegisterSchema,
   MAX_ARCHIVE_FILE_SIZE,
 } from "../../lib/validation";
 
@@ -157,6 +160,14 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         return;
       }
 
+      if (doc.sourceType === "vault" || doc.storageRelPath?.startsWith("vault://")) {
+        res.status(400).json({
+          error: "VAULT_FILE_STREAMING_NOT_SUPPORTED",
+          message: "Tài liệu Obsidian Vault phải được truy xuất qua endpoint /api/obsidian/vault.",
+        });
+        return;
+      }
+
       const stat = await storage.statFile(doc.storageRelPath);
 
       res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
@@ -196,6 +207,175 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
       res.status(500).json({
         error: "INTERNAL_ERROR",
         message: err.message || "Lỗi khi lấy danh sách tài liệu lưu trữ.",
+      });
+    }
+  });
+
+  // GET /archive/document/:id - Get archived document metadata
+  router.get("/archive/document/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      let doc = await prisma.archivedDocument.findUnique({
+        where: { id },
+      });
+
+      if (!doc) {
+        doc = await prisma.archivedDocument.findFirst({
+          where: { contentHash: id },
+        });
+      }
+
+      if (!doc) {
+        res.status(404).json({
+          error: "DOCUMENT_NOT_FOUND",
+          message: `Không tìm thấy tài liệu với ID '${id}'.`,
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        document: doc,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: err.message || "Lỗi khi lấy thông tin tài liệu lưu trữ.",
+      });
+    }
+  });
+
+  // PATCH /archive/document/:id/position - Update lastPosition & lastReadAt
+  router.patch("/archive/document/:id/position", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      // 1. Validate payload
+      const parsed = ArchivedDocumentUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "VALIDATION_FAILED",
+          details: parsed.error.format(),
+        });
+        return;
+      }
+
+      // 2. Find document by id or contentHash
+      let existingDoc = await prisma.archivedDocument.findUnique({
+        where: { id },
+      });
+
+      if (!existingDoc) {
+        existingDoc = await prisma.archivedDocument.findFirst({
+          where: { contentHash: id },
+        });
+      }
+
+      if (!existingDoc) {
+        res.status(404).json({
+          error: "DOCUMENT_NOT_FOUND",
+          message: `Không tìm thấy tài liệu với ID '${id}'.`,
+        });
+        return;
+      }
+
+      // 3. Prepare update data
+      const updateData: any = {};
+      if (parsed.data.lastPosition !== undefined) {
+        updateData.lastPosition = parsed.data.lastPosition;
+      }
+      if (parsed.data.fileName !== undefined) {
+        updateData.fileName = parsed.data.fileName;
+      }
+      if (parsed.data.lastReadAt !== undefined) {
+        updateData.lastReadAt = new Date(parsed.data.lastReadAt);
+      } else {
+        updateData.lastReadAt = new Date();
+      }
+      updateData.readCount = { increment: 1 };
+
+      const updated = await prisma.archivedDocument.update({
+        where: { id: existingDoc.id },
+        data: updateData,
+      });
+
+      res.status(200).json({
+        success: true,
+        document: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: err.message || "Lỗi khi cập nhật trạng thái đọc tài liệu lưu trữ.",
+      });
+    }
+  });
+
+  // POST /archive/vault/register - Register or get existing ArchivedDocument for Obsidian Vault file
+  router.post("/archive/vault/register", async (req: Request, res: Response) => {
+    try {
+      const parsed = VaultDocumentRegisterSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({
+          error: "VALIDATION_FAILED",
+          details: parsed.error.format(),
+        });
+        return;
+      }
+
+      const { path: rawPath, fileName: rawFileName, fileFormat, fileSize } = parsed.data;
+      const cleanPath = rawPath.replace(/^\/+/, "");
+      const fileName = rawFileName || cleanPath.split("/").pop() || cleanPath;
+      const sourceKey = `vault:${cleanPath}`;
+
+      // 1. Idempotent lookup by sourceKey
+      let doc = await prisma.archivedDocument.findUnique({
+        where: { sourceKey },
+      });
+
+      if (!doc) {
+        doc = await prisma.archivedDocument.findFirst({
+          where: { sourceKey },
+        });
+      }
+
+      if (doc) {
+        res.status(200).json({
+          success: true,
+          document: doc,
+        });
+        return;
+      }
+
+      // 2. Determine mimeType, synthetic hash, and virtual storage reference
+      const mimeType = getMimeType(fileFormat);
+      const contentHash = crypto.createHash("sha256").update(sourceKey).digest("hex");
+      const storageRelPath = `vault://${cleanPath}`;
+
+      // 3. Create new ArchivedDocument
+      const newDoc = await prisma.archivedDocument.create({
+        data: {
+          fileName,
+          fileSize: fileSize || 0,
+          mimeType,
+          fileFormat,
+          contentHash,
+          storageRelPath,
+          sourceType: "vault",
+          sourcePath: cleanPath,
+          sourceKey,
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        document: newDoc,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: "INTERNAL_ERROR",
+        message: err.message || "Lỗi khi đăng ký tài liệu Obsidian Vault.",
       });
     }
   });

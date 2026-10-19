@@ -427,36 +427,47 @@ export function Navbar({
           <ObsidianVaultBrowserModal
             isOpen={showObsidianBrowserModal}
             onClose={() => setShowObsidianBrowserModal(false)}
-            onSelectFile={(filePath) => {
+            onSelectFile={async (filePath) => {
               setShowObsidianBrowserModal(false);
               const fileName = filePath.split("/").pop() || filePath;
-              if (filePath.toLowerCase().endsWith(".epub")) {
-                setActiveReaderDoc({
-                  documentId: `vault:${filePath}`,
-                  title: fileName.replace(/\.epub$/i, ""),
-                  format: "epub",
-                  sourceType: "vault",
-                  fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
+              const isEpub = filePath.toLowerCase().endsWith(".epub");
+              const isPdf = filePath.toLowerCase().endsWith(".pdf");
+              const format = isEpub ? "epub" : isPdf ? "pdf" : "md";
+              const cleanPath = filePath.replace(/^\/+/, "");
+              const title = fileName.replace(/\.(epub|pdf|md)$/i, "");
+
+              const fileUrl =
+                format === "md"
+                  ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanPath)}`
+                  : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanPath)}`;
+
+              let realDocId = `vault:${cleanPath}`;
+              try {
+                const res = await fetch("/api/archive/vault/register", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    path: cleanPath,
+                    fileName,
+                    fileFormat: format,
+                  }),
                 });
-                return;
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data?.document?.id) {
+                    realDocId = data.document.id;
+                  }
+                }
+              } catch {
+                // Degraded mode fallback
               }
-              if (filePath.toLowerCase().endsWith(".pdf")) {
-                setActiveReaderDoc({
-                  documentId: `vault:${filePath}`,
-                  title: fileName.replace(/\.pdf$/i, ""),
-                  format: "pdf",
-                  sourceType: "vault",
-                  fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(filePath)}`,
-                });
-                return;
-              }
-              // Route .md into UnifiedResearchReader (same path as pdf/epub)
+
               setActiveReaderDoc({
-                documentId: `vault:${filePath}`,
-                title: fileName.replace(/\.md$/i, ""),
-                format: "md",
+                documentId: realDocId,
+                title,
+                format,
                 sourceType: "vault",
-                fileUrl: `/api/obsidian/vault/file?path=${encodeURIComponent(filePath)}`,
+                fileUrl,
               });
             }}
           />
