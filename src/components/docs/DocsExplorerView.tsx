@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
-import { globalReadingPositionStore, formatReadingDuration, calculateReadingAnalyticsSummary } from "../../lib/readingPositionUnified";
+import { globalReadingPositionStore, formatReadingDuration, calculateReadingAnalyticsBreakdown } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
 const UnifiedResearchReader = React.lazy(() =>
@@ -441,7 +441,7 @@ export function DocsExplorerView({
   ]);
 
   const readingSummary = useMemo(() => {
-    return calculateReadingAnalyticsSummary(allHistoryCleared ? [] : archivedDocs);
+    return calculateReadingAnalyticsBreakdown(allHistoryCleared ? [] : archivedDocs);
   }, [archivedDocs, allHistoryCleared]);
 
   const recentDocs = useMemo(() => {
@@ -684,6 +684,14 @@ export function DocsExplorerView({
           >
             <Book className="w-3 h-3 text-stone-500 dark:text-stone-400" />
             <span>{readingSummary.inProgressCount} đang đọc</span>
+          </span>
+
+          <span
+            data-testid="summary-completion-rate"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-900 dark:text-indigo-300 font-semibold"
+            title="Tỷ lệ hoàn thành tài liệu"
+          >
+            <span>{readingSummary.completionRate}% hoàn thành</span>
           </span>
         </div>
       </div>
