@@ -85,12 +85,15 @@ export function sanitizeVaultMarkdown(rawMarkdown: string): string {
 export function normalizeMarkdownForDisplay(rawContent?: string): string {
   if (!rawContent) return '';
 
+  // 0. Chuẩn hóa Unicode NFC trước tiên để nhất quán diacritics và glyphs
+  const normalizedRaw = rawContent.normalize('NFC');
+
   const codeBlocks: string[] = [];
   const inlineCodes: string[] = [];
   const protectedTokens: string[] = [];
 
   // 1. Bảo toàn Fenced Code Blocks (```...```)
-  let text = rawContent.replace(/```[\s\S]*?```/g, (match) => {
+  let text = normalizedRaw.replace(/```[\s\S]*?```/g, (match) => {
     const idx = codeBlocks.length;
     codeBlocks.push(match);
     return `\u0000CODEBLOCK_${idx}\u0000`;
@@ -106,6 +109,8 @@ export function normalizeMarkdownForDisplay(rawContent?: string): string {
   // 3. Bảo toàn URLs, Markdown Links, Wiki Links, Image Embeds, Emails, Endpoint Paths, Key-Value Params, Technical Identifiers & Brands
   const protectedPattern = new RegExp(
     [
+      // HTML comments <!-- ... -->
+      /<!--[\s\S]*?-->/.source,
       // Wiki links / embeds
       /!\[\[[^\]]+\]\]|\[\[[^\]]+\]\]/.source,
       // Markdown images / links
@@ -116,8 +121,8 @@ export function normalizeMarkdownForDisplay(rawContent?: string): string {
       /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.source,
       // Absolute / API Paths
       /(?:\/[a-zA-Z0-9._~:/?#\[\]@!$&'()*+,;=-]+)/.source,
-      // Key-Value Params
-      /(?:[a-zA-Z0-9_]+=[a-zA-Z0-9_]+)/.source,
+      // Key-Value Params (e.g. param=value, ensuring it is a single '=' not preceded or followed by comparison/arrow chars)
+      /(?<![<>=!])\b[a-zA-Z0-9_]+=[a-zA-Z0-9_]+\b(?![=>])/.source,
       // Namespaced technical identifiers (e.g. metadata:Title, namespace:ClassName)
       /(?<![\p{L}\p{N}])(?:[a-zA-Z0-9_]+:[a-zA-Z0-9_]+)(?![\p{L}\p{N}])/u.source,
       // IP Addresses
@@ -180,6 +185,30 @@ export function normalizeMarkdownForDisplay(rawContent?: string): string {
 
     // Case 2: Chữ thường dính vào TitleCase (e.g. "Đông yViệc", "nâng caoViệc", "thứcỨng", "yActive", "RecallTăng", "RepetitionTối", "TechniqueChuyển", "rõ ràngDiễn")
     processed = processed.replace(/([\p{Ll}])([\p{Lu}][\p{Ll}]+)/gu, '$1 $2');
+
+    // 5e. Typography & Arrow symbols transformation (chỉ trên prose, sau khi code blocks và inline code đã được bảo vệ)
+    // Hai chiều / Tương đương
+    processed = processed.replace(/<=>/g, '⇔');
+    processed = processed.replace(/<->/g, '↔');
+
+    // Suy luận một chiều (double arrow)
+    processed = processed.replace(/==>/g, '⇒');
+    processed = processed.replace(/(?<![<>=!])=>(?![=>])/g, '⇒');
+
+    // Mũi tên đơn (single arrow)
+    processed = processed.replace(/-->/g, '→');
+    processed = processed.replace(/(?<![<-])->(?![->])/g, '→');
+
+    // Mũi tên trái (left arrow)
+    processed = processed.replace(/<--/g, '←');
+    processed = processed.replace(/(?<![<-])<-(?![\w/->])/g, '←');
+
+    // Toán tử so sánh / quan hệ số học trong prose
+    processed = processed.replace(/(?<![<>=!])!=(?![=])/g, '≠');
+    processed = processed.replace(/(?<![<>=!])<=(?![=>])/g, '≤');
+    processed = processed.replace(/(?<![<>=!])>=(?![=>])/g, '≥');
+    processed = processed.replace(/(?<![<>=!])\+-(?![+-])/g, '±');
+    processed = processed.replace(/(?<![~])~=(?![=])/g, '≈');
 
     return processed;
   });

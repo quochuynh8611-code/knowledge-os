@@ -21,16 +21,49 @@ export class HeadingSlugger {
     const cleanedText = rawText
       .replace(/\[\[(?:[^|\]]*\|)?([^\]]+)\]\]/g, '$1') // Extract alias/target from wiki-links
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')           // Extract link text from markdown links
-      .replace(/[*_`~]/g, '')                            // Strip bold, italic, code, strike markers
+      .replace(/[*_`~]/g, ' ')                           // Strip formatting markers (treat as space/delimiter)
       .trim();
 
-    const base = cleanedText
+    // Map common mathematical, arrow, relational, and Greek symbols to deterministic semantic tokens
+    const tokenized = cleanedText
+      // Equivalence and bidirectional arrows
+      .replace(/<->|↔/g, ' rel ')
+      .replace(/<=>|⇔/g, ' equiv ')
+      // Standard implications and arrows
+      .replace(/==>|⇒/g, ' implies ')
+      .replace(/->|→/g, ' to ')
+      .replace(/<--|⟵/g, ' from ')
+      .replace(/<-|←/g, ' from ')
+      // Mathematical relations
+      .replace(/<=|≤/g, ' le ')
+      .replace(/>=|≥/g, ' ge ')
+      .replace(/!=|≠/g, ' ne ')
+      .replace(/~=|≈/g, ' approx ')
+      .replace(/\+-|±/g, ' pm ')
+      // Math operators
+      .replace(/∑/g, ' sum ')
+      .replace(/∫/g, ' integral ')
+      .replace(/∞/g, ' infin ')
+      // Greek alphabet tokens
+      .replace(/α|Α/g, ' alpha ')
+      .replace(/β|Β/g, ' beta ')
+      .replace(/γ|Γ/g, ' gamma ')
+      .replace(/δ|Δ/g, ' delta ')
+      .replace(/θ|Θ/g, ' theta ')
+      .replace(/λ|Λ/g, ' lambda ')
+      .replace(/μ|Μ/g, ' mu ')
+      .replace(/π|Π/g, ' pi ')
+      .replace(/σ|Σ/g, ' sigma ')
+      .replace(/ω|Ω/g, ' omega ');
+
+    const base = tokenized
       .toLowerCase()
       .replace(/[đĐ]/g, 'd')
       .replace(/\./g, '-') // Replace periods in section numbering (e.g. 1.1 -> 1-1)
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '') // Strip diacritics
-      .replace(/[^\w\s-]/g, '')        // Strip remaining punctuation except hyphens/spaces
+      .replace(/[^\w\s-]/g, ' ')       // Replace punctuation with spaces
+      .replace(/_/g, '-')              // Strict ASCII hyphens: convert underscores to hyphens
       .trim()
       .replace(/\s+/g, '-')            // Convert whitespace to hyphen
       .replace(/-+/g, '-');            // Collapse consecutive hyphens
