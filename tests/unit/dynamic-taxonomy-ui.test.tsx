@@ -85,10 +85,26 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     const testTopic: Topic = {
       id: 'topic-test-1',
       title: 'Xã Hội Học Đô Thị',
+      slug: 'xa-hoi-hoc-do-thi',
       categoryId: 'cat-root-test',
-      status: 'in_progress',
+      type: 'general',
+      description: '',
+      content: '',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'topic-test-1',
+        status: 'in_progress',
+        progress: 40,
+        interval: 1,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       visibility: 'active',
-      progress: 40,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
     localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([testCategory]));
@@ -179,10 +195,26 @@ describe('Post-Phase 5: Dynamic Taxonomy & Topic Visibility UI Integration Tests
     const domainTopic: Topic = {
       id: 'topic-khxh-1',
       title: 'Tâm Lý Học Đại Cương',
+      slug: 'tam-ly-hoc-dai-cuong',
       categoryId: 'cat-root-khxh',
-      status: 'in_progress',
+      type: 'general',
+      description: '',
+      content: '',
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: 'topic-khxh-1',
+        status: 'in_progress',
+        progress: 50,
+        interval: 1,
+        easeFactor: 2.5,
+        repetitions: 0,
+        totalNotes: 0,
+        timeSpent: 0,
+      },
       visibility: 'active',
-      progress: 50,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_VERSION_KEY, String(CURRENT_STORAGE_VERSION));
     localStorage.setItem(`${STORAGE_ROOT_KEY}_categories`, JSON.stringify([domainCat]));
