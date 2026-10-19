@@ -389,8 +389,10 @@ describe('Phase 20: Global Citation Navigation & Reader Orchestration Integratio
       const mdFile = await screen.findByText('triet-hoc.md');
       fireEvent.click(mdFile);
 
-      // Verify no mutating fetch calls were made
+      // Verify no mutating fetch calls were made (excluding ADR-105 idempotent archive registration)
       const mutatingCalls = fetchMock.mock.calls.filter((call: any[]) => {
+        const url = typeof call[0] === 'string' ? call[0] : call[0]?.url || '';
+        if (url.includes('/api/archive/vault/register')) return false;
         const method = (call[1]?.method || 'GET').toUpperCase();
         return ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method);
       });

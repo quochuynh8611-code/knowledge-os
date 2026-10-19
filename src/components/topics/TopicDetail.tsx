@@ -57,17 +57,9 @@ import { SurfaceCard } from "../workbench/SurfaceCard";
 import { StatusPill } from "../workbench/StatusPill";
 import { ToolbarButton } from "../workbench/ToolbarButton";
 
-const UnifiedResearchReader = React.lazy(() =>
-  import("../reader/UnifiedResearchReader").then((m) => ({
-    default: m.UnifiedResearchReader,
-  }))
-);
+import { UnifiedResearchReader } from "../reader/UnifiedResearchReader";
+import { CardBrowser } from "../flashcards/CardBrowser";
 
-const CardBrowser = React.lazy(() =>
-  import("../flashcards/CardBrowser").then((m) => ({
-    default: m.CardBrowser,
-  }))
-);
 const StudyLauncher = React.lazy(() =>
   import("../flashcards/StudyLauncher").then((m) => ({
     default: m.StudyLauncher,
@@ -1342,9 +1334,7 @@ export function TopicDetail() {
       )}
 
       {activeTab === "card_browser" && (
-        <React.Suspense fallback={null}>
-          <CardBrowser topicId={topic.id} />
-        </React.Suspense>
+        <CardBrowser topicId={topic.id} />
       )}
 
       {activeTab === "study_launcher" && (
@@ -1600,35 +1590,24 @@ export function TopicDetail() {
 
       {/* Phase R3A Unified Research Reader */}
       {activeReaderDoc && (
-        <React.Suspense
-          fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs text-white">
-              <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-stone-900/90 border border-stone-800 shadow-2xl">
-                <div className="w-5 h-5 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-                <span className="text-sm font-medium font-sans">Đang mở tài liệu nghiên cứu...</span>
-              </div>
-            </div>
-          }
-        >
-          <UnifiedResearchReader
-            documentId={activeReaderDoc.documentId}
-            title={activeReaderDoc.title}
-            format={activeReaderDoc.format}
-            fileUrl={activeReaderDoc.fileUrl}
-            content={activeReaderDoc.content}
-            initialPosition={activeReaderDoc.initialPosition}
-            onNavigateToDocument={(target) => {
-              setActiveReaderDoc({
-                documentId: target.documentId,
-                title: target.title,
-                format: target.format,
-                fileUrl: target.fileUrl,
-                initialPosition: target.initialPosition,
-              });
-            }}
-            onClose={() => setActiveReaderDoc(null)}
-          />
-        </React.Suspense>
+        <UnifiedResearchReader
+          documentId={activeReaderDoc.documentId}
+          title={activeReaderDoc.title}
+          format={activeReaderDoc.format}
+          fileUrl={activeReaderDoc.fileUrl}
+          content={activeReaderDoc.content}
+          initialPosition={activeReaderDoc.initialPosition}
+          onNavigateToDocument={(target) => {
+            setActiveReaderDoc({
+              documentId: target.documentId,
+              title: target.title,
+              format: target.format,
+              fileUrl: target.fileUrl,
+              initialPosition: target.initialPosition,
+            });
+          }}
+          onClose={() => setActiveReaderDoc(null)}
+        />
       )}
     </div>
   );

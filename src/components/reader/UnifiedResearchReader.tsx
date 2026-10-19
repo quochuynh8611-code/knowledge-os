@@ -197,6 +197,15 @@ export function UnifiedResearchReader({
     [documentId, normalizedFormat, onPositionChange, persistPositionAsync]
   );
 
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
   // Close handler with guaranteed persist on close
   const handleCloseReader = useCallback(() => {
     if (debounceTimerRef.current) {
@@ -859,7 +868,7 @@ export function UnifiedResearchReader({
               fallback={
                 <div className="flex h-full w-full items-center justify-center text-slate-400 gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
-                  <span className="text-sm font-medium">Đang chuẩn bị trình đọc EPUB...</span>
+                  <span className="text-sm font-medium">Đang chuẩn bị nội dung đọc...</span>
                 </div>
               }
             >
