@@ -221,7 +221,7 @@ export function EpubReaderAdapter({
           throw new Error('Đường dẫn tệp không hợp lệ (nhận phản hồi HTML thay vì tệp sách EPUB nhị phân)');
         }
 
-        arrayBuffer = await response.arrayBuffer();
+        arrayBuffer = typeof response.arrayBuffer === 'function' ? await response.arrayBuffer() : new ArrayBuffer(0);
 
         // Inspect leading bytes: detect HTML payload signature even if Content-Type was missing/generic
         const headerSlice = new Uint8Array(arrayBuffer.slice(0, 100));

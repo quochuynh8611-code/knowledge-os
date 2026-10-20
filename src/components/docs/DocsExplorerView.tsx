@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
   X,
   Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench";
 import { copyTextToClipboard } from "../../lib/clipboard";
@@ -86,6 +87,12 @@ export function DocsExplorerView({
   const [recentReadsError, setRecentReadsError] = useState<string | null>(null);
   const [deletedHistoryIds, setDeletedHistoryIds] = useState<Set<string>>(new Set());
   const [allHistoryCleared, setAllHistoryCleared] = useState<boolean>(false);
+  const [activeDrilldownGroup, setActiveDrilldownGroup] = useState<"completed" | "in-progress" | null>(null);
+  useEffect(() => {
+    if (allHistoryCleared && activeDrilldownGroup !== null) {
+      setActiveDrilldownGroup(null);
+    }
+  }, [allHistoryCleared, activeDrilldownGroup]);
 
   const fetchArchivedDocs = useCallback(async () => {
     setRecentReadsError(null);
@@ -135,6 +142,7 @@ export function DocsExplorerView({
     if (!confirmed) return;
 
     setAllHistoryCleared(true);
+    setActiveDrilldownGroup(null);
     setArchivedDocs((prev) => prev.map((d) => ({ ...d, lastReadAt: null, readCount: 0 })));
 
     try {
@@ -444,6 +452,65 @@ export function DocsExplorerView({
     return calculateReadingAnalyticsBreakdown(allHistoryCleared ? [] : archivedDocs);
   }, [archivedDocs, allHistoryCleared]);
 
+  const drilldownDocs = useMemo(() => {
+    if (!activeDrilldownGroup || allHistoryCleared) return [];
+    const targetIds =
+      activeDrilldownGroup === "completed"
+        ? readingSummary.completedDocIds
+        : readingSummary.inProgressDocIds;
+    if (!targetIds || targetIds.length === 0) return [];
+
+    const idSet = new Set(targetIds);
+    const result: DocItem[] = [];
+    const seen = new Set<string>();
+
+    for (const arch of archivedDocs) {
+      if (!arch) continue;
+      const archId = arch.id || arch.sourceKey || arch.storageRelPath || arch.fileName || arch.sourcePath;
+      if (archId && idSet.has(archId) && !seen.has(archId)) {
+        seen.add(archId);
+        const matched = docs.find(
+          (d) =>
+            d.id === arch.id ||
+            d.relativePath === arch.storageRelPath ||
+            d.relativePath === arch.fileName ||
+            d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
+            (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
+            (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
+        );
+
+        if (matched) {
+          result.push({
+            ...matched,
+            id: arch.id || matched.id,
+            lastPosition: arch.lastPosition,
+          });
+        } else {
+          const isVault = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
+          const displayName = (arch.fileName || arch.storageRelPath || arch.sourcePath || "document")
+            .split("/")
+            .pop()!
+            .replace(/\.(epub|md|pdf)$/i, "")
+            .replace(/_/g, " ");
+          const cleanVaultPath = arch.sourcePath || arch.storageRelPath?.replace(/^vault:\/\//, "") || arch.fileName;
+          const format = (arch.fileFormat || arch.fileName?.split(".").pop() || "md").toLowerCase();
+          result.push({
+            id: archId,
+            title: displayName,
+            category: format === "epub" ? "books" : "guides",
+            relativePath: isVault ? cleanVaultPath : (arch.storageRelPath || arch.fileName || cleanVaultPath),
+            sizeBytes: arch.fileSize || 0,
+            lastModified: arch.lastReadAt || arch.updatedAt || arch.createdAt || new Date().toISOString(),
+            sourceType: isVault ? "vault" : "archive",
+            sourcePath: isVault ? cleanVaultPath : undefined,
+            lastPosition: arch.lastPosition,
+          });
+        }
+      }
+    }
+    return result;
+  }, [activeDrilldownGroup, allHistoryCleared, readingSummary, archivedDocs, docs]);
+
   const recentDocs = useMemo(() => {
     if (allHistoryCleared) return [];
 
@@ -668,23 +735,37 @@ export function DocsExplorerView({
             <span>{formatReadingDuration(readingSummary.totalReadingSeconds)}</span>
           </span>
 
-          <span
+          <button
             data-testid="summary-completed-count"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 font-semibold"
-            title="Số tài liệu đã hoàn thành"
+            type="button"
+            aria-label="Thống kê đã hoàn thành"
+            onClick={() => setActiveDrilldownGroup((prev) => (prev === "completed" ? null : "completed"))}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border font-semibold transition cursor-pointer ${
+              activeDrilldownGroup === "completed"
+                ? "bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-400"
+                : "bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/60 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/70"
+            }`}
+            title="Số tài liệu đã hoàn thành (Click để xem chi tiết)"
           >
             <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
             <span>{readingSummary.completedCount} đã xong</span>
-          </span>
+          </button>
 
-          <span
+          <button
             data-testid="summary-in-progress-count"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 border border-stone-200/60 dark:border-stone-700/60 text-stone-700 dark:text-stone-300 font-semibold"
-            title="Số tài liệu đang đọc dở"
+            type="button"
+            aria-label="Thống kê chưa hoàn thành"
+            onClick={() => setActiveDrilldownGroup((prev) => (prev === "in-progress" ? null : "in-progress"))}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border font-semibold transition cursor-pointer ${
+              activeDrilldownGroup === "in-progress"
+                ? "bg-stone-200 dark:bg-stone-750 border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100 ring-1 ring-stone-400"
+                : "bg-stone-100 dark:bg-stone-800 border-stone-200/60 dark:border-stone-700/60 text-stone-700 dark:text-stone-300 hover:bg-stone-200/60"
+            }`}
+            title="Số tài liệu đang đọc dở (Click để xem chi tiết)"
           >
             <Book className="w-3 h-3 text-stone-500 dark:text-stone-400" />
             <span>{readingSummary.inProgressCount} đang đọc</span>
-          </span>
+          </button>
 
           <span
             data-testid="summary-completion-rate"
@@ -695,6 +776,90 @@ export function DocsExplorerView({
           </span>
         </div>
       </div>
+
+      {/* Local Reading Analytics Drill-down Surface (Slice 6) */}
+      {activeDrilldownGroup && !allHistoryCleared && (
+        <div
+          data-testid="reading-analytics-drilldown"
+          className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-xl p-3 space-y-2.5 shadow-2xs animate-in fade-in duration-150"
+        >
+          <div className="flex items-center justify-between pb-1.5 border-b border-stone-100 dark:border-stone-800">
+            <span className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+              {activeDrilldownGroup === "completed" ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Tài liệu đã hoàn thành ({drilldownDocs.length})</span>
+                </>
+              ) : (
+                <>
+                  <Book className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Tài liệu đang đọc ({drilldownDocs.length})</span>
+                </>
+              )}
+            </span>
+            <button
+              data-testid="drilldown-close-btn"
+              type="button"
+              onClick={() => setActiveDrilldownGroup(null)}
+              aria-label="Đóng bảng chi tiết"
+              title="Đóng bảng chi tiết"
+              className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {drilldownDocs.length === 0 ? (
+            <div
+              data-testid="drilldown-empty-state"
+              className="text-xs text-stone-500 dark:text-stone-400 py-3 text-center"
+            >
+              Chưa có tài liệu nào trong danh mục này
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {drilldownDocs.map((doc) => {
+                const format = getDocFormat(doc);
+                const lp = doc.lastPosition;
+                const duration = lp?.totalReadingSeconds ? formatReadingDuration(lp.totalReadingSeconds) : null;
+                return (
+                  <button
+                    key={doc.id}
+                    data-testid={`drilldown-item-${doc.id}`}
+                    type="button"
+                    onClick={() => handleDocClick(doc, true)}
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-stone-50/80 dark:bg-stone-850 border border-stone-200/70 dark:border-stone-750 hover:border-amber-400 dark:hover:border-amber-600 transition text-left cursor-pointer group shadow-2xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium text-stone-800 dark:text-stone-200 truncate group-hover:text-amber-800 dark:group-hover:text-amber-300">
+                        {doc.title}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-stone-500 dark:text-stone-400 mt-0.5">
+                        <span className="uppercase font-mono px-1 py-0.2 bg-stone-200/70 dark:bg-stone-800 rounded text-[9px] font-semibold">
+                          {format}
+                        </span>
+                        {duration && (
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="w-2.5 h-2.5" />
+                            {duration}
+                          </span>
+                        )}
+                        {lp?.isCompleted && (
+                          <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                            <Check className="w-2.5 h-2.5" />
+                            Xong
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-3.5 h-3.5 text-stone-400 group-hover:text-amber-600 transition shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recent Reads Shelf (Phase R1 / Reader-First Compact Strip) */}
       <div
