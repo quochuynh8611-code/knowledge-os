@@ -484,6 +484,7 @@ export function DocsExplorerView({
             ...matched,
             id: arch.id || matched.id,
             lastPosition: arch.lastPosition,
+            lastModified: arch.lastReadAt || arch.updatedAt || arch.createdAt || matched.lastModified,
           });
         } else {
           const isVault = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
@@ -508,8 +509,26 @@ export function DocsExplorerView({
         }
       }
     }
+
+    result.sort((a, b) => {
+      const timeA = new Date(a.lastModified || 0).getTime();
+      const timeB = new Date(b.lastModified || 0).getTime();
+      return timeB - timeA;
+    });
+
     return result;
   }, [activeDrilldownGroup, allHistoryCleared, readingSummary, archivedDocs, docs]);
+
+  const drilldownGroupDuration = useMemo(() => {
+    let totalSeconds = 0;
+    for (const doc of drilldownDocs) {
+      const sec = doc.lastPosition?.totalReadingSeconds;
+      if (typeof sec === "number" && !isNaN(sec) && sec > 0) {
+        totalSeconds += sec;
+      }
+    }
+    return totalSeconds;
+  }, [drilldownDocs]);
 
   const recentDocs = useMemo(() => {
     if (allHistoryCleared) return [];
@@ -784,19 +803,31 @@ export function DocsExplorerView({
           className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-xl p-3 space-y-2.5 shadow-2xs animate-in fade-in duration-150"
         >
           <div className="flex items-center justify-between pb-1.5 border-b border-stone-100 dark:border-stone-800">
-            <span className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-              {activeDrilldownGroup === "completed" ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Tài liệu đã hoàn thành ({drilldownDocs.length})</span>
-                </>
-              ) : (
-                <>
-                  <Book className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Tài liệu đang đọc ({drilldownDocs.length})</span>
-                </>
-              )}
-            </span>
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+              <span className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+                {activeDrilldownGroup === "completed" ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Tài liệu đã hoàn thành ({drilldownDocs.length})</span>
+                  </>
+                ) : (
+                  <>
+                    <Book className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Tài liệu đang đọc ({drilldownDocs.length})</span>
+                  </>
+                )}
+              </span>
+
+              <span
+                data-testid="drilldown-group-duration"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-200/60 dark:border-stone-700/60"
+                title="Tổng thời lượng đọc của nhóm"
+              >
+                <Clock className="w-2.5 h-2.5 text-stone-500" />
+                <span>{formatReadingDuration(drilldownGroupDuration)}</span>
+              </span>
+            </div>
+
             <button
               data-testid="drilldown-close-btn"
               type="button"
