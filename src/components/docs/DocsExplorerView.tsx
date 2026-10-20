@@ -88,6 +88,10 @@ export function DocsExplorerView({
   const [deletedHistoryIds, setDeletedHistoryIds] = useState<Set<string>>(new Set());
   const [allHistoryCleared, setAllHistoryCleared] = useState<boolean>(false);
   const [activeDrilldownGroup, setActiveDrilldownGroup] = useState<"completed" | "in-progress" | null>(null);
+  const [drilldownSearchQuery, setDrilldownSearchQuery] = useState<string>("");
+  useEffect(() => {
+    setDrilldownSearchQuery("");
+  }, [activeDrilldownGroup]);
   useEffect(() => {
     if (allHistoryCleared && activeDrilldownGroup !== null) {
       setActiveDrilldownGroup(null);
@@ -530,6 +534,14 @@ export function DocsExplorerView({
     return totalSeconds;
   }, [drilldownDocs]);
 
+  const filteredDrilldownDocs = useMemo(() => {
+    const q = drilldownSearchQuery.trim().toLowerCase();
+    if (!q) return drilldownDocs;
+    return drilldownDocs.filter((doc) =>
+      (doc.title || "").toLowerCase().includes(q)
+    );
+  }, [drilldownDocs, drilldownSearchQuery]);
+
   const recentDocs = useMemo(() => {
     if (allHistoryCleared) return [];
 
@@ -840,6 +852,20 @@ export function DocsExplorerView({
             </button>
           </div>
 
+          {drilldownDocs.length > 0 && (
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                data-testid="drilldown-search-input"
+                type="text"
+                value={drilldownSearchQuery}
+                onChange={(e) => setDrilldownSearchQuery(e.target.value)}
+                placeholder="Lọc trong nhóm này..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-stone-850 border border-stone-200/80 dark:border-stone-750 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500/50"
+              />
+            </div>
+          )}
+
           {drilldownDocs.length === 0 ? (
             <div
               data-testid="drilldown-empty-state"
@@ -847,9 +873,16 @@ export function DocsExplorerView({
             >
               Chưa có tài liệu nào trong danh mục này
             </div>
+          ) : filteredDrilldownDocs.length === 0 ? (
+            <div
+              data-testid="drilldown-search-empty-state"
+              className="text-xs text-stone-500 dark:text-stone-400 py-3 text-center"
+            >
+              Không tìm thấy tài liệu phù hợp trong nhóm này
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {drilldownDocs.map((doc) => {
+              {filteredDrilldownDocs.map((doc) => {
                 const format = getDocFormat(doc);
                 const lp = doc.lastPosition;
                 const duration = lp?.totalReadingSeconds ? formatReadingDuration(lp.totalReadingSeconds) : null;
