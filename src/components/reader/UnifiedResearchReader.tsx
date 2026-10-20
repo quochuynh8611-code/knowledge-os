@@ -590,6 +590,7 @@ export function UnifiedResearchReader({
 
   const handleRemoveBrokenSession = useCallback((docId: string) => {
     isSessionBrokenRef.current = true;
+    hasFlushedOnCloseRef.current = true;
     if (openTimerRef.current) {
       clearTimeout(openTimerRef.current);
       openTimerRef.current = null;
@@ -601,8 +602,9 @@ export function UnifiedResearchReader({
     globalReadingPositionStore.clearPosition(docId, normalizedFormat);
     if (onRemoveBrokenSession) {
       onRemoveBrokenSession(docId);
+    } else {
+      onClose();
     }
-    onClose();
   }, [normalizedFormat, onRemoveBrokenSession, onClose]);
 
   // Handle TOC item selection

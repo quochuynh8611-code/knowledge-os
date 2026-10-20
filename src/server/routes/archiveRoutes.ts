@@ -33,6 +33,75 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
     }
   };
 
+  const getCandidateLookupKeys = (rawId: string): string[] => {
+    if (!rawId || typeof rawId !== "string") return [];
+    const trimmed = rawId.trim();
+    if (!trimmed) return [];
+    const clean = trimmed
+      .replace(/^vault:\/\//, "")
+      .replace(/^vault:/, "")
+      .replace(/^archive:\/\//, "")
+      .replace(/^archive:/, "")
+      .replace(/^\/+/, "");
+    const set = new Set<string>([
+      trimmed,
+      clean,
+      `vault:${clean}`,
+      `vault://${clean}`,
+      `archive:${clean}`,
+      `archive://${clean}`,
+      `/${clean}`,
+    ]);
+    return Array.from(set).filter(Boolean);
+  };
+
+  const findArchivedDocumentByAnyKey = async (rawId: string): Promise<any | null> => {
+    if (!rawId || typeof rawId !== "string") return null;
+    const trimmed = rawId.trim();
+    if (!trimmed) return null;
+
+    // 1. Direct primary key lookup
+    let doc = await prisma.archivedDocument.findUnique({
+      where: { id: trimmed },
+    }).catch(() => null);
+    if (doc) return doc;
+
+    // 2. Direct contentHash lookup (SHA-256)
+    doc = await prisma.archivedDocument.findFirst({
+      where: { contentHash: trimmed },
+    }).catch(() => null);
+    if (doc) return doc;
+
+    // 3. Direct sourceKey lookup
+    doc = await prisma.archivedDocument.findFirst({
+      where: { sourceKey: trimmed },
+    }).catch(() => null);
+    if (doc) return doc;
+
+    // 4. Candidate alias resolution (clean path, vault, archive, sourcePath, storageRelPath)
+    const candidateKeys = getCandidateLookupKeys(trimmed);
+    for (const key of candidateKeys) {
+      if (key === trimmed) continue;
+
+      doc = await prisma.archivedDocument.findFirst({
+        where: { sourceKey: key },
+      }).catch(() => null);
+      if (doc) return doc;
+
+      doc = await prisma.archivedDocument.findFirst({
+        where: { sourcePath: key },
+      }).catch(() => null);
+      if (doc) return doc;
+
+      doc = await prisma.archivedDocument.findFirst({
+        where: { storageRelPath: key },
+      }).catch(() => null);
+      if (doc) return doc;
+    }
+
+    return null;
+  };
+
   // POST /archive/upload?originalName=...&fileFormat=...&resourceId=...
   router.post("/archive/upload", async (req: Request, res: Response) => {
     try {
@@ -215,22 +284,7 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
   router.get("/archive/document/:id", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-
-      let doc = await prisma.archivedDocument.findUnique({
-        where: { id },
-      });
-
-      if (!doc) {
-        doc = await prisma.archivedDocument.findFirst({
-          where: { contentHash: id },
-        });
-      }
-
-      if (!doc) {
-        doc = await prisma.archivedDocument.findFirst({
-          where: { sourceKey: id },
-        });
-      }
+      const doc = await findArchivedDocumentByAnyKey(id);
 
       if (!doc) {
         res.status(404).json({
@@ -267,22 +321,8 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         return;
       }
 
-      // 2. Find document by id, contentHash, or sourceKey
-      let existingDoc = await prisma.archivedDocument.findUnique({
-        where: { id },
-      });
-
-      if (!existingDoc) {
-        existingDoc = await prisma.archivedDocument.findFirst({
-          where: { contentHash: id },
-        });
-      }
-
-      if (!existingDoc) {
-        existingDoc = await prisma.archivedDocument.findFirst({
-          where: { sourceKey: id },
-        });
-      }
+      // 2. Find document using unified canonical/alias resolver
+      const existingDoc = await findArchivedDocumentByAnyKey(id);
 
       if (!existingDoc) {
         res.status(404).json({
@@ -437,24 +477,20 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
   router.delete("/archive/document/:id/history", async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const existingDoc = await findArchivedDocumentByAnyKey(id);
+      const keys = getCandidateLookupKeys(id);
 
-      let existingDoc = await prisma.archivedDocument.findUnique({
-        where: { id },
-      });
-
-      if (!existingDoc) {
-        existingDoc = await prisma.archivedDocument.findFirst({
-          where: { contentHash: id },
-        });
+      if (existingDoc) {
+        if (existingDoc.id) keys.push(existingDoc.id);
+        if (existingDoc.sourceKey) keys.push(existingDoc.sourceKey);
+        if (existingDoc.sourcePath) keys.push(existingDoc.sourcePath);
+        if (existingDoc.storageRelPath) keys.push(existingDoc.storageRelPath);
+        if (existingDoc.contentHash) keys.push(existingDoc.contentHash);
       }
 
-      if (!existingDoc) {
-        existingDoc = await prisma.archivedDocument.findFirst({
-          where: { sourceKey: id },
-        });
-      }
+      const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
 
-      if (!existingDoc) {
+      if (!existingDoc && uniqueKeys.length === 0) {
         res.status(200).json({
           success: true,
           message: `Tài liệu '${id}' không tồn tại hoặc lịch sử đọc đã được xóa trước đó.`,
@@ -475,15 +511,36 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         updateData.lastPosition = null;
       }
 
-      const updated = await prisma.archivedDocument.update({
-        where: { id: existingDoc.id },
-        data: updateData,
-      });
+      // Update all alias variants in persistent database
+      if (typeof (prisma.archivedDocument as any).updateMany === "function") {
+        try {
+          await prisma.archivedDocument.updateMany({
+            where: {
+              OR: [
+                { id: { in: uniqueKeys } },
+                { contentHash: { in: uniqueKeys } },
+                { sourceKey: { in: uniqueKeys } },
+                { sourcePath: { in: uniqueKeys } },
+                { storageRelPath: { in: uniqueKeys } },
+              ],
+            },
+            data: updateData,
+          });
+        } catch {}
+      }
+
+      let updated = existingDoc;
+      if (existingDoc?.id) {
+        updated = await prisma.archivedDocument.update({
+          where: { id: existingDoc.id },
+          data: updateData,
+        });
+      }
 
       res.status(200).json({
         success: true,
         message: "Đã xóa lịch sử đọc thành công.",
-        document: updated,
+        document: updated ? { ...updated, ...updateData } : undefined,
       });
     } catch (err: any) {
       res.status(500).json({

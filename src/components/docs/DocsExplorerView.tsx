@@ -145,39 +145,108 @@ export function DocsExplorerView({
 
       const shouldClearPosition = Boolean(options?.clearPosition);
 
-      if (shouldClearPosition) {
-        globalReadingPositionStore.clearPosition(docId, "epub");
-        globalReadingPositionStore.clearPosition(docId, "md");
-        globalReadingPositionStore.clearPosition(docId, "pdf");
+      // Collect all possible identity aliases across archivedDocs and docs
+      const normalizedInput = docId.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+      const matchingKeys = new Set<string>([docId, normalizedInput]);
+      if (!docId.startsWith("vault:")) {
+        matchingKeys.add(`vault:${normalizedInput}`);
+        matchingKeys.add(`vault://${normalizedInput}`);
       }
 
-      setDeletedHistoryIds((prev) => new Set(prev).add(docId));
+      for (const a of archivedDocs) {
+        if (!a) continue;
+        const aStorageNorm = a.storageRelPath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+        const aSourceNorm = a.sourcePath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+        const isMatch =
+          matchingKeys.has(a.id) ||
+          (a.sourceKey && matchingKeys.has(a.sourceKey)) ||
+          (a.storageRelPath && matchingKeys.has(a.storageRelPath)) ||
+          (a.sourcePath && matchingKeys.has(a.sourcePath)) ||
+          (a.fileName && matchingKeys.has(a.fileName)) ||
+          (aStorageNorm && matchingKeys.has(aStorageNorm)) ||
+          (aSourceNorm && matchingKeys.has(aSourceNorm));
+
+        if (isMatch) {
+          if (a.id) matchingKeys.add(a.id);
+          if (a.sourceKey) matchingKeys.add(a.sourceKey);
+          if (a.storageRelPath) matchingKeys.add(a.storageRelPath);
+          if (a.sourcePath) matchingKeys.add(a.sourcePath);
+          if (a.fileName) matchingKeys.add(a.fileName);
+          if (aStorageNorm) matchingKeys.add(aStorageNorm);
+          if (aSourceNorm) matchingKeys.add(aSourceNorm);
+        }
+      }
+
+      for (const d of docs) {
+        if (!d) continue;
+        const dPathNorm = d.relativePath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+        const isMatch =
+          matchingKeys.has(d.id) ||
+          matchingKeys.has(d.relativePath) ||
+          (dPathNorm && matchingKeys.has(dPathNorm));
+        if (isMatch) {
+          if (d.id) matchingKeys.add(d.id);
+          if (d.relativePath) matchingKeys.add(d.relativePath);
+          if (dPathNorm) matchingKeys.add(dPathNorm);
+        }
+      }
+
+      if (shouldClearPosition) {
+        for (const k of matchingKeys) {
+          globalReadingPositionStore.clearPosition(k, "epub");
+          globalReadingPositionStore.clearPosition(k, "md");
+          globalReadingPositionStore.clearPosition(k, "pdf");
+        }
+      }
+
+      setDeletedHistoryIds((prev) => {
+        const next = new Set(prev);
+        matchingKeys.forEach((k) => next.add(k));
+        return next;
+      });
+
       setArchivedDocs((prev) =>
-        prev.map((d) =>
-          d.id === docId || d.sourceKey === docId || d.storageRelPath === docId || d.fileName === docId
+        prev.map((d) => {
+          const dStorageNorm = d.storageRelPath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+          const dSourceNorm = d.sourcePath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+          const isMatch =
+            matchingKeys.has(d.id) ||
+            (d.sourceKey && matchingKeys.has(d.sourceKey)) ||
+            (d.storageRelPath && matchingKeys.has(d.storageRelPath)) ||
+            (d.sourcePath && matchingKeys.has(d.sourcePath)) ||
+            (d.fileName && matchingKeys.has(d.fileName)) ||
+            (dStorageNorm && matchingKeys.has(dStorageNorm)) ||
+            (dSourceNorm && matchingKeys.has(dSourceNorm));
+
+          return isMatch
             ? {
                 ...d,
                 lastReadAt: null,
                 readCount: 0,
                 ...(shouldClearPosition ? { lastPosition: null } : {}),
               }
-            : d
-        )
+            : d;
+        })
       );
 
       try {
         const query = shouldClearPosition ? "?clearPosition=true" : "";
-        const res = await fetch(`/api/archive/document/${encodeURIComponent(docId)}/history${query}`, {
+        const canonicalArch = archivedDocs.find((a) => a && matchingKeys.has(a.id));
+        const finalTargetId = canonicalArch?.id || docId;
+
+        const res = await fetch(`/api/archive/document/${encodeURIComponent(finalTargetId)}/history${query}`, {
           method: "DELETE",
         });
-        if (!res.ok) {
+        if (res.ok) {
+          await fetchArchivedDocs();
+        } else {
           fetchArchivedDocs();
         }
       } catch {
         fetchArchivedDocs();
       }
     },
-    [fetchArchivedDocs]
+    [fetchArchivedDocs, archivedDocs, docs]
   );
 
   const handleClearAllRecentReads = useCallback(async () => {
@@ -491,9 +560,31 @@ export function DocsExplorerView({
     getDocFormat,
   ]);
 
+  const effectiveArchivedDocs = useMemo(() => {
+    if (allHistoryCleared) return [];
+    if (deletedHistoryIds.size === 0) return archivedDocs;
+
+    return archivedDocs.filter((a) => {
+      if (!a) return false;
+      const cleanStorage = a.storageRelPath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+      const cleanSource = a.sourcePath?.replace(/^vault:\/\//, "").replace(/^vault:/, "").replace(/^\/+/, "");
+      const keysToCheck = [
+        a.id,
+        a.sourceKey,
+        a.storageRelPath,
+        a.sourcePath,
+        a.fileName,
+        cleanStorage,
+        cleanSource,
+      ].filter(Boolean) as string[];
+
+      return !keysToCheck.some((k) => deletedHistoryIds.has(k));
+    });
+  }, [archivedDocs, allHistoryCleared, deletedHistoryIds]);
+
   const readingSummary = useMemo(() => {
-    return calculateReadingAnalyticsBreakdown(allHistoryCleared ? [] : archivedDocs);
-  }, [archivedDocs, allHistoryCleared]);
+    return calculateReadingAnalyticsBreakdown(effectiveArchivedDocs);
+  }, [effectiveArchivedDocs]);
 
   const drilldownDocs = useMemo(() => {
     if (!activeDrilldownGroup || allHistoryCleared) return [];
@@ -507,7 +598,7 @@ export function DocsExplorerView({
     const result: DocItem[] = [];
     const seen = new Set<string>();
 
-    for (const arch of archivedDocs) {
+    for (const arch of effectiveArchivedDocs) {
       if (!arch) continue;
       const archId = arch.id || arch.sourceKey || arch.storageRelPath || arch.fileName || arch.sourcePath;
       if (archId && idSet.has(archId) && !seen.has(archId)) {
@@ -560,7 +651,7 @@ export function DocsExplorerView({
     });
 
     return result;
-  }, [activeDrilldownGroup, allHistoryCleared, readingSummary, archivedDocs, docs]);
+  }, [activeDrilldownGroup, allHistoryCleared, readingSummary, effectiveArchivedDocs, docs]);
 
   const drilldownGroupDuration = useMemo(() => {
     let totalSeconds = 0;
@@ -589,9 +680,8 @@ export function DocsExplorerView({
 
     // 1. Filter persisted reading history from archive metadata
     // Accept records with reading progress OR valid registered documents with displayable metadata
-    const persistedReads = archivedDocs.filter((a) => {
+    const persistedReads = effectiveArchivedDocs.filter((a) => {
       if (!a) return false;
-      if (deletedHistoryIds.has(a.id) || (a.sourceKey && deletedHistoryIds.has(a.sourceKey))) return false;
       if (a.lastReadAt === null && a.readCount === 0) return false;
       if (a.lastReadAt != null) return true;
       const hasIdent = Boolean(a.sourceKey || a.id);
@@ -687,7 +777,7 @@ export function DocsExplorerView({
     }
 
     return recentList;
-  }, [docs, archivedDocs, getDocFormat, allHistoryCleared, deletedHistoryIds]);
+  }, [docs, effectiveArchivedDocs, getDocFormat, allHistoryCleared, deletedHistoryIds]);
 
   const dynamicCategories = useMemo(() => {
     const counts: Record<string, number> = {};
