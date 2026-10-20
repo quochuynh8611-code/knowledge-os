@@ -136,20 +136,38 @@ export function DocsExplorerView({
   }, []);
 
   const handleDeleteRecentRead = useCallback(
-    async (docId: string, e?: React.MouseEvent) => {
+    async (docId: string, e?: React.MouseEvent, options?: { clearPosition?: boolean }) => {
       if (e) {
         e.stopPropagation();
         e.preventDefault();
       }
       if (!docId) return;
 
+      const shouldClearPosition = Boolean(options?.clearPosition);
+
+      if (shouldClearPosition) {
+        globalReadingPositionStore.clearPosition(docId, "epub");
+        globalReadingPositionStore.clearPosition(docId, "md");
+        globalReadingPositionStore.clearPosition(docId, "pdf");
+      }
+
       setDeletedHistoryIds((prev) => new Set(prev).add(docId));
       setArchivedDocs((prev) =>
-        prev.map((d) => (d.id === docId || d.sourceKey === docId ? { ...d, lastReadAt: null, readCount: 0 } : d))
+        prev.map((d) =>
+          d.id === docId || d.sourceKey === docId || d.storageRelPath === docId || d.fileName === docId
+            ? {
+                ...d,
+                lastReadAt: null,
+                readCount: 0,
+                ...(shouldClearPosition ? { lastPosition: null } : {}),
+              }
+            : d
+        )
       );
 
       try {
-        const res = await fetch(`/api/archive/document/${encodeURIComponent(docId)}/history`, {
+        const query = shouldClearPosition ? "?clearPosition=true" : "";
+        const res = await fetch(`/api/archive/document/${encodeURIComponent(docId)}/history${query}`, {
           method: "DELETE",
         });
         if (!res.ok) {
@@ -168,7 +186,7 @@ export function DocsExplorerView({
 
     setAllHistoryCleared(true);
     setActiveDrilldownGroup(null);
-    setArchivedDocs((prev) => prev.map((d) => ({ ...d, lastReadAt: null, readCount: 0 })));
+    setArchivedDocs((prev) => prev.map((d) => ({ ...d, lastReadAt: null, readCount: 0, lastPosition: null })));
 
     try {
       const res = await fetch("/api/archive/history", {
@@ -1390,6 +1408,10 @@ export function DocsExplorerView({
                 onClose={() => {
                   setActiveReaderDoc(null);
                   fetchArchivedDocs();
+                }}
+                onRemoveBrokenSession={(docId) => {
+                  setActiveReaderDoc(null);
+                  handleDeleteRecentRead(docId, undefined, { clearPosition: true });
                 }}
               />
             </React.Suspense>

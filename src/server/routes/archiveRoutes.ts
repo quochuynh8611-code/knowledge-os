@@ -462,12 +462,22 @@ export function createArchiveRouter(options: ArchiveRouterOptions): Router {
         return;
       }
 
+      const clearPosition =
+        req.query.clearPosition === "true" ||
+        req.query.clearPosition === "1" ||
+        req.body?.clearPosition === true;
+
+      const updateData: Record<string, any> = {
+        lastReadAt: null,
+        readCount: 0,
+      };
+      if (clearPosition) {
+        updateData.lastPosition = null;
+      }
+
       const updated = await prisma.archivedDocument.update({
         where: { id: existingDoc.id },
-        data: {
-          lastReadAt: null,
-          readCount: 0,
-        },
+        data: updateData,
       });
 
       res.status(200).json({

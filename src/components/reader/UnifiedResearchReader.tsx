@@ -49,6 +49,7 @@ export interface UnifiedResearchReaderProps {
     initialPosition?: string;
   }) => void;
   onClose: () => void;
+  onRemoveBrokenSession?: (documentId: string) => void;
   onEditResource?: () => void;
   className?: string;
   layoutMode?: 'embedded' | 'modal';
@@ -100,11 +101,13 @@ export function UnifiedResearchReader({
   onPositionChange,
   onNavigateToDocument,
   onClose,
+  onRemoveBrokenSession,
   onEditResource,
   className = '',
   layoutMode = 'modal',
 }: UnifiedResearchReaderProps) {
   const normalizedFormat = (format || 'md').toLowerCase();
+  const isSessionBrokenRef = useRef<boolean>(false);
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [sidebarTab, setSidebarTab] = useState<ReaderSidebarTab>('outline');
@@ -311,8 +314,31 @@ export function UnifiedResearchReader({
   // Slice 2: Record document open event on mount if reader remains open without immediate close/change
   const openTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
+  const handleAdapterReady = useCallback(() => {
+    if (isSessionBrokenRef.current) return;
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+    }
     openTimerRef.current = setTimeout(async () => {
+      if (isSessionBrokenRef.current) return;
+      try {
+        await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lastReadAt: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // Fallback gracefully on fetch failure or offline
+      }
+    }, 200);
+  }, [documentId]);
+
+  useEffect(() => {
+    if (normalizedFormat !== 'md' && normalizedFormat !== 'markdown') return;
+    openTimerRef.current = setTimeout(async () => {
+      if (isSessionBrokenRef.current) return;
       try {
         await fetch(`/api/archive/document/${encodeURIComponent(documentId)}/position`, {
           method: 'PATCH',
@@ -332,7 +358,7 @@ export function UnifiedResearchReader({
         openTimerRef.current = null;
       }
     };
-  }, [documentId]);
+  }, [documentId, normalizedFormat]);
 
   // Persist position to server / repository
   const persistPositionAsync = useCallback(
@@ -515,7 +541,7 @@ export function UnifiedResearchReader({
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
-      if (!hasFlushedOnCloseRef.current) {
+      if (!hasFlushedOnCloseRef.current && !isSessionBrokenRef.current) {
         const loc = latestPositionRef.current;
         persistPositionRef.current?.(loc && loc.trim() ? loc.trim() : undefined, { keepalive: true }).catch(() => {});
       }
@@ -533,6 +559,10 @@ export function UnifiedResearchReader({
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
+    if (isSessionBrokenRef.current) {
+      onClose();
+      return;
+    }
     const loc = latestPositionRef.current || currentPosition;
     if (loc && loc.trim()) {
       persistPositionAsync(loc.trim(), { keepalive: true }).catch((err) => {
@@ -545,6 +575,35 @@ export function UnifiedResearchReader({
     }
     onClose();
   }, [currentPosition, persistPositionAsync, onClose]);
+
+  const handleAdapterError = useCallback((_err: Error) => {
+    isSessionBrokenRef.current = true;
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  }, []);
+
+  const handleRemoveBrokenSession = useCallback((docId: string) => {
+    isSessionBrokenRef.current = true;
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = null;
+    }
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    globalReadingPositionStore.clearPosition(docId, normalizedFormat);
+    if (onRemoveBrokenSession) {
+      onRemoveBrokenSession(docId);
+    }
+    onClose();
+  }, [normalizedFormat, onRemoveBrokenSession, onClose]);
 
   // Handle TOC item selection
   const handleSelectTocItem = (item: TocItem) => {
@@ -1239,6 +1298,10 @@ export function UnifiedResearchReader({
                 excerpts={documentHighlights}
                 activeExcerptId={activeExcerptId}
                 onSelectExcerpt={handleSelectExcerpt}
+                onClose={handleCloseReader}
+                onRemoveBrokenSession={handleRemoveBrokenSession}
+                onLoadError={handleAdapterError}
+                onReady={handleAdapterReady}
               />
             </React.Suspense>
           ) : normalizedFormat === 'md' || normalizedFormat === 'markdown' ? (

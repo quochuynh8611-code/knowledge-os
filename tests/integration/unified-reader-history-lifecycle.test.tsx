@@ -109,9 +109,11 @@ Chi tiết các bước thực nghiệm.
 
     // Phải gọi API PATCH persist vị trí đọc với headingId đã chọn
     await waitFor(() => {
-      const patchCall = fetchSpy.mock.calls.find((call) =>
+      const patchCalls = fetchSpy.mock.calls.filter((call) =>
         String(call[0]).includes("/api/archive/document/doc-md-history-1/position")
       );
+      expect(patchCalls.length).toBeGreaterThanOrEqual(1);
+      const patchCall = patchCalls[patchCalls.length - 1];
       expect(patchCall).toBeDefined();
       const body = JSON.parse(patchCall![1]?.body as string);
       expect(body.lastPosition?.headingId).toMatch(/muc-1-2-thuc-nghiem/);

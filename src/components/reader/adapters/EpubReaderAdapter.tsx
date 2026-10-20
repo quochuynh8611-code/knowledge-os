@@ -26,6 +26,10 @@ export interface EpubReaderAdapterProps {
   excerpts?: ResearchExcerpt[];
   activeExcerptId?: string | null;
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
+  onClose?: () => void;
+  onRemoveBrokenSession?: (documentId: string, reason?: string) => void;
+  onLoadError?: (error: Error) => void;
+  onReady?: () => void;
 }
 
 interface ErrorBoundaryProps {
@@ -72,6 +76,10 @@ export function EpubReaderAdapter({
   excerpts = [],
   activeExcerptId = null,
   onSelectExcerpt,
+  onClose,
+  onRemoveBrokenSession,
+  onLoadError,
+  onReady,
 }: EpubReaderAdapterProps) {
   const [location, setLocation] = useState<string | number>(initialLocation);
   const [processedUrl, setProcessedUrl] = useState<ArrayBuffer | null>(null);
@@ -239,10 +247,16 @@ export function EpubReaderAdapter({
 
       const sanitizedBuffer = await sanitizeEpubArchive(arrayBuffer);
       setProcessedUrl(sanitizedBuffer);
+      if (onReady) {
+        onReady();
+      }
     } catch (err: any) {
       console.error('[EpubReaderAdapter] Lỗi nạp hoặc giải mã EPUB:', err);
       setLoadError(true);
       setErrorMessage(err?.message || 'Không thể giải mã file EPUB');
+      if (onLoadError) {
+        onLoadError(err instanceof Error ? err : new Error(String(err)));
+      }
     } finally {
       setIsSanitizing(false);
     }
@@ -452,14 +466,36 @@ export function EpubReaderAdapter({
           {errorMessage || 'Tệp tin có thể bị hỏng, thiếu định dạng OPF hợp lệ hoặc liên kết không còn khả dụng.'}
         </p>
       </div>
-      <button
-        type="button"
-        onClick={loadAndSanitize}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
-      >
-        <RefreshCw className="w-3.5 h-3.5" />
-        <span>Thử lại</span>
-      </button>
+      <div className="flex items-center gap-2 flex-wrap justify-center pt-1">
+        <button
+          type="button"
+          onClick={loadAndSanitize}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          <span>Thử lại</span>
+        </button>
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+          >
+            <span>Đóng trình đọc</span>
+          </button>
+        )}
+
+        {onRemoveBrokenSession && (
+          <button
+            type="button"
+            onClick={() => onRemoveBrokenSession(documentId, errorMessage)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+          >
+            <span>Gỡ khỏi danh sách đọc</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 
