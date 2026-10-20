@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   BookOpen,
   Search,
@@ -24,11 +24,10 @@ import { copyTextToClipboard } from "../../lib/clipboard";
 import { globalReadingPositionStore, formatReadingDuration, calculateReadingAnalyticsBreakdown } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
 
-const UnifiedResearchReader = React.lazy(() =>
-  import("../reader/UnifiedResearchReader").then((m) => ({
-    default: m.UnifiedResearchReader,
-  }))
-);
+const readerPromise = import("../reader/UnifiedResearchReader").then((m) => ({
+  default: m.UnifiedResearchReader,
+}));
+const UnifiedResearchReader = React.lazy(() => readerPromise);
 
 const ObsidianVaultBrowserModal = React.lazy(() =>
   import("../modals/ObsidianVaultBrowserModal").then((m) => ({
@@ -89,9 +88,31 @@ export function DocsExplorerView({
   const [allHistoryCleared, setAllHistoryCleared] = useState<boolean>(false);
   const [activeDrilldownGroup, setActiveDrilldownGroup] = useState<"completed" | "in-progress" | null>(null);
   const [drilldownSearchQuery, setDrilldownSearchQuery] = useState<string>("");
+  const drilldownSearchInputRef = useRef<HTMLInputElement>(null);
+  const completedBadgeRef = useRef<HTMLButtonElement>(null);
+  const inProgressBadgeRef = useRef<HTMLButtonElement>(null);
+  const drilldownTriggerRef = useRef<"completed" | "in-progress" | null>(null);
+
+  const handleCloseDrilldown = useCallback((restoreFocus = false) => {
+    const trigger = drilldownTriggerRef.current || activeDrilldownGroup;
+    setActiveDrilldownGroup(null);
+    drilldownTriggerRef.current = null;
+    if (restoreFocus) {
+      if (trigger === "completed") {
+        completedBadgeRef.current?.focus();
+      } else if (trigger === "in-progress") {
+        inProgressBadgeRef.current?.focus();
+      }
+    }
+  }, [activeDrilldownGroup]);
+
   useEffect(() => {
     setDrilldownSearchQuery("");
+    if (activeDrilldownGroup) {
+      drilldownSearchInputRef.current?.focus();
+    }
   }, [activeDrilldownGroup]);
+
   useEffect(() => {
     if (allHistoryCleared && activeDrilldownGroup !== null) {
       setActiveDrilldownGroup(null);
@@ -767,10 +788,14 @@ export function DocsExplorerView({
           </span>
 
           <button
+            ref={completedBadgeRef}
             data-testid="summary-completed-count"
             type="button"
             aria-label="Thống kê đã hoàn thành"
-            onClick={() => setActiveDrilldownGroup((prev) => (prev === "completed" ? null : "completed"))}
+            onClick={() => {
+              drilldownTriggerRef.current = "completed";
+              setActiveDrilldownGroup((prev) => (prev === "completed" ? null : "completed"));
+            }}
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border font-semibold transition cursor-pointer ${
               activeDrilldownGroup === "completed"
                 ? "bg-emerald-100 dark:bg-emerald-900/60 border-emerald-400 dark:border-emerald-600 text-emerald-900 dark:text-emerald-200 ring-1 ring-emerald-400"
@@ -783,10 +808,14 @@ export function DocsExplorerView({
           </button>
 
           <button
+            ref={inProgressBadgeRef}
             data-testid="summary-in-progress-count"
             type="button"
             aria-label="Thống kê chưa hoàn thành"
-            onClick={() => setActiveDrilldownGroup((prev) => (prev === "in-progress" ? null : "in-progress"))}
+            onClick={() => {
+              drilldownTriggerRef.current = "in-progress";
+              setActiveDrilldownGroup((prev) => (prev === "in-progress" ? null : "in-progress"));
+            }}
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border font-semibold transition cursor-pointer ${
               activeDrilldownGroup === "in-progress"
                 ? "bg-stone-200 dark:bg-stone-750 border-stone-400 dark:border-stone-500 text-stone-900 dark:text-stone-100 ring-1 ring-stone-400"
@@ -812,11 +841,23 @@ export function DocsExplorerView({
       {activeDrilldownGroup && !allHistoryCleared && (
         <div
           data-testid="reading-analytics-drilldown"
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="drilldown-panel-title"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              handleCloseDrilldown(true);
+            }
+          }}
           className="bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 rounded-xl p-3 space-y-2.5 shadow-2xs animate-in fade-in duration-150"
         >
           <div className="flex items-center justify-between pb-1.5 border-b border-stone-100 dark:border-stone-800">
             <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
-              <span className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+              <span
+                id="drilldown-panel-title"
+                className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5"
+              >
                 {activeDrilldownGroup === "completed" ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -843,9 +884,9 @@ export function DocsExplorerView({
             <button
               data-testid="drilldown-close-btn"
               type="button"
-              onClick={() => setActiveDrilldownGroup(null)}
-              aria-label="Đóng bảng chi tiết"
-              title="Đóng bảng chi tiết"
+              onClick={() => handleCloseDrilldown(false)}
+              aria-label="Đóng chi tiết nhóm đọc"
+              title="Đóng chi tiết nhóm đọc"
               className="p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg transition cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
@@ -856,11 +897,13 @@ export function DocsExplorerView({
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                ref={drilldownSearchInputRef}
                 data-testid="drilldown-search-input"
                 type="text"
                 value={drilldownSearchQuery}
                 onChange={(e) => setDrilldownSearchQuery(e.target.value)}
                 placeholder="Lọc trong nhóm này..."
+                aria-label="Lọc tài liệu trong nhóm"
                 className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-50 dark:bg-stone-850 border border-stone-200/80 dark:border-stone-750 rounded-lg text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-hidden focus:ring-1 focus:ring-amber-500/50"
               />
             </div>
