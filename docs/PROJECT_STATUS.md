@@ -200,6 +200,37 @@
 
 ---
 
+## 🔗 Backlink Occurrence Navigation & Note Context Precision — Phase 21B Closure (2026-10-20)
+
+- **Trạng thái:** 🟢 Complete & Verified (Commit implementation `9134759`, Hardening/Integration `fc6e0d7`)
+- **Tests & Quality Gate:**
+  - 22/22 targeted tests PASS (`note-reader-archive-deeplink.test.tsx` 10/10, `reader-sidebar-citation-jump.test.tsx` 8/8, `reader-loop-hardening.test.tsx` 4/4).
+  - 21/21 regression tests PASS across 4 suites (`reader-citation-backlinks-selector.test.ts` 8/8, `reader-sidebar-document-notes.test.tsx` 3/3, `reader-bidirectional-citation.test.tsx` 4/4, `global-citation-orchestration.test.tsx` 6/6).
+  - Tổng cộng: 43/43 tests Reader subsystem liên quan PASS (100% GREEN).
+  - TypeScript typecheck: PASS (`npm run typecheck` / `tsc --noEmit` 0 errors).
+  - git diff --check: PASS (0 issues).
+- **Mục tiêu phase:** Cung cấp tính năng điều hướng chính xác đến vị trí trích dẫn (occurrence navigation) bên trong `NoteReaderModal` khi nhấp vào một backlink note từ `ReaderSidebar`, tự động cuộn tới phần tử trích dẫn và gắn transient visual focus state, bảo toàn hoàn hảo vị trí đọc và tài liệu nguồn.
+- **Hành vi cốt lõi đã được kiểm chứng (Core Behaviors Delivered):**
+  1. ✅ **Target Citation Handoff:** Nhấp vào backlink note trong `ReaderSidebar` truyền gợi ý điều hướng `targetCitation` gồm `documentId` và `locator` ưu tiên thông qua `UnifiedResearchReader` vào `NoteReaderModal`.
+  2. ✅ **Exact Locator Matching (Tier 1):** Khớp chính xác phần tử anchor trích dẫn theo cả `documentId` và `locator` (`a[data-archive-document-id="..."][data-archive-locator="..."]`).
+  3. ✅ **First Document Occurrence Fallback (Tier 2):** Nếu không khớp locator hoặc không có locator, tự động fallback về phần tử trích dẫn đầu tiên của `documentId`.
+  4. ✅ **Safe Degradation (Tier 3):** Nếu không có bất kỳ trích dẫn nào khớp, mở modal bình thường tại đỉnh mà không ném lỗi runtime.
+  5. ✅ **Smooth Centered Scrolling:** Tự động cuộn mượt đưa phần tử trích dẫn vào giữa khung nhìn (`scrollIntoView({ behavior: 'smooth', block: 'center' })`).
+  6. ✅ **Transient Visual Focus:** Gắn visual focus ring (`ring-2 ring-amber-500 bg-amber-500/20 rounded-sm transition-all duration-500`) và tự động giải phóng sau 2.5 giây kèm cleanup hook an toàn.
+  7. ✅ **Reader Context Preservation:** Đóng `NoteReaderModal` (bằng phím `Escape` hoặc nút Đóng) bảo toàn 100% tài liệu đang đọc và vị trí cuộn trong `UnifiedResearchReader`.
+- **Nguyên tắc kiến trúc bất biến (Architectural Invariants Preserved):**
+  - Không ghi hoặc chỉnh sửa dữ liệu trong Obsidian Vault (100% read-only).
+  - Không thay đổi Prisma schema, database hay REST API backend.
+  - Không lưu trữ bền vững (zero persistence) vị trí occurrence vào DB hay LocalStorage (`targetCitation` là transient navigation hint).
+  - Không bổ sung nút điều hướng next/prev occurrence stepper trong modal ở V1.
+  - Không dùng heuristics dựa trên title hoặc path để khớp occurrence.
+  - Không tùy tiện thêm lĩnh vực nghiên cứu (categories) hay chủ đề (topics) mặc định.
+- **Ranh giới với Phase 22:**
+  - Phase 22 (`ADR-081`) sở hữu các bằng chứng integration/hardening trong commit `fc6e0d7` (`tests/integration/reader-loop-hardening.test.tsx`, `escapeSelectorValue` phòng thủ, timer teardown isolation).
+  - Phase 21B chính thức đóng tại đây. Phase 22 là phase riêng biệt tiếp theo và không được tự động đánh dấu COMPLETE khi chưa có closure report độc lập.
+
+---
+
 ## 🤖 Mind Map AI Backend Proxy & Gemini 3.8 Flash Migration Closure (2026-10-14)
 
 - **Trạng thái:** 🟢 Complete & Verified Locally (Local-only, CHƯA PUSH REMOTE)
