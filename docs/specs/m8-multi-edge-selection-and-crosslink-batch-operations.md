@@ -1,7 +1,7 @@
-# Đặc Tả Kỹ Thuật (Draft Spec): Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations
+# Đặc Tả Kỹ Thuật: Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations
 
 - **Tác giả:** Staff Software Engineer / Technical Architect
-- **Trạng thái:** DRAFT / PENDING APPROVAL
+- **Trạng thái:** Completed
 - **Dự án:** Knowledge OS — Mind Map Subsystem
 - **Ngày lập:** 2026-10-14
 

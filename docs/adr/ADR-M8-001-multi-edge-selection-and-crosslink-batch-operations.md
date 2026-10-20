@@ -1,6 +1,6 @@
 # ADR-M8-001: Multi-Edge Selection & Cross-Link Batch Operations Architecture
 
-- **Trạng thái:** Proposed / Pending Approval
+- **Trạng thái:** Accepted
 - **Ngày lập:** 2026-10-14
 - **Phạm vi:** Mind Map Subsystem (`MindMapCrossLinksLayer`, `MindMapTreeCanvas`, `MindMapView`)
 - **Tác giả:** Staff Software Engineer / Technical Architect

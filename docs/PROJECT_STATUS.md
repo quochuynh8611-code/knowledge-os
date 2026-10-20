@@ -33,6 +33,10 @@
   - M7a Report: `6573799` (`docs(mindmap): add M7a closure report`)
   - M7b Report: `530a5dc` (`docs(mindmap): add M7b closure report`)
   - M7c Report: `675046a` (`docs(mindmap): add M7c closure report`)
+- **Product Implementation Commits (Milestone M8):**
+  - M8a: `001b9bb` (`feat(mindmap): add multi-edge crosslink selection and atomic batch delete (M8a)`)
+  - M8b: `17aa603` (`feat(mindmap): add crosslink batch action bar with stacked canvas controls (M8b)`)
+  - M8c: `674fcc7` (`feat(mindmap): add atomic batch crosslink type mutation with rollback guards (M8c)`)
 - **Git Branch Status:** `main` hoàn toàn đồng bộ với `origin/main` tại commit `bc4b60c` (divergence 0 0).
 - **Remote Policy:** Remote HEAD tại `bc4b60c`. Đã hoàn tất push an toàn.
 - **Quality Gates Baseline:**
@@ -84,7 +88,7 @@
 | **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **COMPLETE & VERIFIED (`17d5f50`)** |
 | **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **COMPLETE & VERIFIED** |
 | **Completed** | **Phase R3d-B — Persistent EPUB Highlight Layer**<br>- Lớp phủ SVG overlay (`marks-pane`) cho EPUB qua `rendition.annotations` API, persistent anchor W3C EPUB CFI, recolor/remove diffing, fail-closed trên stale CFI. | Khôi phục và tương tác trực quan với các đoạn trích dẫn highlight trên sách EPUB. | Trung bình | 🟢 **COMPLETE & VERIFIED (`0b888df`)** |
-| **Candidate 1** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
+| **Completed** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, floating batch action bar, xóa hoặc chuyển đổi hàng loạt quan hệ với kiểm tra an toàn chu trình/trùng lặp (M8a: `001b9bb`, M8b: `17aa603`, M8c: `674fcc7`). | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🟢 **COMPLETE & VERIFIED** |
 | **Candidate 2** | **Future PDF Milestone — Custom PDF Text-Layer & Persistent Highlights**<br>- Khảo sát thay thế native `<embed>` bằng `pdf.js` canvas/text-layer để hỗ trợ DOM highlight injection và persistent marks trên PDF. | Đồng bộ trải nghiệm highlight bền vững trên tài liệu PDF. | Cao | 🥈 **P2 (Deferred / Research)** |
 
 ---
@@ -198,7 +202,7 @@
 - **Follow-up Candidates:**
   - Phase R3d-B: Persistent EPUB Highlight Layer (Đã hoàn tất tại commit `0b888df`).
   - Future PDF Milestone: Custom PDF Text-Layer & Persistent Highlights (Deferred / Research).
-  - Phase M8: Multi-Edge Selection & Cross-Link Batch Operations (Mind Map P1).
+  - Phase M8: Multi-Edge Selection & Cross-Link Batch Operations (Đã hoàn tất tại các commit `001b9bb`, `17aa603`, `674fcc7`).
 
 ---
 
@@ -332,6 +336,51 @@
   5. ✅ **Explicit Modal Error State**: Modal không còn fallback ngầm sang mock data; nếu backend thiếu API key, thông báo 503 tiếng Việt hiển thị rõ ràng.
 - **Non-Goals & Follow-up Items:**
   - Route `/api/gemini/cards` (Flashcard Generation) hiện vẫn giữ model hardcode `"gemini-3.6-flash"`. Do model này vẫn hoạt động bình thường, việc đồng bộ sang `getGeminiModel()` được ghi nhận là follow-up rủi ro thấp.
+
+---
+
+## 🔀 Multi-Edge Selection & Cross-Link Batch Operations — Milestone M8 Closure (2026-10-20)
+
+- **Trạng thái:** 🟢 Complete & Verified (M8a: `001b9bb`, M8b: `17aa603`, M8c: `674fcc7`)
+- **Tests & Quality Gate:**
+  - 28/28 Targeted tests PASS:
+    - `tests/unit/mindmap-crosslink-batch-selection.test.tsx`: 16/16 tests PASS (M8a: 7/7, M8b: 6/6, M8c: 3/3).
+    - `tests/integration/mindmap-crosslink-quick-action-history.test.tsx`: 12/12 scenarios PASS (Scenario 8–12 bao phủ batch mutation, all-or-nothing rollback, strict no-op, atomic undo/redo).
+  - 86/86 Related Mind Map regression tests PASS across 6 suites:
+    - `mindmap-crosslink-canvas-inspect.test.tsx`: 21/21 PASS
+    - `mindmap-crosslink-drag-connect.test.tsx`: 13/13 PASS
+    - `mindmap-crosslinks-interaction.test.tsx`: 19/19 PASS
+    - `mindmap-crosslinks-overlay.test.tsx`: 9/9 PASS
+    - `mindmap-multi-selection.test.tsx`: 20/20 PASS
+    - `mindmap-undo-redo.test.tsx`: 4/4 PASS
+  - Tổng cộng: **114/114 tests PASS (100% GREEN)**.
+  - TypeScript typecheck: PASS (`npm run typecheck` / `tsc --noEmit` 0 errors).
+  - Production build: PASS (`npm run build` hoàn tất sạch sẽ, Exit Code 0).
+  - Git diff check: PASS (`git diff --check` 0 whitespace issues).
+- **Mục tiêu phase:** Cung cấp khả năng chọn nhiều liên kết chéo trên Canvas (`selectedCrossLinkIds: Set<string>`), thanh công cụ tác vụ hàng loạt chuyên biệt (`Floating Cross-Link Batch Action Bar`), hỗ trợ xóa hàng loạt (`Batch Delete`) và chuyển đổi loại quan hệ hàng loạt (`Batch Type Mutation`) với cơ chế bảo vệ chu trình / trùng lặp nghiêm ngặt (`All-or-Nothing Rule`), strict no-op, và tính toàn vẹn lịch sử hoàn tác nguyên tử (Atomic Undo/Redo) đúng 1 snapshot.
+- **Tập tin đã thay đổi (Implementation Commits `001b9bb`, `17aa603`, `674fcc7`):**
+  - `src/components/mindmap/MindMapTreeCanvas.tsx`: State `selectedCrossLinkIds: Set<string>`, keyboard listener xóa/thoát cạnh, floating batch action bar với vertical stacking guard (`bottom-6` vs `bottom-20`), dropdown đổi loại hàng loạt.
+  - `src/components/mindmap/MindMapCrossLinksLayer.tsx`: Bổ sung prop `selectedEdgeIds`, nhận diện `isSelected`, hỗ trợ phím bổ trợ (`Shift/Cmd/Ctrl`) trên 16px hit-target, vô hiệu hóa hoàn toàn khi `isConnecting === true`.
+  - `src/components/mindmap/MindMapView.tsx`: Nối handler `handleDeleteCrossLinkFromCanvas` nhận danh sách `string[]`, bổ sung `handleBatchUpdateCrossLinkTypeFromCanvas` với Strict No-Op, All-or-Nothing rollback guard, và commit nguyên tử duy nhất qua `applyMutation`.
+- **Tài liệu kiến trúc & đặc tả:**
+  - `docs/adr/ADR-M8-001-multi-edge-selection-and-crosslink-batch-operations.md` (Accepted)
+  - `docs/specs/m8-multi-edge-selection-and-crosslink-batch-operations.md` (Completed)
+- **Hành vi cốt lõi đã được kiểm chứng (Core Behaviors Delivered):**
+  1. ✅ **Orthogonal State & Immutable Set:** Quản lý `selectedCrossLinkIds: Set<string>` tách biệt hoàn toàn với node selection; mọi cập nhật đều tạo instance `new Set()` mới, ngăn chặn side-effect đột biến ngầm.
+  2. ✅ **Multi-Edge Selection Protocol:** Click thường chọn 1 cạnh (`size === 1`); `Shift + Click`, `⌘/Ctrl + Click` thêm/bớt cạnh (`size >= 2`); click khoảng trống canvas xóa sạch edge selection.
+  3. ✅ **Seamless Popover vs. Batch Bar Transition:** `size === 1` hiển thị floating inspect popover đơn lẻ của M7; `size >= 2` tự động ẩn popover M7 và hiển thị Floating Cross-Link Batch Action Bar.
+  4. ✅ **Vertical Stacking Guard:** Khi chỉ chọn cạnh (`selectedNodeIds.size < 2`), batch bar neo tại `bottom-6` (`data-stacked="false"`); khi đồng thời chọn $\ge 2$ nodes, batch bar tự động nâng lên `bottom-20` (`data-stacked="true"`), ngăn chặn đè chồng thanh node batch bar.
+  5. ✅ **Batch UI Contract & Safe Actions:** Hiển thị `crosslink-batch-action-bar`, badge `crosslink-batch-selection-count` (`Đã chọn N liên kết`), nút `btn-crosslink-batch-delete`, nút `btn-crosslink-batch-deselect` (chỉ bỏ chọn cạnh, giữ nguyên node selection).
+  6. ✅ **Keyboard Isolation & Shortcuts:** Phím `Delete`/`Backspace` xóa toàn bộ cạnh đang chọn; phím `Escape` clear cạnh nhưng bảo toàn 100% node selection.
+  7. ✅ **M5b Gesture Safety:** Khi đang kéo thả tạo liên kết mới (`isConnecting === true`), toàn bộ hit-targets của cạnh chuyển sang `pointer-events: none`, triệt tiêu xung đột cử chỉ.
+  8. ✅ **Batch Type Mutation Dropdown (`crosslink-batch-type-select`):** Cho phép chọn 4 loại `LinkType` chuẩn (`related`, `prerequisite`, `advanced`, `contradicts`) kèm placeholder vô hiệu hóa.
+  9. ✅ **Strict No-Op Rule:** Nếu toàn bộ các cạnh được chọn đã có cùng type mục tiêu, thoát ngay lập tức: 0 mutation, 0 history snapshot, 0 error toast.
+  10. ✅ **All-or-Nothing Transaction Guard:** Xác thực chu trình (`CYCLE_DETECTED`) và trùng lặp (`DUPLICATE_CROSS_LINK`) trên từng cạnh cập nhật; nếu có bất kỳ vi phạm nào, toàn bộ transaction bị hủy bỏ: 0 partial mutation, 0 snapshot lịch sử, hiển thị Toast cảnh báo, và bảo toàn nguyên vẹn selection đồ thị.
+  11. ✅ **Atomic Undo/Redo Symmetry:** Cả Batch Delete và Batch Type Mutation hợp lệ đều gọi `applyMutation` tối đa 1 lần duy nhất, tạo đúng 1 entry trong Undo stack (`⌘Z` hoàn tác toàn bộ danh sách trong 1 bước duy nhất).
+- **Non-Goals giữ nguyên:**
+  - Zero database / Prisma schema changes.
+  - Không gộp chung node selection và edge selection thành một state trừu tượng.
+  - Không can thiệp Reader subsystem hay các tính năng AI khác.
 
 ---
 
