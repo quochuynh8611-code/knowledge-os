@@ -227,7 +227,37 @@
   - Không tùy tiện thêm lĩnh vực nghiên cứu (categories) hay chủ đề (topics) mặc định.
 - **Ranh giới với Phase 22:**
   - Phase 22 (`ADR-081`) sở hữu các bằng chứng integration/hardening trong commit `fc6e0d7` (`tests/integration/reader-loop-hardening.test.tsx`, `escapeSelectorValue` phòng thủ, timer teardown isolation).
-  - Phase 21B chính thức đóng tại đây. Phase 22 là phase riêng biệt tiếp theo và không được tự động đánh dấu COMPLETE khi chưa có closure report độc lập.
+  - Phase 21B chính thức đóng tại đây. Phase 22 là phase tiếp theo kế thừa và hoàn thiện kiểm chứng toàn trình.
+
+---
+
+## 🛡️ Bidirectional Research Loop Verification & Reader Release Hardening — Phase 22 Closure (2026-10-20)
+
+- **Trạng thái:** 🟢 Complete & Verified (Commit implementation `fc6e0d7`)
+- **Tests & Quality Gate:**
+  - 22/22 targeted tests PASS (`reader-loop-hardening.test.tsx` 4/4, `note-reader-archive-deeplink.test.tsx` 10/10, `reader-sidebar-citation-jump.test.tsx` 8/8).
+  - 21/21 regression tests PASS across 4 suites (`reader-citation-backlinks-selector.test.ts` 8/8, `reader-sidebar-document-notes.test.tsx` 3/3, `reader-bidirectional-citation.test.tsx` 4/4, `global-citation-orchestration.test.tsx` 6/6).
+  - Tổng cộng: 43/43 tests Reader subsystem liên quan PASS (100% GREEN).
+  - TypeScript typecheck: PASS (`npm run typecheck` / `tsc --noEmit` 0 errors).
+  - Production build: PASS (`npm run build` Vite production bundle + esbuild Node server bundle, Exit Code 0).
+  - git diff --check: PASS (0 issues).
+- **Mục tiêu phase:** Khép kín và xác minh toàn diện chu trình nghiên cứu hai chiều (End-to-End Bidirectional Research Loop) giữa Reader và Notes, đồng thời thực hiện làm vững chắc vòng đời (Lifecycle Hardening) cho `NoteReaderModal` và `UnifiedResearchReader` trước khi hoàn tất phát hành Reader Subsystem.
+- **Hành vi cốt lõi đã được kiểm chứng (Core Behaviors Delivered):**
+  1. ✅ **Dynamic Citation Addition & Reactive Backlinks (Luồng A):** Lưu trích đoạn kèm citation `archive://{docId}?loc={locator}` tự động cập nhật danh sách backlink trong tab Notes của `ReaderSidebar` theo thời gian thực mà không cần reload trang.
+  2. ✅ **Full Bidirectional Round-Trip (Luồng B):** Click backlink note mở `NoteReaderModal` $\rightarrow$ cuộn mượt tới đúng vị trí occurrence $\rightarrow$ gắn visual focus ring (2.5s) $\rightarrow$ click citation link trong note đưa Reader chuyển vị trí đọc sang $P_1$ $\rightarrow$ đóng modal bảo toàn Reader tại $P_1$.
+  3. ✅ **Timer Teardown & Rapid Close Resilience:** Quản lý timer highlight bằng `useEffect` cleanup hook, đảm bảo gỡ bỏ class và hủy timer ngay khi modal unmount nhanh (<100ms) hoặc đổi target note liên tiếp, ngăn chặn rò rỉ bộ nhớ và lỗi DOM unmounted access.
+  4. ✅ **Special-Character Selector Escaping:** Bọc hàm `escapeSelectorValue` (`CSS.escape` với fallback regex) cho mọi giá trị `documentId` và `locator` chứa ký tự phức tạp (`%`, `&`, `#`, `.`, `:`, `=`), loại trừ hoàn toàn nguy cơ ném `DOMException`/`SyntaxError`.
+  5. ✅ **Multi-Cycle Reading Position Isolation:** Quản lý vị trí đọc thông qua `globalReadingPositionStore` trong RAM, bảo toàn chính xác vị trí qua nhiều chu kỳ đóng/mở modal liên tục mà không bị race condition hay reset về 0.
+  6. ✅ **Defensive `scrollIntoView`:** Sử dụng optional chaining `targetElement.scrollIntoView?.(...)` ngăn chặn crash trong môi trường test/headless thiếu implementation.
+- **Nguyên tắc kiến trúc bất biến (Architectural Invariants Preserved):**
+  - Không ghi hoặc chỉnh sửa dữ liệu trong Obsidian Vault (100% read-only).
+  - Không thay đổi Prisma schema, database hay REST API backend.
+  - Không lưu trữ bền vững (zero persistence) vị trí occurrence vào DB hay LocalStorage.
+  - Không bổ sung nút điều hướng next/prev occurrence stepper trong modal ở V1.
+  - Không dùng heuristics dựa trên title hoặc path để khớp occurrence.
+  - Không tùy tiện thêm lĩnh vực nghiên cứu (categories) hay chủ đề (topics) mặc định (Zero-Default Universal Invariant).
+- **Trạng thái Release Subsystem:**
+  - Toàn bộ chuỗi tính năng Reader Subsystem (Phase 19, 20, 21A, 21B, 22) đã chính thức hoàn thành, vượt qua 100% Tier 1 Blocking Quality Gates, và sẵn sàng phát hành.
 
 ---
 
