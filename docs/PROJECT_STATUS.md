@@ -83,8 +83,9 @@
 | **Completed** | **Phase R3c — Reader Highlights Filtering & Quick Search**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar (hỗ trợ tiếng Việt không dấu & hoa thường), bộ lọc kết hợp (AND), reset filters và Escape clear. | Tìm kiếm và lọc nhanh các trích đoạn và ghi chú trên tài liệu dài. | Thấp - Trung bình | 🟢 **COMPLETE & CI VERIFIED (`5bd554e`)** |
 | **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **COMPLETE & VERIFIED (`17d5f50`)** |
 | **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **COMPLETE & VERIFIED** |
+| **Completed** | **Phase R3d-B — Persistent EPUB Highlight Layer**<br>- Lớp phủ SVG overlay (`marks-pane`) cho EPUB qua `rendition.annotations` API, persistent anchor W3C EPUB CFI, recolor/remove diffing, fail-closed trên stale CFI. | Khôi phục và tương tác trực quan với các đoạn trích dẫn highlight trên sách EPUB. | Trung bình | 🟢 **COMPLETE & VERIFIED (`0b888df`)** |
 | **Candidate 1** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, xóa hoặc chuyển đổi hàng loạt quan hệ. | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🥇 **P1** |
-| **Candidate 2** | **Phase R3d-B — Persistent Color Highlight Layer for PDF & EPUB**<br>- Mở rộng persistent highlights lên PDF canvas/text-layer và EPUB rendition. | Đồng bộ trải nghiệm highlight bền vững trên tài liệu PDF và EPUB. | Trung bình - Cao | 🥈 **P2** |
+| **Candidate 2** | **Future PDF Milestone — Custom PDF Text-Layer & Persistent Highlights**<br>- Khảo sát thay thế native `<embed>` bằng `pdf.js` canvas/text-layer để hỗ trợ DOM highlight injection và persistent marks trên PDF. | Đồng bộ trải nghiệm highlight bền vững trên tài liệu PDF. | Cao | 🥈 **P2 (Deferred / Research)** |
 
 ---
 
@@ -152,7 +153,7 @@
   - Không render highlight trực tiếp lên DOM text layer.
 - **Follow-up Candidates:**
   - Phase R3d-A: Đã hoàn tất và push an toàn tại commit `bc4b60c` (xem chi tiết mục R3d-A Closure bên dưới).
-  - Phase R3d-B: Persistent color highlight layer cho định dạng PDF và EPUB.
+  - Phase R3d-B: Persistent EPUB Highlight Layer (Đã hoàn tất tại commit `0b888df`; nhánh PDF hoãn lại sang future milestone).
 
 ---
 
@@ -195,8 +196,46 @@
   - **Environment Constraint**: Clean full test suite run bị giới hạn bởi xung đột môi trường Node 20.20.2 và `undici@8.10.0` (yêu cầu Node >=22.19.0).
   - **Targeted Test Coverage**: 17/17 targeted tests R3d-A và 25/25 reader regression tests đã pass 100% trên dependency tree chuẩn.
 - **Follow-up Candidates:**
-  - Phase R3d-B: Persistent Color Highlight Layer for PDF & EPUB.
+  - Phase R3d-B: Persistent EPUB Highlight Layer (Đã hoàn tất tại commit `0b888df`).
+  - Future PDF Milestone: Custom PDF Text-Layer & Persistent Highlights (Deferred / Research).
   - Phase M8: Multi-Edge Selection & Cross-Link Batch Operations (Mind Map P1).
+
+---
+
+## 📖 Persistent EPUB Highlight Layer — Phase R3d-B Closure (2026-10-20)
+
+- **Trạng thái:** 🟢 Complete & Verified (Commit implementation `0b888df`)
+- **Phạm vi kiến trúc:**
+  - **EPUB Highlight Layer:** Hoàn tất đầy đủ và xác minh 100% trên W3C EPUB CFI và `rendition.annotations` API (`marks-pane`).
+  - **PDF Persistent Highlights:** Chủ động hoãn lại (Deferred / Future Milestone) do native `<embed>` viewer không sở hữu DOM text-layer; cần nâng cấp sang custom PDF text-layer viewer (`pdf.js`) trong giai đoạn sau.
+- **Tests & Quality Gate:**
+  - 27/27 EPUB tests PASS across 3 test suites (`epub-reader-persistent-highlights.test.tsx` 8/8, `epub-reader-highlight-wiring.test.tsx` 5/5, `epub-reader-adapter.test.tsx` 14/14).
+  - 100% GREEN trong Reader EPUB test suites.
+  - TypeScript typecheck: PASS (`tsc --noEmit` 0 errors).
+  - git diff --check: PASS (0 issues).
+- **Mục tiêu phase:** Khôi phục và cung cấp lớp phủ highlight bền vững trực quan (`marks-pane` SVG overlay) cho tài liệu định dạng EPUB bên trong `UnifiedResearchReader` dựa trên W3C EPUB CFI persistent anchor và `rendition.annotations` API của `epubjs`, hỗ trợ đồng bộ vòng đời (lifecycle sync), đổi màu (recolor), xóa (remove), unmount cleanup, và cơ chế fail-closed an toàn đối với stale CFI hoặc legacy excerpts.
+- **Tập tin đã thay đổi (Implementation Commit `0b888df`):**
+  - `src/components/reader/adapters/EpubReaderAdapter.tsx`: Quản lý annotation sync manager qua `rendition.annotations`, diffing danh sách CFI, xử lý recolor/remove, fail-closed try-catch với stale CFI, và dọn dẹp annotation khi unmount.
+  - `src/components/reader/UnifiedResearchReader.tsx`: Nối dây (prop wiring) truyền danh sách `documentHighlights`, `activeExcerptId` và callback `handleSelectExcerpt` xuống `EpubReaderAdapter`.
+  - `tests/unit/epub-reader-persistent-highlights.test.tsx`: Bộ kiểm thử 8/8 tests bao phủ rendering, recolor diffing, deletion cleanup, unmount cleanup và fail-closed on invalid/stale CFI.
+  - `tests/unit/epub-reader-highlight-wiring.test.tsx`: Bộ kiểm thử 5/5 tests bao phủ wiring từ `UnifiedResearchReader` xuống adapter.
+- **Tài liệu kiến trúc & đặc tả:**
+  - `docs/adr/ADR-104-phase-r3db-persistent-epub-highlight-layer.md`
+  - `docs/gherkin/phase-r3db-persistent-epub-highlights.feature`
+- **Hành vi cốt lõi đã được kiểm chứng (Core Behaviors Delivered):**
+  1. ✅ **W3C EPUB CFI Persistent Anchoring:** Neo vị trí highlight chính xác dựa trên `positionSelector.cfi` độc lập với cỡ chữ, font hay reflowable pagination.
+  2. ✅ **Non-Destructive SVG Overlay:** Sử dụng `rendition.annotations.highlight()` phối hợp cùng `marks-pane` tạo lớp phủ SVG overlay không làm thay đổi cấu trúc DOM XHTML của sách.
+  3. ✅ **Two-Way Interaction & Selection Callback:** Nhấp vào highlight trên EPUB kích hoạt callback `onSelectExcerpt` đưa trích đoạn vào trạng thái active trong `ReaderSidebar`.
+  4. ✅ **Annotation Sync & Diffing Lifecycle:** Khi excerpts thay đổi, tự động thêm highlight mới, cập nhật màu sắc (`recolor`) nếu `highlightColor` thay đổi, và xóa highlight (`rendition.annotations.remove`) khi trích đoạn bị xóa.
+  5. ✅ **Fail-Closed on Stale/Invalid CFI:** CFI hỏng hoặc không tìm thấy Range được bắt lỗi an toàn (catch), ghi warning nội bộ, không làm crash rendition.
+  6. ✅ **Legacy Excerpt Graceful Degradation:** Excerpt cũ không có CFI vẫn hiển thị đầy đủ trong `ReaderSidebar` mà không gây lỗi adapter.
+  7. ✅ **Clean Unmount & Memory Guard:** Hủy bỏ toàn bộ annotations và event listeners khi component unmount hoặc thay đổi tài liệu.
+- **Phạm vi hoãn lại (Deferred Scope):**
+  - **PDF Persistent Highlights:** Native `<embed>` viewer hiện tại không có text-layer DOM để chèn marks. Yêu cầu chuyển đổi sang custom `pdf.js` canvas/text-layer viewer và được hoãn lại thành `Future PDF Milestone (Deferred / Research)`.
+- **Non-Goals giữ nguyên:**
+  - Zero DB / Prisma schema mutations.
+  - Zero DataContext contract changes.
+  - Không can thiệp Mind Map subsystem.
 
 ---
 
