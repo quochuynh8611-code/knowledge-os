@@ -311,4 +311,188 @@ describe("Sync Routes Contract", () => {
       })
     );
   });
+
+  it("6. POST /sync/hydrate — routine sync bỏ qua note mồ côi (topicId không tồn tại trên server) thay vì throw FK violation", async () => {
+    const mockTx: any = {
+      category: { findMany: vi.fn().mockResolvedValue([]) },
+      tag: { upsert: vi.fn().mockResolvedValue({}) },
+      topic: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "top-exists", slug: "topic-exists" },
+        ]),
+        update: vi.fn().mockResolvedValue({ id: "top-exists" }),
+        upsert: vi.fn().mockResolvedValue({ id: "top-exists" }),
+      },
+      studyProgress: { upsert: vi.fn().mockResolvedValue({}) },
+      note: { upsert: vi.fn().mockResolvedValue({}) },
+      resource: { upsert: vi.fn().mockResolvedValue({}) },
+      syncSession: { create: vi.fn().mockResolvedValue({}) },
+    };
+
+    const mockPrisma: any = {
+      syncSession: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn().mockImplementation(async (cb) => cb(mockTx)),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createSyncRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/sync/hydrate")
+      .send({
+        clientSyncId: "session-orphan-note-skip",
+        clientTimestamp: "2026-10-21T00:00:00Z",
+        // forceOverwrite mặc định false — routine sync
+        categories: [],
+        tags: [],
+        topics: [], // top-exists không được gửi lên → không upsert → nhưng đã có trong DB
+        notes: [
+          {
+            id: "note-orphan",
+            topicId: "top-ghost", // topic này KHÔNG tồn tại trên server
+            title: "Ghi chú mồ côi",
+            content: "Nội dung",
+          },
+          {
+            id: "note-valid",
+            topicId: "top-exists", // topic này TỒN TẠI trong DB
+            title: "Ghi chú hợp lệ",
+            content: "Nội dung hợp lệ",
+          },
+        ],
+        resources: [],
+      });
+
+    // Phải trả về 200 thành công — note mồ côi bị skip, không crash
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    // Chỉ note hợp lệ được upsert
+    expect(mockTx.note.upsert).toHaveBeenCalledTimes(1);
+    expect(mockTx.note.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "note-valid" },
+      })
+    );
+    // note mồ côi phải bị bỏ qua
+    expect(mockTx.note.upsert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "note-orphan" } })
+    );
+  });
+
+  it("7. POST /sync/hydrate — forceOverwrite với note có topicId không tồn tại phải trả về 500 với thông báo FK guard rõ ràng", async () => {
+    const mockTx: any = {
+      category: { findMany: vi.fn().mockResolvedValue([]) },
+      tag: { upsert: vi.fn().mockResolvedValue({}) },
+      topic: { findMany: vi.fn().mockResolvedValue([]) },
+      studyProgress: { upsert: vi.fn().mockResolvedValue({}) },
+      note: { upsert: vi.fn().mockResolvedValue({}) },
+      resource: { upsert: vi.fn().mockResolvedValue({}) },
+      syncSession: { create: vi.fn().mockResolvedValue({}) },
+    };
+
+    const mockPrisma: any = {
+      syncSession: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn().mockImplementation(async (cb) => cb(mockTx)),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createSyncRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/sync/hydrate")
+      .send({
+        clientSyncId: "session-forceoverwrite-fk-error",
+        forceOverwrite: true,
+        clientTimestamp: "2026-10-21T00:00:00Z",
+        categories: [],
+        tags: [],
+        topics: [], // Không có topic nào được tạo
+        notes: [
+          {
+            id: "note-bad",
+            topicId: "top-missing", // topicId không có trong payload hoặc DB
+            title: "Ghi chú không hợp lệ",
+            content: "Nội dung",
+          },
+        ],
+        resources: [],
+      });
+
+    // forceOverwrite phải trả về 500 với thông báo FK guard
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatch(/Foreign key guard/i);
+    expect(response.body.error).toMatch(/top-missing/);
+  });
+
+  it("8. POST /sync/hydrate — topic mới được tạo trong forceOverwrite có thể được note FK resolve ngay trong cùng transaction", async () => {
+    const newTopicId = "top-brand-new";
+    const mockTx: any = {
+      category: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: "cat-1", slug: "triet-hoc" },
+        ]),
+        upsert: vi.fn().mockResolvedValue({ id: "cat-1", slug: "triet-hoc" }),
+      },
+      tag: { upsert: vi.fn().mockResolvedValue({}) },
+      topic: {
+        findMany: vi.fn().mockResolvedValue([]),
+        // topic.upsert trả về newTopicId — simulate topic vừa được tạo
+        upsert: vi.fn().mockResolvedValue({ id: newTopicId, slug: "chu-de-moi" }),
+      },
+      studyProgress: { upsert: vi.fn().mockResolvedValue({}) },
+      note: { upsert: vi.fn().mockResolvedValue({}) },
+      resource: { upsert: vi.fn().mockResolvedValue({}) },
+      syncSession: { create: vi.fn().mockResolvedValue({}) },
+    };
+
+    const mockPrisma: any = {
+      syncSession: { findUnique: vi.fn().mockResolvedValue(null) },
+      $transaction: vi.fn().mockImplementation(async (cb) => cb(mockTx)),
+    };
+
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createSyncRouter(mockPrisma));
+
+    const response = await request(app)
+      .post("/api/sync/hydrate")
+      .send({
+        clientSyncId: "session-new-topic-then-note",
+        forceOverwrite: true,
+        clientTimestamp: "2026-10-21T00:00:00Z",
+        categories: [{ id: "cat-1", name: "Triết Học", slug: "triet-hoc", type: "triet-hoc" }],
+        tags: [],
+        topics: [
+          {
+            id: newTopicId,
+            title: "Chủ đề mới",
+            slug: "chu-de-moi",
+            categoryId: "cat-1",
+            type: "triet-hoc",
+          },
+        ],
+        notes: [
+          {
+            id: "note-under-new-topic",
+            topicId: newTopicId, // trỏ đến topic vừa được tạo trong cùng tx
+            title: "Ghi chú dưới chủ đề mới",
+            content: "Nội dung",
+          },
+        ],
+        resources: [],
+      });
+
+    // Phải thành công — note resolve được topicId vừa được upsert
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(mockTx.topic.upsert).toHaveBeenCalledTimes(1);
+    expect(mockTx.note.upsert).toHaveBeenCalledTimes(1);
+    expect(mockTx.note.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ topicId: newTopicId }),
+      })
+    );
+  });
 });

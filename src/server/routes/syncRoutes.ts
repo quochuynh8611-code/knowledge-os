@@ -193,6 +193,12 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             });
             savedTopicId = saved?.id || existingTopicId;
           }
+          // Luôn cập nhật topicIdMap sau khi upsert/update để note section có thể
+          // resolve FK ngay trong cùng transaction (kể cả topic vừa được tạo mới)
+          if (savedTopicId) {
+            topicIdMap.set(savedTopicId, savedTopicId);
+            if (topic.slug) topicIdMap.set(topic.slug, savedTopicId);
+          }
           topicsCount++;
 
           // Dual-write TopicTag relations
@@ -267,11 +273,30 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           const resolvedTopicIds = resolveTopicIds(note as any);
           const primaryTopicId = resolvedTopicIds[0] || note.topicId;
 
+          // FK guard: validate primaryTopicId tồn tại trong topicIdMap trước khi upsert
+          // topicIdMap được cập nhật sau mỗi topic upsert/update ở trên nên luôn fresh
+          const resolvedPrimaryTopicId = primaryTopicId
+            ? topicIdMap.get(primaryTopicId)
+            : undefined;
+
+          if (!resolvedPrimaryTopicId) {
+            if (payload.forceOverwrite) {
+              // forceOverwrite: lỗi cứng vì đây là restore/import toàn phần
+              throw new Error(
+                `Foreign key guard: Topic với ID '${primaryTopicId}' không tồn tại cho note '${note.title}' (id: ${note.id}). Đảm bảo topic được include trong payload trước note.`
+              );
+            } else {
+              // Routine sync: bỏ qua note mồ côi (topic chưa tồn tại trên server)
+              // Sẽ được sync lại trong lần tiếp theo khi topic đã được tạo
+              continue;
+            }
+          }
+
           await tx.note.upsert({
             where: { id: note.id },
             create: {
               id: note.id,
-              topicId: primaryTopicId,
+              topicId: resolvedPrimaryTopicId,
               title: note.title,
               content: note.content,
               sourcePath: (note as any).sourcePath,
@@ -280,7 +305,7 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
               tags: note.tags,
             },
             update: {
-              topicId: primaryTopicId,
+              topicId: resolvedPrimaryTopicId,
               title: note.title,
               content: note.content,
               sourcePath: (note as any).sourcePath,
@@ -292,18 +317,21 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           notesCount++;
 
           // Dual-write NoteTopicLink relations
+          // Chỉ upsert link cho các topicId thực sự tồn tại trong DB (đã resolve qua topicIdMap)
           if (tx.noteTopicLink && resolvedTopicIds.length > 0) {
             for (const tid of resolvedTopicIds) {
+              const resolvedTid = topicIdMap.get(tid);
+              if (!resolvedTid) continue; // bỏ qua topic không tồn tại, tránh FK violation
               await tx.noteTopicLink.upsert({
                 where: {
                   noteId_topicId: {
                     noteId: note.id,
-                    topicId: tid,
+                    topicId: resolvedTid,
                   },
                 },
                 create: {
                   noteId: note.id,
-                  topicId: tid,
+                  topicId: resolvedTid,
                 },
                 update: {},
               });
@@ -313,11 +341,27 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
 
         // Resources
         for (const resItem of payload.resources) {
+          // FK guard: validate topicId tồn tại trước khi upsert resource
+          const resolvedResourceTopicId = resItem.topicId
+            ? topicIdMap.get(resItem.topicId)
+            : undefined;
+
+          if (resItem.topicId && !resolvedResourceTopicId) {
+            if (payload.forceOverwrite) {
+              throw new Error(
+                `Foreign key guard: Topic với ID '${resItem.topicId}' không tồn tại cho resource '${resItem.title}' (id: ${resItem.id}).`
+              );
+            } else {
+              // Routine sync: bỏ qua resource mồ côi
+              continue;
+            }
+          }
+
           await tx.resource.upsert({
             where: { id: resItem.id },
             create: {
               id: resItem.id,
-              topicId: resItem.topicId,
+              topicId: resolvedResourceTopicId ?? resItem.topicId,
               title: resItem.title,
               type: resItem.type,
               author: resItem.author,
