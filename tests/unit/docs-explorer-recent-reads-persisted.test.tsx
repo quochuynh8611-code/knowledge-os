@@ -301,4 +301,108 @@ describe("DocsExplorerView Recent Reads Shelf - Persisted Metadata (Red Stage)",
       expect(within(shelf).queryAllByRole("button", { name: /Đang đọc/i })).toHaveLength(0);
     });
   });
+
+  it("should_preserve_vault_identity_and_path_when_vault_book_shares_filename_with_docs_repo_book", async () => {
+    // Scenario replicating the exact bug:
+    // 1. Docs repo has a book at "books/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub"
+    // 2. ArchivedDocs has a Vault book at "05_EPUB_Export/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub"
+    const fetchedUrls: string[] = [];
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const urlStr = String(url);
+      fetchedUrls.push(urlStr);
+
+      if (urlStr.includes("/api/archive/list")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            total: 1,
+            documents: [
+              {
+                id: "vault-uuid-jiddu",
+                fileName: "Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub",
+                fileFormat: "epub",
+                sourceType: "vault",
+                sourcePath: "05_EPUB_Export/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub",
+                storageRelPath: "vault://05_EPUB_Export/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub",
+                sourceKey: "vault:05_EPUB_Export/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub",
+                lastPosition: { cfi: "epubcfi(/6/4!/4/26/1:178)" },
+                lastReadAt: "2026-10-21T07:36:21.737Z",
+                readCount: 6,
+              },
+            ],
+          }),
+          headers: { get: () => "application/json" },
+        });
+      }
+      if (urlStr.includes("/api/docs")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            total: 1,
+            categories: { books: 1 },
+            documents: [
+              {
+                id: "books/09_tam_linh/duong_vao_hien_sinh",
+                title: "Duong Vao Hien Sinh Jiddu Krishnamurti",
+                category: "books",
+                relativePath: "books/09_Tam_Linh_Nhan_Qua_Triet_Hoc/Duong_Vao_Hien_Sinh_Jiddu_Krishnamurti.epub",
+                status: "EPUB",
+                sizeBytes: 160936,
+                lastModified: "2026-10-21T00:00:00.000Z",
+              },
+            ],
+          }),
+          headers: { get: () => "application/json" },
+        });
+      }
+      if (urlStr.includes("/api/obsidian/vault/attachment") || urlStr.includes("/api/docs/raw")) {
+        return Promise.resolve({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(100),
+          headers: { get: () => "application/epub+zip" },
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({}),
+        headers: { get: () => "application/json" },
+      });
+    });
+
+    render(
+      <DataProvider>
+        <DocsExplorerView mode="epub-only" />
+      </DataProvider>
+    );
+
+    const shelf = await screen.findByTestId("recent-reads-shelf");
+    expect(shelf).toBeInTheDocument();
+
+    const recentBtn = await screen.findByRole("button", {
+      name: /Đang đọc Duong Vao Hien Sinh/i,
+    });
+    expect(recentBtn).toBeInTheDocument();
+
+    // Click to open in reader
+    fireEvent.click(recentBtn);
+
+    // Wait for reader to trigger file fetch
+    await waitFor(() => {
+      const attachmentCalls = fetchedUrls.filter((u) => u.includes("/attachment"));
+      expect(attachmentCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // CRITICAL ASSERTION:
+    // It must call /api/obsidian/vault/attachment with path=05_EPUB_Export/...
+    // It must NEVER call with path=books/...
+    const invalidCall = fetchedUrls.find((u) =>
+      u.includes("/api/obsidian/vault/attachment?path=books")
+    );
+    expect(invalidCall).toBeUndefined();
+
+    const validCall = fetchedUrls.find((u) =>
+      u.includes("/api/obsidian/vault/attachment?path=05_EPUB_Export")
+    );
+    expect(validCall).toBeDefined();
+  });
 });

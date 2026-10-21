@@ -370,11 +370,12 @@ export function DocsExplorerView({
       const isVault =
         doc.sourceType === "vault" ||
         doc.relativePath.startsWith("vault://") ||
-        archivedDocs.some(
-          (a) =>
-            (a.id === doc.id || a.sourcePath === doc.relativePath || a.sourceKey === `vault:${doc.relativePath}`) &&
-            (a.sourceType === "vault" || a.storageRelPath?.startsWith("vault://"))
-        );
+        (doc.sourceType !== "docs" &&
+          archivedDocs.some(
+            (a) =>
+              (a.id === doc.id || a.sourcePath === doc.relativePath || a.sourceKey === `vault:${doc.relativePath}`) &&
+              (a.sourceType === "vault" || a.storageRelPath?.startsWith("vault://"))
+          ));
 
       const matchingArch = archivedDocs.find(
         (a) =>
@@ -383,7 +384,7 @@ export function DocsExplorerView({
           a.storageRelPath === doc.relativePath ||
           a.sourceKey === `vault:${doc.relativePath}` ||
           a.sourceKey === `archive:${doc.relativePath}` ||
-          (a.fileName && doc.relativePath.endsWith(a.fileName))
+          (doc.sourceType !== "docs" && a.fileName && doc.relativePath.endsWith(a.fileName))
       );
 
       let initialPos: string | undefined = undefined;
@@ -395,7 +396,14 @@ export function DocsExplorerView({
       }
 
       if (isVault) {
-        const cleanVaultPath = doc.sourcePath || doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+        const cleanVaultPath =
+          doc.sourcePath ||
+          (matchingArch?.sourceType === "vault" ? matchingArch.sourcePath : undefined) ||
+          (matchingArch?.storageRelPath?.startsWith("vault://")
+            ? matchingArch.storageRelPath.replace(/^vault:\/\//, "")
+            : undefined) ||
+          doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
+
         if (format === "epub" || format === "pdf") {
           setActiveReaderDoc({
             documentId: matchingArch?.id || doc.id || `vault:${cleanVaultPath}`,
@@ -603,20 +611,25 @@ export function DocsExplorerView({
       const archId = arch.id || arch.sourceKey || arch.storageRelPath || arch.fileName || arch.sourcePath;
       if (archId && idSet.has(archId) && !seen.has(archId)) {
         seen.add(archId);
-        const matched = docs.find(
-          (d) =>
-            d.id === arch.id ||
-            d.relativePath === arch.storageRelPath ||
-            d.relativePath === arch.fileName ||
-            d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
-            (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
-            (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
-        );
+        const isVaultArch = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
+        const matched = !isVaultArch
+          ? docs.find(
+              (d) =>
+                d.id === arch.id ||
+                d.relativePath === arch.storageRelPath ||
+                d.relativePath === arch.sourcePath ||
+                d.relativePath === arch.fileName ||
+                d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
+                (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
+                (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
+            )
+          : undefined;
 
         if (matched) {
           result.push({
             ...matched,
             id: arch.id || matched.id,
+            sourceType: "docs",
             lastPosition: arch.lastPosition,
             lastModified: arch.lastReadAt || arch.updatedAt || arch.createdAt || matched.lastModified,
           });
@@ -708,21 +721,26 @@ export function DocsExplorerView({
 
     for (const arch of sortedArchived) {
       // Find matching doc in library docs
-      const matched = docs.find(
-        (d) =>
-          d.id === arch.id ||
-          d.relativePath === arch.storageRelPath ||
-          d.relativePath === arch.fileName ||
-          d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
-          (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
-          (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
-      );
+      const isVaultArch = arch.sourceType === "vault" || arch.storageRelPath?.startsWith("vault://");
+      const matched = !isVaultArch
+        ? docs.find(
+            (d) =>
+              d.id === arch.id ||
+              d.relativePath === arch.storageRelPath ||
+              d.relativePath === arch.sourcePath ||
+              d.relativePath === arch.fileName ||
+              d.id === arch.fileName?.replace(/\.[^/.]+$/, "") ||
+              (arch.fileName && d.relativePath.endsWith(arch.fileName)) ||
+              (arch.storageRelPath && d.relativePath.endsWith(arch.storageRelPath))
+          )
+        : undefined;
 
       if (matched && !seenIds.has(matched.id || matched.relativePath)) {
         seenIds.add(matched.id || matched.relativePath);
         recentList.push({
           ...matched,
           id: arch.id || matched.id,
+          sourceType: "docs",
           lastPosition: arch.lastPosition,
         });
       } else if (!matched && (arch.fileName || arch.storageRelPath || arch.sourcePath)) {
