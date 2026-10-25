@@ -1,13 +1,32 @@
-export type CitationFormat = 'apa' | 'bibtex' | 'markdown';
+export type CitationFormat =
+  | 'apa'
+  | 'mla'
+  | 'chicago'
+  | 'ieee'
+  | 'harvard'
+  | 'bibtex'
+  | 'ris'
+  | 'markdown';
 
 export const CITATION_FORMAT_STORAGE_KEY = 'knowledge_os_citation_format_pref';
 export const DEFAULT_CITATION_FORMAT: CitationFormat = 'apa';
+
+export const ALL_CITATION_FORMATS: readonly CitationFormat[] = [
+  'apa',
+  'mla',
+  'chicago',
+  'ieee',
+  'harvard',
+  'bibtex',
+  'ris',
+  'markdown',
+] as const;
 
 /**
  * Kiểm tra giá trị có phải là định dạng trích dẫn hợp lệ hay không
  */
 export function isValidCitationFormat(val: unknown): val is CitationFormat {
-  return val === 'apa' || val === 'bibtex' || val === 'markdown';
+  return typeof val === 'string' && (ALL_CITATION_FORMATS as readonly string[]).includes(val);
 }
 
 /**

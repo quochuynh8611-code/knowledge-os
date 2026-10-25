@@ -83,6 +83,15 @@ export interface Resource {
   notes?: string;
   sourceRegistryId?: string; // Optional — populated by buildSourceRegistry()
   createdAt: string;
+  // Academic Metadata Extensions (Zero DB Migration — Phase 2)
+  doi?: string;
+  year?: string;
+  journal?: string;
+  publisher?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  isbn?: string;
 }
 
 // Research Storage v1: append-only progress history snapshot

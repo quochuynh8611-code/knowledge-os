@@ -71,8 +71,9 @@ describe('Scholar Citation Format Preference Pure Library', () => {
     expect(isValidCitationFormat('apa')).toBe(true);
     expect(isValidCitationFormat('bibtex')).toBe(true);
     expect(isValidCitationFormat('markdown')).toBe(true);
+    expect(isValidCitationFormat('chicago')).toBe(true);
 
-    expect(isValidCitationFormat('chicago')).toBe(false);
+    expect(isValidCitationFormat('unsupported-style')).toBe(false);
     expect(isValidCitationFormat('')).toBe(false);
     expect(isValidCitationFormat(null)).toBe(false);
     expect(isValidCitationFormat(undefined)).toBe(false);
