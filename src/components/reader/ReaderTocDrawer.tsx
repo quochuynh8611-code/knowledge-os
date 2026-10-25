@@ -5,6 +5,9 @@ export interface TocItem {
   id: string;
   label: string;
   level: number;
+  title?: string;
+  page?: number;
+  cfi?: string;
 }
 
 export interface ReaderTocDrawerProps {

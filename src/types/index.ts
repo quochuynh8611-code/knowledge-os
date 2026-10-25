@@ -192,6 +192,7 @@ export interface ArchivedDocument {
 export interface PositionSelector {
   cfi?: string;
   pageNumber?: number;
+  page?: number;
   headingId?: string;
   charRange?: [number, number];
 }
