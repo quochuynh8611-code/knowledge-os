@@ -106,6 +106,23 @@ export function normalizeMarkdownForDisplay(rawContent?: string): string {
     return `\u0000INLINECODE_${idx}\u0000`;
   });
 
+  // 2.5. Bảo toàn Block Math ($$...$$) và Inline Math ($...$)
+  // Ngăn chặn các mũi tên phản ứng hóa học (->, <=>, <->) và toán tử (<=, >=, +-) bị Unicode hóa
+  text = text.replace(/(?<!\\)\$\$[\s\S]+?(?<!\\)\$\$/g, (match) => {
+    const idx = protectedTokens.length;
+    protectedTokens.push(match);
+    return `\u0000TOKEN_${idx}\u0000`;
+  });
+
+  text = text.replace(/(?<!\\)\$(?!\s)([^\$\n]+?)(?<!\s)\$(?![0-9])/g, (match, inner) => {
+    if (/^\d+(?:\.\d{1,2})?$/.test(inner.trim())) {
+      return match;
+    }
+    const idx = protectedTokens.length;
+    protectedTokens.push(match);
+    return `\u0000TOKEN_${idx}\u0000`;
+  });
+
   // 3. Bảo toàn URLs, Markdown Links, Wiki Links, Image Embeds, Emails, Endpoint Paths, Key-Value Params, Technical Identifiers & Brands
   const protectedPattern = new RegExp(
     [

@@ -1,6 +1,8 @@
 /**
  * Cloze Deletion Parser for Spaced Repetition Flashcards.
  * Follows the standard {{c1::answer}} and {{c1::answer::hint}} formatting.
+ * Upgraded with balanced-brace scanning to flawlessly support complex
+ * LaTeX math expressions containing nested braces (e.g. \frac{1}{2}, \ce{Fe^{2+}}).
  */
 
 export interface ClozeItem {
@@ -14,7 +16,7 @@ export interface ParseClozeOptions {
   strict?: boolean;
 }
 
-interface InternalClozeOccurrence {
+export interface InternalClozeOccurrence {
   index: number;
   answer: string;
   hint?: string;
@@ -24,8 +26,106 @@ interface InternalClozeOccurrence {
 }
 
 /**
+ * Scans rawText using a balanced brace scanner to extract cloze occurrences.
+ * Handles nested braces inside LaTeX formulas cleanly.
+ */
+export function extractClozeOccurrences(
+  rawText: string,
+  options?: ParseClozeOptions
+): InternalClozeOccurrence[] {
+  if (!rawText || typeof rawText !== "string") {
+    return [];
+  }
+
+  const occurrences: InternalClozeOccurrence[] = [];
+  const startRegex = /\{\{c(\d+)::/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = startRegex.exec(rawText)) !== null) {
+    const rawIndex = match[1];
+    const index = parseInt(rawIndex, 10);
+    const startIndex = match.index;
+    const contentStart = startIndex + match[0].length;
+
+    if (index < 1) {
+      if (options?.strict) {
+        throw new Error(
+          `Chỉ số cloze deletion phải là số nguyên dương >= 1. Nhận được: c${rawIndex}`
+        );
+      }
+      continue;
+    }
+
+    let braceDepth = 2; // Starts with opening '{{'
+    let hintSeparatorPos = -1;
+    let endIndex = -1;
+
+    for (let i = contentStart; i < rawText.length; i++) {
+      const char = rawText[i];
+      if (char === "{") {
+        braceDepth++;
+      } else if (char === "}") {
+        braceDepth--;
+        if (braceDepth === 0) {
+          endIndex = i + 1;
+          break;
+        }
+      } else if (char === ":" && braceDepth === 2 && hintSeparatorPos === -1) {
+        if (rawText[i + 1] === ":") {
+          hintSeparatorPos = i;
+          i++; // Skip second ':'
+        }
+      }
+    }
+
+    if (endIndex !== -1 && braceDepth === 0) {
+      const fullMatch = rawText.slice(startIndex, endIndex);
+      const rawContent = rawText.slice(contentStart, endIndex - 2);
+
+      let answer = rawContent;
+      let hint: string | undefined = undefined;
+
+      if (hintSeparatorPos !== -1) {
+        answer = rawText.slice(contentStart, hintSeparatorPos);
+        hint = rawText.slice(hintSeparatorPos + 2, endIndex - 2);
+      }
+
+      if (!answer.trim() && options?.strict) {
+        throw new Error(
+          `Nội dung câu trả lời cloze không được để trống tại c${index}`
+        );
+      }
+
+      occurrences.push({
+        index,
+        answer,
+        hint,
+        start: startIndex,
+        end: endIndex,
+        fullMatch,
+      });
+
+      // Advance regex search pointer to avoid re-scanning inside this cloze
+      startRegex.lastIndex = endIndex;
+    } else if (options?.strict) {
+      throw new Error("Cú pháp cloze deletion chưa được đóng đúng cách (thiếu '}}')");
+    }
+  }
+
+  // In strict mode, verify there are no stray unclosed openings
+  if (options?.strict) {
+    const strayOpening = /\{\{c\d+::(?![^}]*\}\})/;
+    if (strayOpening.test(rawText)) {
+      throw new Error("Cú pháp cloze deletion chưa được đóng đúng cách (thiếu '}}')");
+    }
+  }
+
+  return occurrences;
+}
+
+/**
  * Parses markdown text containing cloze deletions: {{c1::answer}} or {{c1::answer::hint}}.
- * 
+ *
  * For each cloze index c_i:
  * - All occurrences of c_i are replaced with [...] (or hint prompt)
  * - All occurrences of other clozes c_j (j != i) are revealed with their answer text
@@ -35,58 +135,7 @@ export function parseClozeDeletions(
   rawText: string,
   options?: ParseClozeOptions
 ): ClozeItem[] {
-  if (!rawText || typeof rawText !== "string") {
-    return [];
-  }
-
-  // Regex pattern to match {{c<index>::<content>}}
-  const clozeRegex = /\{\{c(\d+)::([\s\S]*?)\}\}/g;
-  const occurrences: InternalClozeOccurrence[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = clozeRegex.exec(rawText)) !== null) {
-    const rawIndex = match[1];
-    const rawContent = match[2];
-    const index = parseInt(rawIndex, 10);
-
-    if (index < 1) {
-      throw new Error(
-        `Chỉ số cloze deletion phải là số nguyên dương >= 1. Nhận được: c${rawIndex}`
-      );
-    }
-
-    let answer = rawContent;
-    let hint: string | undefined = undefined;
-
-    const hintSeparatorIndex = rawContent.indexOf("::");
-    if (hintSeparatorIndex !== -1) {
-      answer = rawContent.slice(0, hintSeparatorIndex);
-      hint = rawContent.slice(hintSeparatorIndex + 2);
-    }
-
-    if (!answer.trim() && options?.strict) {
-      throw new Error(
-        `Nội dung câu trả lời cloze không được để trống tại c${index}`
-      );
-    }
-
-    occurrences.push({
-      index,
-      answer,
-      hint,
-      start: match.index,
-      end: match.index + match[0].length,
-      fullMatch: match[0],
-    });
-  }
-
-  // In strict mode, verify there are no unclosed/stray cloze openings like {{c1::
-  if (options?.strict) {
-    const strayOpening = /\{\{c\d+::(?![^}]*\}\})/;
-    if (strayOpening.test(rawText)) {
-      throw new Error("Cú pháp cloze deletion chưa được đóng đúng cách (thiếu '}}')");
-    }
-  }
+  const occurrences = extractClozeOccurrences(rawText, options);
 
   if (occurrences.length === 0) {
     return [];
