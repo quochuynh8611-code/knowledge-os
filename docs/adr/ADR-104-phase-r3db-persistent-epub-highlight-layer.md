@@ -1,7 +1,7 @@
 # ADR-104: Persistent EPUB Highlight Layer via EpubJS Annotations API & Lifecycle Guard
 
 ## Status
-Accepted (Đã triển khai & xác minh cho EPUB; Nhánh PDF chủ động hoãn lại / Deferred sang Future Milestone)
+Accepted (Đã triển khai & xác minh cho EPUB; Nhánh PDF trước đây hoãn lại nay đã được chính thức hiện thực tại Phase 4 qua ADR-108: `docs/adr/ADR-108-phase-4-pdf-text-layer-and-persistent-highlights.md`)
 
 ## Context
 Phase R3d-A đã thiết lập thành công persistent highlights cho định dạng Markdown (text-layer trực tiếp, DOM mark/span injection kèm contextPrefix/contextSuffix disambiguation).

@@ -1,7 +1,7 @@
 # ADR-108: Phase 4 — PDF Text-Layer Engine, Page-Scoped Persistent Highlights & Citation Deep-Linking
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** ✅ ACCEPTED & READY FOR IMPLEMENTATION
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Hoàn tất 100% Chặng 4A & Chặng 4B)
 - **Ngày quyết định:** 2026-10-25
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Core PDF Text-Layer Engine (`src/lib/pdfTextLayerEngine.ts`), Dynamic `pdfjs-dist` Extraction, Page-Scoped Persistent Highlight Reconciliation, Selection Context Window (Prefix/Suffix) Disambiguation, Deep-Link Navigation sang Note & Flashcard.

@@ -33,6 +33,7 @@ export interface ApplyPdfHighlightsOptions {
   activeExcerptId?: string | null;
   onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
   currentPage?: number;
+  pageText?: string;
 }
 
 // ─── Caches ──────────────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ export function filterExcerptsForPdfPage(
  * Trả về hàm cleanup để gỡ bỏ toàn bộ highlight và normalize cây DOM.
  */
 export function applyPdfTextLayerHighlights(options: ApplyPdfHighlightsOptions): () => void {
-  const { container, excerpts, activeExcerptId, onSelectExcerpt, currentPage } = options;
+  const { container, excerpts, activeExcerptId, onSelectExcerpt, currentPage, pageText } = options;
   if (!container) return () => {};
 
   // Luôn dọn dẹp các thẻ mark cũ trước khi xử lý
@@ -100,6 +101,14 @@ export function applyPdfTextLayerHighlights(options: ApplyPdfHighlightsOptions):
     return () => clearDomHighlights(container);
   }
 
+  const pageExcerpts = typeof currentPage === 'number'
+    ? filterExcerptsForPdfPage(excerpts, currentPage, pageText || linearText)
+    : excerpts;
+
+  if (pageExcerpts.length === 0) {
+    return () => clearDomHighlights(container);
+  }
+
   interface ResolvedItem {
     excerpt: ResearchExcerpt;
     startIndex: number;
@@ -107,7 +116,7 @@ export function applyPdfTextLayerHighlights(options: ApplyPdfHighlightsOptions):
   }
   const resolvedItems: ResolvedItem[] = [];
 
-  for (const excerpt of excerpts) {
+  for (const excerpt of pageExcerpts) {
     const target: AnchorTarget = {
       selectedText: excerpt.selectedText,
       contextPrefix: excerpt.contextPrefix,

@@ -35,6 +35,7 @@ export interface UnifiedResearchReaderProps {
   sourceType?: 'docs' | 'vault';
   initialPosition?: string;
   initialToc?: TocItem[];
+  initialExcerpts?: ResearchExcerpt[];
   onPositionChange?: (locator: string) => void;
   /**
    * Phase 19: Called when the user clicks a cross-document archive citation.
@@ -98,6 +99,7 @@ export function UnifiedResearchReader({
   sourceType,
   initialPosition,
   initialToc,
+  initialExcerpts,
   onPositionChange,
   onNavigateToDocument,
   onClose,
@@ -620,6 +622,8 @@ export function UnifiedResearchReader({
     position: { top: number; left: number };
     page?: number;
     cfi?: string;
+    contextPrefix?: string;
+    contextSuffix?: string;
   } | null>(null);
   const [isTargetNoteModalOpen, setIsTargetNoteModalOpen] = useState(false);
   const [isCreateNoteModalOpen, setIsCreateNoteModalOpen] = useState(false);
@@ -671,7 +675,8 @@ export function UnifiedResearchReader({
       fileUrl,
       resources,
     };
-    const dedicated = researchExcerpts.filter((e) => isExcerptMatchingDocument(e, matchContext));
+    const dedicatedSource = initialExcerpts && initialExcerpts.length > 0 ? initialExcerpts : researchExcerpts;
+    const dedicated = dedicatedSource.filter((e) => isExcerptMatchingDocument(e, matchContext));
     const legacy = inboxItems
       .map((item) => item.excerpt)
       .filter((excerpt): excerpt is ResearchExcerpt => Boolean(excerpt && isExcerptMatchingDocument(excerpt, matchContext)));
@@ -683,7 +688,7 @@ export function UnifiedResearchReader({
     dedicated.forEach((e) => map.set(e.id, e));
 
     return Array.from(map.values());
-  }, [researchExcerpts, inboxItems, documentId, title, fileUrl, resources]);
+  }, [researchExcerpts, inboxItems, documentId, title, fileUrl, resources, initialExcerpts]);
 
   // Wave R4: Extract active document inbox items using Canonical Document Matcher
   const documentInboxItems = useMemo(() => {
@@ -791,8 +796,10 @@ export function UnifiedResearchReader({
     (excerpt: ResearchExcerpt) => {
       setActiveExcerptId(excerpt.id);
       const locator =
+        (excerpt.positionSelector?.pageNumber !== undefined
+          ? `page=${excerpt.positionSelector.pageNumber}`
+          : undefined) ||
         excerpt.positionSelector?.headingId ||
-        (excerpt.positionSelector?.pageNumber !== undefined ? String(excerpt.positionSelector.pageNumber) : undefined) ||
         excerpt.positionSelector?.cfi;
       if (locator) {
         handlePositionChanged(locator);
@@ -852,7 +859,16 @@ export function UnifiedResearchReader({
   );
 
   const handleTextSelection = useCallback(
-    (selection: { text: string; position: { top: number; left: number }; page?: number; cfi?: string } | null) => {
+    (
+      selection: {
+        text: string;
+        position: { top: number; left: number };
+        page?: number;
+        cfi?: string;
+        contextPrefix?: string;
+        contextSuffix?: string;
+      } | null
+    ) => {
       setActiveSelection(selection);
     },
     []
@@ -875,6 +891,8 @@ export function UnifiedResearchReader({
       id: `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       archivedDocumentId: documentId,
       selectedText,
+      contextPrefix: activeSelection?.contextPrefix,
+      contextSuffix: activeSelection?.contextSuffix,
       positionSelector: {
         headingId: activeTocId,
         pageNumber: activeSelection?.page,
@@ -1330,11 +1348,14 @@ export function UnifiedResearchReader({
               documentId={documentId}
               title={title}
               initialPage={pdfInitialPage}
-              onPageChanged={(newPage) => handlePositionChanged(String(newPage))}
+              onPageChanged={(newPage) => handlePositionChanged(`page=${newPage}`)}
               initialToc={initialToc}
               onTocGenerated={(items) => setTocItems(items)}
               onTextSelection={handleTextSelection}
               onEditResource={onEditResource}
+              excerpts={documentHighlights}
+              activeExcerptId={activeExcerptId}
+              onSelectExcerpt={handleSelectExcerpt}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3 bg-stone-100 dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800">

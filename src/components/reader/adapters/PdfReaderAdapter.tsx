@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink, ClipboardPaste, PenLine, X } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, RefreshCw, Folder, Copy, Check, ExternalLink, ClipboardPaste, PenLine, X, Eye } from 'lucide-react';
 import { copyTextToClipboard } from '../../../lib/clipboard';
 import { TocItem } from '../ReaderTocDrawer';
+import { ResearchExcerpt } from '../../../types';
+import {
+  extractPdfPageText,
+  extractPdfOutline,
+  applyPdfTextLayerHighlights,
+  extractSelectionWithContextFromContainer,
+} from '../../../lib/pdfTextLayerEngine';
 
 export interface PdfReaderSelectionDetails {
   text: string;
   position: { top: number; left: number };
   page?: number;
+  contextPrefix?: string;
+  contextSuffix?: string;
 }
 
 export interface PdfReaderAdapterProps {
@@ -21,6 +30,10 @@ export interface PdfReaderAdapterProps {
   initialToc?: TocItem[];
   onTocGenerated?: (items: TocItem[]) => void;
   onEditResource?: () => void;
+  excerpts?: ResearchExcerpt[];
+  activeExcerptId?: string | null;
+  onSelectExcerpt?: (excerpt: ResearchExcerpt) => void;
+  pageTexts?: Record<number, string>;
 }
 
 export function isLocalFilesystemPath(url?: string): boolean {
@@ -46,21 +59,25 @@ export function PdfReaderAdapter({
   initialToc,
   onTocGenerated,
   onEditResource,
+  excerpts = [],
+  activeExcerptId = null,
+  onSelectExcerpt,
+  pageTexts,
 }: PdfReaderAdapterProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [copiedPath, setCopiedPath] = useState<boolean>(false);
   const [isManualModalOpen, setIsManualModalOpen] = useState<boolean>(false);
   const [manualText, setManualText] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'text' | 'original'>('text');
+  const [extractedPageText, setExtractedPageText] = useState<string>('');
+  const [isExtractingText, setIsExtractingText] = useState<boolean>(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textLayerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentPage(initialPage);
   }, [initialPage]);
-
-  useEffect(() => {
-    if (onTocGenerated && initialToc && initialToc.length > 0) {
-      onTocGenerated(initialToc);
-    }
-  }, [initialToc, onTocGenerated]);
 
   const isLocal = isLocalFilesystemPath(fileUrl);
   const isInvalidInitial = !isLocal && (!fileUrl || !fileUrl.trim() || fileUrl.includes('invalid-protocol://') || fileUrl.includes('corrupted'));
@@ -72,7 +89,77 @@ export function PdfReaderAdapter({
       ? 'Định dạng URL tài liệu PDF không hợp lệ'
       : ''
   );
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  // TOC hydration from initialToc or background outline extraction
+  useEffect(() => {
+    if (onTocGenerated && initialToc && initialToc.length > 0) {
+      onTocGenerated(initialToc);
+    } else if (onTocGenerated && fileUrl && !isLocal && !loadError) {
+      extractPdfOutline(fileUrl)
+        .then((items) => {
+          if (items && items.length > 0) {
+            onTocGenerated(items);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [initialToc, onTocGenerated, fileUrl, isLocal, loadError]);
+
+  // Extract page text automatically when fileUrl is available
+  useEffect(() => {
+    let isCancelled = false;
+    const predefinedText = pageTexts?.[currentPage] || sampleText;
+    if (predefinedText) {
+      setExtractedPageText(predefinedText);
+      setIsExtractingText(false);
+      return;
+    }
+
+    if (!fileUrl || isLocal || loadError) {
+      setExtractedPageText('');
+      setIsExtractingText(false);
+      return;
+    }
+
+    setIsExtractingText(true);
+    extractPdfPageText(fileUrl, currentPage)
+      .then((res) => {
+        if (!isCancelled) {
+          setExtractedPageText(res.fullText || '');
+          setIsExtractingText(false);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setExtractedPageText('');
+          setIsExtractingText(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [fileUrl, currentPage, pageTexts, sampleText, isLocal, loadError]);
+
+  const activePageText = pageTexts?.[currentPage] || sampleText || extractedPageText || '';
+
+  // Apply page-scoped persistent highlights onto text layer DOM
+  useEffect(() => {
+    if (!textLayerRef.current || !activePageText) return;
+
+    const cleanup = applyPdfTextLayerHighlights({
+      container: textLayerRef.current,
+      excerpts,
+      activeExcerptId,
+      currentPage,
+      pageText: activePageText,
+      onSelectExcerpt,
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [currentPage, activePageText, excerpts, activeExcerptId, onSelectExcerpt, viewMode]);
 
   const handleCopyPath = async () => {
     if (!fileUrl) return;
@@ -111,10 +198,8 @@ export function PdfReaderAdapter({
           return;
         }
       }
-      // If clipboard is empty or returned empty text, open manual modal
       setIsManualModalOpen(true);
     } catch {
-      // Permission denied or clipboard read error -> open manual quote modal fallback
       setIsManualModalOpen(true);
     }
   };
@@ -152,14 +237,12 @@ export function PdfReaderAdapter({
       return;
     }
 
-    // Check invalid protocol
     if (fileUrl.includes('invalid-protocol://') || fileUrl.includes('corrupted')) {
       setLoadError(true);
       setErrorMessage('Định dạng URL tài liệu PDF không hợp lệ');
       return;
     }
 
-    // Pre-flight check for API routes to catch 404 FILE_NOT_FOUND responses
     if (fileUrl.startsWith('/api/')) {
       try {
         const res = await fetch(fileUrl);
@@ -188,7 +271,7 @@ export function PdfReaderAdapter({
           return;
         }
       } catch {
-        // If fetch fails without an explicit response, proceed unless already failed
+        // If fetch fails without an explicit response, proceed
       }
     }
 
@@ -200,15 +283,27 @@ export function PdfReaderAdapter({
     validateUrl();
   }, [validateUrl]);
 
-  // Handle text selection in selectable area or document layer
+  // Handle text selection in selectable area or text layer
   const handleMouseUp = useCallback(() => {
     if (!onTextSelection) return;
 
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
-    const text = selection.toString().trim();
+    let text = selection.toString().trim();
     if (!text) return;
+
+    let contextPrefix: string | undefined = undefined;
+    let contextSuffix: string | undefined = undefined;
+
+    if (textLayerRef.current && textLayerRef.current.contains(selection.anchorNode)) {
+      const extracted = extractSelectionWithContextFromContainer(textLayerRef.current);
+      if (extracted) {
+        text = extracted.selectedText;
+        contextPrefix = extracted.contextPrefix;
+        contextSuffix = extracted.contextSuffix;
+      }
+    }
 
     try {
       const range = selection.getRangeAt(0);
@@ -217,17 +312,20 @@ export function PdfReaderAdapter({
       onTextSelection({
         text,
         position: {
-          top: rect.top,
-          left: rect.left + rect.width / 2,
+          top: rect.top || 140,
+          left: (rect.left || 300) + (rect.width ? rect.width / 2 : 50),
         },
         page: currentPage,
+        contextPrefix,
+        contextSuffix,
       });
     } catch {
-      // Fallback position if rect calculation fails
       onTextSelection({
         text,
         position: { top: 200, left: 300 },
         page: currentPage,
+        contextPrefix,
+        contextSuffix,
       });
     }
   }, [onTextSelection, currentPage]);
@@ -364,6 +462,18 @@ export function PdfReaderAdapter({
             <PenLine className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Nhập trích đoạn</span>
           </button>
+
+          {/* View Mode Toggle Button */}
+          <button
+            type="button"
+            data-testid="pdf-toggle-text-layer-btn"
+            onClick={() => setViewMode((mode) => (mode === 'text' ? 'original' : 'text'))}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-medium border border-stone-200 dark:border-stone-700 transition cursor-pointer"
+            title="Chuyển đổi giữa Chế độ Văn bản & Highlight và Chế độ Bản gốc PDF"
+          >
+            <FileText className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+            <span>{viewMode === 'text' ? 'Chế độ Bản gốc PDF' : 'Chế độ Văn bản & Highlight'}</span>
+          </button>
         </div>
 
         <div className="flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
@@ -380,16 +490,39 @@ export function PdfReaderAdapter({
         </div>
       </div>
 
-      {/* Native PDF Embed Container */}
+      {/* Interactive PDF Text-Layer Container */}
+      <div
+        ref={textLayerRef}
+        data-testid="pdf-text-layer"
+        className={`pdf-text-layer p-6 sm:p-8 bg-white dark:bg-stone-900 flex-1 overflow-y-auto leading-relaxed font-serif text-stone-900 dark:text-stone-100 select-text min-h-[500px] border-b border-stone-200 dark:border-stone-800 ${
+          viewMode === 'text' ? 'block' : 'hidden'
+        }`}
+      >
+        {activePageText ? (
+          activePageText.split(/\n\s*\n/).map((para, idx) => (
+            <p key={idx} className="mb-4 leading-relaxed whitespace-pre-wrap">
+              {para}
+            </p>
+          ))
+        ) : (
+          <div className="py-12 text-center text-stone-400 dark:text-stone-500 italic text-sm">
+            {isExtractingText ? 'Đang trích xuất văn bản trang...' : 'Trang này không có văn bản hoặc chưa được trích xuất.'}
+          </div>
+        )}
+      </div>
+
+      {/* Native PDF Embed Container - always preserved in DOM */}
       <embed
         data-testid="pdf-embed-element"
         src={fileUrl}
         type="application/pdf"
-        className="w-full h-full flex-1 min-h-[600px] lg:min-h-[700px] border-none rounded-b-2xl bg-white dark:bg-stone-900"
+        className={`w-full h-full flex-1 min-h-[600px] lg:min-h-[700px] border-none rounded-b-2xl bg-white dark:bg-stone-900 ${
+          viewMode === 'original' ? 'block' : 'hidden'
+        }`}
       />
 
-      {/* Optional fallback / sample text selection layer */}
-      {sampleText && (
+      {/* Optional fallback / sample text selection layer for original view mode */}
+      {sampleText && viewMode === 'original' && (
         <div className="p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 text-xs sm:text-sm text-stone-800 dark:text-stone-200 select-text leading-relaxed">
           <p>{sampleText}</p>
         </div>
