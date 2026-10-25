@@ -45,6 +45,11 @@ import {
   safeSetLocalStorageItem,
   STORAGE_ROOT_KEY,
 } from '../../lib/storage';
+import {
+  runGuardedAutoBackup,
+  WorkspaceBackupPayload,
+} from '../../lib/autoBackupScheduler';
+import { AutoBackupControlPanel } from './AutoBackupControlPanel';
 
 const defaultRepo: IDataRepository =
   typeof window !== 'undefined'
@@ -346,6 +351,12 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
     setRestoreStatus('submitting');
 
     try {
+      // Capture pre-restore safety snapshot before destructive restore
+      runGuardedAutoBackup(
+        { categories, topics, notes, resources, tags },
+        { trigger: 'pre-restore', label: 'Bản lưu an toàn trước khi khôi phục snapshot máy chủ' }
+      );
+
       const res = await repo.restoreBackupSnapshot({
         snapshot: parsedSnapshot,
         mode: restoreMode,
@@ -390,6 +401,20 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
       }, 1200);
     } else {
       setLegacyImportStatus('error');
+    }
+  };
+
+  const handleRestoreSnapshotFromAutoBackup = async (payload: WorkspaceBackupPayload): Promise<boolean> => {
+    try {
+      const jsonString = JSON.stringify(payload);
+      const success = importAllDataJSON(jsonString);
+      if (success) {
+        await reloadAllData();
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
   };
 
@@ -559,6 +584,20 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
                   {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                   {copied ? 'Đã sao chép!' : 'Sao chép JSON'}
                 </button>
+              </div>
+
+              {/* Modular Guarded Auto-Backup & Snapshot History Panel */}
+              <div className="pt-4 border-t border-stone-200 dark:border-stone-800">
+                <AutoBackupControlPanel
+                  workspacePayload={{
+                    categories,
+                    topics,
+                    notes,
+                    resources,
+                    tags,
+                  }}
+                  onRestoreSnapshot={handleRestoreSnapshotFromAutoBackup}
+                />
               </div>
             </div>
           )}

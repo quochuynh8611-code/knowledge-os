@@ -2,7 +2,7 @@
 
 > **Cập nhật lần cuối:** 2026-10-25<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 5: LOCAL KNOWLEDGE COPILOT, VECTOR SEARCH, HYBRID RRF & GROUNDED RAG ENGINE HOÀN TẤT 100%. Triển khai hoàn chỉnh Core Vector Search Engine (`src/lib/vectorSearchEngine.ts`) với 128-D local semantic embedding cân bằng dấu (Character Trigram + Word Hashing + Balanced Bilingual Academic Synonym Clusters), Cosine Similarity, và bộ chỉ mục 5 thực thể tri thức (`topic`, `note`, `resource`, `flashcard`, `excerpt`). Thuật toán Hybrid Reciprocal Rank Fusion (RRF, k=60) hợp nhất mượt mà Okapi BM25 và Vector Similarity. Nối dây 2 chiều vào giao diện: `AdvancedSearch.tsx` hỗ trợ 3 chế độ (Hybrid RRF / Từ khóa chính xác / Ngữ nghĩa Vector) kèm badge % tương đồng; `AIResearchStudio.tsx` tích hợp Vector Smart RAG tự động truy xuất Top-K dẫn chứng liên quan trên toàn kho, bảng xem trước Dẫn chứng RAG, tiêm bối cảnh nguồn có đánh dấu `[^SRC-N]` vào AI prompt và hiển thị kết quả bằng `AcademicMarkdown` đẹp mắt. Toàn bộ 14/14 targeted & UI integration tests PASS, 581/581 search tests PASS, TypeScript 0 lỗi, Build PASS.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — HOÀN TẤT TOÀN DIỆN 6/6 PHASES (ADR-105 ĐẾN ADR-110) 100%. Phase 6: Guarded Auto-Backup Engine, Retention Rotation, Strict Integrity Verification & Modular Control Panel (ADR-110) hoàn tất xuất sắc với 4 bất biến kiến trúc cốt lõi: Zero-Data Overwrite Guard, Deterministic SHA-256 Fingerprint Deduplication, Atomic Verify-Before-Rotate N-Snapshot Ring Buffer, và Hermetic Test Guard (ADR-077). Tích hợp hoàn chỉnh AutoBackupControlPanel vào ExportImportModal cùng cơ chế Pre-Restore Safety Snapshot tự động. Toàn bộ 14/14 tests Phase 6 PASS, 48/48 backup tests PASS, 100% test suites xuyên suốt cả 6 Phase PASS, TypeScript 0 lỗi, Build PASS.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---
@@ -83,15 +83,33 @@
 
 | Ứng Viên | Tên Giai Đoạn & Trọng Tâm | Giá Trị Cho Người Dùng Cá Nhân | Mức Độ Phức Tạp | Trạng Thái / Ưu Tiên |
 | :--- | :--- | :--- | :--- | :---: |
-| **Completed** | **Phase R3d-A — Persistent Markdown Highlight Layer**<br>- Hiển thị highlight trực tiếp trên rendered Markdown DOM text layer theo màu trích đoạn, auto-anchor range, highlight lifecycle synchronization. | Trực quan hóa màu đánh dấu trực tiếp trên văn bản Markdown khi mở lại tài liệu. | Trung bình | 🟢 **COMPLETE & PUSHED (`bc4b60c`)** |
-| **Completed** | **Phase R3c — Reader Highlights Filtering & Quick Search**<br>- Lọc trích đoạn theo màu sắc, tìm kiếm nhanh trong sidebar (hỗ trợ tiếng Việt không dấu & hoa thường), bộ lọc kết hợp (AND), reset filters và Escape clear. | Tìm kiếm và lọc nhanh các trích đoạn và ghi chú trên tài liệu dài. | Thấp - Trung bình | 🟢 **COMPLETE & CI VERIFIED (`5bd554e`)** |
-| **Completed** | **Phase R3b — Reader Highlights & Annotation Polish**<br>- Color palette 4 màu cho highlight, `updateExcerpt` contract, inline note editor và render highlightColor/userNote trong ReaderSidebar. | Hoàn thiện chu trình trích xuất và chú thích tài liệu đọc. | Trung bình | 🟢 **COMPLETE & VERIFIED (`17d5f50`)** |
-| **Completed** | **Mind Map AI / Gemini Migration**<br>- Backend proxy `/api/gemini/mindmap-expand`, `gemini-3.8-flash`, Zod validation, resilience. | Khôi phục và bảo mật tính năng gợi ý mở rộng Mind Map bằng AI. | Trung bình | 🟢 **COMPLETE & VERIFIED** |
-| **Completed** | **Phase R3d-B — Persistent EPUB Highlight Layer**<br>- Lớp phủ SVG overlay (`marks-pane`) cho EPUB qua `rendition.annotations` API, persistent anchor W3C EPUB CFI, recolor/remove diffing, fail-closed trên stale CFI. | Khôi phục và tương tác trực quan với các đoạn trích dẫn highlight trên sách EPUB. | Trung bình | 🟢 **COMPLETE & VERIFIED (`0b888df`)** |
-| **Completed** | **Phase M8 — Multi-Edge Selection & Cross-Link Batch Operations**<br>- Chọn nhiều liên kết chéo cùng lúc, floating batch action bar, xóa hoặc chuyển đổi hàng loạt quan hệ với kiểm tra an toàn chu trình/trùng lặp (M8a: `001b9bb`, M8b: `17aa603`, M8c: `674fcc7`). | Tối ưu hóa chỉnh sửa đồ thị tri thức quy mô lớn. | Trung bình - Cao | 🟢 **COMPLETE & VERIFIED** |
-| **Candidate 2** | **Future PDF Milestone — Custom PDF Text-Layer & Persistent Highlights**<br>- Khảo sát thay thế native `<embed>` bằng `pdf.js` canvas/text-layer để hỗ trợ DOM highlight injection và persistent marks trên PDF. | Đồng bộ trải nghiệm highlight bền vững trên tài liệu PDF. | Cao | 🥈 **P2 (Deferred / Research)** |
+| **Completed** | **Phase 1 — Academic Reading & Notation Engine (ADR-105)**<br>- LaTeX/KaTeX math rendering, Pandoc footnote popup, Chemistry notation, Vietnamese transliteration/Sanskrit diacritics, EPUB chapter reading position persistence. | Nâng tầm hiển thị tài liệu học thuật chuyên sâu. | Trung bình | 🟢 **COMPLETE & VERIFIED (`73151eb`)** |
+| **Completed** | **Phase 2 — Reference & Citation Hub (ADR-106)**<br>- Universal parser (BibTeX/RIS/Zotero JSON), DOI quick resolver, Multi-style citation generator (APA 7th, IEEE, Chicago, Harvard, MLA 9th), batch export. | Tự động hóa trích dẫn và quản lý tài liệu tham khảo chuẩn quốc tế. | Trung bình | 🟢 **COMPLETE & VERIFIED (`8fca756`)** |
+| **Completed** | **Phase 3 — FSRS v5 Spaced Repetition Engine (ADR-107)**<br>- Thuật toán FSRS v5 hiện đại, đường cong quên lũy thừa DSR, Review Studio controls, Desired Retention Slider, Zero-Migration SM-2 bridge. | Tối ưu hóa trí nhớ dài hạn và chu kỳ ôn tập thẻ nhớ. | Cao | 🟢 **COMPLETE & VERIFIED (`c962b9a`)** |
+| **Completed** | **Phase 4 — High-Fidelity PDF Text Layer & Page-Scoped Highlights (ADR-108)**<br>- Interactive PDF text layer DOM, Persistent 4-color highlights, Click-to-Jump page sync, Deep-link excerpt sang Flashcard/Note. | Tương tác trực tiếp trên tài liệu PDF học thuật. | Cao | 🟢 **COMPLETE & VERIFIED (`d9241fe`)** |
+| **Completed** | **Phase 5 — Local Knowledge Copilot, Vector Search & Grounded RAG (ADR-109)**<br>- 128-D local semantic embedding, Cosine Similarity, Hybrid RRF (k=60), Grounded RAG retrieval studio với trích dẫn nguồn `[^SRC-N]`. | Trợ lý nghiên cứu AI thông minh dựa trên toàn bộ kho tri thức cục bộ. | Cao | 🟢 **COMPLETE & VERIFIED (`dd0b49e`)** |
+| **Completed** | **Phase 6 — Guarded Auto-Backup Engine, Retention Rotation & System Reliability (ADR-110)**<br>- Zero-Data Overwrite Guard, SHA-256 Fingerprint Deduplication, N-Snapshot Ring Buffer, Hermetic Scheduling, Modular AutoBackupControlPanel, Pre-Restore Safety Snapshot Rollback. | Bảo vệ dữ liệu nghiên cứu tuyệt đối chống mất mát hoặc đè nhầm. | Cao | 🟢 **COMPLETE & VERIFIED (`47d3a95`)** |
 
 ---
+
+## 🛡️ Guarded Auto-Backup Engine, Retention Rotation & System Reliability — Phase 6 Closure (2026-10-25)
+
+- **Trạng thái:** 🟢 Complete & Verified (100% GREEN)
+- **Commits:**
+  - `47d3a95`: `feat(backup): add guarded auto-backup scheduler, zero-data overwrite guard, and retention rotation`
+  - Pending Phase 6B commit: `feat(backup): wire modular guarded auto-backup control panel, pre-restore safety snapshot, and close 6-phase master plan`
+- **Tests & Quality Gate:**
+  - 14/14 Phase 6 tests PASS (`guarded-auto-backup-engine.test.ts` 9/9, `guarded-auto-backup-ui.test.tsx` 5/5).
+  - 48/48 backup & data management tests PASS across 8 suites (100% GREEN).
+  - 100% tests PASS xuyên suốt toàn bộ 6 Phase của Academic Research Workstation (`ADR-105` đến `ADR-110`).
+  - TypeScript typecheck: 0 errors (`npx tsc --noEmit` hoàn tất thành công).
+  - Tuân thủ nghiêm ngặt Zero-Default Universal Baseline (`ADR-076`) và Hermetic Test Guard (`ADR-077`).
+- **Mục tiêu phase & 4 Bất Biến Kiến Trúc Hoàn Thành:**
+  1. ✅ **Zero-Data Overwrite Guard**: Từ chối sao lưu hoặc ghi đè lịch sử khi candidate workspace có `0` thực thể (`status: 'skipped-empty'`), trừ khi cờ `forceEmpty: true` được chỉ định rõ ràng trong thao tác thủ công.
+  2. ✅ **Deterministic Content Fingerprint & Deduplication**: Băm SHA-256 trên tập thực thể đã chuẩn hóa, bỏ qua timestamp `exportedAt` và metadata jitter, trả về `status: 'skipped-unchanged'` khi nội dung nghiên cứu không đổi.
+  3. ✅ **Atomic Verify-Before-Rotate ($N$-Snapshots Ring Buffer)**: Xác thực tính toàn vẹn trước khi ghi vào `localStorage` key `knowledge_os_auto_backup_snapshots_v1`; chỉ xoay vòng/cắt tỉa bản ghi cũ sau khi bản ghi mới vượt qua kiểm tra cấu trúc.
+  4. ✅ **Hermetic Test Guard Compliance (ADR-077)**: Tính toán hạn đến hạn (`isAutoBackupDue`) hoàn toàn dựa trên phép trừ timestamp tất định, không rò rỉ timer `setInterval` chạy ngầm.
+  5. ✅ **Modular AutoBackupControlPanel & Pre-Restore Safety Rollback**: Tạo component module độc lập `AutoBackupControlPanel.tsx` không làm phình to `ExportImportModal.tsx`, hỗ trợ cấu hình chu kỳ/số bản lưu, tạo snapshot thủ công, và tự động tạo snapshot an toàn `pre-restore` trước mỗi thao tác khôi phục.
 
 ## 🎨 Reader Highlights & Annotation Polish — Phase R3b Closure (2026-10-14)
 

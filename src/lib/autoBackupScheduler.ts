@@ -419,7 +419,7 @@ export function runGuardedAutoBackup(
   if (inspection.totalEntities === 0 && !options?.forceEmpty) {
     return {
       status: 'skipped-empty',
-      reason: 'Workspace is empty (0 entities). Auto-backup refused to overwrite history.',
+      reason: 'Workspace is empty (0 thực thể / 0 entities). Auto-backup refused to overwrite history (từ chối ghi đè).',
       retainedCount: existingSnapshots.length,
     };
   }

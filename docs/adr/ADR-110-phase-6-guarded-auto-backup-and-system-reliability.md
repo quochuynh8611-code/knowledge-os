@@ -1,7 +1,7 @@
 # ADR-110: Phase 6 — Guarded Auto-Backup Engine, Retention Rotation & Strict Integrity Verification
 
 ## Status
-Accepted
+Implemented & Verified (Phase 6A: Core Engine & Invariants; Phase 6B: Modular Control Panel & Pre-Restore Rollback)
 
 ## Context
 Across academic research workflows, researchers continuously create, modify, and link literature references, notes, PDF excerpts, and spaced-repetition flashcards. A catastrophic data loss event (such as accidental browser storage eviction, failed schema restore, or an empty workspace overwrite) would destroy months of intellectual synthesis.
