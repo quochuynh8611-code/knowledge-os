@@ -55,6 +55,13 @@ describe('Phase R1: Research Library View & Filtering Contract', () => {
             json: () => Promise.resolve(mockLibraryDocs),
           });
         }
+        if (url.includes('/api/archive')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ documents: [] }),
+          });
+        }
         return Promise.reject(new Error('Unknown URL: ' + url));
       })
     );
