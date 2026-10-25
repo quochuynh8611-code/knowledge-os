@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { X, Check, Edit3, Tag, Hash, Bookmark, Link2, Trash2, Plus } from "lucide-react";
+import { X, Check, Edit3, Tag, Hash, Bookmark, Link2, Trash2, Plus, Sparkles } from "lucide-react";
 import { MindMapTreeNode } from "../../lib/mindmapProjection";
 import { MindMapDocumentEdge } from "../../types/mindmapDocument";
 import { LinkType } from "../../types";
 import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
+import { hasAcademicNotation } from "../../lib/academicNotation";
+import { AcademicMarkdown } from "../ui/AcademicMarkdown";
 
 export interface MindMapDrawerNode extends MindMapTreeNode {
   semanticBadge?: string;
@@ -173,6 +175,20 @@ export function MindMapNodeDrawer({
               <span>Áp dụng</span>
             </button>
           </div>
+          {hasAcademicNotation(titleInput) && (
+            <div
+              data-testid="drawer-node-academic-preview"
+              className="p-2.5 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-xs text-stone-800 dark:text-stone-200 shadow-2xs space-y-1"
+            >
+              <div className="text-[10px] uppercase font-bold text-amber-800 dark:text-amber-400 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Xem trước công thức:</span>
+              </div>
+              <div className="font-medium">
+                <AcademicMarkdown content={titleInput} inline />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Phase M5a: Cross-Links Section */}

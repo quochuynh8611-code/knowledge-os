@@ -1,7 +1,7 @@
 # ADR-105: Phase 1 — Academic Notation Engine (KaTeX, mhchem, Mermaid) & Collision Guards
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** ✅ ACCEPTED & READY FOR IMPLEMENTATION
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Hoàn tất 100% Chặng 1A, 1B, 1C)
 - **Ngày quyết định:** 2026-10-25
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Core Parser, Math & Chemistry Notation, Diagram Extraction, Typography & Cloze Collision Guards

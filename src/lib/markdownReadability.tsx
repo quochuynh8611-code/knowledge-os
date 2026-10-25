@@ -20,6 +20,8 @@ import {
   TransclusionResult,
   MAX_TRANSCLUSION_DEPTH,
 } from './obsidianTransclusionResolver';
+import { renderAcademicMath } from './academicNotation';
+import { MermaidDiagramBlock } from '../components/ui/MermaidDiagramBlock';
 
 /**
  * Parses canonical archive URI (archive://<documentId>?loc=<locator>)
@@ -637,9 +639,9 @@ export function renderInlineMarkdownWithWikiLinks(
   docPath?: string,
   sourceType?: 'docs' | 'vault' | 'local' | 'auto'
 ): React.ReactNode[] {
-  // Regex bắt các token: Embeds ![[...]], Images ![alt](url), Wiki links [[...]], Markdown links [text](url), Bold, Italic, Code, Strike
+  // Regex bắt các token: Embeds ![[...]], Images ![alt](url), Wiki links [[...]], Markdown links [text](url), Bold, Italic, Code, Strike, Block Math $$...$$, Inline Math $...$
   const regex =
-    /(!\[\[.*?\]\]|!\[.*?\]\(.*?\)|\[\[.*?\]\]|\[.*?\]\(.*?\)|(?:\*\*|__).*?(?:\*\*|__)|(?:\*|_).*?(?:\*|_)|`.*?`|~~.*?~~)/g;
+    /(!\[\[.*?\]\]|!\[.*?\]\(.*?\)|\[\[.*?\]\]|\[.*?\]\(.*?\)|(?:\*\*|__).*?(?:\*\*|__)|(?:\*|_).*?(?:\*|_)|`.*?`|~~.*?~~|\$\$[\s\S]+?\$\$|(?<!\\)\$(?!\s)[^\$\n]+?(?<!\s)\$(?![0-9]))/g;
   const parts = text.split(regex);
 
   return parts.map((part, index) => {
@@ -890,7 +892,7 @@ export function renderInlineMarkdownWithWikiLinks(
                   onOpenArchiveLink(parsedArchive.documentId, parsedArchive.locator);
                 }
               }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-semibold rounded-md text-xs sm:text-sm border border-amber-300 dark:border-amber-700 transition mx-0.5 cursor-pointer align-baseline"
+              className="citation-source-deeplink inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 dark:bg-amber-950/80 hover:bg-amber-200 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 font-semibold rounded-md text-xs sm:text-sm border border-amber-300 dark:border-amber-700 transition mx-0.5 cursor-pointer align-baseline"
               title={`Mở tài liệu: ${parsedArchive.documentId}${parsedArchive.locator ? ` (Vị trí: ${parsedArchive.locator})` : ''}`}
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400 shrink-0" />
@@ -963,7 +965,37 @@ export function renderInlineMarkdownWithWikiLinks(
       );
     }
 
-    // 7. Plain text segment
+    // 7. Block Math: $$...$$
+    if (part.startsWith('$$') && part.endsWith('$$') && part.length >= 4) {
+      const innerMath = part.slice(2, -2).trim();
+      const mathHtml = renderAcademicMath(innerMath, { displayMode: true });
+      return (
+        <span
+          key={index}
+          className="academic-block-math inline-block my-2 text-center w-full"
+          dangerouslySetInnerHTML={{ __html: mathHtml }}
+        />
+      );
+    }
+
+    // 8. Inline Math: $...$
+    if (part.startsWith('$') && part.endsWith('$') && part.length >= 3 && !part.startsWith('$$')) {
+      const innerMath = part.slice(1, -1);
+      // Reject pure currency amount like $100 or $50.00
+      if (/^\d+(?:\.\d{1,2})?$/.test(innerMath.trim())) {
+        return <span key={index}>{part}</span>;
+      }
+      const mathHtml = renderAcademicMath(innerMath, { displayMode: false });
+      return (
+        <span
+          key={index}
+          className="academic-inline-math inline-block align-baseline"
+          dangerouslySetInnerHTML={{ __html: mathHtml }}
+        />
+      );
+    }
+
+    // 9. Plain text segment
     return <span key={index}>{part}</span>;
   });
 }
@@ -1034,7 +1066,10 @@ export function MarkdownReadabilityRenderer({
     );
 
   let inCodeBlock = false;
+  let codeBlockLang = '';
   let codeBlockBuffer: string[] = [];
+  let inBlockMath = false;
+  let blockMathBuffer: string[] = [];
   let blockquoteBuffer: string[] = [];
   let listBuffer: ListItem[] = [];
   let tableBuffer: string[] = [];
@@ -1162,21 +1197,30 @@ export function MarkdownReadabilityRenderer({
     if (trimmed.startsWith('```')) {
       if (inCodeBlock) {
         // End of code block
-        blocks.push(
-          <pre
-            key={`codeblock-${i}`}
-            className="p-4 sm:p-5 bg-stone-900 text-stone-100 dark:bg-stone-950 rounded-2xl font-mono text-xs sm:text-sm overflow-x-auto my-4 border border-stone-800 leading-relaxed shadow-xs"
-          >
-            <code>{codeBlockBuffer.join('\n')}</code>
-          </pre>
-        );
+        const lang = codeBlockLang.toLowerCase();
+        if (lang === 'mermaid') {
+          blocks.push(
+            <MermaidDiagramBlock key={`mermaid-${i}`} code={codeBlockBuffer.join('\n')} />
+          );
+        } else {
+          blocks.push(
+            <pre
+              key={`codeblock-${i}`}
+              className="p-4 sm:p-5 bg-stone-900 text-stone-100 dark:bg-stone-950 rounded-2xl font-mono text-xs sm:text-sm overflow-x-auto my-4 border border-stone-800 leading-relaxed shadow-xs"
+            >
+              <code>{codeBlockBuffer.join('\n')}</code>
+            </pre>
+          );
+        }
         codeBlockBuffer = [];
+        codeBlockLang = '';
         inCodeBlock = false;
       } else {
         flushBlockquote(i);
         flushList(i);
         flushTable(i);
         inCodeBlock = true;
+        codeBlockLang = trimmed.slice(3).trim();
       }
       continue;
     }
@@ -1184,6 +1228,54 @@ export function MarkdownReadabilityRenderer({
     if (inCodeBlock) {
       codeBlockBuffer.push(line);
       continue;
+    }
+
+    // 1.5. Multiline or standalone Block Math ($$ ... $$)
+    if (inBlockMath) {
+      if (trimmed.endsWith('$$')) {
+        const mathSegment = line.replace(/\$\$$/, '');
+        if (mathSegment.trim()) blockMathBuffer.push(mathSegment);
+        const mathContent = blockMathBuffer.join('\n').trim();
+        const mathHtml = renderAcademicMath(mathContent, { displayMode: true });
+        blocks.push(
+          <div
+            key={`blockmath-${i}`}
+            className="academic-block-math my-4 overflow-x-auto text-center"
+            dangerouslySetInnerHTML={{ __html: mathHtml }}
+          />
+        );
+        inBlockMath = false;
+        blockMathBuffer = [];
+      } else {
+        blockMathBuffer.push(line);
+      }
+      continue;
+    }
+
+    if (trimmed.startsWith('$$')) {
+      if (trimmed.endsWith('$$') && trimmed.length >= 4) {
+        flushBlockquote(i);
+        flushList(i);
+        flushTable(i);
+        const mathContent = trimmed.slice(2, -2).trim();
+        const mathHtml = renderAcademicMath(mathContent, { displayMode: true });
+        blocks.push(
+          <div
+            key={`blockmath-${i}`}
+            className="academic-block-math my-4 overflow-x-auto text-center"
+            dangerouslySetInnerHTML={{ __html: mathHtml }}
+          />
+        );
+        continue;
+      } else {
+        flushBlockquote(i);
+        flushList(i);
+        flushTable(i);
+        inBlockMath = true;
+        const initialSegment = line.replace(/^\$\$/, '');
+        blockMathBuffer = initialSegment.trim() ? [initialSegment] : [];
+        continue;
+      }
     }
 
     // 2. Table row detection (| col1 | col2 |)

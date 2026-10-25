@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { parseClozeDeletions } from "../../lib/clozeParser";
+import { parseClozeDeletions, extractClozeOccurrences } from "../../lib/clozeParser";
+import { AcademicMarkdown } from "../ui/AcademicMarkdown";
 import type { Flashcard, FlashcardCitationProvenance } from "../../types/flashcard";
 import { Sparkles, Eye, RotateCw, Pencil, History, Quote } from "lucide-react";
 
@@ -35,29 +36,35 @@ export function FlashcardCardView({
     return parseClozeDeletions(card.front);
   }, [card.front, isCloze]);
 
+  const clozeOccurrences = useMemo(() => {
+    if (!isCloze) return [];
+    return extractClozeOccurrences(card.front);
+  }, [card.front, isCloze]);
+
   // Render front content
   const renderFront = () => {
-    if (isCloze && clozeItems.length > 0) {
+    if (isCloze && clozeOccurrences.length > 0) {
+      const firstOcc = clozeOccurrences[0];
+      const beforeText = card.front.slice(0, firstOcc.start);
+      const afterText = card.front.slice(firstOcc.end);
       const firstCloze = clozeItems[0];
-      // Replace cloze syntax with a styled blank placeholder
-      const parts = card.front.split(/\{\{c\d+::[\s\S]*?\}\}/);
 
       return (
         <div className="space-y-4">
           <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
-            {parts[0]}
+            <AcademicMarkdown content={beforeText} inline />
             <span
               data-testid="cloze-deletion"
               className="inline-flex items-center px-3 py-1 mx-1 rounded-lg bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-mono font-bold tracking-widest text-sm shadow-xs"
             >
               [...]
             </span>
-            {parts[1] || ""}
+            <AcademicMarkdown content={afterText} inline />
           </div>
-          {firstCloze.hint && (
+          {firstCloze?.hint && (
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-300">
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>Gợi ý: {firstCloze.hint}</span>
+              <span>Gợi ý: <AcademicMarkdown content={firstCloze.hint} inline /></span>
             </div>
           )}
         </div>
@@ -65,8 +72,8 @@ export function FlashcardCardView({
     }
 
     return (
-      <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100 whitespace-pre-wrap">
-        {card.front}
+      <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
+        <AcademicMarkdown content={card.front} />
       </div>
     );
   };
@@ -75,24 +82,24 @@ export function FlashcardCardView({
   const renderBack = () => {
     return (
       <div className="space-y-4 w-full">
-        {isCloze && clozeItems.length > 0 ? (
+        {isCloze && clozeOccurrences.length > 0 ? (
           <>
             <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
-              {card.front.split(/\{\{c\d+::[\s\S]*?\}\}/)[0]}
+              <AcademicMarkdown content={card.front.slice(0, clozeOccurrences[0].start)} inline />
               <span className="inline-flex items-center px-3 py-1 mx-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 font-bold text-base shadow-xs animate-in fade-in duration-300">
-                {clozeItems[0].answer}
+                <AcademicMarkdown content={clozeOccurrences[0].answer} inline />
               </span>
-              {card.front.split(/\{\{c\d+::[\s\S]*?\}\}/)[1] || ""}
+              <AcademicMarkdown content={card.front.slice(clozeOccurrences[0].end)} inline />
             </div>
             {card.back && (
-              <div className="pt-3 border-t border-stone-200 dark:border-stone-800 text-sm md:text-base text-stone-600 dark:text-stone-300 whitespace-pre-wrap">
-                {card.back}
+              <div className="pt-3 border-t border-stone-200 dark:border-stone-800 text-sm md:text-base text-stone-600 dark:text-stone-300">
+                <AcademicMarkdown content={card.back} />
               </div>
             )}
           </>
         ) : (
-          <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100 whitespace-pre-wrap">
-            {card.back}
+          <div className="text-lg md:text-xl font-medium leading-relaxed text-stone-900 dark:text-stone-100">
+            <AcademicMarkdown content={card.back} />
           </div>
         )}
 

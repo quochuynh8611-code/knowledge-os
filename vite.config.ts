@@ -33,6 +33,12 @@ export default defineConfig(() => {
               if (id.includes('recharts') || id.includes('d3-')) {
                 return 'vendor-charts';
               }
+              if (id.includes('katex')) {
+                return 'vendor-katex';
+              }
+              if (id.includes('mermaid') || id.includes('dagre') || id.includes('khroma') || id.includes('stylis')) {
+                return 'vendor-mermaid';
+              }
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';
               }

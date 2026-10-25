@@ -1,8 +1,8 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-17<br>
+> **Cập nhật lần cuối:** 2026-10-25<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **COMMERCIAL ZERO-DEFAULT UNIVERSAL BASELINE & DIRECT NOTEBOOKLM MCP INTEGRATION: Hoàn tất trung tính hóa toàn bộ nội dung chuyên biệt, thiết lập baseline sạch 0 bản ghi cho người dùng mới; thiết lập Hermetic Test Guard chặn rò rỉ dữ liệu test vào database; bảo toàn tích hợp trực tiếp 2 chiều Google NotebookLM MCP. 68/68 commercial neutralization regression tests PASS, 503/503 full suite tests PASS, 0 lỗi TypeScript typecheck.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 1: ACADEMIC NOTATION ENGINE HOÀN TẤT 100%. Tích hợp trọn vẹn KaTeX, mhchem, dynamic Mermaid diagram lazy splitting, giải quyết triệt để 3 va chạm (Tiền tệ vs Math, Typography vs Chemical Arrows, Cloze Deletion vs LaTeX nested braces). Bảo toàn 100% tính năng khảo cứu (Citation deeplinks, Persistent Highlights, Transclusion). Toàn bộ 29/29 targeted & UI integration tests PASS, regression suites PASS, TypeScript 0 lỗi, Build PASS.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---

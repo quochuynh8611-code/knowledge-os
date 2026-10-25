@@ -32,6 +32,7 @@ import {
 } from "../../lib/cardBrowserLogic";
 import { CardReviewHistoryModal } from "./CardReviewHistoryModal";
 import { CardConfirmModal } from "./CardConfirmModal";
+import { AcademicMarkdown } from "../ui/AcademicMarkdown";
 
 export interface CardBrowserProps {
   topicId?: string;
@@ -506,7 +507,7 @@ export function CardBrowser({
                       {/* Front Content */}
                       <td className="p-3 max-w-[220px]">
                         <div className="font-medium text-stone-900 dark:text-stone-100 truncate" title={card.front}>
-                          {card.front}
+                          <AcademicMarkdown content={card.front} inline />
                         </div>
                         <span className="text-[10px] font-mono text-stone-400 uppercase">
                           {card.type}
@@ -516,7 +517,7 @@ export function CardBrowser({
                       {/* Back Content */}
                       <td className="p-3 max-w-[200px]">
                         <div className="text-stone-600 dark:text-stone-300 truncate" title={card.back}>
-                          {card.back}
+                          <AcademicMarkdown content={card.back} inline />
                         </div>
                       </td>
 
