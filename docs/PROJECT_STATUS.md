@@ -2,7 +2,7 @@
 
 > **Cập nhật lần cuối:** 2026-10-25<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 1: ACADEMIC NOTATION ENGINE HOÀN TẤT 100%. Tích hợp trọn vẹn KaTeX, mhchem, dynamic Mermaid diagram lazy splitting, giải quyết triệt để 3 va chạm (Tiền tệ vs Math, Typography vs Chemical Arrows, Cloze Deletion vs LaTeX nested braces). Bảo toàn 100% tính năng khảo cứu (Citation deeplinks, Persistent Highlights, Transclusion). Toàn bộ 29/29 targeted & UI integration tests PASS, regression suites PASS, TypeScript 0 lỗi, Build PASS.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 2: REFERENCE & CITATION HUB HOÀN TẤT 100%. Hệ thống hỗ trợ trọn vẹn 8 định dạng trích dẫn (APA 7th, MLA 9th, Chicago 17th, IEEE, Harvard, BibTeX, RIS, Markdown Footnotes), bộ giải mã tệp học thuật vạn năng (BibTeX, RIS, Zotero CSL-JSON), tra cứu tức thời CrossRef DOI Quick Resolver, giao diện nhập hàng loạt phát hiện trùng lặp thông minh (Deduplication Review Modal), và cơ chế Zero DB Migration bảo toàn 100% database hiện hành. Toàn bộ 49/49 targeted tests PASS, TypeScript 0 lỗi, Build PASS.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---

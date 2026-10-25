@@ -13,11 +13,14 @@ import {
   Eye,
   Quote,
   FileDown,
+  UploadCloud,
 } from 'lucide-react';
 import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
+import { ReferenceImportModal } from '../modals/ReferenceImportModal';
+import { extractAcademicMetadataFromResource } from '../../lib/citationGenerator';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget, resolveResourceReaderDescriptor } from '../../lib/resourceOpenResolver';
 import { resolveReaderFileUrl } from '../../lib/readerDocumentResolver';
@@ -36,6 +39,7 @@ export function ResourcesManager() {
   const [topicFilter, setTopicFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
@@ -92,13 +96,23 @@ export function ResourcesManager() {
         categoryLabel="Thư Viện & Nguồn Tư Liệu"
         categoryIcon={Library}
         actions={
-          <ToolbarButton
-            variant="primary"
-            icon={Plus}
-            onClick={() => setShowAddModal(true)}
-          >
-            Thêm Tài Liệu Mới
-          </ToolbarButton>
+          <div className="flex items-center gap-2">
+            <ToolbarButton
+              variant="secondary"
+              icon={UploadCloud}
+              onClick={() => setShowImportModal(true)}
+              data-testid="btn-open-reference-import"
+            >
+              Nhập BibTeX / Zotero
+            </ToolbarButton>
+            <ToolbarButton
+              variant="primary"
+              icon={Plus}
+              onClick={() => setShowAddModal(true)}
+            >
+              Thêm Tài Liệu Mới
+            </ToolbarButton>
+          </div>
         }
       />
 
@@ -178,6 +192,7 @@ export function ResourcesManager() {
         {filteredResources.map((res) => {
           const Icon = getTypeIcon(res.type);
           const statusVariant = getTypeStatusVariant(res.type);
+          const meta = extractAcademicMetadataFromResource(res);
 
           return (
             <SurfaceCard
@@ -210,10 +225,30 @@ export function ResourcesManager() {
                   Chủ đề: {res.topicTitle}
                 </p>
 
-                {res.notes && (
+                {meta.cleanNotes && (
                   <p className="text-xs text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-stone-800/50 p-2.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 line-clamp-3 leading-relaxed">
-                    {res.notes}
+                    {meta.cleanNotes}
                   </p>
+                )}
+
+                {(meta.journal || meta.year || meta.doi) && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
+                    {meta.journal && (
+                      <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/60 dark:border-stone-700/60 truncate max-w-[200px]" title={meta.journal}>
+                        {meta.journal}
+                      </span>
+                    )}
+                    {meta.year && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200/60 dark:border-stone-700/60">
+                        {meta.year}
+                      </span>
+                    )}
+                    {meta.doi && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60" title={`DOI: ${meta.doi}`}>
+                        DOI: {meta.doi}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -331,6 +366,13 @@ export function ResourcesManager() {
           />
         </React.Suspense>
       )}
+
+      {/* Reference Import Modal */}
+      <ReferenceImportModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        defaultTopicId={topicFilter !== 'all' ? topicFilter : undefined}
+      />
     </div>
   );
 }

@@ -32,8 +32,9 @@ export function normalizeDoi(input: string | undefined | null): string | null {
  */
 export function lookupDoiMetadata(
   rawDoi: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl?: typeof fetch
 ): Promise<DoiLookupResult> {
+  const activeFetch = fetchImpl || globalThis.fetch;
   const doi = normalizeDoi(rawDoi);
   if (!doi) {
     return Promise.resolve({
@@ -47,7 +48,7 @@ export function lookupDoiMetadata(
 
   const endpoint = `https://api.crossref.org/works/${encodeURIComponent(doi)}`;
 
-  return fetchImpl(endpoint, {
+  return activeFetch(endpoint, {
     method: 'GET',
     headers: {
       Accept: 'application/json',
@@ -106,7 +107,7 @@ export function lookupDoiMetadata(
 
       // 4. Năm xuất bản
       let year: string | undefined;
-      const published = message.published || message['published-print'] || message['published-online'] || message.created;
+      const published = message.issued || message.published || message['published-print'] || message['published-online'] || message.created;
       const dateParts = published?.['date-parts']?.[0];
       if (Array.isArray(dateParts) && dateParts.length > 0) {
         year = dateParts[0].toString();

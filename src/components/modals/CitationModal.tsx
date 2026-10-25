@@ -80,40 +80,30 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-stone-200 dark:border-stone-800 px-6 bg-stone-50/50 dark:bg-stone-900/50">
-          <button
-            data-testid="tab-citation-apa"
-            onClick={() => handleFormatChange('apa')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'apa'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" /> APA 7th Edition
-          </button>
-          <button
-            data-testid="tab-citation-bibtex"
-            onClick={() => handleFormatChange('bibtex')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'bibtex'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <Code className="w-3.5 h-3.5" /> BibTeX
-          </button>
-          <button
-            data-testid="tab-citation-markdown"
-            onClick={() => handleFormatChange('markdown')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'markdown'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" /> Markdown Footnote
-          </button>
+        <div className="flex border-b border-stone-200 dark:border-stone-800 px-4 bg-stone-50/50 dark:bg-stone-900/50 overflow-x-auto scrollbar-thin">
+          {[
+            { id: 'apa' as CitationFormat, label: 'APA 7th', testId: 'tab-citation-apa' },
+            { id: 'mla' as CitationFormat, label: 'MLA 9th', testId: 'tab-citation-mla' },
+            { id: 'chicago' as CitationFormat, label: 'Chicago 17th', testId: 'tab-citation-chicago' },
+            { id: 'ieee' as CitationFormat, label: 'IEEE', testId: 'tab-citation-ieee' },
+            { id: 'harvard' as CitationFormat, label: 'Harvard', testId: 'tab-citation-harvard' },
+            { id: 'bibtex' as CitationFormat, label: 'BibTeX', testId: 'tab-citation-bibtex' },
+            { id: 'ris' as CitationFormat, label: 'RIS', testId: 'tab-citation-ris' },
+            { id: 'markdown' as CitationFormat, label: 'Markdown', testId: 'tab-citation-markdown' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              data-testid={tab.testId}
+              onClick={() => handleFormatChange(tab.id)}
+              className={`py-3 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                format === tab.id
+                  ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
+                  : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Body & Citation Preview */}
@@ -121,14 +111,19 @@ export function CitationModal({ isOpen, onClose, resource }: CitationModalProps)
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-stone-600 dark:text-stone-400 uppercase tracking-wider">
               {format === 'apa' && 'Định dạng APA 7th (Chuẩn tham chiếu bài báo & luận văn):'}
+              {format === 'mla' && 'Định dạng MLA 9th (Nhân văn, Văn học & Nghệ thuật):'}
+              {format === 'chicago' && 'Định dạng Chicago 17th (Lịch sử & Khoa học Xã hội):'}
+              {format === 'ieee' && 'Định dạng IEEE (Kỹ thuật điện & Khoa học Máy tính):'}
+              {format === 'harvard' && 'Định dạng Harvard (Kinh tế, Quản trị & Y sinh):'}
               {format === 'bibtex' && 'Khối BibTeX (Tương thích Zotero, LaTeX & Overleaf):'}
+              {format === 'ris' && 'Định dạng RIS (Zotero, EndNote & Mendeley):'}
               {format === 'markdown' && 'Định dạng Markdown Footnote (Tương thích Obsidian & cá nhân):'}
             </label>
             <textarea
               data-testid="citation-preview"
               readOnly
               value={currentCitation}
-              rows={format === 'bibtex' ? 7 : 4}
+              rows={format === 'bibtex' || format === 'ris' ? 8 : 4}
               className="w-full p-3.5 bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-2xl text-xs font-mono text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-2 focus:ring-amber-500 select-all leading-relaxed"
             />
           </div>

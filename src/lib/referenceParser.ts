@@ -1,5 +1,6 @@
 import { Resource, ResourceType } from '../types';
 import { normalizeDoi } from './doiResolver';
+import { extractAcademicMetadataFromResource } from './citationGenerator';
 
 export interface DeduplicationResult {
   unique: Partial<Resource>[];
@@ -321,8 +322,9 @@ export function deduplicateImportedResources(
   const titleAuthorIndex = new Map<string, Resource>();
 
   for (const item of existing) {
-    if (item.doi) {
-      const normDoi = normalizeDoi(item.doi);
+    const rawDoi = item.doi || extractAcademicMetadataFromResource(item).doi;
+    if (rawDoi) {
+      const normDoi = normalizeDoi(rawDoi);
       if (normDoi) doiIndex.set(normDoi.toLowerCase(), item);
     }
 

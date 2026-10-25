@@ -1,7 +1,7 @@
 # ADR-106: Phase 2 — Multi-Style Reference & Citation Hub, Universal Parsers (BibTeX/RIS/Zotero CSL-JSON) & DOI Resolver
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** ✅ ACCEPTED & READY FOR IMPLEMENTATION
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Đã hoàn thành Chặng 2A & Chặng 2B)
 - **Ngày quyết định:** 2026-10-25
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Core Reference Engine, Multi-Style Citation Formatter (APA7, MLA9, Chicago17, IEEE, Harvard, BibTeX, RIS, Markdown), Universal Reference Parsers, Deduplication, CrossRef DOI Resolver, Zero DB Migration Adapter

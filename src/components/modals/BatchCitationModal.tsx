@@ -100,40 +100,30 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-stone-200 dark:border-stone-800 px-6 bg-stone-50/50 dark:bg-stone-900/50">
-          <button
-            data-testid="batch-tab-apa"
-            onClick={() => handleFormatChange('apa')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'apa'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" /> APA 7th (Sắp xếp ABC)
-          </button>
-          <button
-            data-testid="batch-tab-bibtex"
-            onClick={() => handleFormatChange('bibtex')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'bibtex'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <Code className="w-3.5 h-3.5" /> BibTeX (.bib)
-          </button>
-          <button
-            data-testid="batch-tab-markdown"
-            onClick={() => handleFormatChange('markdown')}
-            className={`py-3 px-3.5 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 ${
-              format === 'markdown'
-                ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
-                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" /> Markdown Footnotes (.md)
-          </button>
+        <div className="flex border-b border-stone-200 dark:border-stone-800 px-4 bg-stone-50/50 dark:bg-stone-900/50 overflow-x-auto scrollbar-thin">
+          {[
+            { id: 'apa' as CitationFormat, label: 'APA 7th', testId: 'batch-tab-apa' },
+            { id: 'mla' as CitationFormat, label: 'MLA 9th', testId: 'batch-tab-mla' },
+            { id: 'chicago' as CitationFormat, label: 'Chicago 17th', testId: 'batch-tab-chicago' },
+            { id: 'ieee' as CitationFormat, label: 'IEEE', testId: 'batch-tab-ieee' },
+            { id: 'harvard' as CitationFormat, label: 'Harvard', testId: 'batch-tab-harvard' },
+            { id: 'bibtex' as CitationFormat, label: 'BibTeX (.bib)', testId: 'batch-tab-bibtex' },
+            { id: 'ris' as CitationFormat, label: 'RIS (.ris)', testId: 'batch-tab-ris' },
+            { id: 'markdown' as CitationFormat, label: 'Markdown (.md)', testId: 'batch-tab-markdown' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              data-testid={tab.testId}
+              onClick={() => handleFormatChange(tab.id)}
+              className={`py-3 px-3 text-xs font-semibold border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                format === tab.id
+                  ? 'border-amber-700 dark:border-amber-400 text-amber-900 dark:text-amber-300'
+                  : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* Body & Preview */}
@@ -142,7 +132,12 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
             <div className="flex items-center justify-between text-xs text-stone-600 dark:text-stone-400 font-semibold uppercase tracking-wider">
               <span>
                 {format === 'apa' && 'Danh mục tham chiếu APA 7th (Tự động xếp theo thứ tự ABC):'}
+                {format === 'mla' && 'Danh mục tham chiếu MLA 9th (Sắp xếp theo chuẩn MLA):'}
+                {format === 'chicago' && 'Danh mục tham chiếu Chicago 17th (Author-Date):'}
+                {format === 'ieee' && 'Danh mục tham chiếu IEEE (Đánh số thứ tự [1], [2]...):'}
+                {format === 'harvard' && 'Danh mục tham chiếu Harvard (Author-Date):'}
                 {format === 'bibtex' && 'Tệp cơ sở dữ liệu BibTeX (Tương thích Zotero, Mendeley, Overleaf):'}
+                {format === 'ris' && 'Tệp định dạng RIS (Tương thích Zotero, EndNote, Mendeley):'}
                 {format === 'markdown' && 'Danh sách Footnotes liên tục (Tương thích Obsidian):'}
               </span>
               <span className="text-stone-400 dark:text-stone-500 font-mono text-[11px]">
@@ -190,6 +185,7 @@ export function BatchCitationModal({ isOpen, onClose, resources }: BatchCitation
 
             <button
               type="button"
+              data-testid="batch-btn-download"
               onClick={handleDownload}
               className="px-4 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
             >
