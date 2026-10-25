@@ -1,10 +1,10 @@
 # ADR-109: Phase 5 — Local Knowledge Copilot, Vector Search, Hybrid RRF & Grounded RAG Engine
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** ✅ ACCEPTED & READY FOR IMPLEMENTATION
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Hoàn tất 100% Chặng 5A & 5B)
 - **Ngày quyết định:** 2026-10-25
 - **Tác giả:** Staff Software Engineer & Technical Architect
-- **Phạm vi:** Core Vector Search Engine (`src/lib/vectorSearchEngine.ts`), 128-D Local Trigram/Synonym Hashing Embeddings, Hybrid Reciprocal Rank Fusion (RRF), Grounded RAG Retrieval Pipeline, Zero Database Schema Migrations.
+- **Phạm vi:** Core Vector Search Engine (`src/lib/vectorSearchEngine.ts`), 128-D Local Balanced Trigram/Synonym Embeddings, Hybrid Reciprocal Rank Fusion (RRF), Grounded RAG Retrieval Pipeline, AdvancedSearch Hybrid UI, AIResearchStudio Grounded Copilot, Zero Database Schema Migrations.
 
 ---
 

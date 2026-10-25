@@ -34,6 +34,11 @@ import {
   saveObsidianTopicSelection,
 } from '../../lib/aiResearchStorage';
 import { ObsidianSourcePickerModal } from './ObsidianSourcePickerModal';
+import {
+  retrieveGroundedContextForQuery,
+  GroundedContextChunk,
+} from '../../lib/vectorSearchEngine';
+import { AcademicMarkdown } from '../ui/AcademicMarkdown';
 
 const AntigravityHandoffModal = React.lazy(() =>
   import('../integrations/AntigravityHandoffModal').then((m) => ({
@@ -77,6 +82,13 @@ const LIFECYCLE_MESSAGES: Record<ProgressLifecycle, string> = {
 
 export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProps) {
   const { topics, notes, resources, addNote } = useData();
+  const { researchExcerpts = [] } = (useData() as any);
+
+  // Grounded Smart RAG states (Phase 5B)
+  const [isSmartRagEnabled, setIsSmartRagEnabled] = useState<boolean>(true);
+  const [ragRetrievedChunks, setRagRetrievedChunks] = useState<GroundedContextChunk[]>([]);
+  const [showRagPreview, setShowRagPreview] = useState<boolean>(false);
+
   const [selectedTopicId, setSelectedTopicId] = useState<string>(
     currentTopic?.id || topics[0]?.id || ''
   );
@@ -207,6 +219,27 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
     },
   ];
 
+  const handlePreviewRagContext = () => {
+    const text = prompt.trim();
+    if (!text) {
+      setRagRetrievedChunks([]);
+      setShowRagPreview(false);
+      return;
+    }
+    const bundle = retrieveGroundedContextForQuery(
+      text,
+      {
+        topics,
+        notes,
+        resources,
+        excerpts: researchExcerpts,
+      },
+      { topK: 6, minSimilarity: 0.05 }
+    );
+    setRagRetrievedChunks(bundle.chunks);
+    setShowRagPreview(true);
+  };
+
   const handleExecuteResearch = async (customPrompt?: string) => {
     if (isLoading) return;
     const textToSend = customPrompt || prompt;
@@ -228,6 +261,36 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
         content: string;
       }> = [];
 
+      // Smart Vector RAG retrieval (Phase 5B)
+      if (isSmartRagEnabled && textToSend.trim()) {
+        const ragBundle = retrieveGroundedContextForQuery(
+          textToSend,
+          {
+            topics,
+            notes,
+            resources,
+            excerpts: researchExcerpts,
+          },
+          { topK: 6, minSimilarity: 0.05 }
+        );
+        setRagRetrievedChunks(ragBundle.chunks);
+        if (ragBundle.chunks.length > 0) {
+          setShowRagPreview(true);
+          for (const chunk of ragBundle.chunks) {
+            const mappedType: 'canonical_text' | 'note' | 'resource' | 'flashcard' =
+              chunk.sourceType === 'topic' ? 'canonical_text' :
+              chunk.sourceType === 'excerpt' ? 'resource' : (chunk.sourceType as any);
+
+            selectedSources.push({
+              sourceId: chunk.sourceId,
+              sourceType: mappedType,
+              title: `${chunk.citationMarker} ${chunk.title}`,
+              content: chunk.snippet,
+            });
+          }
+        }
+      }
+
       if (sourceScope.canonicalText && (activeTopic.content || activeTopic.description)) {
         selectedSources.push({
           sourceId: `canon-${activeTopic.id}`,
@@ -239,7 +302,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
 
       if (sourceScope.notes) {
         for (const n of topicNotes) {
-          if (n.content?.trim()) {
+          if (n.content?.trim() && !selectedSources.some((s) => s.sourceId === n.id)) {
             selectedSources.push({
               sourceId: n.id,
               sourceType: 'note',
@@ -253,7 +316,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
       if (sourceScope.resources) {
         for (const r of topicResources) {
           const resContent = (r.notes || r.title || '').trim();
-          if (resContent) {
+          if (resContent && !selectedSources.some((s) => s.sourceId === r.id)) {
             selectedSources.push({
               sourceId: r.id,
               sourceType: 'resource',
@@ -669,6 +732,34 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
                 </button>
               )}
 
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  data-testid="checkbox-smart-rag"
+                  checked={isSmartRagEnabled}
+                  disabled={isLoading}
+                  onChange={(e) => setIsSmartRagEnabled(e.target.checked)}
+                  className="rounded text-indigo-700 focus:ring-indigo-600"
+                />
+                <span className="font-semibold text-indigo-900 dark:text-indigo-300 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  Tự động truy xuất RAG ngữ nghĩa toàn kho (Vector RAG)
+                </span>
+              </label>
+
+              {isSmartRagEnabled && (
+                <button
+                  type="button"
+                  data-testid="btn-preview-rag-context"
+                  onClick={handlePreviewRagContext}
+                  className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-700 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                  title="Xem trước các mảnh tri thức liên quan nhất mà RAG tìm được"
+                >
+                  <Sparkles className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                  <span>Xem trước dẫn chứng RAG</span>
+                </button>
+              )}
+
               <label
                 className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 cursor-not-allowed select-none"
                 title="Nghiên cứu bên ngoài chưa được hỗ trợ trong Phase 2A"
@@ -709,6 +800,49 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
                 <p className="text-[10px] text-purple-600 dark:text-purple-400 italic">
                   Ước tính sơ bộ trước submit. Thống kê dung lượng thực tế sẽ được server chuẩn hóa.
                 </p>
+              </div>
+            )}
+
+            {/* Grounded RAG Evidence Panel (Phase 5B) */}
+            {isSmartRagEnabled && showRagPreview && ragRetrievedChunks.length > 0 && (
+              <div
+                data-testid="rag-retrieved-sources-panel"
+                className="mt-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 rounded-xl text-xs space-y-2 animate-in fade-in duration-150"
+              >
+                <div className="flex items-center justify-between font-bold text-indigo-950 dark:text-indigo-200">
+                  <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    Dẫn chứng Ngữ nghĩa RAG ({ragRetrievedChunks.length} nguồn liên quan):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowRagPreview(false)}
+                    className="text-[11px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {ragRetrievedChunks.map((chunk) => (
+                    <div
+                      key={chunk.citationMarker}
+                      className="p-2 bg-white/90 dark:bg-stone-900/80 rounded-lg border border-indigo-100 dark:border-indigo-900/50 space-y-1 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-mono font-bold text-indigo-700 dark:text-indigo-400">
+                          {chunk.citationMarker} [{chunk.sourceType.toUpperCase()}]
+                        </span>
+                        <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1 rounded">
+                          {Math.round(chunk.similarityScore * 100)}% liên quan
+                        </span>
+                      </div>
+                      <p className="font-semibold text-stone-900 dark:text-stone-100 truncate">{chunk.title}</p>
+                      <p className="text-[11px] text-stone-600 dark:text-stone-300 line-clamp-2 italic">
+                        "{chunk.snippet}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -973,8 +1107,8 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               </div>
 
               {/* Markdown Content Body */}
-              <div className="prose prose-stone dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-                {researchResult}
+              <div className="prose prose-stone dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm leading-relaxed font-sans">
+                <AcademicMarkdown content={researchResult} />
               </div>
             </div>
 

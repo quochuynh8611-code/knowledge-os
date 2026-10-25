@@ -28,6 +28,13 @@ import {
 } from "../../lib/savedViewStorage";
 import { PageHeader, SurfaceCard, StatusPill, SectionHeader, ToolbarButton } from "../workbench";
 
+import {
+  HybridKnowledgeSearchEngine,
+  buildSearchableKnowledgeDocuments,
+  SearchMode,
+} from "../../lib/vectorSearchEngine";
+import { Sparkles } from "lucide-react";
+
 export function AdvancedSearch() {
   const {
     searchQuery,
@@ -39,7 +46,9 @@ export function AdvancedSearch() {
     tags,
     openTopicDetail,
   } = useData();
+  const { researchExcerpts = [] } = (useData() as any);
 
+  const [searchMode, setSearchMode] = useState<SearchMode>("keyword");
   const [activeFilter, setActiveFilter] = useState<
     "all" | "topics" | "notes" | "resources"
   >("all");
@@ -110,7 +119,7 @@ export function AdvancedSearch() {
     refreshSavedViews();
   };
 
-  const searchResults = useMemo(() => {
+  const scholarResults = useMemo(() => {
     return searchScholarCollections({
       query: searchQuery,
       topics,
@@ -125,20 +134,112 @@ export function AdvancedSearch() {
     });
   }, [topics, notes, resources, searchQuery, filters]);
 
-  const matchedTopics = useMemo(
-    () => searchResults.topics.map((t) => t.item),
-    [searchResults],
-  );
-  const matchedNotes = useMemo(
-    () => searchResults.notes.map((n) => n.item),
-    [searchResults],
-  );
-  const matchedResources = useMemo(
-    () => searchResults.resources.map((r) => r.item),
-    [searchResults],
-  );
+  const { hybridResults, similarityMap } = useMemo(() => {
+    const simMap = new Map<string, number>();
+    if (searchMode === "keyword" || !searchQuery.trim()) {
+      return { hybridResults: [], similarityMap: simMap };
+    }
 
-  const totalResultsCount = searchResults.totalCount;
+    const docs = buildSearchableKnowledgeDocuments({
+      topics,
+      notes,
+      resources,
+      excerpts: researchExcerpts,
+    });
+    const engine = new HybridKnowledgeSearchEngine(docs);
+    const results = engine.search(searchQuery, {
+      mode: searchMode,
+      limit: 100,
+    });
+
+    results.forEach((r) => {
+      const scoreVal = r.semanticScore > 0 ? r.semanticScore : r.score;
+      simMap.set(r.document.entityId, scoreVal);
+    });
+
+    return { hybridResults: results, similarityMap: simMap };
+  }, [topics, notes, resources, researchExcerpts, searchQuery, searchMode]);
+
+  const matchedTopics = useMemo(() => {
+    if (searchMode === "keyword" || !searchQuery.trim()) {
+      return scholarResults.topics.map((t) => t.item);
+    }
+    const topicIdSet = new Set<string>();
+    const list: typeof topics = [];
+
+    for (const r of hybridResults) {
+      if (r.document.type === "topic") {
+        const top = topics.find((t) => t.id === r.document.entityId);
+        if (top && !topicIdSet.has(top.id)) {
+          if (filters.categoryId && top.categoryId !== filters.categoryId) continue;
+          if (filters.tag && !top.tags?.includes(filters.tag)) continue;
+          if (filters.status !== "all" && top.studyProgress?.status !== filters.status) continue;
+          topicIdSet.add(top.id);
+          list.push(top);
+        }
+      }
+    }
+    for (const item of scholarResults.topics.map((t) => t.item)) {
+      if (!topicIdSet.has(item.id)) {
+        topicIdSet.add(item.id);
+        list.push(item);
+      }
+    }
+    return list;
+  }, [scholarResults, hybridResults, searchMode, searchQuery, topics, filters]);
+
+  const matchedNotes = useMemo(() => {
+    if (searchMode === "keyword" || !searchQuery.trim()) {
+      return scholarResults.notes.map((n) => n.item);
+    }
+    const noteIdSet = new Set<string>();
+    const list: typeof notes = [];
+
+    for (const r of hybridResults) {
+      if (r.document.type === "note") {
+        const n = notes.find((item) => item.id === r.document.entityId);
+        if (n && !noteIdSet.has(n.id)) {
+          if (filters.tag && !n.tags?.includes(filters.tag)) continue;
+          noteIdSet.add(n.id);
+          list.push(n);
+        }
+      }
+    }
+    for (const item of scholarResults.notes.map((n) => n.item)) {
+      if (!noteIdSet.has(item.id)) {
+        noteIdSet.add(item.id);
+        list.push(item);
+      }
+    }
+    return list;
+  }, [scholarResults, hybridResults, searchMode, searchQuery, notes, filters]);
+
+  const matchedResources = useMemo(() => {
+    if (searchMode === "keyword" || !searchQuery.trim()) {
+      return scholarResults.resources.map((r) => r.item);
+    }
+    const resIdSet = new Set<string>();
+    const list: typeof resources = [];
+
+    for (const r of hybridResults) {
+      if (r.document.type === "resource") {
+        const res = resources.find((item) => item.id === r.document.entityId);
+        if (res && !resIdSet.has(res.id)) {
+          resIdSet.add(res.id);
+          list.push(res);
+        }
+      }
+    }
+    for (const item of scholarResults.resources.map((r) => r.item)) {
+      if (!resIdSet.has(item.id)) {
+        resIdSet.add(item.id);
+        list.push(item);
+      }
+    }
+    return list;
+  }, [scholarResults, hybridResults, searchMode, searchQuery, resources]);
+
+  const totalResultsCount = matchedTopics.length + matchedNotes.length + matchedResources.length;
 
   const highlightMatch = (text: string) => {
     if (!q) return text;
@@ -167,7 +268,7 @@ export function AdvancedSearch() {
       {/* Page Header */}
       <PageHeader
         title="Tra Cứu & Khám Phá Tri Thức"
-        subtitle="Tìm kiếm xuyên suốt tất cả chủ đề luận tạng, ghi chép cá nhân, thuật ngữ và tài liệu nghiên cứu"
+        subtitle="Tìm kiếm xuyên suốt tất cả chủ đề nghiên cứu, ghi chép cá nhân, thuật ngữ và tài liệu học thuật"
         categoryLabel="Công Cụ Tra Cứu Toàn Diện"
         categoryIcon={Search}
       />
@@ -183,6 +284,51 @@ export function AdvancedSearch() {
             placeholder="Nhập thuật ngữ, chủ đề hoặc khái niệm bạn muốn học..."
             className="w-full pl-12 pr-4 py-3 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl text-sm focus:outline-hidden focus:ring-2 focus:ring-amber-700/40 focus:border-amber-700 dark:focus:border-amber-500 font-medium text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 transition shadow-2xs"
           />
+        </div>
+
+        {/* Search Mode Selector (Phase 5B) */}
+        <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs" data-testid="search-mode-selector">
+          <span className="text-stone-500 dark:text-stone-400 font-semibold mr-1">
+            Chế độ tìm kiếm:
+          </span>
+          <button
+            type="button"
+            data-testid="btn-search-mode-hybrid"
+            onClick={() => setSearchMode("hybrid")}
+            className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 text-xs ${
+              searchMode === "hybrid"
+                ? "bg-purple-800 text-purple-50 shadow-2xs"
+                : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+            <span>Kết hợp Hybrid RRF</span>
+          </button>
+          <button
+            type="button"
+            data-testid="btn-search-mode-keyword"
+            onClick={() => setSearchMode("keyword")}
+            className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 text-xs ${
+              searchMode === "keyword"
+                ? "bg-amber-800 text-amber-50 shadow-2xs"
+                : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+            }`}
+          >
+            <span>Từ khóa chính xác</span>
+          </button>
+          <button
+            type="button"
+            data-testid="btn-search-mode-semantic"
+            onClick={() => setSearchMode("semantic")}
+            className={`px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer flex items-center gap-1.5 text-xs ${
+              searchMode === "semantic"
+                ? "bg-indigo-700 text-indigo-50 shadow-2xs"
+                : "bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-300" />
+            <span>Ngữ nghĩa Vector</span>
+          </button>
         </div>
 
         {/* View mode buttons & Saved Views actions */}
@@ -355,9 +501,20 @@ export function AdvancedSearch() {
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-[10px]">
-                        <StatusPill variant="neutral">
-                          {topic.categoryName || topic.type || "Chủ đề"}
-                        </StatusPill>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <StatusPill variant="neutral">
+                            {topic.categoryName || topic.type || "Chủ đề"}
+                          </StatusPill>
+                          {similarityMap.has(topic.id) && (
+                            <span
+                              data-testid="semantic-similarity-badge"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                            >
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {Math.round((similarityMap.get(topic.id) || 0) * 100)}% tương đồng
+                            </span>
+                          )}
+                        </div>
                         <span className="text-stone-400 dark:text-stone-500 font-mono">
                           {topic.studyProgress?.progress}%
                         </span>
@@ -411,9 +568,20 @@ export function AdvancedSearch() {
                   >
                     <div>
                       <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 mb-1 border-b border-stone-100 dark:border-stone-800/80 pb-1.5">
-                        <StatusPill variant="success">
-                          {note.type}
-                        </StatusPill>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <StatusPill variant="success">
+                            {note.type}
+                          </StatusPill>
+                          {similarityMap.has(note.id) && (
+                            <span
+                              data-testid="semantic-similarity-badge"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                            >
+                              <Sparkles className="w-2.5 h-2.5" />
+                              {Math.round((similarityMap.get(note.id) || 0) * 100)}% tương đồng
+                            </span>
+                          )}
+                        </div>
                         <span className="font-mono">{formatTimeAgo(note.createdAt)}</span>
                       </div>
                       <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm group-hover:text-amber-800 dark:group-hover:text-amber-400 transition font-serif-title">
@@ -451,9 +619,20 @@ export function AdvancedSearch() {
                     className="cursor-pointer space-y-2 group"
                   >
                     <div className="flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400 border-b border-stone-100 dark:border-stone-800/80 pb-1.5">
-                      <StatusPill variant="purple">
-                        {res.type.toUpperCase()}
-                      </StatusPill>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <StatusPill variant="purple">
+                          {res.type.toUpperCase()}
+                        </StatusPill>
+                        {similarityMap.has(res.id) && (
+                          <span
+                            data-testid="semantic-similarity-badge"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            {Math.round((similarityMap.get(res.id) || 0) * 100)}% tương đồng
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono">{formatTimeAgo(res.createdAt)}</span>
                     </div>
                     <h3 className="font-bold text-stone-900 dark:text-stone-100 text-sm group-hover:text-amber-800 dark:group-hover:text-amber-400 transition font-serif-title">
