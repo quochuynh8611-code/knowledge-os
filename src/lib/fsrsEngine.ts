@@ -107,21 +107,22 @@ export function calculateFsrsNextInterval(stability: number, desiredRetention: n
  * Zero-Migration SM-2 -> FSRS Bridge
  * Suy diễn Difficulty D và Stability S từ các trường SM-2 cũ nếu chưa có
  */
-export function migrateSm2ToFsrsState(schedule: FlashcardSchedule): { stability: number; difficulty: number } {
-  let stability = schedule.stability;
-  let difficulty = schedule.difficulty;
+export function migrateSm2ToFsrsState(schedule?: Partial<FlashcardSchedule> | null): { stability: number; difficulty: number } {
+  const sched = schedule || {};
+  let stability = sched.stability;
+  let difficulty = sched.difficulty;
 
   if (typeof stability !== 'number' || stability <= 0) {
-    if (schedule.interval && schedule.interval > 0) {
-      stability = Math.max(0.5, schedule.interval);
+    if (sched.interval && sched.interval > 0) {
+      stability = Math.max(0.5, sched.interval);
     } else {
       stability = DEFAULT_FSRS_WEIGHTS[2]; // S0(Good) ~ 3.17 ngày
     }
   }
 
   if (typeof difficulty !== 'number' || difficulty < 1.0 || difficulty > 10.0) {
-    const ef = schedule.easeFactor ?? 2.50;
-    const lapses = schedule.lapses ?? 0;
+    const ef = sched.easeFactor ?? 2.50;
+    const lapses = sched.lapses ?? 0;
     // Ánh xạ nghịch biến: easeFactor cao (3.5) -> D thấp (1.0), easeFactor thấp (1.3) -> D cao (10.0)
     const normalizedEase = Math.min(1.0, Math.max(0.0, (ef - 1.30) / (3.50 - 1.30)));
     const baseDifficulty = 10.0 - normalizedEase * 9.0;
@@ -144,7 +145,7 @@ export function syncFsrsToSm2Fields(difficulty: number): number {
 }
 
 export interface CalculateFsrsReviewInput {
-  currentSchedule: FlashcardSchedule;
+  currentSchedule?: Partial<FlashcardSchedule> | null;
   rating: ReviewRating; // 1: Again, 2: Hard, 3: Good, 4: Easy
   referenceDate?: Date;
   desiredRetention?: number;
@@ -163,18 +164,19 @@ export function calculateFsrsNextReview(input: CalculateFsrsReviewInput): FsrsCa
   const refDate = referenceDate || new Date();
   const targetRetention = inputRetention ?? getSrsUserConfig().desiredRetention;
 
+  const sched = currentSchedule || {};
   const w = DEFAULT_FSRS_WEIGHTS;
-  const currentState = currentSchedule.state;
-  const currentInterval = currentSchedule.interval || 0;
-  const currentReps = currentSchedule.repetitions || 0;
-  const currentLapses = currentSchedule.lapses || 0;
+  const currentState = sched.state || 'new';
+  const currentInterval = sched.interval || 0;
+  const currentReps = sched.repetitions || 0;
+  const currentLapses = sched.lapses || 0;
 
   const isInitialCard = currentState === 'new' || currentReps === 0;
 
   // Tính số ngày đã trôi qua kể từ lần ôn trước (t)
   let elapsedDays = 0;
-  if (currentSchedule.lastReviewedAt || currentSchedule.lastReviewed) {
-    const lastRev = new Date(currentSchedule.lastReviewedAt || currentSchedule.lastReviewed!).getTime();
+  if (sched.lastReviewedAt || sched.lastReviewed) {
+    const lastRev = new Date(sched.lastReviewedAt || sched.lastReviewed!).getTime();
     if (!isNaN(lastRev)) {
       elapsedDays = Math.max(0, (refDate.getTime() - lastRev) / (24 * 60 * 60 * 1000));
     }
@@ -207,7 +209,7 @@ export function calculateFsrsNextReview(input: CalculateFsrsReviewInput): FsrsCa
     }
   } else {
     // 2. Thẻ đã có lịch sử (Review card)
-    const { stability: curS, difficulty: curD } = migrateSm2ToFsrsState(currentSchedule);
+    const { stability: curS, difficulty: curD } = migrateSm2ToFsrsState(sched);
 
     // Tính khả năng truy xuất R tại thời điểm ôn tập hiện tại
     const currentRetrievability = calculateFsrsRetrievability(elapsedDays, curS);
@@ -274,8 +276,8 @@ export function calculateFsrsNextReview(input: CalculateFsrsReviewInput): FsrsCa
   // Next due date UTC ISO
   const nextDueDate = new Date(refDate.getTime() + nextInterval * 24 * 60 * 60 * 1000);
   const nextDueAt = nextDueDate.toISOString();
-  const flashcardId = currentSchedule.flashcardId || currentSchedule.cardId || '';
-  const currentDueAt = currentSchedule.dueAt || currentSchedule.due || refDate.toISOString();
+  const flashcardId = sched.flashcardId || sched.cardId || '';
+  const currentDueAt = sched.dueAt || sched.due || refDate.toISOString();
   const nextEaseFactor = syncFsrsToSm2Fields(nextDifficulty);
 
   const nextSchedule: Omit<FlashcardSchedule, 'id' | 'flashcardId' | 'cardId' | 'updatedAt'> = {
@@ -306,7 +308,7 @@ export function calculateFsrsNextReview(input: CalculateFsrsReviewInput): FsrsCa
     stateAfter: nextState,
     intervalBefore: currentInterval,
     intervalAfter: nextInterval,
-    easeFactorBefore: currentSchedule.easeFactor ?? 2.50,
+    easeFactorBefore: sched.easeFactor ?? 2.50,
     easeFactorAfter: nextEaseFactor,
     dueBeforeAt: currentDueAt,
     dueBefore: currentDueAt,
@@ -327,7 +329,7 @@ export interface RatingPreviewInfo {
  * Tính trước khoảng cách ngày và stability cho cả 4 nút (1: Again, 2: Hard, 3: Good, 4: Easy)
  */
 export function previewCardRatingIntervals(
-  schedule: FlashcardSchedule,
+  schedule?: Partial<FlashcardSchedule> | null,
   options?: { desiredRetention?: number; referenceDate?: Date }
 ): Record<ReviewRating, RatingPreviewInfo> {
   const refDate = options?.referenceDate || new Date();
@@ -338,7 +340,7 @@ export function previewCardRatingIntervals(
 
   for (const r of ratings) {
     const calc = calculateFsrsNextReview({
-      currentSchedule: schedule,
+      currentSchedule: schedule || undefined,
       rating: r,
       referenceDate: refDate,
       desiredRetention: retention,

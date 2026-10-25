@@ -1,7 +1,7 @@
 # ADR-107: Phase 3 — FSRS v5 (Free Spaced Repetition Scheduler) Core Engine, DSR Model & Zero-Migration SM-2 Bridge
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** ✅ ACCEPTED & READY FOR IMPLEMENTATION
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Chặng 3A: Core Engine + Chặng 3B: UI Wiring & Retention Curves)
 - **Ngày quyết định:** 2026-10-25
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Core Spaced Repetition Engine, FSRS v4.5/v5 Mathematical Formulation (Difficulty, Stability, Retrievability - DSR), Power-Law Forgetting Curve, Desired Retention Tuning, Bijective Zero-Migration SM-2 ↔ FSRS Bridge.

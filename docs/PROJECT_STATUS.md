@@ -2,7 +2,7 @@
 
 > **Cập nhật lần cuối:** 2026-10-25<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 2: REFERENCE & CITATION HUB HOÀN TẤT 100%. Hệ thống hỗ trợ trọn vẹn 8 định dạng trích dẫn (APA 7th, MLA 9th, Chicago 17th, IEEE, Harvard, BibTeX, RIS, Markdown Footnotes), bộ giải mã tệp học thuật vạn năng (BibTeX, RIS, Zotero CSL-JSON), tra cứu tức thời CrossRef DOI Quick Resolver, giao diện nhập hàng loạt phát hiện trùng lặp thông minh (Deduplication Review Modal), và cơ chế Zero DB Migration bảo toàn 100% database hiện hành. Toàn bộ 49/49 targeted tests PASS, TypeScript 0 lỗi, Build PASS.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 3: FSRS v5 SPACED REPETITION ENGINE HOÀN TẤT 100%. Triển khai hoàn chỉnh thuật toán FSRS v5 tiên tiến theo mô hình 3 thành phần trí nhớ (Difficulty, Stability, Retrievability - DSR) cùng đường cong quên hàm lũy thừa (Power-Law). Cung cấp thanh trượt Desired Retention mục tiêu (0.75 - 0.95), thanh DSR Memory Telemetry thời gian thực, nhãn khoảng cách ôn tập dự kiến tự động co ngắn trên 4 nút chấm điểm, và biểu đồ RetentionCurveChart so sánh trực quan giữa đường cong FSRS v5 và Ebbinghaus cổ điển. Cơ chế Zero-Migration SM-2 Bridge bảo toàn 100% database schema và tương thích ngược hoàn hảo. Toàn bộ 26/26 targeted & UI integration tests PASS, toàn bộ suite Flashcard regression 100% PASS, TypeScript 0 lỗi, Build PASS.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---

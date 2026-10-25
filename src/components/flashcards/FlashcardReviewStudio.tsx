@@ -14,9 +14,29 @@ import {
   getCardAlgorithmVariant,
   calculateAdaptiveSchedule,
 } from "../../lib/srsAlgorithmTuning";
+import { calculateFlashcardNextReview } from "../../lib/flashcardScheduler";
+import {
+  getSrsUserConfig,
+  setSrsUserConfig,
+  previewCardRatingIntervals,
+  migrateSm2ToFsrsState,
+  calculateFsrsRetrievability,
+} from "../../lib/fsrsEngine";
 import { shortcutScope } from "../../lib/shortcutScope";
 import { useData } from "../../context/DataContext";
 import confetti from "canvas-confetti";
+
+function formatIntervalPreview(days: number): string {
+  if (days <= 0) return "< 1d";
+  if (days === 1) return "1d";
+  if (days < 30) return `${days}d`;
+  if (days < 365) {
+    const months = (days / 30).toFixed(1);
+    return months.endsWith(".0") ? `${Math.round(days / 30)}m` : `${months}m`;
+  }
+  const years = (days / 365).toFixed(1);
+  return years.endsWith(".0") ? `${Math.round(days / 365)}y` : `${years}y`;
+}
 import {
   Brain,
   Clock,
@@ -138,6 +158,24 @@ export function FlashcardReviewStudio({
   const [isAbTestModalOpen, setIsAbTestModalOpen] = useState(false);
   const [allReviews, setAllReviews] = useState<FlashcardReview[]>([]);
 
+  // FSRS v5 Algorithm & Desired Retention configuration state
+  const [srsAlgorithm, setSrsAlgorithm] = useState<"fsrs" | "sm2">(() => {
+    return getSrsUserConfig().algorithm;
+  });
+  const [desiredRetention, setDesiredRetention] = useState<number>(() => {
+    return getSrsUserConfig().desiredRetention;
+  });
+
+  const handleAlgorithmChange = (algo: "fsrs" | "sm2") => {
+    setSrsAlgorithm(algo);
+    setSrsUserConfig({ algorithm: algo });
+  };
+
+  const handleRetentionChange = (val: number) => {
+    setDesiredRetention(val);
+    setSrsUserConfig({ desiredRetention: val });
+  };
+
   // Fetch all reviews for topic/vault to power Retention Curve & A/B testing on demand
   useEffect(() => {
     if (!showRetentionCurve && !isAbTestModalOpen) return;
@@ -185,6 +223,80 @@ export function FlashcardReviewStudio({
     }
     return map;
   }, [cards]);
+
+  const currentCard = displayCards[currentIndex];
+
+  const cardFsrsState = useMemo(() => {
+    if (!currentCard?.schedule) {
+      return {
+        stability: 1.0,
+        difficulty: 5.0,
+        retrievability: 1.0,
+      };
+    }
+    const state = migrateSm2ToFsrsState(currentCard.schedule);
+    const lastRev =
+      currentCard.schedule.lastReviewedAt || currentCard.schedule.lastReviewed;
+    const elapsedDays = lastRev
+      ? Math.max(
+          0,
+          (Date.now() - new Date(lastRev).getTime()) / (24 * 3600 * 1000)
+        )
+      : 0;
+    const retrievability = calculateFsrsRetrievability(
+      elapsedDays,
+      state.stability
+    );
+    return {
+      stability: state.stability,
+      difficulty: state.difficulty,
+      retrievability,
+    };
+  }, [currentCard]);
+
+  const ratingPreviews = useMemo(() => {
+    if (!currentCard) return null;
+    if (srsAlgorithm === "fsrs") {
+      return previewCardRatingIntervals(currentCard.schedule, {
+        desiredRetention,
+      });
+    }
+    const currentInterval = currentCard.schedule?.interval ?? 0;
+    return {
+      1: { intervalDays: 0, nextStability: 1, nextDifficulty: 5 },
+      2: {
+        intervalDays: Math.max(1, currentInterval),
+        nextStability: 1,
+        nextDifficulty: 5,
+      },
+      3: {
+        intervalDays: Math.max(
+          1,
+          Math.round(currentInterval === 0 ? 1 : currentInterval * 2.5)
+        ),
+        nextStability: 1,
+        nextDifficulty: 5,
+      },
+      4: {
+        intervalDays: Math.max(
+          4,
+          Math.round(currentInterval === 0 ? 4 : currentInterval * 3.5)
+        ),
+        nextStability: 1,
+        nextDifficulty: 5,
+      },
+    };
+  }, [currentCard, srsAlgorithm, desiredRetention]);
+
+  const getIntervalPreviewText = useCallback(
+    (rating: 1 | 2 | 3 | 4) => {
+      if (!ratingPreviews || !ratingPreviews[rating]) {
+        return rating === 1 ? "< 1d" : rating === 2 ? "1d" : rating === 3 ? "3d" : "7d";
+      }
+      return formatIntervalPreview(ratingPreviews[rating].intervalDays);
+    },
+    [ratingPreviews]
+  );
 
   // Inactivity tracking
   const lastActiveRef = useRef<number>(Date.now());
@@ -373,6 +485,8 @@ export function FlashcardReviewStudio({
               rating,
               clientEventId,
               reviewDurationMs: elapsedMs,
+              algorithm: srsAlgorithm,
+              desiredRetention,
             }),
           });
           if (res.ok) {
@@ -390,23 +504,22 @@ export function FlashcardReviewStudio({
       }
 
       if (!recordedReview) {
+        const nextReviewCalc = calculateFlashcardNextReview({
+          currentSchedule: currentCard.schedule,
+          rating: rating as ReviewRating,
+          referenceDate: new Date(),
+          algorithm: srsAlgorithm,
+          desiredRetention,
+        });
+
         recordedReview = {
+          ...nextReviewCalc.reviewPayload,
           id: `session-rev-${clientEventId}`,
           clientEventId,
           flashcardId: currentCard.id,
           cardId: currentCard.id,
           topicId: currentCard.topicId,
-          rating: rating as ReviewRating,
           reviewDurationMs: elapsedMs,
-          reviewedAt: new Date().toISOString(),
-          stateBefore: currentCard.schedule?.state || "new",
-          stateAfter: rating >= 3 ? "review" : "relearning",
-          intervalBefore: currentCard.schedule?.interval ?? 0,
-          intervalAfter: rating >= 3 ? (currentCard.schedule?.interval ?? 1) : 0,
-          easeFactorBefore: currentCard.schedule?.easeFactor ?? 2.5,
-          easeFactorAfter: currentCard.schedule?.easeFactor ?? 2.5,
-          dueBeforeAt: currentCard.schedule?.dueAt || new Date().toISOString(),
-          dueAfterAt: new Date().toISOString(),
         };
       }
 
@@ -455,7 +568,7 @@ export function FlashcardReviewStudio({
         }
       }
     },
-    [displayCards, currentIndex, recordActivity, sessionReviews, sessionSeconds, isCram, effectiveSessionType]
+    [displayCards, currentIndex, recordActivity, sessionReviews, sessionSeconds, isCram, effectiveSessionType, srsAlgorithm, desiredRetention]
   );
 
   // Register flashcard_review scope when active review queue is present and not completed
@@ -838,8 +951,6 @@ export function FlashcardReviewStudio({
     );
   }
 
-  const currentCard = displayCards[currentIndex];
-
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       {/* Inactivity Toast Warning */}
@@ -979,6 +1090,47 @@ export function FlashcardReviewStudio({
         </div>
       </div>
 
+      {/* FSRS v5 Algorithm & Retention Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-2.5 bg-stone-50 dark:bg-stone-900/40 rounded-2xl border border-stone-200/80 dark:border-stone-800 text-xs">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+          <span className="font-semibold text-stone-700 dark:text-stone-300">
+            Thuật toán SRS:
+          </span>
+          <select
+            data-testid="select-srs-algorithm"
+            value={srsAlgorithm}
+            onChange={(e) => handleAlgorithmChange(e.target.value as "fsrs" | "sm2")}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 text-xs font-semibold cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500"
+          >
+            <option value="fsrs">FSRS v5</option>
+            <option value="sm2">SM-2</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <span className="text-stone-600 dark:text-stone-400 font-medium">
+            Mục tiêu nhớ (Desired Retention):
+          </span>
+          <input
+            type="range"
+            min="0.75"
+            max="0.95"
+            step="0.01"
+            data-testid="slider-desired-retention"
+            value={desiredRetention}
+            onChange={(e) => handleRetentionChange(parseFloat(e.target.value))}
+            className="w-24 sm:w-28 accent-amber-600 cursor-pointer"
+          />
+          <span
+            data-testid="badge-desired-retention"
+            className="px-2 py-0.5 font-mono font-bold text-[11px] rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300/70 dark:border-amber-800 shrink-0"
+          >
+            {Math.round(desiredRetention * 100)}%
+          </span>
+        </div>
+      </div>
+
       {/* Exam Countdown & Smart Queue Toolbar */}
       <ExamCountdownToolbar
         examDate={examDate}
@@ -999,6 +1151,37 @@ export function FlashcardReviewStudio({
           reviews={[...allReviews, ...sessionReviews]}
           onClose={() => setShowRetentionCurve(false)}
         />
+      )}
+
+      {/* Current Card DSR Memory Telemetry */}
+      {currentCard && (
+        <div
+          data-testid="fsrs-memory-metrics"
+          className="flex items-center justify-between px-3.5 py-2 bg-stone-50/90 dark:bg-stone-900/40 rounded-xl border border-stone-200/80 dark:border-stone-800 text-xs text-stone-600 dark:text-stone-300"
+        >
+          <div className="flex items-center gap-2">
+            <Brain className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="font-semibold text-stone-700 dark:text-stone-200">
+              Thông số bộ nhớ (DSR):
+            </span>
+          </div>
+          <div className="flex items-center gap-3 font-mono font-medium text-[11px] flex-wrap justify-end">
+            <span>
+              Độ bền <strong>S = {cardFsrsState.stability.toFixed(1)}d</strong>
+            </span>
+            <span className="text-stone-300 dark:text-stone-700">•</span>
+            <span>
+              Độ khó <strong>D = {cardFsrsState.difficulty.toFixed(1)}/10</strong>
+            </span>
+            <span className="text-stone-300 dark:text-stone-700">•</span>
+            <span>
+              Khả năng nhớ{" "}
+              <strong className="text-amber-700 dark:text-amber-400">
+                R = {Math.round(cardFsrsState.retrievability * 100)}%
+              </strong>
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Card Rendering */}
@@ -1026,7 +1209,9 @@ export function FlashcardReviewStudio({
               <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
                 Lặp lại [1]
               </span>
-              <span className="text-xs font-bold mt-0.5">&lt; 1 ngày</span>
+              <span data-testid="rating-interval-preview-1" className="text-xs font-bold mt-0.5">
+                {getIntervalPreviewText(1)}
+              </span>
             </button>
 
             {/* 2: Hard */}
@@ -1038,7 +1223,9 @@ export function FlashcardReviewStudio({
               <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Khó [2]
               </span>
-              <span className="text-xs font-bold mt-0.5">1 ngày</span>
+              <span data-testid="rating-interval-preview-2" className="text-xs font-bold mt-0.5">
+                {getIntervalPreviewText(2)}
+              </span>
             </button>
 
             {/* 3: Good */}
@@ -1050,7 +1237,9 @@ export function FlashcardReviewStudio({
               <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Chuẩn [3]
               </span>
-              <span className="text-xs font-bold mt-0.5">Khoảng cách</span>
+              <span data-testid="rating-interval-preview-3" className="text-xs font-bold mt-0.5">
+                {getIntervalPreviewText(3)}
+              </span>
             </button>
 
             {/* 4: Easy */}
@@ -1062,7 +1251,9 @@ export function FlashcardReviewStudio({
               <span className="text-[11px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
                 Dễ [4]
               </span>
-              <span className="text-xs font-bold mt-0.5">&gt; 4 ngày</span>
+              <span data-testid="rating-interval-preview-4" className="text-xs font-bold mt-0.5">
+                {getIntervalPreviewText(4)}
+              </span>
             </button>
           </div>
         ) : (

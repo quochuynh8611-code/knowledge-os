@@ -171,10 +171,10 @@ export function SrsVariantComparisonModal({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200">
-                    VARIANT B (Adaptive)
+                    VARIANT B (Adaptive / FSRS v5)
                   </span>
                   <h3 className="text-sm font-bold text-amber-950 dark:text-amber-100 mt-1 flex items-center gap-1">
-                    <span>Adaptive SRS</span>
+                    <span>Adaptive / FSRS v5</span>
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   </h3>
                 </div>

@@ -13,7 +13,7 @@ import type {
 import { calculateFsrsNextReview } from "./fsrsEngine";
 
 export interface CalculateNextReviewInput {
-  currentSchedule: FlashcardSchedule;
+  currentSchedule?: FlashcardSchedule | null;
   rating: ReviewRating; // 1: Again, 2: Hard, 3: Good, 4: Easy
   referenceDate?: Date; // Default: new Date()
   algorithm?: 'sm2' | 'fsrs';
@@ -47,7 +47,7 @@ export function calculateFlashcardNextReview(
 ): NextReviewCalculationResult {
   if (input.algorithm === 'fsrs') {
     return calculateFsrsNextReview({
-      currentSchedule: input.currentSchedule,
+      currentSchedule: input.currentSchedule || undefined,
       rating: input.rating,
       referenceDate: input.referenceDate,
       desiredRetention: input.desiredRetention,
@@ -57,11 +57,12 @@ export function calculateFlashcardNextReview(
   const { currentSchedule, rating, referenceDate } = input;
   const refDate = referenceDate || new Date();
 
-  const currentInterval = currentSchedule.interval;
-  const currentEase = currentSchedule.easeFactor ?? 2.5;
-  const currentReps = currentSchedule.repetitions ?? 0;
-  const currentLapses = currentSchedule.lapses ?? 0;
-  const currentState = currentSchedule.state;
+  const sched = currentSchedule || ({} as Partial<FlashcardSchedule>);
+  const currentInterval = sched.interval ?? 0;
+  const currentEase = sched.easeFactor ?? 2.5;
+  const currentReps = sched.repetitions ?? 0;
+  const currentLapses = sched.lapses ?? 0;
+  const currentState = sched.state || "new";
 
   let nextState: FlashcardState;
   let nextInterval: number;
@@ -160,9 +161,9 @@ export function calculateFlashcardNextReview(
   const nextDueAt = nextDueDate.toISOString();
 
   const flashcardId =
-    currentSchedule.flashcardId || currentSchedule.cardId || "";
+    sched.flashcardId || sched.cardId || "";
   const currentDueAt =
-    currentSchedule.dueAt || currentSchedule.due || refDate.toISOString();
+    sched.dueAt || sched.due || refDate.toISOString();
 
   const nextSchedule: Omit<
     FlashcardSchedule,

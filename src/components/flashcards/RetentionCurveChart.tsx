@@ -7,6 +7,7 @@ import {
   inferCardDifficulty,
   type CardDifficultyLevel,
 } from "../../lib/srsAlgorithmTuning";
+import { calculateFsrsRetrievability } from "../../lib/fsrsEngine";
 import { Brain, HelpCircle, Activity, Filter, Clock } from "lucide-react";
 
 export interface RetentionCurveChartProps {
@@ -65,6 +66,18 @@ export function RetentionCurveChart({
     return calculateEbbinghausCurve(stability, maxDays);
   }, [stability, maxDays]);
 
+  // Theoretical FSRS v5 Power-Law curve
+  const fsrsCurve = useMemo(() => {
+    const pts: { day: number; retentionRate: number }[] = [];
+    for (let d = 0; d <= maxDays; d++) {
+      pts.push({
+        day: d,
+        retentionRate: calculateFsrsRetrievability(d, stability),
+      });
+    }
+    return pts;
+  }, [stability, maxDays]);
+
   // Empirical data points
   const empiricalPoints = useMemo(() => {
     const raw = aggregateEmpiricalRetention(filteredReviews);
@@ -92,6 +105,16 @@ export function RetentionCurveChart({
       return index === 0 ? `M ${px},${py}` : `${acc} L ${px},${py}`;
     }, "");
   }, [theoreticalCurve, maxDays]);
+
+  // Build SVG path for FSRS v5 Power-Law curve
+  const fsrsPath = useMemo(() => {
+    if (fsrsCurve.length === 0) return "";
+    return fsrsCurve.reduce((acc, pt, index) => {
+      const px = getX(pt.day);
+      const py = getY(pt.retentionRate);
+      return index === 0 ? `M ${px},${py}` : `${acc} L ${px},${py}`;
+    }, "");
+  }, [fsrsCurve, maxDays]);
 
   // Build filled area below theoretical curve
   const areaPath = useMemo(() => {
@@ -286,7 +309,7 @@ export function RetentionCurveChart({
           {/* Theoretical Curve Fill Area */}
           <path d={areaPath} fill="url(#ebbinghausArea)" />
 
-          {/* Theoretical Curve Stroke Path */}
+          {/* Theoretical Curve Stroke Path (Ebbinghaus) */}
           <path
             data-testid="ebbinghaus-path"
             d={theoreticalPath}
@@ -296,6 +319,20 @@ export function RetentionCurveChart({
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+
+          {/* Theoretical Curve Stroke Path (FSRS v5 Power-Law) */}
+          {fsrsPath && (
+            <path
+              data-testid="fsrs-powerlaw-path"
+              d={fsrsPath}
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth={2.5}
+              strokeDasharray="5 3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
 
           {/* Empirical Scatter Dots */}
           {empiricalPoints.map((pt) => {
@@ -353,10 +390,14 @@ export function RetentionCurveChart({
 
       {/* Legend & Summary Info */}
       <div className="flex flex-wrap items-center justify-between text-xs pt-2 border-t border-stone-100 dark:border-stone-800 text-stone-500 dark:text-stone-400">
-        <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="w-3 h-1 rounded bg-emerald-500 inline-block" />
             <span>Lý thuyết Ebbinghaus</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-1 rounded bg-amber-500 inline-block border-b border-dashed border-amber-600" />
+            <span>FSRS v5 Power-Law</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
@@ -370,6 +411,23 @@ export function RetentionCurveChart({
             <span>Chưa có đủ lượt ôn thực tế — hiển thị mô hình lý thuyết</span>
           </div>
         )}
+      </div>
+
+      {/* FSRS Curve Comparison Summary Block */}
+      <div
+        data-testid="fsrs-curve-comparison-summary"
+        className="p-3.5 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs"
+      >
+        <div className="flex items-center gap-2.5">
+          <Brain className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
+          <span className="text-stone-700 dark:text-stone-300 leading-relaxed">
+            Tại mốc <strong>t = {stability.toFixed(1)} ngày</strong> (Stability S): FSRS v5 bảo toàn{" "}
+            <strong className="text-amber-700 dark:text-amber-400">90.0%</strong> khả năng truy xuất (so với Ebbinghaus cổ điển e⁻¹ ≈ 36.8%).
+          </span>
+        </div>
+        <span className="text-[11px] font-mono font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2.5 py-0.5 rounded-full shrink-0 border border-amber-300/60 dark:border-amber-800">
+          FSRS v5 DSR
+        </span>
       </div>
     </div>
   );
