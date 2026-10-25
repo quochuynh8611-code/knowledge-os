@@ -10,11 +10,14 @@ import type {
   FlashcardState,
   ReviewRating,
 } from "../types/flashcard";
+import { calculateFsrsNextReview } from "./fsrsEngine";
 
 export interface CalculateNextReviewInput {
   currentSchedule: FlashcardSchedule;
   rating: ReviewRating; // 1: Again, 2: Hard, 3: Good, 4: Easy
   referenceDate?: Date; // Default: new Date()
+  algorithm?: 'sm2' | 'fsrs';
+  desiredRetention?: number;
 }
 
 export interface NextReviewCalculationResult {
@@ -37,10 +40,20 @@ function clampEaseFactor(ease: number): number {
 /**
  * Pure calculation function: computes next schedule and review payload
  * given current schedule and user rating (1-4).
+ * Defaults to SM-2, with seamless FSRS v5 delegation when algorithm === 'fsrs'.
  */
 export function calculateFlashcardNextReview(
   input: CalculateNextReviewInput
 ): NextReviewCalculationResult {
+  if (input.algorithm === 'fsrs') {
+    return calculateFsrsNextReview({
+      currentSchedule: input.currentSchedule,
+      rating: input.rating,
+      referenceDate: input.referenceDate,
+      desiredRetention: input.desiredRetention,
+    });
+  }
+
   const { currentSchedule, rating, referenceDate } = input;
   const refDate = referenceDate || new Date();
 

@@ -47,6 +47,11 @@ export interface FlashcardSchedule {
   lastReviewedAt?: string | null;
   lastReviewed?: string | null; // Backward compatibility alias
   retentionRate?: number; // 0.0 - 1.0 (or percentage)
+  // FSRS v5 (DSR Model) extensions - Zero DB Migration (stored runtime or synced with easeFactor)
+  stability?: number; // Memory stability S in days (S >= 0)
+  difficulty?: number; // Intrinsic item difficulty D (1.0 to 10.0)
+  retrievability?: number; // Recall probability R (0.0 to 1.0)
+  desiredRetention?: number; // Target retention threshold (0.70 to 0.97, default 0.90)
   updatedAt: string;
 }
 
