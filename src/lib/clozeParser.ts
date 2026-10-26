@@ -112,14 +112,6 @@ export function extractClozeOccurrences(
     }
   }
 
-  // In strict mode, verify there are no stray unclosed openings
-  if (options?.strict) {
-    const strayOpening = /\{\{c\d+::(?![^}]*\}\})/;
-    if (strayOpening.test(rawText)) {
-      throw new Error("Cú pháp cloze deletion chưa được đóng đúng cách (thiếu '}}')");
-    }
-  }
-
   return occurrences;
 }
 
