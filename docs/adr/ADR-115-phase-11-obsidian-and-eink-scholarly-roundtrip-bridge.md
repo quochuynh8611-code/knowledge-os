@@ -1,7 +1,7 @@
 # ADR-115: Phase 11 — Obsidian & E-Ink Scholarly Round-Trip Bridge
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟢 PROPOSED & IN PROGRESS (Phase 11A: Scholarly Vault Engine & E-Ink Study Pack Compiler; Phase 11B: ObsidianBridgeModal UI Upgrade & Round-Trip Markdown Ingestion)
+- **Trạng thái:** 🟢 ACCEPTED & IMPLEMENTED (Complete & Verified: Phase 11A Engine + Phase 11B UI Integration & Round-Trip Ingestion)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Nâng cấp khả năng tương tác hai chiều (Round-Trip Interoperability) giữa Knowledge OS với Obsidian Vault và các thiết bị đọc E-Ink (Onyx Boox, Supernote, Kindle). Hỗ trợ chuẩn hóa YAML Frontmatter tương thích hoàn toàn với Obsidian Dataview plugin (`citekeys`, `doi`, `fsrs_avg_stability`, `fsrs_avg_difficulty`, `highlight_count`, `flashcard_count`), xuất trích đoạn nghiên cứu (`ResearchExcerpt`) dưới dạng Obsidian callout `> [!quote]` và thẻ nhớ FSRS dưới dạng `> [!question]`, biên dịch gói tài liệu đọc học thuật tối ưu hóa cho màn hình E-Ink phân tách rõ ràng câu hỏi ôn tập chủ động và đáp án đối chiếu, cùng parser Markdown + YAML hai chiều không làm mất mát định dạng toán học KaTeX hay trích dẫn Pandoc.

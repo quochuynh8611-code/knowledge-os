@@ -104,7 +104,11 @@ export function formatScholarlyTopicMarkdown(input: ScholarlyTopicExportInput): 
 
   // Compute FSRS telemetry averages
   const stabilityValues = topicCards
-    .map((c) => c.schedule?.stability)
+    .map(
+      (c) =>
+        c.schedule?.stability ??
+        (c as unknown as { fsrs?: { stability?: number } }).fsrs?.stability
+    )
     .filter((s): s is number => typeof s === 'number' && s > 0);
   const avgStability =
     stabilityValues.length > 0
@@ -112,7 +116,11 @@ export function formatScholarlyTopicMarkdown(input: ScholarlyTopicExportInput): 
       : 0;
 
   const difficultyValues = topicCards
-    .map((c) => c.schedule?.difficulty)
+    .map(
+      (c) =>
+        c.schedule?.difficulty ??
+        (c as unknown as { fsrs?: { difficulty?: number } }).fsrs?.difficulty
+    )
     .filter((d): d is number => typeof d === 'number' && d > 0);
   const avgDifficulty =
     difficultyValues.length > 0
@@ -300,11 +308,23 @@ export function parseScholarlyMarkdownNote(markdown: string): ParsedScholarlyMar
     const rawFm = fmMatch[1];
     contentWithoutFm = fmMatch[2].trim();
 
-    // Parse simple key-value YAML lines
+    let currentListKey: string | null = null;
     const fmLines = rawFm.split('\n');
     fmLines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.startsWith('- ') && currentListKey) {
+        const itemVal = trimmedLine.slice(2).trim().replace(/^["']|["']$/g, '');
+        if (currentListKey === 'tags' && itemVal) {
+          result.tags.push(itemVal);
+        }
+        return;
+      }
+
       const colonIdx = line.indexOf(':');
-      if (colonIdx === -1) return;
+      if (colonIdx === -1) {
+        currentListKey = null;
+        return;
+      }
 
       const key = line.slice(0, colonIdx).trim();
       let rawVal = line.slice(colonIdx + 1).trim();
@@ -319,16 +339,35 @@ export function parseScholarlyMarkdownNote(markdown: string): ParsedScholarlyMar
 
       result.rawFrontmatter[key] = rawVal;
 
-      if (key === 'title') result.title = rawVal;
-      else if (key === 'slug') result.slug = rawVal;
-      else if (key === 'domain') result.domain = rawVal;
-      else if (key === 'category') result.category = rawVal;
-      else if (key === 'citekey') result.citekey = rawVal.replace(/^@/, '');
-      else if (key === 'doi') result.doi = rawVal;
-      else if (key === 'author') result.author = rawVal;
-      else if (key === 'year') result.year = rawVal;
-      else if (key === 'stance') result.stance = rawVal as ScholarlyStance;
-      else if (key === 'tags') {
+      if (key === 'title') {
+        result.title = rawVal;
+        currentListKey = null;
+      } else if (key === 'slug') {
+        result.slug = rawVal;
+        currentListKey = null;
+      } else if (key === 'domain') {
+        result.domain = rawVal;
+        currentListKey = null;
+      } else if (key === 'category') {
+        result.category = rawVal;
+        currentListKey = null;
+      } else if (key === 'citekey') {
+        result.citekey = rawVal.replace(/^@/, '');
+        currentListKey = null;
+      } else if (key === 'doi') {
+        result.doi = rawVal;
+        currentListKey = null;
+      } else if (key === 'author') {
+        result.author = rawVal;
+        currentListKey = null;
+      } else if (key === 'year') {
+        result.year = rawVal;
+        currentListKey = null;
+      } else if (key === 'stance') {
+        result.stance = rawVal as ScholarlyStance;
+        currentListKey = null;
+      } else if (key === 'tags') {
+        currentListKey = 'tags';
         // Parse array [tag1, tag2] or single string
         const arrayMatch = rawVal.match(/\[(.*)\]/);
         if (arrayMatch) {
@@ -336,9 +375,13 @@ export function parseScholarlyMarkdownNote(markdown: string): ParsedScholarlyMar
             .split(',')
             .map((t) => t.trim().replace(/^["']|["']$/g, ''))
             .filter(Boolean);
+          currentListKey = null;
         } else if (rawVal) {
           result.tags = [rawVal];
+          currentListKey = null;
         }
+      } else {
+        currentListKey = null;
       }
     });
   }
