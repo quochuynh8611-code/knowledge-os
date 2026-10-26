@@ -2,7 +2,7 @@
 
 > **Cập nhật lần cuối:** 2026-10-26<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — HORIZON 2 ĐÃ KHỞI ĐỘNG THÀNH CÔNG VỚI PHASE 7: SMART HIGHLIGHT-TO-FLASHCARD & CLOZE SYNTHESIS ENGINE (ADR-111). Phase 7A (Core Synthesis Engine) và Phase 7B (Studio Modal & ReaderSidebar 1-Click Integration) hoàn tất 100%, bảo toàn công thức KaTeX & mhchem, deep-link provenance footer, lọc highlight theo màu và deduplication guard. 14/14 tests Phase 7 PASS, 58/58 sidebar regression tests PASS, TypeScript 0 lỗi, Hermetic Test Guard & Zero-Default Universal Baseline tuân thủ tuyệt đối.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 8: LITERATURE REVIEW MATRIX & CLAIM SYNTHESIS ENGINE (ADR-112) HOÀN TẤT VÀ XÁC MINH 100%. Phase 8A (5-Axis Matrix Extraction Engine, Citekey Generator, Contradiction Detection, Markdown/CSV Exporters) và Phase 8B (LiteratureMatrixModal, Inline Overrides, Contradiction Callout Banner, ResourcesManager Toolbar Integration) đều đạt 100% Quality Gates: 8/8 Engine Tests PASS, 5/5 UI Integration Tests PASS, Reference/Citation Hub 32/32 Regression Tests PASS, TypeScript 0 lỗi. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---

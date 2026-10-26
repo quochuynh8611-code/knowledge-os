@@ -14,12 +14,14 @@ import {
   Quote,
   FileDown,
   UploadCloud,
+  Layers,
 } from 'lucide-react';
 import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
 import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { ReferenceImportModal } from '../modals/ReferenceImportModal';
+import { LiteratureMatrixModal } from '../modals/LiteratureMatrixModal';
 import { extractAcademicMetadataFromResource } from '../../lib/citationGenerator';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget, resolveResourceReaderDescriptor } from '../../lib/resourceOpenResolver';
@@ -33,13 +35,14 @@ const UnifiedResearchReader = React.lazy(() =>
 );
 
 export function ResourcesManager() {
-  const { resources, topics, deleteResource, openTopicDetail } = useData();
+  const { resources, topics, notes, researchExcerpts, deleteResource, openTopicDetail } = useData();
 
   const [typeFilter, setTypeFilter] = useState<'all' | ResourceType>('all');
   const [topicFilter, setTopicFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
@@ -97,6 +100,14 @@ export function ResourcesManager() {
         categoryIcon={Library}
         actions={
           <div className="flex items-center gap-2">
+            <ToolbarButton
+              variant="secondary"
+              icon={Layers}
+              onClick={() => setShowMatrixModal(true)}
+              data-testid="btn-open-literature-matrix"
+            >
+              Ma trận Tổng quan
+            </ToolbarButton>
             <ToolbarButton
               variant="secondary"
               icon={UploadCloud}
@@ -371,6 +382,17 @@ export function ResourcesManager() {
       <ReferenceImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
+        defaultTopicId={topicFilter !== 'all' ? topicFilter : undefined}
+      />
+
+      {/* Literature Review Matrix Modal (ADR-112) */}
+      <LiteratureMatrixModal
+        isOpen={showMatrixModal}
+        onClose={() => setShowMatrixModal(false)}
+        resources={resources}
+        topics={topics}
+        notes={notes}
+        excerpts={researchExcerpts}
         defaultTopicId={topicFilter !== 'all' ? topicFilter : undefined}
       />
     </div>

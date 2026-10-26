@@ -1,7 +1,7 @@
 # ADR-112: Phase 8 — Literature Review Matrix & Claim Synthesis Engine
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟡 PROPOSED & IN PROGRESS (Phase 8A: Matrix Extraction Engine & Claim Synthesis; Phase 8B: Matrix Studio View & ResourcesManager Integration)
+- **Trạng thái:** 🟢 ACCEPTED & COMPLETED (Phase 8A: Core Engine & Tests; Phase 8B: LiteratureMatrixModal & ResourcesManager Integration)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Trích xuất 5 trục tổng quan tài liệu học thuật (Mục tiêu/Câu hỏi nghiên cứu, Phương pháp, Phát hiện then chốt, Hạn chế, Lập trường học thuật) từ tài nguyên (`Resource`), ghi chú liên kết (`Note`) và trích đoạn (`ResearchExcerpt`); phân tích mâu thuẫn học thuật (Contradiction Detection); cơ chế ghi đè thủ công không phá hủy dữ liệu (localStorage overrides); xuất bản ma trận sang Markdown và RFC-4180 CSV.
