@@ -277,3 +277,182 @@ export function deserializeSyncQueue(
     return [];
   }
 }
+
+/**
+ * Pure helper: Reconciles a single entity collection with active pending mutations.
+ * Enforces server canonical base, pending save creation (if absent), and pending deletion.
+ */
+export function reconcileEntitiesWithQueue<T extends { id: string; slug?: string }>(
+  serverEntities: T[],
+  pendingMutations: SyncMutation[],
+  entityType: SyncMutation["entityType"]
+): T[] {
+  const activeMutations = (pendingMutations || []).filter(
+    (m) => m && m.entityType === entityType && (m.status === "pending" || m.status === "failed")
+  );
+
+  let result = [...(serverEntities || [])];
+
+  for (const m of activeMutations) {
+    if (m.action === "save" && m.payload) {
+      const exists = result.some(
+        (e) =>
+          e.id === (m.payload.id || m.entityId) ||
+          Boolean(m.payload.slug && e.slug && e.slug === m.payload.slug)
+      );
+      if (!exists) {
+        result.push(m.payload);
+      }
+    }
+  }
+
+  const deleteIds = new Set(
+    activeMutations
+      .filter((m) => m.action === "delete")
+      .map((m) => m.entityId)
+  );
+  if (deleteIds.size > 0) {
+    result = result.filter((e) => !deleteIds.has(e.id));
+  }
+
+  return result;
+}
+
+export interface ReconcilableSnapshot {
+  categories: any[];
+  topics: any[];
+  notes: any[];
+  resources: any[];
+  tags?: any[];
+}
+
+/**
+ * Pure helper: Reconciles a complete server snapshot with pending queue mutations.
+ * Enforces dependency order:
+ * 1. Category save
+ * 2. Topic save (Orphan Guard: parent category must exist)
+ * 3. Note save (Orphan Guard: parent topic must exist)
+ * 4. Resource save (Orphan Guard: parent topic must exist)
+ * 5. Deletes per collection
+ *
+ * Queue is treated as strictly read-only and immutable.
+ */
+export function reconcileSnapshotWithQueue<T extends ReconcilableSnapshot>(
+  serverSnapshot: T,
+  pendingMutations: SyncMutation[]
+): T {
+  if (!pendingMutations || pendingMutations.length === 0) {
+    return {
+      ...serverSnapshot,
+      categories: [...(serverSnapshot.categories || [])],
+      topics: [...(serverSnapshot.topics || [])],
+      notes: [...(serverSnapshot.notes || [])],
+      resources: [...(serverSnapshot.resources || [])],
+      tags: [...(serverSnapshot.tags || [])],
+    };
+  }
+
+  const activeMutations = pendingMutations.filter(
+    (m) => m && (m.status === "pending" || m.status === "failed")
+  );
+
+  // 1. Category save (Server wins on conflict)
+  const categories = [...(serverSnapshot.categories || [])];
+  for (const m of activeMutations) {
+    if (m.entityType === "category" && m.action === "save" && m.payload) {
+      const exists = categories.some(
+        (c) =>
+          c.id === (m.payload.id || m.entityId) ||
+          Boolean(m.payload.slug && c.slug && c.slug === m.payload.slug)
+      );
+      if (!exists) {
+        categories.push(m.payload);
+      }
+    }
+  }
+
+  // 2. Topic save (with Orphan Guard: parent category must exist)
+  const topics = [...(serverSnapshot.topics || [])];
+  for (const m of activeMutations) {
+    if (m.entityType === "topic" && m.action === "save" && m.payload) {
+      const exists = topics.some(
+        (t) =>
+          t.id === (m.payload.id || m.entityId) ||
+          Boolean(m.payload.slug && t.slug && t.slug === m.payload.slug)
+      );
+      if (!exists) {
+        const parentCategoryExists = categories.some(
+          (c) =>
+            c.id === m.payload.categoryId ||
+            Boolean(m.payload.categorySlug && c.slug && c.slug === m.payload.categorySlug)
+        );
+        if (parentCategoryExists) {
+          topics.push(m.payload);
+        }
+      }
+    }
+  }
+
+  // 3. Note save (with Orphan Guard: parent topic must exist)
+  const notes = [...(serverSnapshot.notes || [])];
+  for (const m of activeMutations) {
+    if (m.entityType === "note" && m.action === "save" && m.payload) {
+      const exists = notes.some((n) => n.id === (m.payload.id || m.entityId));
+      if (!exists) {
+        const parentTopicExists = topics.some(
+          (t) =>
+            t.id === m.payload.topicId ||
+            (Array.isArray(m.payload.topicIds) && m.payload.topicIds.includes(t.id))
+        );
+        if (parentTopicExists) {
+          notes.push(m.payload);
+        }
+      }
+    }
+  }
+
+  // 4. Resource save (with Orphan Guard: parent topic must exist)
+  const resources = [...(serverSnapshot.resources || [])];
+  for (const m of activeMutations) {
+    if (m.entityType === "resource" && m.action === "save" && m.payload) {
+      const exists = resources.some((r) => r.id === (m.payload.id || m.entityId));
+      if (!exists) {
+        const parentTopicExists = topics.some((t) => t.id === m.payload.topicId);
+        if (parentTopicExists) {
+          resources.push(m.payload);
+        }
+      }
+    }
+  }
+
+  // 5. Deletes per collection
+  const deleteCategoryIds = new Set(
+    activeMutations
+      .filter((m) => m.entityType === "category" && m.action === "delete")
+      .map((m) => m.entityId)
+  );
+  const deleteTopicIds = new Set(
+    activeMutations
+      .filter((m) => m.entityType === "topic" && m.action === "delete")
+      .map((m) => m.entityId)
+  );
+  const deleteNoteIds = new Set(
+    activeMutations
+      .filter((m) => m.entityType === "note" && m.action === "delete")
+      .map((m) => m.entityId)
+  );
+  const deleteResourceIds = new Set(
+    activeMutations
+      .filter((m) => m.entityType === "resource" && m.action === "delete")
+      .map((m) => m.entityId)
+  );
+
+  return {
+    ...serverSnapshot,
+    categories: categories.filter((c) => !deleteCategoryIds.has(c.id)),
+    topics: topics.filter((t) => !deleteTopicIds.has(t.id)),
+    notes: notes.filter((n) => !deleteNoteIds.has(n.id)),
+    resources: resources.filter((r) => !deleteResourceIds.has(r.id)),
+    tags: [...(serverSnapshot.tags || [])],
+  };
+}

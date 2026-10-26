@@ -20,6 +20,7 @@ import {
   STORAGE_ROOT_KEY,
 } from "../lib/storage";
 import { SyncQueueService } from "./syncQueue";
+import { reconcileSnapshotWithQueue } from "../lib/syncQueue";
 import {
   ValidatedHydrateInput,
   ValidatedHydrateResponse,
@@ -759,13 +760,20 @@ export class ApiDataRepository implements IDataRepository {
             const resources =
               resourcesRes && resourcesRes.ok ? await resourcesRes.json() : [];
 
-            return {
+            const serverSnapshot = {
               categories,
               topics,
               notes,
               resources,
               tags: [],
             };
+
+            const pendingMutations = this.syncQueue ? this.syncQueue.getQueue() : [];
+            if (!pendingMutations || pendingMutations.length === 0) {
+              return serverSnapshot;
+            }
+
+            return reconcileSnapshotWithQueue(serverSnapshot, pendingMutations);
           }
         }
       } catch {
