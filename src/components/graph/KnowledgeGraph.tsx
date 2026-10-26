@@ -22,6 +22,7 @@ import {
   SemanticEdgeType,
   KnowledgeGraphData,
 } from '../../lib/knowledgeGraph';
+import { GraphInsightsPanel } from './GraphInsightsPanel';
 
 /**
  * Resolves the canonical root domain key for a given topic from the category hierarchy.
@@ -83,7 +84,9 @@ interface GraphLink {
 }
 
 export function KnowledgeGraph() {
-  const { topics, notes, resources, openTopicDetail, tags, categories } = useData();
+  const { topics, notes, resources, openTopicDetail, tags, categories, addKnowledgeLink } = useData();
+
+  const [showGraphInsights, setShowGraphInsights] = useState<boolean>(false);
 
   const rootCategories = useMemo(() => {
     if (!categories || categories.length === 0) return [];
@@ -484,6 +487,21 @@ export function KnowledgeGraph() {
             />
             <span>Tài liệu ({resources.length})</span>
           </label>
+
+          {/* Toggle Graph Insights Button */}
+          <button
+            data-testid="toggle-graph-insights-btn"
+            onClick={() => setShowGraphInsights((prev) => !prev)}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+              showGraphInsights
+                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-xs'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+            }`}
+            title="Bật/tắt bảng phân tích đồ thị tri thức (Graph Intelligence)"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{showGraphInsights ? 'Ẩn Graph Insights' : 'Graph Insights'}</span>
+          </button>
         </div>
       </div>
 
@@ -768,6 +786,17 @@ export function KnowledgeGraph() {
           </div>
         )}
       </div>
+
+      {/* Graph Intelligence & Semantic Analytics Panel (Phase 10 — ADR-114) */}
+      {showGraphInsights && (
+        <GraphInsightsPanel
+          topics={topics}
+          notes={notes}
+          resources={resources}
+          onConnectBridge={addKnowledgeLink}
+          onSelectTopic={openTopicDetail}
+        />
+      )}
     </div>
   );
 }

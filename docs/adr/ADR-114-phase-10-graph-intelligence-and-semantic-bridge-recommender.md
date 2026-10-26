@@ -1,7 +1,7 @@
 # ADR-114: Phase 10 — Graph Intelligence: Centrality Analytics, Orphan Detector & Semantic Bridge Recommender
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟢 PROPOSED & IN PROGRESS (Phase 10A: Core Graph Analytics & Semantic Bridge Engine; Phase 10B: GraphInsightsPanel & Interactive Quick-Connect in KnowledgeGraph)
+- **Trạng thái:** 🟢 ACCEPTED & IMPLEMENTED (Phase 10A & 10B: Complete & Verified)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Nâng cấp đồ thị tri thức (`KnowledgeGraph`) thành trung tâm phân tích cấu trúc mạng học thuật (Network Topology & Intelligence). Tính toán PageRank & Weighted Degree Centrality, phát hiện nút cô lập / đảo tri thức (`Orphan Topics`), phân cụm thành phần liên thông (`Connected Components`), và sử dụng công cụ nhúng ngữ nghĩa cục bộ 128-D (Phase 5 Vector Search Engine) để tự động phát hiện và gợi ý cầu nối liên ngành (`Semantic Bridge Recommendations`) giữa các chủ đề chưa có liên kết.
