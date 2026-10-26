@@ -1,4 +1,31 @@
 import type { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
+
+/**
+ * So sánh hai chuỗi an toàn chống Timing Attack (Constant-Time String Comparison).
+ * Đảm bảo không bao giờ throw ngoại lệ làm crash request khi khác độ dài.
+ */
+export function timingSafeEqualStrings(
+  a?: string | null,
+  b?: string | null,
+): boolean {
+  if (typeof a !== "string" || typeof b !== "string") {
+    return false;
+  }
+  try {
+    const bufA = Buffer.from(a, "utf-8");
+    const bufB = Buffer.from(b, "utf-8");
+    if (bufA.length === 0 || bufB.length === 0) {
+      return false;
+    }
+    if (bufA.length !== bufB.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Interface cho cấu hình bộ giới hạn tần suất (Rate Limiter)

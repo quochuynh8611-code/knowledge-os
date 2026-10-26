@@ -11,14 +11,20 @@ import {
   executeDatabaseReset,
 } from "../services/backupService";
 import {
+  createRateLimiter,
   createRateLimitMiddleware,
   logStructuredEvent,
+  timingSafeEqualStrings,
   type RateLimiter,
 } from "../../lib/security";
 
 export function createBackupRouter(
   prisma: PrismaClient | any,
   restoreRateLimiter: RateLimiter,
+  resetRateLimiter: RateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: 3,
+  }),
 ): Router {
   const router = Router();
 
@@ -106,31 +112,105 @@ export function createBackupRouter(
   );
 
   // ==========================================
-  // DATABASE CLEAN-SLATE RESET ENDPOINT (PHASE 2B / ZERO-DEFAULT ADR-076)
+  // DATABASE CLEAN-SLATE RESET ENDPOINT (PHASE 2B / ZERO-DEFAULT ADR-076 / HARDENED ADR-077)
   // ==========================================
-  router.post("/data/reset", async (_req, res) => {
-    try {
-      await prisma.$transaction(async (tx: any) => {
-        await executeDatabaseReset(tx);
-      });
+  router.post(
+    "/data/reset",
+    createRateLimitMiddleware(
+      resetRateLimiter,
+      "Quá nhiều yêu cầu xóa dữ liệu (tối đa 3 req/phút). Vui lòng thử lại sau.",
+    ),
+    async (req, res) => {
+      const ip =
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+        req.socket.remoteAddress ||
+        "unknown-ip";
+      const nodeEnv = process.env.NODE_ENV || "development";
 
-      logStructuredEvent("info", "DATABASE_RESET_SUCCESS", {
-        timestamp: new Date().toISOString(),
-      });
+      // Gate 0: Fail-Closed check for configured secret token
+      const configuredToken = process.env.RESET_CONFIRMATION_TOKEN;
+      if (!configuredToken || configuredToken.trim() === "") {
+        logStructuredEvent("warn", "DATABASE_RESET_DENIED", {
+          reason: "RESET_DISABLED_UNCONFIGURED",
+          ip,
+          nodeEnv,
+        });
+        return res.status(503).json({
+          error: "RESET_DISABLED_UNCONFIGURED",
+          message: "Database reset is unconfigured or disabled on this server.",
+        });
+      }
 
-      res.json({
-        success: true,
-        message: "Database has been reset to a zero-default clean slate.",
-        resetAt: new Date().toISOString(),
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Database reset failed";
-      logStructuredEvent("error", "DATABASE_RESET_FAILED", {
-        error: msg,
-      });
-      res.status(500).json({ error: msg });
-    }
-  });
+      // Gate 1: Environment Policy Enforcement
+      if (
+        nodeEnv === "production" &&
+        process.env.ALLOW_DATABASE_RESET !== "true"
+      ) {
+        logStructuredEvent("warn", "DATABASE_RESET_DENIED", {
+          reason: "RESET_DISALLOWED_IN_PRODUCTION",
+          ip,
+          nodeEnv,
+        });
+        return res.status(403).json({
+          error: "RESET_DISALLOWED_IN_PRODUCTION",
+          message: "Database reset is disallowed in production mode.",
+        });
+      }
+
+      // Gate 2a: Header Confirmation Existence
+      const providedToken = req.header("x-reset-confirmation");
+      if (!providedToken || providedToken.trim() === "") {
+        logStructuredEvent("warn", "DATABASE_RESET_DENIED", {
+          reason: "RESET_CONFIRMATION_REQUIRED",
+          ip,
+          nodeEnv,
+        });
+        return res.status(403).json({
+          error: "RESET_CONFIRMATION_REQUIRED",
+          message: "Missing required X-Reset-Confirmation header.",
+        });
+      }
+
+      // Gate 2b: Timing-safe Token Comparison
+      const isTokenValid = timingSafeEqualStrings(providedToken, configuredToken);
+      if (!isTokenValid) {
+        logStructuredEvent("warn", "DATABASE_RESET_DENIED", {
+          reason: "INVALID_CONFIRMATION_TOKEN",
+          ip,
+          nodeEnv,
+        });
+        return res.status(403).json({
+          error: "INVALID_CONFIRMATION_TOKEN",
+          message:
+            "Invalid confirmation token provided in X-Reset-Confirmation header.",
+        });
+      }
+
+      // All gates passed: Execute reset transaction
+      try {
+        await prisma.$transaction(async (tx: any) => {
+          await executeDatabaseReset(tx);
+        });
+
+        logStructuredEvent("info", "DATABASE_RESET_SUCCESS", {
+          timestamp: new Date().toISOString(),
+        });
+
+        res.json({
+          success: true,
+          message: "Database has been reset to a zero-default clean slate.",
+          resetAt: new Date().toISOString(),
+        });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Database reset failed";
+        logStructuredEvent("error", "DATABASE_RESET_FAILED", {
+          error: msg,
+        });
+        res.status(500).json({ error: msg });
+      }
+    },
+  );
 
   return router;
 }
+
