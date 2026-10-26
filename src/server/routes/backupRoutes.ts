@@ -8,6 +8,7 @@ import {
   buildBackupSnapshotFromDb,
   executeReplaceRestore,
   executeMergeRestore,
+  executeDatabaseReset,
 } from "../services/backupService";
 import {
   createRateLimitMiddleware,
@@ -103,6 +104,33 @@ export function createBackupRouter(
       }
     },
   );
+
+  // ==========================================
+  // DATABASE CLEAN-SLATE RESET ENDPOINT (PHASE 2B / ZERO-DEFAULT ADR-076)
+  // ==========================================
+  router.post("/data/reset", async (_req, res) => {
+    try {
+      await prisma.$transaction(async (tx: any) => {
+        await executeDatabaseReset(tx);
+      });
+
+      logStructuredEvent("info", "DATABASE_RESET_SUCCESS", {
+        timestamp: new Date().toISOString(),
+      });
+
+      res.json({
+        success: true,
+        message: "Database has been reset to a zero-default clean slate.",
+        resetAt: new Date().toISOString(),
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Database reset failed";
+      logStructuredEvent("error", "DATABASE_RESET_FAILED", {
+        error: msg,
+      });
+      res.status(500).json({ error: msg });
+    }
+  });
 
   return router;
 }

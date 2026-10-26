@@ -97,6 +97,10 @@ export class SyncQueueService {
     return deserializeSyncQueue(raw);
   }
 
+  clearQueue(): void {
+    this.saveQueue([]);
+  }
+
   private saveQueue(queue: SyncMutation[]): boolean {
     const serialized = serializeSyncQueue(queue);
     const success = safeSetLocalStorageItem(this.storageKey, serialized);

@@ -133,18 +133,43 @@ export async function buildBackupSnapshotFromDb(
   return BackupSnapshotSchema.parse(snapshot);
 }
 
+/**
+ * Deletes all database records across all tables in reverse foreign key order.
+ * Ensures an atomic clean slate (Zero-Default Universal Baseline).
+ */
+export async function executeDatabaseReset(tx: any): Promise<void> {
+  if (tx.researchInboxItem) await tx.researchInboxItem.deleteMany();
+  if (tx.researchExcerpt) await tx.researchExcerpt.deleteMany();
+  if (tx.archivedDocument) await tx.archivedDocument.deleteMany();
+  if (tx.researchTimelineEvent) await tx.researchTimelineEvent.deleteMany();
+  if (tx.artifactCitation) await tx.artifactCitation.deleteMany();
+  if (tx.artifactImport) await tx.artifactImport.deleteMany();
+  if (tx.groundedArtifact) await tx.groundedArtifact.deleteMany();
+  if (tx.taskPrompt) await tx.taskPrompt.deleteMany();
+  if (tx.sourcePackage) await tx.sourcePackage.deleteMany();
+  if (tx.researchSession) await tx.researchSession.deleteMany();
+  if (tx.flashcardReview) await tx.flashcardReview.deleteMany();
+  if (tx.flashcardSchedule) await tx.flashcardSchedule.deleteMany();
+  if (tx.flashcard) await tx.flashcard.deleteMany();
+  if (tx.noteTopicLink) await tx.noteTopicLink.deleteMany();
+  if (tx.topicTag) await tx.topicTag.deleteMany();
+  if (tx.knowledgeProgressSnapshot) await tx.knowledgeProgressSnapshot.deleteMany();
+  if (tx.knowledgeLink) await tx.knowledgeLink.deleteMany();
+  if (tx.studyProgress) await tx.studyProgress.deleteMany();
+  if (tx.resource) await tx.resource.deleteMany();
+  if (tx.note) await tx.note.deleteMany();
+  if (tx.topic) await tx.topic.deleteMany();
+  if (tx.tag) await tx.tag.deleteMany();
+  if (tx.category) await tx.category.deleteMany();
+  if (tx.syncSession) await tx.syncSession.deleteMany();
+}
+
 export async function executeReplaceRestore(
   tx: any,
   data: ValidatedBackupSnapshot["data"],
 ): Promise<void> {
   // 1. Xóa toàn bộ dữ liệu hiện hữu theo thứ tự quan hệ ngược (Reverse FK Order)
-  await tx.resource.deleteMany();
-  await tx.note.deleteMany();
-  await tx.knowledgeLink.deleteMany();
-  await tx.studyProgress.deleteMany();
-  await tx.topic.deleteMany();
-  await tx.tag.deleteMany();
-  await tx.category.deleteMany();
+  await executeDatabaseReset(tx);
 
   // 2. Nạp Categories
   for (const cat of data.categories) {

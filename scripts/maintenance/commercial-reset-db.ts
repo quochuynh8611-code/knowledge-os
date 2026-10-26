@@ -1,4 +1,5 @@
 import { prisma } from "../../src/lib/prisma";
+import { executeDatabaseReset } from "../../src/server/services/backupService";
 
 export const REQUIRED_RESET_CONFIRMATION = "XOA TOAN BO DATA CA NHAN";
 
@@ -154,9 +155,10 @@ export async function runCommercialReset(options: {
   }
 
   // EXECUTE MODE:
-  // 1. Delete all categories (cascading all dependent records) and standalone tags
-  const deleteCategoriesResult = await prisma.category.deleteMany({});
-  const deleteTagsResult = await prisma.tag.deleteMany({});
+  // 1. Delete all database records across all models in reverse foreign-key order
+  await prisma.$transaction(async (tx) => {
+    await executeDatabaseReset(tx);
+  });
 
   // 2. Post-mutation counts
   const [
@@ -198,8 +200,13 @@ export async function runCommercialReset(options: {
     database: sanitizedDb,
     beforeCounts,
     deletedRecords: {
-      categoriesDeleted: deleteCategoriesResult.count,
-      tagsDeleted: deleteTagsResult.count,
+      categoriesDeleted: beforeCounts.categories,
+      topicsDeleted: beforeCounts.topics,
+      notesDeleted: beforeCounts.notes,
+      resourcesDeleted: beforeCounts.resources,
+      tagsDeleted: beforeCounts.tags,
+      flashcardsDeleted: beforeCounts.flashcards,
+      researchSessionsDeleted: beforeCounts.researchSessions,
     },
     seededRecords: {
       categoriesCount: 0,

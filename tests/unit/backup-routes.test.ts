@@ -151,4 +151,30 @@ describe("Backup Routes Contract", () => {
     expect(res.status).toBe(429);
     expect(res.body.error).toBe("TOO_MANY_REQUESTS");
   });
+
+  it("5. POST /data/reset thực hiện xóa sạch cơ sở dữ liệu về zero-default clean slate", async () => {
+    const mockTx: any = new Proxy(
+      {},
+      {
+        get: () => ({
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        }),
+      },
+    );
+
+    const mockPrisma: any = {
+      $transaction: vi.fn().mockImplementation(async (cb) => cb(mockTx)),
+    };
+
+    const mockLimiter = createRateLimiter({ windowMs: 60000, maxRequests: 5 });
+    const app = express();
+    app.use(express.json());
+    app.use("/api", createBackupRouter(mockPrisma, mockLimiter));
+
+    const res = await request(app).post("/api/data/reset");
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toContain("zero-default");
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
 });

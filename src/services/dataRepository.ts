@@ -389,12 +389,20 @@ export class LocalStorageDataRepository implements IDataRepository {
       `${this.storageKey}_notes`,
       `${this.storageKey}_resources`,
       `${this.storageKey}_tags`,
+      `${this.storageKey}_flashcards`,
+      `${this.storageKey}_research_inbox`,
+      `${this.storageKey}_research_excerpts`,
+      "phat_hoc_huyen_hoc_focus_domain",
+      "phat_hoc_huyen_hoc_sync_queue",
+      "phat_hoc_huyen_hoc_sync_telemetry",
+      "knowledge_os_archived_documents",
       LEGACY_KEY,
       `${LEGACY_KEY}_categories`,
       `${LEGACY_KEY}_topics`,
       `${LEGACY_KEY}_notes`,
       `${LEGACY_KEY}_resources`,
       `${LEGACY_KEY}_tags`,
+      `${LEGACY_KEY}_flashcards`,
     ];
     keysToRemove.forEach((k) => safeRemoveLocalStorageItem(k));
     return true;
@@ -1160,7 +1168,25 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   async resetAllData(): Promise<boolean> {
+    const url = this.getUrl("/data/reset");
+    if (url) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          console.warn("Backend resetAllData returned error:", errBody);
+        }
+      } catch (err) {
+        console.warn("Backend resetAllData failed to connect:", err);
+      }
+    }
     await this.localFallback.resetAllData();
+    if (this.syncQueue && typeof this.syncQueue.clearQueue === "function") {
+      this.syncQueue.clearQueue();
+    }
     return true;
   }
 

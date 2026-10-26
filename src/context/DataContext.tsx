@@ -1135,6 +1135,8 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     setNotes(INITIAL_NOTES);
     setResources(INITIAL_RESOURCES);
     setTags(INITIAL_TAGS);
+    setResearchInboxItems([]);
+    setResearchExcerpts([]);
   };
 
   // Rehydration Action (Phase 2C - Post Restore / Manual Sync)
