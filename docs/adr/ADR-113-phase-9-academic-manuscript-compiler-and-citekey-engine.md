@@ -1,7 +1,7 @@
 # ADR-113: Phase 9 — Academic Manuscript Compiler & Live Citekey ([@key]) Engine
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟢 PROPOSED & IN PROGRESS (Phase 9A: Citekey Engine & Multi-Format Compiler; Phase 9B: ManuscriptStudioModal & UI Integration)
+- **Trạng thái:** 🟢 ACCEPTED & COMPLETED (Phase 9A: Citekey Engine & Multi-Format Compiler; Phase 9B: ManuscriptStudioModal & ResourcesManager Integration)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Trình biên dịch bản thảo học thuật đa phần (Multi-Note Manuscript Assembly), bộ phân tích cú pháp trích dẫn chuẩn Pandoc/LaTeX (`[@key]`, `[@key, p. 12]`, `[@key1; @key2]`), bộ phân giải trích dẫn theo phong cách (Author-Year: APA 7/Harvard/Chicago/MLA; Numeric: IEEE), tự động biên soạn danh mục tài liệu tham khảo (Auto-Bibliography), phát hiện citekey lỗi (`unresolvedCitekeys`), và xuất khẩu đồng thời sang Markdown, LaTeX (`.tex` + `.bib`) và HTML sẵn sàng in ấn.

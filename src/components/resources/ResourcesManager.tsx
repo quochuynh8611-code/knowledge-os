@@ -15,6 +15,7 @@ import {
   FileDown,
   UploadCloud,
   Layers,
+  FileSignature,
 } from 'lucide-react';
 import { ResourceFormModal } from '../modals/ResourceFormModal';
 import { ResourceViewerModal } from '../modals/ResourceViewerModal';
@@ -22,6 +23,7 @@ import { CitationModal } from '../modals/CitationModal';
 import { BatchCitationModal } from '../modals/BatchCitationModal';
 import { ReferenceImportModal } from '../modals/ReferenceImportModal';
 import { LiteratureMatrixModal } from '../modals/LiteratureMatrixModal';
+import { ManuscriptStudioModal } from '../modals/ManuscriptStudioModal';
 import { extractAcademicMetadataFromResource } from '../../lib/citationGenerator';
 import { formatTimeAgo } from '../../lib/spaced-repetition';
 import { resolveResourceOpenTarget, resolveResourceReaderDescriptor } from '../../lib/resourceOpenResolver';
@@ -43,6 +45,7 @@ export function ResourcesManager() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showMatrixModal, setShowMatrixModal] = useState(false);
+  const [showManuscriptStudio, setShowManuscriptStudio] = useState(false);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
   const [viewingResource, setViewingResource] = useState<Resource | null>(null);
   const [activeReaderDoc, setActiveReaderDoc] = useState<{
@@ -100,6 +103,14 @@ export function ResourcesManager() {
         categoryIcon={Library}
         actions={
           <div className="flex items-center gap-2">
+            <ToolbarButton
+              variant="secondary"
+              icon={FileSignature}
+              onClick={() => setShowManuscriptStudio(true)}
+              data-testid="btn-open-manuscript-studio"
+            >
+              Biên soạn Bản thảo
+            </ToolbarButton>
             <ToolbarButton
               variant="secondary"
               icon={Layers}
@@ -393,6 +404,16 @@ export function ResourcesManager() {
         topics={topics}
         notes={notes}
         excerpts={researchExcerpts}
+        defaultTopicId={topicFilter !== 'all' ? topicFilter : undefined}
+      />
+
+      {/* Academic Manuscript Studio Modal (ADR-113) */}
+      <ManuscriptStudioModal
+        isOpen={showManuscriptStudio}
+        onClose={() => setShowManuscriptStudio(false)}
+        resources={resources}
+        notes={notes}
+        topics={topics}
         defaultTopicId={topicFilter !== 'all' ? topicFilter : undefined}
       />
     </div>
