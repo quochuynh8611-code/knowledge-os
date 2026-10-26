@@ -98,7 +98,20 @@ flowchart TD
 
 ---
 
-## 4. Nguyên Tắc Triển Khai Horizon 2
+## 4. Bảng Tiến Độ Triển Khai Horizon 2 (Phases 7 – 12) — Hoàn Tất 100%
+
+| Phase | ADR | Tiêu Đề | Engine / UI Components | Trạng Thái |
+|---|---|---|---|---|
+| **Phase 7** | `ADR-111` | Smart Highlight-to-Flashcard Synthesis | `src/lib/highlightToFlashcard.ts`<br/>`src/components/flashcards/HighlightSynthesisModal.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (14/14 tests) |
+| **Phase 8** | `ADR-112` | Literature Review Matrix & Claim Synthesis | `src/lib/literatureMatrixEngine.ts`<br/>`src/components/modals/LiteratureMatrixModal.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (13/13 tests) |
+| **Phase 9** | `ADR-113` | Academic Manuscript & Live Citekey Compiler | `src/lib/manuscriptCompiler.ts`<br/>`src/components/modals/ManuscriptStudioModal.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (13/13 tests) |
+| **Phase 10** | `ADR-114` | Graph Centrality & Semantic Bridges | `src/lib/graphAnalyticsEngine.ts`<br/>`src/components/graph/GraphInsightsPanel.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (13/13 tests) |
+| **Phase 11** | `ADR-115` | Obsidian & E-Ink Scholarly Round-Trip Bridge | `src/lib/academicVaultSync.ts`<br/>`src/components/integrations/ObsidianBridgeModal.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (13/13 tests) |
+| **Phase 12** | `ADR-116` | Global Academic Command Palette & Workflow Router | `src/lib/academicCommandPaletteEngine.ts`<br/>`src/components/search/CommandPalette.tsx` | ✅ Hoàn thành & Đã Kiểm Chứng (13/13 tests) |
+
+---
+
+## 5. Nguyên Tắc Triển Khai Horizon 2
 1. **Zero-Default Universal Baseline (`ADR-076`):** Không cài sẵn danh mục, chủ đề hay dữ liệu mẫu nào.
 2. **Hermetic Test Guard (`ADR-077`):** Mọi unit test và integration test tuyệt đối không gọi live HTTP ra port dev.
 3. **Red-Green-Refactor Discipline:** Viết test trước, kiểm chứng fail, implement code, pass 100%, verify `tsc --noEmit`.

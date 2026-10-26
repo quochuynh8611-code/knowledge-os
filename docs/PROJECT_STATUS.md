@@ -2,7 +2,7 @@
 
 > **Cập nhật lần cuối:** 2026-10-26<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — PHASE 11: OBSIDIAN & E-INK SCHOLARLY ROUND-TRIP BRIDGE (ADR-115) HOÀN TẤT VÀ XÁC MINH 100%. Phase 11A (Scholarly Vault Engine, Dataview YAML & Callouts, E-Ink Study Pack Compiler with Masked Active Recall Self-Test, Lossless Round-Trip Markdown Parser) và Phase 11B (ObsidianBridgeModal UI Upgrade, Scholarly Dataview Copy Feedback, E-Ink Study Pack Download & Preview, Virtual Vault File Map Telemetry, Round-Trip Markdown Ingestion with Live Parsed Preview) đều đạt 100% Quality Gates: 8/8 Engine Tests PASS, 5/5 UI Integration Tests PASS, 27/27 Existing Obsidian Tests PASS (40/40 Total PASS), TypeScript 0 lỗi. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION (HORIZON 1 + HORIZON 2) — TOÀN BỘ 12 PHASE HOÀN TẤT VÀ XÁC MINH 100%. Phase 12 (ADR-116: Global Academic Command Palette & Workflow Router) đã hoàn tất cả 12A (Engine & Intent Parser) và 12B (UI Integration & Global Studio Routing). 100% Quality Gates: 13/13 Phase 12 Tests PASS, 23/23 Existing Command Palette Tests PASS, 79/79 Horizon 2 Master Suite Tests PASS, TypeScript 0 lỗi. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---

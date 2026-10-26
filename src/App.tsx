@@ -90,6 +90,22 @@ const AntigravityHandoffModal = React.lazy(() =>
     default: m.AntigravityHandoffModal,
   }))
 );
+const LiteratureMatrixModal = React.lazy(() =>
+  import("./components/modals/LiteratureMatrixModal").then((m) => ({
+    default: m.LiteratureMatrixModal,
+  }))
+);
+const ManuscriptStudioModal = React.lazy(() =>
+  import("./components/modals/ManuscriptStudioModal").then((m) => ({
+    default: m.ManuscriptStudioModal,
+  }))
+);
+const ObsidianBridgeModal = React.lazy(() =>
+  import("./components/integrations/ObsidianBridgeModal").then((m) => ({
+    default: m.ObsidianBridgeModal,
+  }))
+);
+import { runGuardedAutoBackup } from "./lib/autoBackupScheduler";
 const FlashcardReviewStudio = React.lazy(() =>
   import("./components/flashcards/FlashcardReviewStudio").then((m) => ({
     default: m.FlashcardReviewStudio,
@@ -148,6 +164,9 @@ function AppContent() {
     stopAndSaveStudyTimer,
     logStudyTime,
     topics,
+    notes,
+    resources,
+    researchExcerpts,
     addNote,
     updateTopicProgress,
     addExcerptToInbox,
@@ -157,6 +176,9 @@ function AppContent() {
   const [showQuickCaptureModal, setShowQuickCaptureModal] = useState(false);
   const [showNotebookLMModal, setShowNotebookLMModal] = useState(false);
   const [showAntigravityModal, setShowAntigravityModal] = useState(false);
+  const [showLiteratureMatrixModal, setShowLiteratureMatrixModal] = useState(false);
+  const [showManuscriptStudioModal, setShowManuscriptStudioModal] = useState(false);
+  const [showObsidianBridgeModal, setShowObsidianBridgeModal] = useState(false);
   const [showWrapupModal, setShowWrapupModal] = useState(false);
 
   const handleSaveQuickCapture = async (content: string) => {
@@ -265,6 +287,26 @@ function AppContent() {
   // Command Palette hook
   const palette = useCommandPalette({
     customItems: customPaletteItems,
+    academicData: {
+      topics,
+      notes,
+      resources,
+      excerpts: researchExcerpts,
+    },
+    scholarlyCallbacks: {
+      onNavigateTab: (tab) => setActiveTab(tab as any),
+      onOpenTopic: (id) => openTopicDetail(id),
+      onOpenNote: () => setActiveTab("notes"),
+      onSelectResource: () => setActiveTab("resources"),
+      onLookupDoi: () => setActiveTab("resources"),
+      onOpenLiteratureMatrix: () => setShowLiteratureMatrixModal(true),
+      onOpenManuscriptStudio: () => setShowManuscriptStudioModal(true),
+      onOpenObsidianBridge: () => setShowObsidianBridgeModal(true),
+      onTriggerQuickBackup: () => {
+        runGuardedAutoBackup({ reason: "manual", retentionDays: 7 });
+      },
+      onOpenFlashcardReview: () => setActiveTab("flashcards"),
+    },
     onNavigateTab: (tab) => setActiveTab(tab as any),
     onOpenTopic: (id) => openTopicDetail(id),
     onToggleTheme: () => toggleTheme(),
@@ -529,6 +571,42 @@ function AppContent() {
           <AntigravityHandoffModal
             isOpen={showAntigravityModal}
             onClose={() => setShowAntigravityModal(false)}
+          />
+        </React.Suspense>
+      )}
+
+      {/* Global Academic Studio Modals (Horizon 2) */}
+      {showLiteratureMatrixModal && (
+        <React.Suspense fallback={null}>
+          <LiteratureMatrixModal
+            isOpen={showLiteratureMatrixModal}
+            onClose={() => setShowLiteratureMatrixModal(false)}
+            resources={resources}
+            topics={topics}
+            notes={notes}
+            excerpts={researchExcerpts}
+            defaultTopicId={selectedTopicId || undefined}
+          />
+        </React.Suspense>
+      )}
+      {showManuscriptStudioModal && (
+        <React.Suspense fallback={null}>
+          <ManuscriptStudioModal
+            isOpen={showManuscriptStudioModal}
+            onClose={() => setShowManuscriptStudioModal(false)}
+            resources={resources}
+            topics={topics}
+            notes={notes}
+            defaultTopicId={selectedTopicId || undefined}
+          />
+        </React.Suspense>
+      )}
+      {showObsidianBridgeModal && (
+        <React.Suspense fallback={null}>
+          <ObsidianBridgeModal
+            isOpen={showObsidianBridgeModal}
+            onClose={() => setShowObsidianBridgeModal(false)}
+            topic={topics.find((t) => t.id === selectedTopicId)}
           />
         </React.Suspense>
       )}

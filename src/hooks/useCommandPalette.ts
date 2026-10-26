@@ -22,6 +22,13 @@ import {
 } from "../lib/storage";
 import type { SavedSearchView } from "../lib/savedViewStorage";
 
+import {
+  parseAcademicCommandQuery,
+  searchAcademicCommandPalette,
+  type AcademicPaletteSearchData,
+  type ScholarlyWorkflowCallbacks,
+} from "../lib/academicCommandPaletteEngine";
+
 export const COMMAND_PALETTE_RECENT_STORAGE_KEY = "phat_hoc_recent_commands_v1";
 const MAX_RECENT_ITEMS = 5;
 
@@ -87,6 +94,7 @@ export interface CommandPaletteItem {
   icon?: React.ComponentType<{ className?: string }>;
   action: () => void;
   keywords?: string[];
+  badge?: string;
 }
 
 export interface UseCommandPaletteOptions {
@@ -100,6 +108,8 @@ export interface UseCommandPaletteOptions {
   onOpenNoteModal?: () => void;
   onOpenReviewModal?: () => void;
   onOpenQuickCapture?: () => void;
+  academicData?: AcademicPaletteSearchData;
+  scholarlyCallbacks?: ScholarlyWorkflowCallbacks;
 }
 
 export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
@@ -305,8 +315,19 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       .filter((it): it is CommandPaletteItem => it !== undefined);
   }, [baseItems, recentIds]);
 
-  // Filter and rank Items based on Query using Scholar Search normalization
+  // Filter and rank Items based on Query using Scholar Search normalization & Academic Command Engine
   const filteredItems = useMemo(() => {
+    const parsed = parseAcademicCommandQuery(query);
+
+    // If query uses an explicit scholarly prefix mode (@, doi, >, ?)
+    if (parsed.mode !== "general") {
+      return searchAcademicCommandPalette(
+        query,
+        { ...options.academicData, baseCommands: baseItems },
+        options.scholarlyCallbacks
+      );
+    }
+
     const normQ = normalizeScholarText(query);
     if (!normQ) {
       if (recentItems.length === 0) return baseItems;
@@ -349,8 +370,28 @@ export function useCommandPalette(options: UseCommandPaletteOptions = {}) {
       return a.originalIndex - b.originalIndex;
     });
 
-    return scored.map((s) => s.item);
-  }, [baseItems, query, recentIds, recentItems]);
+    const baseMatched = scored.map((s) => s.item);
+
+    // If academic data is provided in general mode, also search academic entities and merge
+    if (options.academicData || options.scholarlyCallbacks) {
+      const academicResults = searchAcademicCommandPalette(
+        query,
+        options.academicData,
+        options.scholarlyCallbacks
+      );
+      const seenIds = new Set(baseMatched.map((b) => b.id));
+      const merged = [...baseMatched];
+      for (const res of academicResults) {
+        if (!seenIds.has(res.id)) {
+          seenIds.add(res.id);
+          merged.push(res);
+        }
+      }
+      return merged;
+    }
+
+    return baseMatched;
+  }, [baseItems, query, recentIds, recentItems, options.academicData, options.scholarlyCallbacks]);
 
   const executeItem = useCallback((item: CommandPaletteItem) => {
     setRecentIds((prev) => {

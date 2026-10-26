@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Search, X, ArrowRight, CornerDownLeft, Sparkles } from "lucide-react";
 import { CommandPaletteItem } from "../../hooks/useCommandPalette";
+import { parseAcademicCommandQuery } from "../../lib/academicCommandPaletteEngine";
 
 export interface CommandPaletteProps {
   isOpen: boolean;
@@ -89,6 +90,8 @@ export function CommandPalette({
 
   if (!isOpen) return null;
 
+  const parsedQuery = parseAcademicCommandQuery(query);
+
   // Group items by deterministic category order
   const uniqueCategories = Array.from(new Set(items.map((it) => it.category)));
   const categories = uniqueCategories.sort((a, b) => {
@@ -127,6 +130,17 @@ export function CommandPalette({
             placeholder="Tìm lệnh, chủ đề nghiên cứu, ghi chú, ma trận..."
             className="flex-1 bg-transparent text-sm font-medium outline-hidden placeholder:text-stone-400 dark:placeholder:text-stone-500 text-stone-900 dark:text-stone-100"
           />
+          {parsedQuery.mode !== "general" && (
+            <span
+              data-testid="palette-mode-badge"
+              className="px-2 py-0.5 text-[11px] font-mono font-bold rounded-lg bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shrink-0"
+            >
+              {parsedQuery.mode === "citekey" && "Citekey @"}
+              {parsedQuery.mode === "doi" && "DOI Lookup"}
+              {parsedQuery.mode === "semantic" && "Semantic RRF ?"}
+              {parsedQuery.mode === "command" && "Command >"}
+            </span>
+          )}
           {query && (
             <button
               type="button"
@@ -140,6 +154,61 @@ export function CommandPalette({
           <kbd className="hidden sm:inline px-2 py-0.5 font-mono text-[10px] font-bold bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 rounded-md border border-stone-200 dark:border-stone-700">
             Esc
           </kbd>
+        </div>
+
+        {/* Quick Scholarly Prefix Filter Pills */}
+        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-stone-200/80 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-950/40 text-[11px] overflow-x-auto">
+          <span className="text-[10px] uppercase font-bold text-stone-400 dark:text-stone-500 mr-1 shrink-0">
+            Bộ lọc:
+          </span>
+          <button
+            type="button"
+            data-testid="palette-prefix-pill-citekey"
+            onClick={() => onQueryChange("@")}
+            className={`px-2 py-0.5 rounded-lg border font-mono transition shrink-0 cursor-pointer ${
+              parsedQuery.mode === "citekey"
+                ? "bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700 font-bold"
+                : "bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-purple-300"
+            }`}
+          >
+            @ Citekey
+          </button>
+          <button
+            type="button"
+            data-testid="palette-prefix-pill-doi"
+            onClick={() => onQueryChange("doi:")}
+            className={`px-2 py-0.5 rounded-lg border font-mono transition shrink-0 cursor-pointer ${
+              parsedQuery.mode === "doi"
+                ? "bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700 font-bold"
+                : "bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-blue-300"
+            }`}
+          >
+            doi: Tra DOI
+          </button>
+          <button
+            type="button"
+            data-testid="palette-prefix-pill-semantic"
+            onClick={() => onQueryChange("? ")}
+            className={`px-2 py-0.5 rounded-lg border font-mono transition shrink-0 cursor-pointer ${
+              parsedQuery.mode === "semantic"
+                ? "bg-emerald-100 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 font-bold"
+                : "bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-300"
+            }`}
+          >
+            ? Ngữ nghĩa RRF
+          </button>
+          <button
+            type="button"
+            data-testid="palette-prefix-pill-command"
+            onClick={() => onQueryChange("> ")}
+            className={`px-2 py-0.5 rounded-lg border font-mono transition shrink-0 cursor-pointer ${
+              parsedQuery.mode === "command"
+                ? "bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200 border-amber-300 dark:border-amber-700 font-bold"
+                : "bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-amber-300"
+            }`}
+          >
+            &gt; Lệnh Studio
+          </button>
         </div>
 
         {/* Results List */}
@@ -204,6 +273,14 @@ export function CommandPalette({
                           </div>
 
                           <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {item.badge && (
+                              <span
+                                data-testid={`palette-item-badge-${item.id}`}
+                                className="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
+                              >
+                                {item.badge}
+                              </span>
+                            )}
                             {isSelected && (
                               <CornerDownLeft className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
                             )}

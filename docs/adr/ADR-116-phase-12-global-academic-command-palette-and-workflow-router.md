@@ -1,7 +1,7 @@
 # ADR-116: Phase 12 — Global Academic Command Palette (⌘K) & Scholarly Workflow Router Engine
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟢 PROPOSED & IN PROGRESS (Phase 12A: Academic Command Palette Engine & Intent Parser; Phase 12B: CommandPalette UI Integration & Router Wiring)
+- **Trạng thái:** 🟢 ACCEPTED & IMPLEMENTED (100% Complete & Verified)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Trụ cột điều hướng trung tâm và chặng kết thúc của Kế hoạch Nâng cấp Toàn diện Horizon 2 (Horizon 2 Master Upgrade). Xây dựng công cụ phân tích truy vấn có nhận thức tiền tố (Prefix-Aware Intent Parser), định tuyến luồng công việc học thuật (Scholarly Workflow Router), và bảng điều khiển lệnh toàn cục (`⌘K` / `Ctrl+K`) tích hợp tìm kiếm đa thực thể (Omnibox Multi-Entity Search) hỗ trợ tra cứu mã trích dẫn (`@citekey`), phát hiện trực tiếp mã số nhận dạng tài liệu số (`doi:` / `10.xxxx/...`), lọc lệnh hệ thống (`> command`), và truy hồi ngữ nghĩa lai RRF (`? semantic`).
