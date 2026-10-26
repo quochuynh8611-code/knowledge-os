@@ -1,7 +1,7 @@
 # ADR-111: Phase 7 — Smart Highlight-to-Flashcard & Cloze Synthesis Engine
 
 ## 1. Trạng Thái (Status)
-- **Trạng thái:** 🟡 PROPOSED & IN PROGRESS (Phase 7A: Synthesis Core Engine; Phase 7B: Studio Modal & ReaderSidebar Integration)
+- **Trạng thái:** ✅ ACCEPTED & COMPLETED (Phase 7A: Synthesis Core Engine; Phase 7B: Studio Modal & Reader Integration)
 - **Ngày quyết định:** 2026-10-26
 - **Tác giả:** Staff Engineer & System Architect
 - **Phạm vi:** Trích xuất thẻ nhớ học thuật từ điểm trích đọc (`ResearchExcerpt`), tạo Cloze Deletion tự động bảo toàn công thức toán/hóa học KaTeX & mhchem, phân tách định nghĩa, truy vết nguồn gốc (Provenance Footer), lọc thẻ hàng loạt và chống trùng lặp.

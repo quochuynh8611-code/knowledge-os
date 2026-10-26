@@ -16,6 +16,8 @@ import { TargetNoteSelectorModal } from './TargetNoteSelectorModal';
 import { NoteReaderModal } from '../modals/NoteReaderModal';
 import { NoteFormModal } from '../modals/NoteFormModal';
 import { FlashcardFormModal } from '../modals/FlashcardFormModal';
+import { ExcerptFlashcardSynthesisModal } from './ExcerptFlashcardSynthesisModal';
+import type { SynthesizedFlashcardCandidate } from '../../lib/highlightToFlashcardEngine';
 import type { FlashcardCitationProvenance, ReaderDocumentFormat } from '../../types/flashcard';
 import type { NoteCitationProvenance, NoteCitationFormat } from '../../types';
 import { generateExcerptCitationSnapshot, formatExcerptBlockquote } from '../../lib/excerptCitationService';
@@ -633,12 +635,16 @@ export function UnifiedResearchReader({
   const [flashcardProvenance, setFlashcardProvenance] = useState<FlashcardCitationProvenance | undefined>(undefined);
   const [flashcardInitialFront, setFlashcardInitialFront] = useState<string>('');
   const [activePromotingInboxItem, setActivePromotingInboxItem] = useState<ResearchInboxItem | null>(null);
+  const [isSynthesisModalOpen, setIsSynthesisModalOpen] = useState(false);
+  const [synthesisExcerpts, setSynthesisExcerpts] = useState<ResearchExcerpt[]>([]);
   const readerViewportRef = useRef<HTMLDivElement>(null);
   const [viewingBacklinkNote, setViewingBacklinkNote] = useState<Note | null>(null);
   const [viewingBacklinkTargetCitation, setViewingBacklinkTargetCitation] = useState<{ documentId: string; locator?: string } | undefined>(undefined);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const dataContext = React.useContext(DataContext) as {
+    topics?: Array<{ id: string; title: string }>;
+    flashcards?: Array<{ front: string; back: string; sourceExcerptId?: string }>;
     notes?: Note[];
     resources?: Resource[];
     researchInboxItems?: ResearchInboxItem[];
@@ -651,6 +657,8 @@ export function UnifiedResearchReader({
     deleteInboxItem?: (id: string) => Promise<void>;
     processInboxItem?: (id: string) => Promise<void>;
   } | undefined;
+  const topics = dataContext?.topics || [];
+  const flashcards = dataContext?.flashcards || [];
   const notes = dataContext?.notes || [];
   const resources = dataContext?.resources || [];
   const inboxItems = dataContext?.researchInboxItems || [];
@@ -1453,8 +1461,59 @@ export function UnifiedResearchReader({
               setViewingBacklinkNote(matched);
             }
           }}
+          onSynthesizeFlashcards={(excerptsToSynthesize) => {
+            setSynthesisExcerpts(excerptsToSynthesize);
+            setIsSynthesisModalOpen(true);
+          }}
         />
       </div>
+
+      {/* Phase 7B: Smart Highlight-to-Flashcard Synthesis Modal */}
+      {isSynthesisModalOpen && (
+        <ExcerptFlashcardSynthesisModal
+          isOpen={isSynthesisModalOpen}
+          onClose={() => setIsSynthesisModalOpen(false)}
+          excerpts={synthesisExcerpts.length > 0 ? synthesisExcerpts : documentHighlights}
+          existingCards={flashcards}
+          topics={topics}
+          defaultTopicId={topics[0]?.id}
+          documentId={documentId}
+          documentTitle={title}
+          onSaveCards={async (cards, targetTopicId) => {
+            if (!cards.length) return;
+            let count = 0;
+            const formatNormalized: ReaderDocumentFormat =
+              normalizedFormat === 'epub' ? 'epub' : normalizedFormat === 'pdf' ? 'pdf' : 'md';
+
+            for (const card of cards) {
+              try {
+                if (dataRepository?.createFlashcard) {
+                  await dataRepository.createFlashcard({
+                    topicId: targetTopicId,
+                    type: card.isCloze ? 'cloze' : 'basic',
+                    front: card.front,
+                    back: card.back,
+                    citationProvenance: {
+                      documentId,
+                      documentTitle: title,
+                      format: formatNormalized,
+                      locator: currentPosition,
+                      sourceUrl: fileUrl,
+                      excerptText: card.front,
+                    },
+                    lifecycleStatus: 'active',
+                  });
+                  count++;
+                }
+              } catch (err) {
+                console.error('Failed to save synthesized card:', err);
+              }
+            }
+            showToast(`Đã tổng hợp và lưu thành công ${count} flashcards vào FSRS deck!`);
+            setIsSynthesisModalOpen(false);
+          }}
+        />
+      )}
 
       {/* Phase 21A/21B: Note Context Viewer Modal from Backlink Explorer */}
       {viewingBacklinkNote && (

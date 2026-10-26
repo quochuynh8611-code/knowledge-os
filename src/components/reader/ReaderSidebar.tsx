@@ -58,6 +58,7 @@ export interface ReaderSidebarProps {
   onPromoteToFlashcard?: (item: ResearchInboxItem) => void;
   onOpenArchiveLink?: (documentId: string, locator?: string) => void;
   onOpenNoteDetail?: (noteId: string) => void;
+  onSynthesizeFlashcards?: (excerpts: ResearchExcerpt[]) => void;
 }
 
 function formatBadgeCount(count: number): string | null {
@@ -88,6 +89,7 @@ export function ReaderSidebar({
   onPromoteToFlashcard,
   onOpenArchiveLink,
   onOpenNoteDetail,
+  onSynthesizeFlashcards,
 }: ReaderSidebarProps) {
   const [editingExcerptId, setEditingExcerptId] = React.useState<string | null>(null);
   const [noteDraft, setNoteDraft] = React.useState<string>('');
@@ -561,6 +563,21 @@ export function ReaderSidebar({
                     </button>
                   )}
                 </div>
+
+                {/* 1-Click Flashcard Synthesis Trigger Button */}
+                {onSynthesizeFlashcards && excerpts.length > 0 && (
+                  <div className="pt-0.5">
+                    <button
+                      type="button"
+                      data-testid="btn-open-highlight-synthesis"
+                      onClick={() => onSynthesizeFlashcards(filteredExcerpts)}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500/15 hover:bg-amber-500/25 dark:bg-amber-400/15 dark:hover:bg-amber-400/25 text-amber-900 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700/80 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer"
+                    >
+                      <Brain className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Tổng hợp Flashcard</span>
+                    </button>
+                  </div>
+                )}
 
                 {filteredExcerpts.length === 0 ? (
                   <div

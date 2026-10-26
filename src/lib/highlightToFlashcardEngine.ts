@@ -4,6 +4,8 @@
  * and FSRS v5 Spaced Repetition (Phase 3).
  */
 
+import type { PositionSelector, CitationSnapshot } from '../types';
+
 export type SynthesisStrategy = 'auto' | 'cloze-auto' | 'definition-split' | 'qa-note';
 
 export interface ExcerptInput {
@@ -18,18 +20,17 @@ export interface ExcerptInput {
   headingId?: string;
   topicId?: string | null;
   tags?: string[];
-  positionSelector?: {
+  positionSelector?: PositionSelector | {
     pageNumber?: number;
+    page?: number;
     cfi?: string;
     headingId?: string;
     format?: string;
-    [key: string]: unknown;
   };
-  citationSnapshot?: {
+  citationSnapshot?: CitationSnapshot | {
     title?: string;
     locator?: string;
     author?: string;
-    [key: string]: unknown;
   } | null;
 }
 

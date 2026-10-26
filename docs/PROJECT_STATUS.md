@@ -1,8 +1,8 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-25<br>
+> **Cập nhật lần cuối:** 2026-10-26<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — HOÀN TẤT TOÀN DIỆN 6/6 PHASES (ADR-105 ĐẾN ADR-110) 100%. Phase 6: Guarded Auto-Backup Engine, Retention Rotation, Strict Integrity Verification & Modular Control Panel (ADR-110) hoàn tất xuất sắc với 4 bất biến kiến trúc cốt lõi: Zero-Data Overwrite Guard, Deterministic SHA-256 Fingerprint Deduplication, Atomic Verify-Before-Rotate N-Snapshot Ring Buffer, và Hermetic Test Guard (ADR-077). Tích hợp hoàn chỉnh AutoBackupControlPanel vào ExportImportModal cùng cơ chế Pre-Restore Safety Snapshot tự động. Toàn bộ 14/14 tests Phase 6 PASS, 48/48 backup tests PASS, 100% test suites xuyên suốt cả 6 Phase PASS, TypeScript 0 lỗi, Build PASS.**<br>
+> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION — HORIZON 2 ĐÃ KHỞI ĐỘNG THÀNH CÔNG VỚI PHASE 7: SMART HIGHLIGHT-TO-FLASHCARD & CLOZE SYNTHESIS ENGINE (ADR-111). Phase 7A (Core Synthesis Engine) và Phase 7B (Studio Modal & ReaderSidebar 1-Click Integration) hoàn tất 100%, bảo toàn công thức KaTeX & mhchem, deep-link provenance footer, lọc highlight theo màu và deduplication guard. 14/14 tests Phase 7 PASS, 58/58 sidebar regression tests PASS, TypeScript 0 lỗi, Hermetic Test Guard & Zero-Default Universal Baseline tuân thủ tuyệt đối.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---
@@ -89,6 +89,40 @@
 | **Completed** | **Phase 4 — High-Fidelity PDF Text Layer & Page-Scoped Highlights (ADR-108)**<br>- Interactive PDF text layer DOM, Persistent 4-color highlights, Click-to-Jump page sync, Deep-link excerpt sang Flashcard/Note. | Tương tác trực tiếp trên tài liệu PDF học thuật. | Cao | 🟢 **COMPLETE & VERIFIED (`d9241fe`)** |
 | **Completed** | **Phase 5 — Local Knowledge Copilot, Vector Search & Grounded RAG (ADR-109)**<br>- 128-D local semantic embedding, Cosine Similarity, Hybrid RRF (k=60), Grounded RAG retrieval studio với trích dẫn nguồn `[^SRC-N]`. | Trợ lý nghiên cứu AI thông minh dựa trên toàn bộ kho tri thức cục bộ. | Cao | 🟢 **COMPLETE & VERIFIED (`dd0b49e`)** |
 | **Completed** | **Phase 6 — Guarded Auto-Backup Engine, Retention Rotation & System Reliability (ADR-110)**<br>- Zero-Data Overwrite Guard, SHA-256 Fingerprint Deduplication, N-Snapshot Ring Buffer, Hermetic Scheduling, Modular AutoBackupControlPanel, Pre-Restore Safety Snapshot Rollback. | Bảo vệ dữ liệu nghiên cứu tuyệt đối chống mất mát hoặc đè nhầm. | Cao | 🟢 **COMPLETE & VERIFIED (`47d3a95`)** |
+| **Completed** | **Phase 7 — Smart Highlight-to-Flashcard & Cloze Synthesis Engine (ADR-111)**<br>- Cloze-auto, definition-split, qa-note strategies, balanced-brace LaTeX/mhchem preservation, Deep-Link Provenance Footer, Deduplication Guard, ExcerptFlashcardSynthesisModal Studio, ReaderSidebar 1-Click Integration. | Chuyển đổi tức thời các đoạn trích đọc thành thẻ nhớ FSRS v5 chất lượng cao. | Cao | 🟢 **COMPLETE & VERIFIED (`96b6988`)** |
+| **Candidate** | **Phase 8 — Literature Review Synthesis Matrix (ADR-112)**<br>- Ma trận so sánh chéo đa tài liệu, trích xuất luận điểm & dữ liệu thực nghiệm từ ResearchExcerpt, xuất bảng Markdown/LaTeX/CSV. | Tự động hóa xây dựng bảng tổng quan tài liệu luận văn học thuật. | Cao | 🟡 **TIẾP THEO (Horizon 2)** |
+| **Candidate** | **Phase 9 — Academic Manuscript & Citekey Compiler (ADR-113)**<br>- Autocomplete `@citekey` từ BibTeX hub, Pandoc-style in-text citation compiler, tự động xuất danh mục tham khảo APA/IEEE. | Biên tập và xuất bản bài báo khoa học chuẩn mực. | Cao | ⚪ Sắp tới |
+| **Candidate** | **Phase 10 — Graph Centrality & Semantic Bridge Recommender (ADR-114)**<br>- Betweenness centrality, PageRank, phát hiện khoảng trống cấu trúc (Structural Holes) và đường bắc cầu ngữ nghĩa qua Vector RAG. | Khám phá các mối liên kết tri thức ẩn giữa các cụm nghiên cứu. | Cao | ⚪ Sắp tới |
+| **Candidate** | **Phase 11 — Obsidian & E-Ink Scholarly Round-Trip Bridge (ADR-115)**<br>- Đồng bộ hai chiều Obsidian Vault & thiết bị E-Ink (Boox/Supernote) qua Markdown chuẩn học thuật. | Kết nối trải nghiệm ghi chú đa thiết bị không đứt gãy mạch đọc. | Trung bình | ⚪ Sắp tới |
+| **Candidate** | **Phase 12 — Global Academic Command Palette (⌘K) & Workflow Router (ADR-116)**<br>- Trung tâm điều khiển tối cao bàn phím, điều hướng tức thời giữa đọc sách, ôn tập FSRS, ma trận tổng quan và biên soạn bản thảo. | Thao tác siêu tốc không rời tay khỏi bàn phím. | Trung bình | ⚪ Sắp tới |
+
+---
+
+## 🧠 Smart Highlight-to-Flashcard & Cloze Synthesis Engine — Phase 7 Closure (2026-10-26)
+
+- **Trạng thái:** 🟢 Complete & Verified (100% GREEN)
+- **Commits:**
+  - `96b6988`: `feat(flashcards): add smart highlight-to-flashcard synthesis engine and horizon 2 master plan`
+  - Pending Phase 7B commit: `feat(flashcards): wire excerpt flashcard synthesis studio modal and 1-click reader sidebar integration`
+- **Tests & Quality Gate:**
+  - 14/14 Phase 7 tests PASS (`highlight-to-flashcard-engine.test.ts` 9/9, `highlight-to-flashcard-ui.test.tsx` 5/5).
+  - 58/58 Reader Sidebar & FSRS regression tests PASS across 11 suites (100% GREEN).
+  - TypeScript typecheck: 0 errors (`npx tsc --noEmit` hoàn tất thành công).
+  - Tuân thủ nghiêm ngặt Zero-Default Universal Baseline (`ADR-076`) và Hermetic Test Guard (`ADR-077`).
+- **Mục tiêu phase & 4 Bất Biến Kiến Trúc Hoàn Thành:**
+  1. ✅ **Multi-Strategy Excerpt Synthesis (`'cloze-auto'`, `'definition-split'`, `'qa-note'`, `'auto'`)**:
+     - Bóc tách tự động thuật ngữ in đậm, công thức toán/hóa học, định nghĩa dạng `Term: Definition` hoặc `Term là ...`.
+     - Bọc cloze deletion `{{c1::...}}` bằng balanced brace scanner bảo toàn tuyệt đối các ngoặc nhọn TeX lồng nhau ($\frac{a}{b}$, $\ce{Fe^{2+}}$).
+  2. ✅ **Deep-Link Provenance Footer**:
+     - Mọi thẻ tạo ra đều có chân trang xuất xứ học thuật dạng `> 📖 Nguồn: [Title] • Trang X` (PDF), `• Vị trí EPUB` (EPUB), `• Mục: [Heading]` (Markdown) và lưu `sourceExcerptId` trong metadata.
+  3. ✅ **Batch Deduplication Guard & Color Filtering**:
+     - Lọc các trích đoạn theo bảng màu highlight (Vàng, Hồng, Xanh dương, Xanh lá).
+     - Khử trùng lặp tự động dựa trên `sourceExcerptId` và chuỗi nội dung chuẩn hóa, hiển thị huy hiệu báo cáo số lượng thẻ trùng lặp bị bỏ qua.
+  4. ✅ **ExcerptFlashcardSynthesisModal Studio & ReaderSidebar 1-Click Trigger**:
+     - Xây dựng giao diện phòng thu tổng hợp thẻ với bộ chọn chủ đề FSRS, bộ chọn chiến lược, chỉnh sửa trực tiếp mặt trước/sau, xem trước KaTeX qua `AcademicMarkdown`.
+     - Tích hợp nút 1-click "Tổng hợp Flashcard" ngay trong Highlights panel của `ReaderSidebar` và `UnifiedResearchReader`.
+
+---
 
 ---
 
