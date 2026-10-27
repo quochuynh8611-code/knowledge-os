@@ -52,7 +52,7 @@ export interface AIResearchSession {
   timestamp: number;
   // Phase 2A Additions (Optional & Backward-compatible)
   depth?: 'quick' | 'standard' | 'deep';
-  outputFormat?: 'answer' | 'research_brief' | 'flashcards';
+  outputFormat?: 'answer' | 'research_brief' | 'flashcards' | 'study_guide' | 'source_pack';
   citations?: AIResearchCitation[];
   uncertainties?: AIResearchUncertainty[];
   proposedOutline?: AIResearchPlanOutline[];
@@ -63,6 +63,7 @@ export interface AIResearchSession {
     excludedCount: number;
     totalCharsUsed: number;
   };
+  groundingMetadata?: any;
 }
 
 export interface FormatMarkdownOptions {

@@ -205,3 +205,46 @@ export async function executeBatchCreation(
     results,
   };
 }
+
+/**
+ * Automatically extracts Q&A pairs (Q: ... A: ...) or bullet-list flashcards from markdown research text.
+ */
+export function extractFlashcardsFromResearchResult(text: string): ParsedCard[] {
+  if (!text || typeof text !== "string") return [];
+
+  const cards: ParsedCard[] = [];
+
+  // 1. Try Q&A block regex pattern
+  // Matches Q/Question/Câu hỏi/Mặt trước ... followed by A/Answer/Trả lời/Đáp án/Mặt sau ...
+  const qaRegex =
+    /(?:^|\n)(?:[-*]\s+|\d+[\.)]\s+)?(?:\*\*|#+\s*)?(?:Q(?:uestion)?|Câu\s*hỏi|Mặt\s*trước)(?:\s*\d+)?(?:\*\*)?[:：]\s*([\s\S]*?)(?:\n\s*(?:\*\*|#+\s*)?(?:A(?:nswer)?|Trả\s*lời|Đáp\s*án|Mặt\s*sau)(?:\s*\d+)?(?:\*\*)?[:：]\s*([\s\S]*?))(?=(?:\n\s*(?:[-*]\s+|\d+[\.)]\s+)?(?:\*\*|#+\s*)?(?:Q(?:uestion)?|Câu\s*hỏi|Mặt\s*trước)(?:\s*\d+)?(?:\*\*)?[:：])|$)/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = qaRegex.exec(text)) !== null) {
+    const front = match[1].trim().replace(/^\*\*|\*\*$/g, "").trim();
+    const back = match[2].trim().replace(/^\*\*|\*\*$/g, "").trim();
+    if (front && back) {
+      cards.push({
+        front,
+        back,
+        type: "basic",
+      });
+    }
+  }
+
+  // 2. If no cards found via QA regex, fallback to bullet list parser
+  if (cards.length === 0) {
+    const bulletCards = parseNoteBulletListToCards(text);
+    for (const bc of bulletCards) {
+      if (bc.front && (bc.back || bc.type === "cloze")) {
+        cards.push({
+          front: bc.front,
+          back: bc.back || "",
+          type: bc.type,
+        });
+      }
+    }
+  }
+
+  return cards.slice(0, MAX_BATCH_LIMIT);
+}

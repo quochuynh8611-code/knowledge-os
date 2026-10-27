@@ -763,12 +763,7 @@ export const SourceScopeInputSchema = z
     resources: z.boolean().default(false),
     flashcards: z.boolean().default(false),
     obsidianVault: z.boolean().default(false),
-    externalResearch: z
-      .boolean()
-      .default(false)
-      .refine((val) => val === false, {
-        message: "Nghiên cứu bên ngoài (externalResearch) chưa được hỗ trợ trong Phase 2A",
-      }),
+    externalResearch: z.boolean().default(false),
   })
   .transform((scope) => ({
     canonicalText: scope.canonicalText ?? scope.topicDocuments ?? true,
@@ -776,7 +771,7 @@ export const SourceScopeInputSchema = z
     resources: scope.resources,
     flashcards: scope.flashcards,
     obsidianVault: scope.obsidianVault,
-    externalResearch: false as const,
+    externalResearch: scope.externalResearch ?? false,
   }));
 
 export const GeminiStructuredResponseSchema = z.object({
@@ -853,7 +848,7 @@ export const GeminiResearchInputSchema = z
     }),
     depth: z.enum(["quick", "standard", "deep"]).optional().default("standard"),
     outputFormat: z
-      .enum(["answer", "research_brief", "flashcards"])
+      .enum(["answer", "research_brief", "flashcards", "study_guide", "source_pack"])
       .optional()
       .default("answer"),
     selectedSources: z.array(ClientResearchSourceInputSchema).optional(),

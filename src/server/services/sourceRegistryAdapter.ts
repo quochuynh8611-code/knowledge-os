@@ -23,7 +23,7 @@ export interface SourceScope {
   resources: boolean;
   flashcards: boolean;
   obsidianVault?: boolean;
-  externalResearch: false;
+  externalResearch?: boolean;
 }
 
 export interface SourceRegistryEntry {

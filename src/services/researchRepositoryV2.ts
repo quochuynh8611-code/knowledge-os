@@ -251,4 +251,27 @@ export class ResearchRepositoryV2 implements IDataRepository {
     }
     return true;
   }
+
+  // ── Flashcard Delegation ──────────────────────────────────────────────
+
+  async createFlashcard(input: unknown): Promise<any> {
+    if (this.base.createFlashcard) {
+      return this.base.createFlashcard(input);
+    }
+    throw new Error('createFlashcard is not supported by base repository');
+  }
+
+  async updateFlashcard(id: string, input: unknown): Promise<any> {
+    if (this.base.updateFlashcard) {
+      return this.base.updateFlashcard(id, input);
+    }
+    throw new Error('updateFlashcard is not supported by base repository');
+  }
+
+  async deleteFlashcard(id: string): Promise<boolean> {
+    if (this.base.deleteFlashcard) {
+      return this.base.deleteFlashcard(id);
+    }
+    return true;
+  }
 }

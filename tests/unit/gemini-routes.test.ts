@@ -31,7 +31,26 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
       expect(res.body.details).toBeDefined();
     });
 
-    it("2. Trả về 400 với thông điệp policy rõ ràng khi gửi externalResearch = true", async () => {
+    it("2. Chấp nhận externalResearch = true và cấu hình Google Search Grounding tool cùng groundingMetadata", async () => {
+      const structuredAiResponse = JSON.stringify({
+        proposedOutline: [],
+        content: "Nội dung khảo cứu có đối chiếu Internet.",
+        citations: [],
+        uncertainties: [],
+      });
+
+      mockGenerateContent.mockResolvedValue({
+        text: structuredAiResponse,
+        candidates: [
+          {
+            groundingMetadata: {
+              webSearchQueries: ["Khảo cứu Tứ Diệu Đế học thuật"],
+              groundingChunks: [{ web: { uri: "https://example.com", title: "Example" } }],
+            },
+          },
+        ],
+      });
+
       const app = express();
       app.use(express.json());
       app.use("/api", createGeminiRouter(() => mockGenAI));
@@ -47,15 +66,21 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
             flashcards: false,
             externalResearch: true,
           },
+          outputFormat: "study_guide",
         });
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe("VALIDATION_ERROR");
-      const details = res.body.details || [];
-      const hasPolicyMsg = details.some((d: any) =>
-        d.message?.includes("externalResearch") || d.path?.includes("externalResearch")
+      expect(res.status).toBe(200);
+      expect(res.body.result).toBe("Nội dung khảo cứu có đối chiếu Internet.");
+      expect(res.body.groundingMetadata).toBeDefined();
+      expect(res.body.groundingMetadata.webSearchQueries).toContain("Khảo cứu Tứ Diệu Đế học thuật");
+      expect(mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            tools: [{ googleSearch: {} }],
+            systemInstruction: expect.stringContaining("Google Search Grounding"),
+          }),
+        }),
       );
-      expect(hasPolicyMsg).toBe(true);
     });
 
     it("3. Trả về 503 fallback khi GEMINI_API_KEY chưa được cấu hình (getGenAI() null)", async () => {
@@ -253,6 +278,39 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
       expect(res.status).toBe(200);
       expect(receivedPrompt).not.toContain("]]></source>");
       expect(receivedPrompt).toContain("]] >");
+    });
+
+    it("8b. Bổ sung đúng chỉ thị chuyên biệt cho study_guide và source_pack", async () => {
+      let capturedSystemInstruction = "";
+      mockGenerateContent.mockImplementation((args: any) => {
+        capturedSystemInstruction = args?.config?.systemInstruction || "";
+        return Promise.resolve({
+          text: JSON.stringify({ content: "Kết quả cẩm nang", citations: [], uncertainties: [] }),
+        });
+      });
+
+      const app = express();
+      app.use(express.json());
+      app.use("/api", createGeminiRouter(() => mockGenAI));
+
+      await request(app)
+        .post("/api/gemini/research")
+        .send({
+          prompt: "Tạo tài liệu",
+          outputFormat: "source_pack",
+        });
+
+      expect(capturedSystemInstruction).toContain("Hãy tạo bộ hồ sơ tài liệu nguồn gồm");
+      expect(capturedSystemInstruction).toContain("Bảng đối chiếu thuật ngữ chuyên ngành");
+
+      await request(app)
+        .post("/api/gemini/research")
+        .send({
+          prompt: "Tạo cẩm nang",
+          outputFormat: "study_guide",
+        });
+
+      expect(capturedSystemInstruction).toContain("Hãy tạo cẩm nang học tập toàn diện gồm 5 phần");
     });
   });
 

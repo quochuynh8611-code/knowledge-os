@@ -71,7 +71,7 @@ export async function generateContentWithResilience(
     config?: any;
     primaryModel?: string;
   },
-): Promise<{ text: string; modelUsed: string }> {
+): Promise<{ text: string; modelUsed: string; groundingMetadata?: any }> {
   const primary = params.primaryModel || "gemini-3.6-flash";
   const modelQueue = Array.from(new Set([primary, ...CANDIDATE_MODELS]));
   let lastError: any = null;
@@ -86,7 +86,8 @@ export async function generateContentWithResilience(
         });
 
         const text = response.text || "";
-        return { text, modelUsed: model };
+        const groundingMetadata = response.candidates?.[0]?.groundingMetadata || null;
+        return { text, modelUsed: model, groundingMetadata };
       } catch (err: any) {
         lastError = err;
 

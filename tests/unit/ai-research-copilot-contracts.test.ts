@@ -39,7 +39,7 @@ describe("Slice 1: AI Research Copilot Contracts & Bounded Adapter", () => {
       }
     });
 
-    it("1.2. Reject rõ ràng khi externalResearch = true (không silent-transform)", () => {
+    it("1.2. Chấp nhận externalResearch = true và các outputFormat mới", () => {
       const payloadWithExternal = {
         prompt: "Khảo cứu nguồn ngoài",
         sourceScope: {
@@ -49,15 +49,23 @@ describe("Slice 1: AI Research Copilot Contracts & Bounded Adapter", () => {
           flashcards: false,
           externalResearch: true,
         },
+        outputFormat: "study_guide",
       };
 
       const parsed = GeminiResearchInputSchema.safeParse(payloadWithExternal);
-      expect(parsed.success).toBe(false);
-      if (!parsed.success) {
-        const hasExternalError = parsed.error.issues.some((issue) =>
-          issue.message.includes("externalResearch") || issue.path.includes("externalResearch")
-        );
-        expect(hasExternalError).toBe(true);
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.sourceScope.externalResearch).toBe(true);
+        expect(parsed.data.outputFormat).toBe("study_guide");
+      }
+
+      const parsedSourcePack = GeminiResearchInputSchema.safeParse({
+        prompt: "Khảo cứu hồ sơ nguồn",
+        outputFormat: "source_pack",
+      });
+      expect(parsedSourcePack.success).toBe(true);
+      if (parsedSourcePack.success) {
+        expect(parsedSourcePack.data.outputFormat).toBe("source_pack");
       }
     });
 
@@ -350,7 +358,7 @@ describe("Slice 1: AI Research Copilot Contracts & Bounded Adapter", () => {
   });
 
   describe("5. Route Integration: POST /api/gemini/research", () => {
-    it("5.1. Trả về 400 khi gửi externalResearch = true", async () => {
+    it("5.1. Chấp nhận externalResearch = true và trả về 503 khi API key chưa cấu hình", async () => {
       const app = express();
       app.use(express.json());
       app.use("/api", createGeminiRouter(() => null));
@@ -368,8 +376,8 @@ describe("Slice 1: AI Research Copilot Contracts & Bounded Adapter", () => {
           },
         });
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe("VALIDATION_ERROR");
+      expect(res.status).toBe(503);
+      expect(res.body.fallback).toBe(true);
     });
   });
 });

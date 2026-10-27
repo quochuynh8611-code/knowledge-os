@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useData } from '../../context/DataContext';
+import { useData, dataRepository } from '../../context/DataContext';
 import {
   Sparkles,
   Send,
@@ -17,6 +17,7 @@ import {
   Layers,
   HardDrive,
   FileText,
+  Globe,
 } from 'lucide-react';
 import { Topic } from '../../types';
 import {
@@ -39,6 +40,7 @@ import {
   GroundedContextChunk,
 } from '../../lib/vectorSearchEngine';
 import { AcademicMarkdown } from '../ui/AcademicMarkdown';
+import { extractFlashcardsFromResearchResult } from '../../lib/noteBatchCardParser';
 
 const AntigravityHandoffModal = React.lazy(() =>
   import('../integrations/AntigravityHandoffModal').then((m) => ({
@@ -52,7 +54,12 @@ interface AIResearchStudioProps {
 }
 
 export type ResearchDepth = 'quick' | 'standard' | 'deep';
-export type ResearchOutputFormat = 'answer' | 'research_brief' | 'flashcards';
+export type ResearchOutputFormat =
+  | 'answer'
+  | 'research_brief'
+  | 'flashcards'
+  | 'study_guide'
+  | 'source_pack';
 
 export interface SourceScopeState {
   canonicalText: boolean;
@@ -60,7 +67,7 @@ export interface SourceScopeState {
   resources: boolean;
   flashcards: boolean;
   obsidianVault: boolean;
-  externalResearch: false;
+  externalResearch: boolean;
 }
 
 export type ProgressLifecycle =
@@ -114,6 +121,10 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
   const [isStructured, setIsStructured] = useState<boolean>(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [fallbackWarning, setFallbackWarning] = useState<string | null>(null);
+  const [groundingMetadata, setGroundingMetadata] = useState<any>(null);
+  const [isImportingCards, setIsImportingCards] = useState<boolean>(false);
+  const [importedCardCount, setImportedCardCount] = useState<number | null>(null);
+  const [importCardMessage, setImportCardMessage] = useState<string | null>(null);
 
   // Obsidian Vault Integration States (Phase 2B)
   const [showObsidianPicker, setShowObsidianPicker] = useState(false);
@@ -166,6 +177,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
       setCitations(latestSession.citations || []);
       setUncertainties(latestSession.uncertainties || []);
       setProposedOutline(latestSession.proposedOutline || []);
+      setGroundingMetadata(latestSession.groundingMetadata || null);
       setIsStructured(true);
     } else {
       setPrompt('');
@@ -176,9 +188,12 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
       setCitations([]);
       setUncertainties([]);
       setProposedOutline([]);
+      setGroundingMetadata(null);
       setIsStructured(true);
       setCurrentSessionId(null);
     }
+    setImportedCardCount(null);
+    setImportCardMessage(null);
 
     // Hydrate Obsidian selection from localStorage
     const storedObsidian = loadObsidianTopicSelection(activeTopic.id);
@@ -351,7 +366,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
             resources: sourceScope.resources,
             flashcards: sourceScope.flashcards,
             obsidianVault: sourceScope.obsidianVault,
-            externalResearch: false,
+            externalResearch: sourceScope.externalResearch,
           },
           depth,
           outputFormat,
@@ -382,6 +397,9 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
       setUncertainties(data.uncertainties || []);
       setProposedOutline(data.proposedOutline || []);
       setIsStructured(data.isStructured !== false);
+      setGroundingMetadata(data.groundingMetadata || null);
+      setImportedCardCount(null);
+      setImportCardMessage(null);
       if (data.obsidianSourceSummary) {
         setObsidianSourceSummary(data.obsidianSourceSummary);
       }
@@ -405,6 +423,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
         uncertainties: data.uncertainties || [],
         proposedOutline: data.proposedOutline || [],
         sourceStats: data.sourceStats,
+        groundingMetadata: data.groundingMetadata,
       });
 
       if (saved) {
@@ -443,6 +462,26 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
         isPrivate: false,
         tags: ['Q&A-Draft', 'AI-Research', 'Flashcard', activeTopic.type],
       });
+    } else if (outputFormat === 'study_guide') {
+      addNote({
+        topicId: activeTopic.id,
+        topicTitle: activeTopic.title,
+        title: `Cẩm nang học tập: ${prompt.slice(0, 40) || activeTopic.title}`,
+        content: `> **Chủ đề cẩm nang:** ${prompt || activeTopic.title}\n\n${researchResult}`,
+        type: 'study',
+        isPrivate: false,
+        tags: ['Study-Guide', 'AI-Research', activeTopic.type],
+      });
+    } else if (outputFormat === 'source_pack') {
+      addNote({
+        topicId: activeTopic.id,
+        topicTitle: activeTopic.title,
+        title: `Hồ sơ tài liệu nguồn: ${prompt.slice(0, 40) || activeTopic.title}`,
+        content: `> **Hồ sơ nguồn:** ${prompt || activeTopic.title}\n\n${researchResult}`,
+        type: 'summary',
+        isPrivate: false,
+        tags: ['Source-Pack', 'AI-Research', activeTopic.type],
+      });
     } else {
       addNote({
         topicId: activeTopic.id,
@@ -456,6 +495,42 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
     }
 
     setSavedAsNote(true);
+  };
+
+  const handleImportToSRS = async () => {
+    if (!researchResult || !activeTopic || isImportingCards) return;
+    setIsImportingCards(true);
+    setImportCardMessage(null);
+
+    try {
+      const cards = extractFlashcardsFromResearchResult(researchResult);
+      if (cards.length === 0) {
+        setImportCardMessage('Không phát hiện cặp câu hỏi - đáp án (Q&A) nào trong kết quả.');
+        setIsImportingCards(false);
+        return;
+      }
+
+      let successCount = 0;
+      for (const card of cards) {
+        if (dataRepository?.createFlashcard) {
+          await dataRepository.createFlashcard({
+            topicId: activeTopic.id,
+            type: card.type || 'basic',
+            front: card.front,
+            back: card.back || '',
+            lifecycleStatus: 'active',
+          });
+          successCount++;
+        }
+      }
+
+      setImportedCardCount(successCount);
+      setImportCardMessage(`Đã nạp ${successCount} thẻ nhớ SRS thành công!`);
+    } catch (err: any) {
+      setImportCardMessage(err?.message || 'Có lỗi khi nạp thẻ nhớ SRS.');
+    } finally {
+      setIsImportingCards(false);
+    }
   };
 
   const handleCopy = () => {
@@ -480,6 +555,7 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
       citations,
       uncertainties,
       proposedOutline,
+      groundingMetadata,
     };
 
     const mdContent = formatResearchMarkdown(currentSession, {
@@ -516,10 +592,13 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
     setCitations(session.citations || []);
     setUncertainties(session.uncertainties || []);
     setProposedOutline(session.proposedOutline || []);
+    setGroundingMetadata(session.groundingMetadata || null);
     setCurrentSessionId(session.id);
     setIsStructured(true);
     setCopied(false);
     setSavedAsNote(false);
+    setImportedCardCount(null);
+    setImportCardMessage(null);
     setErrorMsg(null);
     setFallbackWarning(null);
     setLifecycleStep('idle');
@@ -761,14 +840,32 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               )}
 
               <label
-                className="flex items-center gap-1.5 text-stone-400 dark:text-stone-500 cursor-not-allowed select-none"
-                title="Nghiên cứu bên ngoài chưa được hỗ trợ trong Phase 2A"
+                className={`flex items-center gap-1.5 select-none cursor-pointer transition ${
+                  sourceScope.externalResearch
+                    ? 'text-sky-600 dark:text-sky-400 font-semibold'
+                    : 'text-stone-600 dark:text-stone-400'
+                }`}
+                title="Kích hoạt Google Search Grounding để tra cứu và kiểm chứng từ Internet"
               >
                 <input
                   type="checkbox"
-                  checked={false}
-                  disabled={true}
-                  className="rounded text-stone-300 dark:text-stone-600 cursor-not-allowed"
+                  data-testid="checkbox-external-research"
+                  checked={sourceScope.externalResearch}
+                  disabled={isLoading}
+                  onChange={(e) =>
+                    setSourceScope((prev) => ({
+                      ...prev,
+                      externalResearch: e.target.checked,
+                    }))
+                  }
+                  className="rounded text-sky-600 focus:ring-sky-500 cursor-pointer"
+                />
+                <Globe
+                  className={`w-3.5 h-3.5 ${
+                    sourceScope.externalResearch
+                      ? 'text-sky-500 animate-pulse'
+                      : 'text-stone-400'
+                  }`}
                 />
                 <span>Nghiên cứu Internet bên ngoài</span>
               </label>
@@ -907,12 +1004,8 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               <option value="answer">Câu trả lời (Answer)</option>
               <option value="research_brief">Bản tóm lược (Research Brief)</option>
               <option value="flashcards">Tạo Q&A Draft (Flashcards)</option>
-              <option value="study_guide" disabled>
-                Study Guide (Chưa hỗ trợ)
-              </option>
-              <option value="source_pack" disabled>
-                Source Pack (Chưa hỗ trợ)
-              </option>
+              <option value="study_guide">Cẩm nang học tập (Study Guide)</option>
+              <option value="source_pack">Bộ hồ sơ nguồn (Source Pack)</option>
             </select>
           </div>
         </div>
@@ -1078,6 +1171,33 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
                     )}
                     <span>{copied ? 'Đã sao chép' : 'Sao chép'}</span>
                   </button>
+                  {outputFormat === 'flashcards' && (
+                    <button
+                      type="button"
+                      data-testid="btn-import-srs"
+                      onClick={handleImportToSRS}
+                      disabled={isImportingCards || importedCardCount !== null}
+                      className={`px-2.5 py-1 text-xs rounded-lg flex items-center gap-1.5 transition font-medium cursor-pointer border ${
+                        importedCardCount !== null
+                          ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-800'
+                          : 'bg-indigo-100 dark:bg-indigo-950/40 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-800'
+                      }`}
+                      title="Tự động bóc tách các cặp Hỏi - Đáp và nạp trực tiếp vào Thẻ Nhớ SRS"
+                    >
+                      {importedCardCount !== null ? (
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      ) : (
+                        <BookOpen className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {isImportingCards
+                          ? 'Đang nạp thẻ...'
+                          : importedCardCount !== null
+                          ? `Đã nạp ${importedCardCount} thẻ SRS`
+                          : 'Nạp vào Thẻ Nhớ SRS'}
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleSaveToNotes}
@@ -1097,14 +1217,41 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
                       {savedAsNote
                         ? outputFormat === 'flashcards'
                           ? 'Đã lưu Q&A Draft'
+                          : outputFormat === 'study_guide'
+                          ? 'Đã lưu Study Guide'
+                          : outputFormat === 'source_pack'
+                          ? 'Đã lưu Source Pack'
                           : 'Đã lưu vào Ghi chú'
                         : outputFormat === 'flashcards'
                         ? 'Lưu Q&A Draft'
+                        : outputFormat === 'study_guide'
+                        ? 'Lưu Study Guide'
+                        : outputFormat === 'source_pack'
+                        ? 'Lưu Source Pack'
                         : 'Lưu thành Note'}
                     </span>
                   </button>
                 </div>
               </div>
+
+              {importCardMessage && (
+                <div
+                  data-testid="import-card-message"
+                  className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 text-xs text-purple-900 dark:text-purple-200 flex items-center justify-between gap-2"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>{importCardMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setImportCardMessage(null)}
+                    className="text-[11px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              )}
 
               {/* Markdown Content Body */}
               <div className="prose prose-stone dark:prose-invert max-w-none text-stone-800 dark:text-stone-200 text-sm leading-relaxed font-sans">
@@ -1176,6 +1323,63 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
                 </div>
               </div>
             )}
+
+            {/* Google Search Grounding Sources Panel */}
+            {groundingMetadata &&
+              ((groundingMetadata.webSearchQueries && groundingMetadata.webSearchQueries.length > 0) ||
+                (groundingMetadata.groundingChunks && groundingMetadata.groundingChunks.length > 0)) && (
+                <div
+                  data-testid="panel-grounding-metadata"
+                  className="bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-2xl p-4 shadow-xs space-y-2.5"
+                >
+                  <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-sky-900 dark:text-sky-300">
+                    <Globe className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <span>Nguồn Nghiên Cứu Internet (Google Search Grounding)</span>
+                  </div>
+                  {groundingMetadata.webSearchQueries && groundingMetadata.webSearchQueries.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 items-center text-xs">
+                      <span className="text-[11px] font-medium text-sky-800 dark:text-sky-300">
+                        Từ khóa tìm kiếm:
+                      </span>
+                      {groundingMetadata.webSearchQueries.map((query: string, idx: number) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-0.5 rounded-md bg-sky-100 dark:bg-sky-900/50 text-sky-800 dark:text-sky-200 text-[11px] font-mono border border-sky-200 dark:border-sky-700"
+                        >
+                          "{query}"
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {groundingMetadata.groundingChunks && groundingMetadata.groundingChunks.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs pt-1">
+                      {groundingMetadata.groundingChunks.map((chunk: any, idx: number) => {
+                        const web = chunk.web;
+                        if (!web) return null;
+                        return (
+                          <a
+                            key={idx}
+                            href={web.uri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2.5 bg-white dark:bg-stone-900 border border-sky-200 dark:border-sky-800 rounded-xl hover:border-sky-400 dark:hover:border-sky-600 transition flex items-start gap-2 group cursor-pointer"
+                          >
+                            <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0 mt-0.5 group-hover:text-sky-600" />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-stone-900 dark:text-stone-100 truncate group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                                {web.title || web.uri}
+                              </div>
+                              <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate">
+                                {web.uri}
+                              </div>
+                            </div>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         ) : (
           <div className="py-12 text-center text-stone-500 dark:text-stone-400 space-y-2">

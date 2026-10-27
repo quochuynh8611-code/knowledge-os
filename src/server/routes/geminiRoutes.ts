@@ -189,10 +189,18 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
         systemInstruction += `\n\nNhiệm vụ trọng tâm hiện tại: Phân tích cấu trúc khái niệm, các thành tố nội tại, tiên đề nền tảng và khung lý thuyết cốt lõi của chủ đề.`;
       }
 
+      if (sourceScope?.externalResearch) {
+        systemInstruction += `\n\n[Chỉ thị Nghiên cứu Internet bên ngoài (Google Search Grounding)]: Khi kích hoạt nghiên cứu bên ngoài, hãy đối chiếu kiến thức nội bộ với các nguồn học thuật uy tín trên Internet và trích dẫn rõ nguồn.`;
+      }
+
       if (outputFormat === "flashcards") {
-        systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Flashcards]: Hãy tạo ra các cặp câu hỏi - câu trả lời ôn tập sâu sắc (có câu hỏi cơ bản và câu hỏi kiểm chứng khái niệm).`;
+        systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Flashcards]: Hãy tạo ra các cặp câu hỏi - câu trả lời ôn tập sâu sắc (có câu hỏi cơ bản và câu hỏi kiểm chứng khái niệm). Định dạng rõ ràng theo mẫu Q: [Câu hỏi] và A: [Câu trả lời] hoặc danh sách gạch đầu dòng [Mặt trước] :: [Mặt sau].`;
       } else if (outputFormat === "research_brief") {
         systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Research Brief]: Bài khảo cứu cần có tóm tắt điều hành (Executive Summary), luận điểm chính (Core Theses), phân tích luận cứ và kết luận định hướng.`;
+      } else if (outputFormat === "study_guide") {
+        systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Study Guide]: Hãy tạo cẩm nang học tập toàn diện gồm 5 phần: 1. Bản đồ khái niệm cốt lõi; 2. Câu hỏi kiểm tra tự đánh giá; 3. Ví dụ minh họa thực tiễn; 4. Ngộ nhận và bẫy tư duy thường gặp; 5. Lộ trình học tập từng bước.`;
+      } else if (outputFormat === "source_pack") {
+        systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Source Pack]: Hãy tạo bộ hồ sơ tài liệu nguồn gồm: 1. Các trích đoạn định nghĩa quan trọng nhất; 2. Bảng đối chiếu thuật ngữ chuyên ngành; 3. Thư mục tài liệu khuyến nghị mở rộng.`;
       }
 
       const temperatureMap: Record<string, number> = {
@@ -208,12 +216,13 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
         `${registry.promptXml}\n\n` +
         `Yêu cầu nghiên cứu: ${prompt}`;
 
-      const { text, modelUsed } = await generateContentWithResilience(ai, {
+      const { text, modelUsed, groundingMetadata } = await generateContentWithResilience(ai, {
         primaryModel: "gemini-3.6-flash",
         contents: promptContext,
         config: {
           systemInstruction,
           temperature,
+          tools: sourceScope?.externalResearch ? [{ googleSearch: {} }] : undefined,
         },
       });
 
@@ -230,6 +239,7 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
         sourceStats: registry.stats,
         fallbackReason: parsedResponse.fallbackReason,
         obsidianSourceSummary,
+        groundingMetadata,
       });
     } catch (error: any) {
       logStructuredEvent("error", "GEMINI_RESEARCH_API_ERROR", {

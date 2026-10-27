@@ -59,9 +59,10 @@ describe('Slice 3: AI Research Copilot UI & Interaction Integration', () => {
     expect(screen.getByLabelText(/Tài liệu tham khảo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Thẻ ghi nhớ có sẵn/i)).toBeInTheDocument();
 
-    // External research is disabled
+    // External research is enabled
     const externalCheckbox = screen.getByLabelText(/Nghiên cứu Internet bên ngoài/i);
-    expect(externalCheckbox).toBeDisabled();
+    expect(externalCheckbox).not.toBeDisabled();
+    expect(externalCheckbox).not.toBeChecked();
 
     // Depth pills
     expect(screen.getByRole('button', { name: /Nhanh/i })).toBeInTheDocument();
@@ -71,6 +72,10 @@ describe('Slice 3: AI Research Copilot UI & Interaction Integration', () => {
     // Output format selector
     expect(screen.getByLabelText(/Định dạng đầu ra/i)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Tạo Q&A Draft/i })).toBeInTheDocument();
+    const studyGuideOption = screen.getByRole('option', { name: /Cẩm nang học tập \(Study Guide\)/i });
+    expect(studyGuideOption).not.toBeDisabled();
+    const sourcePackOption = screen.getByRole('option', { name: /Bộ hồ sơ nguồn \(Source Pack\)/i });
+    expect(sourcePackOption).not.toBeDisabled();
   });
 
   it('3.2. Submits request with structured sources and displays Citations and Uncertainties panels', async () => {
