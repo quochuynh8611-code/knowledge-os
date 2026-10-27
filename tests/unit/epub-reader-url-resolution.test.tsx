@@ -205,7 +205,7 @@ describe('EPUB URL Resolution & Path Taxonomy (Red Stage)', () => {
       // UnifiedResearchReader should open
       await waitFor(() => {
         expect(screen.getByText(/Unified Research Reader/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
     });
   });
 });

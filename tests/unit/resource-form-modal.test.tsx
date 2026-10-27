@@ -150,7 +150,7 @@ describe("ADR-011: ResourceFormModal UI Interaction & Source Mode Contract Tests
     });
     fireEvent.click(webModeButton);
 
-    const urlInput = screen.getByPlaceholderText(/https:\/\//i);
+    const urlInput = screen.getByPlaceholderText("https://...");
     expect(urlInput).toBeInTheDocument();
   });
 
@@ -161,7 +161,7 @@ describe("ADR-011: ResourceFormModal UI Interaction & Source Mode Contract Tests
     render(<ResourceFormModal isOpen={true} onClose={vi.fn()} />);
 
     // Initially in web mode, enter URL
-    const urlInput = screen.getByPlaceholderText(/https:\/\//i);
+    const urlInput = screen.getByPlaceholderText("https://...");
     fireEvent.change(urlInput, {
       target: { value: "https://ctext.org/book-of-changes" },
     });

@@ -136,7 +136,7 @@ describe("Phase F6.5 — Topic Detail Card Browser Integration (TopicDetail.tsx)
 
     // CardBrowser should be mounted
     expect(await screen.findByTestId("input-card-search")).toBeInTheDocument();
-    expect(screen.getByTestId("card-row-card-topic-1")).toBeInTheDocument();
+    expect(await screen.findByTestId("card-row-card-topic-1")).toBeInTheDocument();
   });
 
   it("3. clicking 'Duyệt danh sách thẻ' button in Flashcard Hub switches to browser tab", async () => {

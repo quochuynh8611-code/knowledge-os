@@ -73,6 +73,24 @@ describe("Backup Service Pure Function & Transaction Contracts", () => {
 
     const deleteOrder: string[] = [];
     const mockTx: any = {
+      noteTopicLink: {
+        deleteMany: vi.fn().mockImplementation(async () => {
+          deleteOrder.push("noteTopicLink");
+        }),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      topicTag: {
+        deleteMany: vi.fn().mockImplementation(async () => {
+          deleteOrder.push("topicTag");
+        }),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      knowledgeProgressSnapshot: {
+        deleteMany: vi.fn().mockImplementation(async () => {
+          deleteOrder.push("knowledgeProgressSnapshot");
+        }),
+        create: vi.fn().mockResolvedValue({}),
+      },
       resource: {
         deleteMany: vi.fn().mockImplementation(async () => {
           deleteOrder.push("resource");
@@ -120,10 +138,13 @@ describe("Backup Service Pure Function & Transaction Contracts", () => {
     await executeReplaceRestore(mockTx, canonicalData as any);
 
     expect(deleteOrder).toEqual([
-      "resource",
-      "note",
+      "noteTopicLink",
+      "topicTag",
+      "knowledgeProgressSnapshot",
       "knowledgeLink",
       "studyProgress",
+      "resource",
+      "note",
       "topic",
       "tag",
       "category",

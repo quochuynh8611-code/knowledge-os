@@ -35,9 +35,17 @@ describe("Topic Routes Contract", () => {
           category: true,
           notes: true,
           resources: true,
+          sourceLinks: {
+            include: {
+              target: true,
+            },
+          },
           studyProgress: true,
-          sourceLinks: true,
-          targetLinks: true,
+          targetLinks: {
+            include: {
+              source: true,
+            },
+          },
         },
         orderBy: { updatedAt: "desc" },
       })
