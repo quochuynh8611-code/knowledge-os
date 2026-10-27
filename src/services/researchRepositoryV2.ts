@@ -26,6 +26,7 @@ import {
   StudyProgress,
   ArchivedDocument,
   ReadingPositionData,
+  KnowledgeLink,
 } from '../types';
 import {
   ValidatedHydrateInput,
@@ -165,5 +166,19 @@ export class ResearchRepositoryV2 implements IDataRepository {
       return this.base.updateArchivedDocumentPosition(documentId, position);
     }
     throw new Error('updateArchivedDocumentPosition is not supported by base repository');
+  }
+
+  async saveKnowledgeLink(link: KnowledgeLink): Promise<KnowledgeLink> {
+    if (this.base.saveKnowledgeLink) {
+      return this.base.saveKnowledgeLink(link);
+    }
+    return link;
+  }
+
+  async deleteKnowledgeLink(linkId: string): Promise<boolean> {
+    if (this.base.deleteKnowledgeLink) {
+      return this.base.deleteKnowledgeLink(linkId);
+    }
+    return true;
   }
 }

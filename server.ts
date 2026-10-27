@@ -11,6 +11,7 @@ import { createNoteRouter } from "./src/server/routes/noteRoutes";
 import { createResourceRouter } from "./src/server/routes/resourceRoutes";
 import { createStudyProgressRouter } from "./src/server/routes/studyProgressRoutes";
 import { createSyncRouter } from "./src/server/routes/syncRoutes";
+import { createLinkRouter } from "./src/server/routes/linkRoutes";
 import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
@@ -133,6 +134,9 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
 
   // 1. Topics CRUD
   app.use("/api", createTopicRouter(activePrisma));
+
+  // 1.1 Knowledge Links CRUD (Phase 3 / ADR-079)
+  app.use("/api", createLinkRouter(activePrisma));
 
   // 2. Notes CRUD
   app.use("/api", createNoteRouter(activePrisma));

@@ -72,6 +72,21 @@ export { StudyTimerProvider, useStudyTimer, NavigationProvider, useNavigation, d
 export type { TimerMode, StudyTimerContextType, ActiveTab, NavigationContextType };
 
 const STORAGE_KEY = STORAGE_ROOT_KEY;
+
+function extractUniqueLinks(topicsList: Topic[]): KnowledgeLink[] {
+  const links: KnowledgeLink[] = [];
+  const seen = new Set<string>();
+  for (const t of topicsList) {
+    for (const l of t.links || []) {
+      const key = l.id || `${l.sourceId}-${l.targetId}-${l.linkType}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        links.push(l);
+      }
+    }
+  }
+  return links;
+}
 const baseDataRepository: IDataRepository =
   typeof window !== "undefined"
     ? new ApiDataRepository("/api", new LocalStorageDataRepository(STORAGE_KEY))
@@ -558,7 +573,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
         notes,
         resources,
         tags,
-        links: [],
+        links: extractUniqueLinks(topics),
       })
       .catch((e) => {
         console.error("Failed to persist state via repository", e);
@@ -655,7 +670,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
             notes,
             resources,
             tags,
-            links: [],
+            links: extractUniqueLinks(result.updatedTopics),
           });
           const delRes = await dataRepository.deleteCategory(sourceCategoryId);
           if (delRes.status !== "deleted") {
@@ -804,36 +819,76 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   };
 
   const addKnowledgeLink = (linkData: Omit<KnowledgeLink, "id">) => {
+    // 0. Self-link guard
+    if (linkData.sourceId === linkData.targetId) {
+      console.warn("Self-link rejected:", linkData);
+      return;
+    }
+
+    const tempId = `link-${Date.now()}`;
     const newLink: KnowledgeLink = {
       ...linkData,
-      id: `link-${Date.now()}`,
+      id: tempId,
     };
+
+    // 1. Bidirectional optimistic projection on client (both sourceId and targetId topics receive projection)
     setTopics((prev) =>
       prev.map((t) => {
-        if (t.id === linkData.sourceId) {
-          const updated = { ...t, links: [...(t.links || []), newLink] };
-          dataRepository.saveTopic(updated).catch(console.error);
-          return updated;
+        if (t.id === linkData.sourceId || t.id === linkData.targetId) {
+          const currentLinks = t.links || [];
+          const exists = currentLinks.some(
+            (l) =>
+              (l.id && l.id === newLink.id) ||
+              (l.sourceId === newLink.sourceId &&
+                l.targetId === newLink.targetId &&
+                l.linkType === newLink.linkType)
+          );
+          if (exists) return t;
+          return { ...t, links: [...currentLinks, newLink] };
         }
         return t;
       }),
     );
+
+    // 2. Canonical server persistence via dataRepository
+    if (typeof dataRepository.saveKnowledgeLink === "function") {
+      dataRepository
+        .saveKnowledgeLink(newLink)
+        .then((persisted) => {
+          if (persisted && persisted.id && persisted.id !== tempId) {
+            setTopics((prev) =>
+              prev.map((t) => {
+                if (!t.links) return t;
+                return {
+                  ...t,
+                  links: t.links.map((l) => (l.id === tempId ? persisted : l)),
+                };
+              }),
+            );
+          }
+        })
+        .catch(console.error);
+    }
   };
 
   const removeKnowledgeLink = (linkId: string) => {
+    // 1. Optimistic removal across all topics (both source and target projections)
     setTopics((prev) =>
       prev.map((t) => {
         if (t.links?.some((l) => l.id === linkId)) {
-          const updated = {
+          return {
             ...t,
             links: t.links.filter((l) => l.id !== linkId),
           };
-          dataRepository.saveTopic(updated).catch(console.error);
-          return updated;
         }
         return t;
       }),
     );
+
+    // 2. Canonical server deletion via dataRepository
+    if (typeof dataRepository.deleteKnowledgeLink === "function") {
+      dataRepository.deleteKnowledgeLink(linkId).catch(console.error);
+    }
   };
 
   // Notes Handlers
@@ -1223,7 +1278,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
             notes: safeNotes,
             resources: safeResources,
             tags,
-            links: [],
+            links: extractUniqueLinks(normTopics),
           })
           .catch(console.error);
 

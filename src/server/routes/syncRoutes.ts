@@ -197,6 +197,7 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           // resolve FK ngay trong cùng transaction (kể cả topic vừa được tạo mới)
           if (savedTopicId) {
             topicIdMap.set(savedTopicId, savedTopicId);
+            if (topic.id) topicIdMap.set(topic.id, savedTopicId);
             if (topic.slug) topicIdMap.set(topic.slug, savedTopicId);
           }
           topicsCount++;
@@ -379,6 +380,58 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             },
           });
           resourcesCount++;
+        }
+
+        // Links (KnowledgeLink persistence)
+        for (const link of payload.links || []) {
+          // Self-link guard: reject self links
+          if (link.sourceId === link.targetId) {
+            continue;
+          }
+
+          const resolvedSourceId =
+            (link.sourceId && topicIdMap.get(link.sourceId)) || link.sourceId;
+          const resolvedTargetId =
+            (link.targetId && topicIdMap.get(link.targetId)) || link.targetId;
+
+          const sourceExists = Boolean(
+            (link.sourceId && topicIdMap.has(link.sourceId)) ||
+            (resolvedSourceId && topicIdMap.has(resolvedSourceId))
+          );
+          const targetExists = Boolean(
+            (link.targetId && topicIdMap.has(link.targetId)) ||
+            (resolvedTargetId && topicIdMap.has(resolvedTargetId))
+          );
+
+          if (!sourceExists || !targetExists) {
+            // Orphan link: skip in routine sync and forceOverwrite
+            continue;
+          }
+
+          const linkId =
+            link.id ||
+            `klink-${resolvedSourceId}-${resolvedTargetId}-${link.linkType}`;
+
+          if (typeof tx.knowledgeLink?.upsert === "function") {
+            await tx.knowledgeLink.upsert({
+              where: { id: linkId },
+              create: {
+                id: link.id || undefined,
+                sourceId: resolvedSourceId,
+                targetId: resolvedTargetId,
+                linkType: link.linkType,
+                strength: link.strength ?? 3,
+                notes: link.notes ?? null,
+                explanation: link.explanation ?? null,
+              },
+              update: {
+                strength: link.strength ?? 3,
+                notes: link.notes ?? null,
+                explanation: link.explanation ?? null,
+              },
+            });
+            linksCount++;
+          }
         }
 
         // Persistent SyncSession record

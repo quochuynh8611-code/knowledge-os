@@ -85,6 +85,16 @@ export const KnowledgeLinkSchema = z.object({
   explanation: z.string().nullable().optional(),
 });
 
+export const KnowledgeLinkCreateSchema = z.object({
+  id: z.string().optional(),
+  sourceId: z.string().min(1, "Source Topic ID không được để trống"),
+  targetId: z.string().min(1, "Target Topic ID không được để trống"),
+  linkType: LinkTypeEnum.optional().default("related"),
+  strength: z.number().min(1).max(5).optional().default(3),
+  notes: z.string().nullable().optional(),
+  explanation: z.string().nullable().optional(),
+});
+
 // ==========================================
 // 5. STUDY PROGRESS & SM-2 SCHEMAS
 // ==========================================

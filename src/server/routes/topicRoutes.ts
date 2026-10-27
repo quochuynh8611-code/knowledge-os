@@ -94,12 +94,61 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
           notes: true,
           resources: true,
           studyProgress: true,
-          sourceLinks: true,
-          targetLinks: true,
+          sourceLinks: {
+            include: { target: true },
+          },
+          targetLinks: {
+            include: { source: true },
+          },
         },
         orderBy: { updatedAt: "desc" },
       });
-      res.json(topics);
+
+      const mappedTopics = topics.map((t: any) => {
+        const outgoing = (t.sourceLinks || []).map((l: any) => ({
+          id: l.id,
+          sourceId: l.sourceId,
+          targetId: l.targetId,
+          sourceTitle: t.title,
+          targetTitle: l.target?.title || l.targetTitle || null,
+          linkType: l.linkType,
+          strength: l.strength,
+          notes: l.notes,
+          explanation: l.explanation,
+          createdAt: l.createdAt,
+        }));
+
+        const incoming = (t.targetLinks || []).map((l: any) => ({
+          id: l.id,
+          sourceId: l.sourceId,
+          targetId: l.targetId,
+          sourceTitle: l.source?.title || l.sourceTitle || null,
+          targetTitle: t.title,
+          linkType: l.linkType,
+          strength: l.strength,
+          notes: l.notes,
+          explanation: l.explanation,
+          createdAt: l.createdAt,
+        }));
+
+        const combinedLinks = [...outgoing, ...incoming];
+        const seenIds = new Set<string>();
+        const uniqueLinks = combinedLinks.filter((l) => {
+          const key = l.id || `${l.sourceId}-${l.targetId}-${l.linkType}`;
+          if (seenIds.has(key)) return false;
+          seenIds.add(key);
+          return true;
+        });
+
+        const links = uniqueLinks.length > 0 ? uniqueLinks : (Array.isArray(t.links) ? t.links : []);
+
+        return {
+          ...t,
+          links,
+        };
+      });
+
+      res.json(mappedTopics);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Database error";
       res.status(500).json({ error: msg });

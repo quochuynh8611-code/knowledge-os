@@ -7,6 +7,7 @@ import {
   StudyProgress,
   ArchivedDocument,
   ReadingPositionData,
+  KnowledgeLink,
 } from "../types";
 import {
   normalizeCategories,
@@ -126,6 +127,10 @@ export interface IDataRepository {
     documentId: string,
     position: ReadingPositionData
   ): Promise<ArchivedDocument>;
+
+  // 11. Knowledge Links CRUD (Phase 3 / ADR-079 / PR-1)
+  saveKnowledgeLink?(link: KnowledgeLink): Promise<KnowledgeLink>;
+  deleteKnowledgeLink?(linkId: string): Promise<boolean>;
 }
 
 /**
@@ -319,6 +324,37 @@ export class LocalStorageDataRepository implements IDataRepository {
   async deleteNote(noteId: string): Promise<boolean> {
     const data = await this.loadInitialData();
     data.notes = data.notes.filter((n) => n.id !== noteId);
+    this._persist(data);
+    return true;
+  }
+
+  async saveKnowledgeLink(link: KnowledgeLink): Promise<KnowledgeLink> {
+    const data = await this.loadInitialData();
+    data.topics = data.topics.map((t) => {
+      if (t.id === link.sourceId || t.id === link.targetId) {
+        const existing = t.links || [];
+        const idx = existing.findIndex((l) => l.id === link.id);
+        if (idx >= 0) {
+          existing[idx] = link;
+        } else {
+          existing.push(link);
+        }
+        return { ...t, links: [...existing] };
+      }
+      return t;
+    });
+    this._persist(data);
+    return link;
+  }
+
+  async deleteKnowledgeLink(linkId: string): Promise<boolean> {
+    const data = await this.loadInitialData();
+    data.topics = data.topics.map((t) => {
+      if (t.links?.some((l) => l.id === linkId)) {
+        return { ...t, links: t.links.filter((l) => l.id !== linkId) };
+      }
+      return t;
+    });
     this._persist(data);
     return true;
   }
@@ -1036,6 +1072,47 @@ export class ApiDataRepository implements IDataRepository {
           retryCount: 0,
           status: "pending",
         });
+      }
+    }
+    return true;
+  }
+
+  async saveKnowledgeLink(link: KnowledgeLink): Promise<KnowledgeLink> {
+    if (this.localFallback.saveKnowledgeLink) {
+      await this.localFallback.saveKnowledgeLink(link);
+    }
+    const url = this.getUrl("/links");
+    if (url) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(link),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return data;
+        }
+      } catch (err) {
+        console.error("Failed to persist knowledge link to server:", err);
+      }
+    }
+    return link;
+  }
+
+  async deleteKnowledgeLink(linkId: string): Promise<boolean> {
+    if (this.localFallback.deleteKnowledgeLink) {
+      await this.localFallback.deleteKnowledgeLink(linkId);
+    }
+    const url = this.getUrl(`/links/${encodeURIComponent(linkId)}`);
+    if (url) {
+      try {
+        const res = await fetch(url, { method: "DELETE" });
+        if (res.ok) {
+          return true;
+        }
+      } catch (err) {
+        console.error("Failed to delete knowledge link from server:", err);
       }
     }
     return true;
