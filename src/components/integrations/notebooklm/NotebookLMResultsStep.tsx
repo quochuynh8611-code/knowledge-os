@@ -51,11 +51,12 @@ export function NotebookLMResultsStep({
   const displaySessionArtifacts = sessionArtifacts.filter(
     (a) => a.topicId === currentTopic?.id
   );
-  const dedupedSessionArtifacts = displaySessionArtifacts.filter(
-    (sa) => !displayLocalArtifacts.some((la) => la.title === sa.title)
+  // Canonical backend session artifacts take precedence; local artifacts with matching title or ID are filtered out
+  const dedupedLocalArtifacts = displayLocalArtifacts.filter(
+    (la) => !displaySessionArtifacts.some((sa) => sa.title === la.title || sa.id === la.id)
   );
   const totalArtifactCount =
-    displayLocalArtifacts.length + dedupedSessionArtifacts.length;
+    displaySessionArtifacts.length + dedupedLocalArtifacts.length;
 
   // Other topics that have local artifacts for Quick Switch
   const otherTopicsWithArtifacts = allTopics.filter((t) => {
@@ -242,10 +243,62 @@ export function NotebookLMResultsStep({
       )}
 
       {/* 5. Artifacts Card List or Empty State */}
-      {displayLocalArtifacts.length > 0 || displaySessionArtifacts.length > 0 ? (
+      {totalArtifactCount > 0 ? (
         <div className="space-y-3">
-          {/* Local / Migrated Artifacts */}
-          {displayLocalArtifacts.map((art) => (
+          {/* Backend Grounded Artifacts (Canonical Database SSOT) */}
+          {displaySessionArtifacts.map((art) => {
+            const statusInfo = getHumanReadableArtifactStatus(art.status);
+            return (
+              <div
+                key={art.id}
+                className="p-3.5 bg-white dark:bg-stone-950/60 border border-stone-200 dark:border-stone-800 rounded-xl space-y-2 relative hover:border-blue-300 dark:hover:border-blue-700 transition"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-bold text-xs text-stone-900 dark:text-stone-100">
+                    {art.artifactType === 'study_guide' ? (
+                      <BookOpen className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
+                    ) : (
+                      <Headphones className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
+                    )}
+                    <span>{art.title}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      data-testid={`artifact-version-badge-${art.id}`}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold"
+                    >
+                      Source package v{art.sourcePackageVersion || 1}
+                    </span>
+
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold uppercase ${statusInfo.badgeClass}`}
+                      title={statusInfo.description}
+                    >
+                      {art.status}
+                    </span>
+
+                    <button
+                      type="button"
+                      data-testid={`btn-open-review-drawer-${art.id}`}
+                      onClick={() => onReviewArtifact(art)}
+                      className="px-2.5 py-1 bg-white dark:bg-stone-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Thẩm định &amp; Nhập</span>
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed line-clamp-2">
+                  {art.rawContent}
+                </p>
+              </div>
+            );
+          })}
+
+          {/* Local / Migrated Artifacts (Deduplicated) */}
+          {dedupedLocalArtifacts.map((art) => (
             <div
               key={art.id}
               className="p-3.5 bg-white dark:bg-stone-950/60 border border-stone-200 dark:border-stone-800 rounded-xl space-y-2 relative hover:border-blue-300 dark:hover:border-blue-700 transition"
@@ -326,58 +379,6 @@ export function NotebookLMResultsStep({
               </p>
             </div>
           ))}
-
-          {/* Backend Grounded Artifacts */}
-          {dedupedSessionArtifacts.map((art) => {
-            const statusInfo = getHumanReadableArtifactStatus(art.status);
-            return (
-              <div
-                key={art.id}
-                className="p-3.5 bg-white dark:bg-stone-950/60 border border-stone-200 dark:border-stone-800 rounded-xl space-y-2 relative hover:border-blue-300 dark:hover:border-blue-700 transition"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 font-bold text-xs text-stone-900 dark:text-stone-100">
-                    {art.artifactType === 'study_guide' ? (
-                      <BookOpen className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" />
-                    ) : (
-                      <Headphones className="w-3.5 h-3.5 text-amber-700 dark:text-amber-400" />
-                    )}
-                    <span>{art.title}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span
-                      data-testid={`artifact-version-badge-${art.id}`}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold"
-                    >
-                      Source package v{art.sourcePackageVersion || 1}
-                    </span>
-
-                    <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold uppercase ${statusInfo.badgeClass}`}
-                      title={statusInfo.description}
-                    >
-                      {art.status}
-                    </span>
-
-                    <button
-                      type="button"
-                      data-testid={`btn-open-review-drawer-${art.id}`}
-                      onClick={() => onReviewArtifact(art)}
-                      className="px-2.5 py-1 bg-white dark:bg-stone-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer shadow-2xs"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Thẩm định &amp; Nhập</span>
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed line-clamp-2">
-                  {art.rawContent}
-                </p>
-              </div>
-            );
-          })}
         </div>
       ) : (
         /* Empty State */

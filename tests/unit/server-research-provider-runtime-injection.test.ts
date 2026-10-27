@@ -209,16 +209,24 @@ describe("SERVER RESEARCH PROVIDER RUNTIME INJECTION (PHASE 5.5)", () => {
   });
 
   it("18. server bootstrap wires researchOrchestrator and keeps execute-live fail-closed (403) by default", async () => {
-    const app = createServerApp({ prismaClient: mockPrisma });
-    expect(app).toBeDefined();
+    const originalFlag = process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+    delete process.env.NOTEBOOKLM_DIRECT_EXECUTION;
+    try {
+      const app = createServerApp({ prismaClient: mockPrisma });
+      expect(app).toBeDefined();
 
-    // Default env does not have NOTEBOOKLM_DIRECT_EXECUTION=true
-    const res = await request(app)
-      .post("/api/research-sessions/sess-test/execute-live")
-      .send({ prompt: "test prompt" });
+      // Default env does not have NOTEBOOKLM_DIRECT_EXECUTION=true
+      const res = await request(app)
+        .post("/api/research-sessions/sess-test/execute-live")
+        .send({ prompt: "test prompt" });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe("DIRECT_EXECUTION_DISABLED");
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("DIRECT_EXECUTION_DISABLED");
+    } finally {
+      if (originalFlag !== undefined) {
+        process.env.NOTEBOOKLM_DIRECT_EXECUTION = originalFlag;
+      }
+    }
   });
 
   it("19. execute-live returns 503 ORCHESTRATOR_UNAVAILABLE when explicit orchestrator is null", async () => {

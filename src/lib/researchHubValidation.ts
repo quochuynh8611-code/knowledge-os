@@ -88,6 +88,7 @@ export const ImportArtifactNoteSchema = z.object({
   type: z.enum(["study", "insight", "question", "summary"]).default("insight"),
   tags: z.array(z.string()).optional().default([]),
   targetTopicId: z.string().optional(),
+  rawContent: z.string().optional(),
 });
 
 export const ImportFlashcardItemSchema = z.object({

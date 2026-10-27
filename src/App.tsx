@@ -163,6 +163,7 @@ function AppContent() {
     resumeStudyTimer,
     stopAndSaveStudyTimer,
     logStudyTime,
+    categories,
     topics,
     notes,
     resources,
@@ -303,7 +304,10 @@ function AppContent() {
       onOpenManuscriptStudio: () => setShowManuscriptStudioModal(true),
       onOpenObsidianBridge: () => setShowObsidianBridgeModal(true),
       onTriggerQuickBackup: () => {
-        runGuardedAutoBackup({ reason: "manual", retentionDays: 7 });
+        runGuardedAutoBackup(
+          { categories, topics, notes, resources },
+          { trigger: "manual", label: "Quick Backup từ Command Palette" }
+        );
       },
       onOpenFlashcardReview: () => setActiveTab("flashcards"),
     },

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useData } from "../../context/DataContext";
 import {
   Search,
@@ -46,7 +46,8 @@ export function AdvancedSearch() {
     tags,
     openTopicDetail,
   } = useData();
-  const { researchExcerpts = [] } = (useData() as any);
+  const rawContext = useData() as any;
+  const researchExcerpts = rawContext?.researchExcerpts;
 
   const [searchMode, setSearchMode] = useState<SearchMode>("keyword");
   const [activeFilter, setActiveFilter] = useState<
@@ -66,7 +67,18 @@ export function AdvancedSearch() {
   const [newViewName, setNewViewName] = useState("");
   const [newViewPinned, setNewViewPinned] = useState(false);
 
-  const q = searchQuery.toLowerCase().trim();
+  // Debounce search query 250ms để tối ưu phản hồi bàn phím và giảm tải tính toán
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const effectiveQuery = debouncedSearchQuery;
+  const q = effectiveQuery.toLowerCase().trim();
 
   const refreshSavedViews = () => {
     setSavedViews(getSavedSearchViews());
@@ -119,9 +131,26 @@ export function AdvancedSearch() {
     refreshSavedViews();
   };
 
+  // TẦNG 1: Xây dựng chỉ mục (Index Construction)
+  // Chỉ tính toán lại corpus documents và inverted index/vector model khi danh sách thực thể thay đổi
+  const searchableDocs = useMemo(() => {
+    return buildSearchableKnowledgeDocuments({
+      topics,
+      notes,
+      resources,
+      excerpts: researchExcerpts,
+    });
+  }, [topics, notes, resources, researchExcerpts]);
+
+  const hybridEngine = useMemo(() => {
+    return new HybridKnowledgeSearchEngine(searchableDocs);
+  }, [searchableDocs]);
+
+  // TẦNG 2: Thực thi truy vấn (Query Execution)
+  // Chỉ kích hoạt khi debouncedSearchQuery hoặc filters hoặc searchMode thay đổi
   const scholarResults = useMemo(() => {
     return searchScholarCollections({
-      query: searchQuery,
+      query: effectiveQuery,
       topics,
       notes,
       resources,
@@ -132,22 +161,15 @@ export function AdvancedSearch() {
         status: filters.status,
       },
     });
-  }, [topics, notes, resources, searchQuery, filters]);
+  }, [topics, notes, resources, effectiveQuery, filters]);
 
   const { hybridResults, similarityMap } = useMemo(() => {
     const simMap = new Map<string, number>();
-    if (searchMode === "keyword" || !searchQuery.trim()) {
+    if (searchMode === "keyword" || !effectiveQuery.trim()) {
       return { hybridResults: [], similarityMap: simMap };
     }
 
-    const docs = buildSearchableKnowledgeDocuments({
-      topics,
-      notes,
-      resources,
-      excerpts: researchExcerpts,
-    });
-    const engine = new HybridKnowledgeSearchEngine(docs);
-    const results = engine.search(searchQuery, {
+    const results = hybridEngine.search(effectiveQuery, {
       mode: searchMode,
       limit: 100,
     });
@@ -158,10 +180,10 @@ export function AdvancedSearch() {
     });
 
     return { hybridResults: results, similarityMap: simMap };
-  }, [topics, notes, resources, researchExcerpts, searchQuery, searchMode]);
+  }, [hybridEngine, effectiveQuery, searchMode]);
 
   const matchedTopics = useMemo(() => {
-    if (searchMode === "keyword" || !searchQuery.trim()) {
+    if (searchMode === "keyword" || !effectiveQuery.trim()) {
       return scholarResults.topics.map((t) => t.item);
     }
     const topicIdSet = new Set<string>();
@@ -186,10 +208,10 @@ export function AdvancedSearch() {
       }
     }
     return list;
-  }, [scholarResults, hybridResults, searchMode, searchQuery, topics, filters]);
+  }, [scholarResults, hybridResults, searchMode, effectiveQuery, topics, filters]);
 
   const matchedNotes = useMemo(() => {
-    if (searchMode === "keyword" || !searchQuery.trim()) {
+    if (searchMode === "keyword" || !effectiveQuery.trim()) {
       return scholarResults.notes.map((n) => n.item);
     }
     const noteIdSet = new Set<string>();
@@ -212,10 +234,10 @@ export function AdvancedSearch() {
       }
     }
     return list;
-  }, [scholarResults, hybridResults, searchMode, searchQuery, notes, filters]);
+  }, [scholarResults, hybridResults, searchMode, effectiveQuery, notes, filters]);
 
   const matchedResources = useMemo(() => {
-    if (searchMode === "keyword" || !searchQuery.trim()) {
+    if (searchMode === "keyword" || !effectiveQuery.trim()) {
       return scholarResults.resources.map((r) => r.item);
     }
     const resIdSet = new Set<string>();
@@ -237,7 +259,7 @@ export function AdvancedSearch() {
       }
     }
     return list;
-  }, [scholarResults, hybridResults, searchMode, searchQuery, resources]);
+  }, [scholarResults, hybridResults, searchMode, effectiveQuery, resources]);
 
   const totalResultsCount = matchedTopics.length + matchedNotes.length + matchedResources.length;
 

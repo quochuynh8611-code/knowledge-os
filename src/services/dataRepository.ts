@@ -8,6 +8,8 @@ import {
   ArchivedDocument,
   ReadingPositionData,
   KnowledgeLink,
+  ResearchExcerpt,
+  ResearchInboxItem,
 } from "../types";
 import {
   normalizeCategories,
@@ -131,6 +133,23 @@ export interface IDataRepository {
   // 11. Knowledge Links CRUD (Phase 3 / ADR-079 / PR-1)
   saveKnowledgeLink?(link: KnowledgeLink): Promise<KnowledgeLink>;
   deleteKnowledgeLink?(linkId: string): Promise<boolean>;
+
+  // 12. Research Excerpts & Inbox Items (Phase 18 / ADR-079)
+  getResearchExcerpts?(filters?: {
+    topicId?: string;
+    sourceNoteId?: string;
+    targetNoteId?: string;
+    tag?: string;
+    status?: string;
+  }): Promise<ResearchExcerpt[]>;
+  createResearchExcerpt?(input: unknown): Promise<ResearchExcerpt>;
+  updateResearchExcerpt?(id: string, input: unknown): Promise<ResearchExcerpt>;
+  deleteResearchExcerpt?(id: string): Promise<boolean>;
+
+  getResearchInboxItems?(): Promise<ResearchInboxItem[]>;
+  createResearchInboxItem?(input: unknown): Promise<ResearchInboxItem>;
+  processResearchInboxItem?(id: string, isProcessed?: boolean): Promise<ResearchInboxItem>;
+  deleteResearchInboxItem?(id: string): Promise<boolean>;
 }
 
 /**
@@ -737,6 +756,168 @@ export class LocalStorageDataRepository implements IDataRepository {
     }
     this._saveArchivedDocs(docs);
     return doc;
+  }
+
+  // 12. Research Excerpts & Inbox Items LocalStorage Fallback
+  private _getExcerpts(): ResearchExcerpt[] {
+    const raw = safeGetLocalStorageItem(`${this.storageKey}_research_excerpts`);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private _saveExcerpts(excerpts: ResearchExcerpt[]): void {
+    safeSetLocalStorageItem(
+      `${this.storageKey}_research_excerpts`,
+      JSON.stringify(excerpts),
+    );
+  }
+
+  private _getInboxItems(): ResearchInboxItem[] {
+    const raw = safeGetLocalStorageItem(`${this.storageKey}_research_inbox`);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private _saveInboxItems(items: ResearchInboxItem[]): void {
+    safeSetLocalStorageItem(
+      `${this.storageKey}_research_inbox`,
+      JSON.stringify(items),
+    );
+  }
+
+  async getResearchExcerpts(filters?: {
+    topicId?: string;
+    sourceNoteId?: string;
+    targetNoteId?: string;
+    tag?: string;
+    status?: string;
+  }): Promise<ResearchExcerpt[]> {
+    let excerpts = this._getExcerpts();
+    if (filters?.topicId) {
+      excerpts = excerpts.filter((e) => e.topicId === filters.topicId);
+    }
+    const noteId = filters?.sourceNoteId || filters?.targetNoteId;
+    if (noteId) {
+      excerpts = excerpts.filter((e) => e.targetNoteId === noteId);
+    }
+    if (filters?.status) {
+      excerpts = excerpts.filter((e) => e.status === filters.status);
+    }
+    if (filters?.tag) {
+      const q = filters.tag.toLowerCase();
+      excerpts = excerpts.filter((e) => e.userNote?.toLowerCase().includes(q));
+    }
+    return excerpts;
+  }
+
+  async createResearchExcerpt(input: unknown): Promise<ResearchExcerpt> {
+    const data = input as any;
+    const now = new Date().toISOString();
+    const excerpt: ResearchExcerpt = {
+      id:
+        data.id ||
+        `excerpt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      archivedDocumentId: data.archivedDocumentId,
+      topicId: data.topicId ?? null,
+      targetNoteId: data.targetNoteId ?? null,
+      selectedText: data.selectedText,
+      contextPrefix: data.contextPrefix ?? null,
+      contextSuffix: data.contextSuffix ?? null,
+      positionSelector: data.positionSelector,
+      highlightColor: data.highlightColor || "#F59E0B",
+      citationSnapshot: data.citationSnapshot ?? null,
+      userNote: data.userNote ?? null,
+      status: data.status || "active",
+      createdAt: data.createdAt || now,
+      updatedAt: data.updatedAt || now,
+    };
+    const excerpts = this._getExcerpts();
+    const updated = [excerpt, ...excerpts.filter((e) => e.id !== excerpt.id)];
+    this._saveExcerpts(updated);
+    return excerpt;
+  }
+
+  async updateResearchExcerpt(
+    id: string,
+    input: unknown,
+  ): Promise<ResearchExcerpt> {
+    const updates = input as Partial<ResearchExcerpt>;
+    const excerpts = this._getExcerpts();
+    const existing = excerpts.find((e) => e.id === id);
+    if (!existing) {
+      throw new Error(`Research excerpt not found: ${id}`);
+    }
+    const updated: ResearchExcerpt = {
+      ...existing,
+      ...updates,
+      id: existing.id,
+      updatedAt: new Date().toISOString(),
+    };
+    this._saveExcerpts(excerpts.map((e) => (e.id === id ? updated : e)));
+    return updated;
+  }
+
+  async deleteResearchExcerpt(id: string): Promise<boolean> {
+    const excerpts = this._getExcerpts();
+    this._saveExcerpts(excerpts.filter((e) => e.id !== id));
+    return true;
+  }
+
+  async getResearchInboxItems(): Promise<ResearchInboxItem[]> {
+    return this._getInboxItems();
+  }
+
+  async createResearchInboxItem(input: unknown): Promise<ResearchInboxItem> {
+    const data = input as any;
+    const now = new Date().toISOString();
+    const item: ResearchInboxItem = {
+      id:
+        data.id ||
+        `inbox-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      excerptId: data.excerptId,
+      excerpt: data.excerpt,
+      isProcessed: Boolean(data.isProcessed),
+      priority: typeof data.priority === "number" ? data.priority : 0,
+      createdAt: data.createdAt || now,
+      updatedAt: data.updatedAt || now,
+    };
+    const items = this._getInboxItems();
+    this._saveInboxItems([item, ...items.filter((i) => i.id !== item.id)]);
+    return item;
+  }
+
+  async processResearchInboxItem(
+    id: string,
+    isProcessed = true,
+  ): Promise<ResearchInboxItem> {
+    const items = this._getInboxItems();
+    const item = items.find((i) => i.id === id);
+    if (!item) {
+      throw new Error(`Inbox item not found: ${id}`);
+    }
+    const updated = {
+      ...item,
+      isProcessed,
+      updatedAt: new Date().toISOString(),
+    };
+    this._saveInboxItems(items.map((i) => (i.id === id ? updated : i)));
+    return updated;
+  }
+
+  async deleteResearchInboxItem(id: string): Promise<boolean> {
+    const items = this._getInboxItems();
+    this._saveInboxItems(items.filter((i) => i.id !== id));
+    return true;
   }
 }
 
@@ -1480,6 +1661,186 @@ export class ApiDataRepository implements IDataRepository {
       // offline fallback handled by localUpdated
     }
     return localUpdated;
+  }
+
+  // 12. Research Excerpts & Inbox Items API Methods
+  async getResearchExcerpts(filters?: {
+    topicId?: string;
+    sourceNoteId?: string;
+    targetNoteId?: string;
+    tag?: string;
+    status?: string;
+  }): Promise<ResearchExcerpt[]> {
+    const params = new URLSearchParams();
+    if (filters?.topicId) params.set("topicId", filters.topicId);
+    const noteId = filters?.sourceNoteId || filters?.targetNoteId;
+    if (noteId) params.set("sourceNoteId", noteId);
+    if (filters?.tag) params.set("tag", filters.tag);
+    if (filters?.status) params.set("status", filters.status);
+    const queryString = params.toString() ? `?${params.toString()}` : "";
+
+    const url =
+      this.getUrl(`/excerpts${queryString}`) ||
+      `${this.apiBaseUrl}/excerpts${queryString}`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const excerpts = (await res.json()) as ResearchExcerpt[];
+          return excerpts;
+        }
+      } catch {
+        // Fallback to local
+      }
+    }
+    return this.localFallback.getResearchExcerpts(filters);
+  }
+
+  async createResearchExcerpt(input: unknown): Promise<ResearchExcerpt> {
+    const fallbackExcerpt =
+      await this.localFallback.createResearchExcerpt(input);
+    const url = this.getUrl("/excerpts") || `${this.apiBaseUrl}/excerpts`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          return (await res.json()) as ResearchExcerpt;
+        }
+      } catch {
+        // Fallback already saved
+      }
+    }
+    return fallbackExcerpt;
+  }
+
+  async updateResearchExcerpt(
+    id: string,
+    input: unknown,
+  ): Promise<ResearchExcerpt> {
+    const fallbackExcerpt = await this.localFallback.updateResearchExcerpt(
+      id,
+      input,
+    );
+    const url =
+      this.getUrl(`/excerpts/${encodeURIComponent(id)}`) ||
+      `${this.apiBaseUrl}/excerpts/${encodeURIComponent(id)}`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          return (await res.json()) as ResearchExcerpt;
+        }
+      } catch {
+        // Fallback already updated
+      }
+    }
+    return fallbackExcerpt;
+  }
+
+  async deleteResearchExcerpt(id: string): Promise<boolean> {
+    await this.localFallback.deleteResearchExcerpt(id);
+    const url =
+      this.getUrl(`/excerpts/${encodeURIComponent(id)}`) ||
+      `${this.apiBaseUrl}/excerpts/${encodeURIComponent(id)}`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, { method: "DELETE" });
+        return res.ok;
+      } catch {
+        // Fallback deleted
+      }
+    }
+    return true;
+  }
+
+  async getResearchInboxItems(): Promise<ResearchInboxItem[]> {
+    const url =
+      this.getUrl("/excerpts/inbox") || `${this.apiBaseUrl}/excerpts/inbox`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          return (await res.json()) as ResearchInboxItem[];
+        }
+      } catch {
+        // Fallback to local
+      }
+    }
+    return this.localFallback.getResearchInboxItems();
+  }
+
+  async createResearchInboxItem(input: unknown): Promise<ResearchInboxItem> {
+    const fallbackItem =
+      await this.localFallback.createResearchInboxItem(input);
+    const url =
+      this.getUrl("/excerpts/inbox") || `${this.apiBaseUrl}/excerpts/inbox`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          return (await res.json()) as ResearchInboxItem;
+        }
+      } catch {
+        // Fallback created
+      }
+    }
+    return fallbackItem;
+  }
+
+  async processResearchInboxItem(
+    id: string,
+    isProcessed = true,
+  ): Promise<ResearchInboxItem> {
+    const fallbackItem = await this.localFallback.processResearchInboxItem(
+      id,
+      isProcessed,
+    );
+    const url =
+      this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}/process`) ||
+      `${this.apiBaseUrl}/excerpts/inbox/${encodeURIComponent(id)}/process`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isProcessed }),
+        });
+        if (res.ok) {
+          return (await res.json()) as ResearchInboxItem;
+        }
+      } catch {
+        // Fallback updated
+      }
+    }
+    return fallbackItem;
+  }
+
+  async deleteResearchInboxItem(id: string): Promise<boolean> {
+    await this.localFallback.deleteResearchInboxItem(id);
+    const url =
+      this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}`) ||
+      `${this.apiBaseUrl}/excerpts/inbox/${encodeURIComponent(id)}`;
+    if (url && typeof fetch === "function") {
+      try {
+        const res = await fetch(url, { method: "DELETE" });
+        return res.ok;
+      } catch {
+        // Fallback deleted
+      }
+    }
+    return true;
   }
 }
 

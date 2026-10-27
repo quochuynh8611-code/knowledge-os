@@ -94,6 +94,7 @@ export function createArtifactRouter(prisma: PrismaClient) {
         type: parsed.data.type,
         tags: parsed.data.tags,
         targetTopicId: parsed.data.targetTopicId,
+        rawContent: parsed.data.rawContent,
       });
 
       return res.status(201).json(result);

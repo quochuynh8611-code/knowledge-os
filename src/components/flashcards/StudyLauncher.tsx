@@ -90,8 +90,13 @@ export function StudyLauncher({
     }
 
     loadCards();
+    const handleUpdate = () => {
+      loadCards();
+    };
+    window.addEventListener("flashcard-updated", handleUpdate);
     return () => {
       isMounted = false;
+      window.removeEventListener("flashcard-updated", handleUpdate);
     };
   }, [propCards, topicId]);
 

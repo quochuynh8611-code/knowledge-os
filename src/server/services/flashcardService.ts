@@ -347,11 +347,13 @@ export async function recordReviewAtomic(
             updatedAt: new Date().toISOString(),
           };
 
-      // Tính toán chuyển trạng thái SM-2
+      // Tính toán chuyển trạng thái SM-2 hoặc FSRS v5
       const calculation = calculateFlashcardNextReview({
         currentSchedule,
         rating: validatedInput.rating,
         referenceDate: new Date(),
+        algorithm: (validatedInput as any).algorithm,
+        desiredRetention: (validatedInput as any).desiredRetention,
       });
 
       // Tạo bản ghi review mới

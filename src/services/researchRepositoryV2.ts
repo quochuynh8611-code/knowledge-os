@@ -27,6 +27,8 @@ import {
   ArchivedDocument,
   ReadingPositionData,
   KnowledgeLink,
+  ResearchExcerpt,
+  ResearchInboxItem,
 } from '../types';
 import {
   ValidatedHydrateInput,
@@ -178,6 +180,74 @@ export class ResearchRepositoryV2 implements IDataRepository {
   async deleteKnowledgeLink(linkId: string): Promise<boolean> {
     if (this.base.deleteKnowledgeLink) {
       return this.base.deleteKnowledgeLink(linkId);
+    }
+    return true;
+  }
+
+  async getResearchExcerpts(filters?: {
+    topicId?: string;
+    sourceNoteId?: string;
+    targetNoteId?: string;
+    tag?: string;
+    status?: string;
+  }): Promise<ResearchExcerpt[]> {
+    if (this.base.getResearchExcerpts) {
+      return this.base.getResearchExcerpts(filters);
+    }
+    return [];
+  }
+
+  async createResearchExcerpt(input: unknown): Promise<ResearchExcerpt> {
+    if (this.base.createResearchExcerpt) {
+      return this.base.createResearchExcerpt(input);
+    }
+    return input as ResearchExcerpt;
+  }
+
+  async updateResearchExcerpt(
+    id: string,
+    input: unknown,
+  ): Promise<ResearchExcerpt> {
+    if (this.base.updateResearchExcerpt) {
+      return this.base.updateResearchExcerpt(id, input);
+    }
+    return input as ResearchExcerpt;
+  }
+
+  async deleteResearchExcerpt(id: string): Promise<boolean> {
+    if (this.base.deleteResearchExcerpt) {
+      return this.base.deleteResearchExcerpt(id);
+    }
+    return true;
+  }
+
+  async getResearchInboxItems(): Promise<ResearchInboxItem[]> {
+    if (this.base.getResearchInboxItems) {
+      return this.base.getResearchInboxItems();
+    }
+    return [];
+  }
+
+  async createResearchInboxItem(input: unknown): Promise<ResearchInboxItem> {
+    if (this.base.createResearchInboxItem) {
+      return this.base.createResearchInboxItem(input);
+    }
+    return input as ResearchInboxItem;
+  }
+
+  async processResearchInboxItem(
+    id: string,
+    isProcessed?: boolean,
+  ): Promise<ResearchInboxItem> {
+    if (this.base.processResearchInboxItem) {
+      return this.base.processResearchInboxItem(id, isProcessed);
+    }
+    return { id, isProcessed: Boolean(isProcessed) } as ResearchInboxItem;
+  }
+
+  async deleteResearchInboxItem(id: string): Promise<boolean> {
+    if (this.base.deleteResearchInboxItem) {
+      return this.base.deleteResearchInboxItem(id);
     }
     return true;
   }

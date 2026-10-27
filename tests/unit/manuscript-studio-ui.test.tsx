@@ -260,4 +260,155 @@ describe('Phase 9B: Academic Manuscript Studio UI Integration', () => {
       expect(screen.getAllByTestId('manuscript-studio-modal').length).toBeGreaterThan(0);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 6. Auto-save Draft & Debounce
+  // ---------------------------------------------------------------------------
+  it('6. Tự động lưu bản nháp vào localStorage khi soạn thảo (key: knowledgeos_manuscript_draft_${topicId})', async () => {
+    vi.useFakeTimers();
+
+    render(
+      <ManuscriptStudioModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resources={mockResources}
+        notes={mockNotes}
+        topics={mockTopics}
+        defaultTopicId="topic-nlp"
+      />
+    );
+
+    const bodyTextarea = screen.getByTestId('manuscript-body-textarea');
+    fireEvent.change(bodyTextarea, {
+      target: { value: 'Nội dung tiểu luận khoa học đang soạn thảo dở dang...' },
+    });
+
+    // Advance debounce time 500ms
+    vi.advanceTimersByTime(600);
+
+    const draftStr = localStorage.getItem('knowledgeos_manuscript_draft_topic-nlp');
+    expect(draftStr).not.toBeNull();
+    const draft = JSON.parse(draftStr!);
+    expect(draft.bodyMarkdown).toBe('Nội dung tiểu luận khoa học đang soạn thảo dở dang...');
+
+    vi.useRealTimers();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 7. Draft Recovery Banner & Dismiss
+  // ---------------------------------------------------------------------------
+  it('7. Hiển thị banner khôi phục khi có draft cũ, hỗ trợ Khôi phục bản nháp dở hoặc Bỏ qua', async () => {
+    // Set existing draft in localStorage
+    const savedDraft = {
+      title: 'Tiểu Luận Đang Viết Dở',
+      author: 'Nguyễn Văn A',
+      abstract: 'Tóm tắt bài viết thử nghiệm',
+      bodyMarkdown: 'Nội dung phục hồi từ bộ nhớ đệm',
+      style: 'ieee',
+      selectedNoteIds: ['note-1'],
+      includeMatrixAppendix: true,
+      savedAt: Date.now() - 60000,
+    };
+    localStorage.setItem('knowledgeos_manuscript_draft_topic-nlp', JSON.stringify(savedDraft));
+
+    const { unmount } = render(
+      <ManuscriptStudioModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resources={mockResources}
+        notes={mockNotes}
+        topics={mockTopics}
+        defaultTopicId="topic-nlp"
+      />
+    );
+
+    // Banner should be visible
+    expect(screen.getByTestId('manuscript-draft-banner')).toBeInTheDocument();
+    expect(screen.getByText(/Phát hiện bản nháp dở/)).toBeInTheDocument();
+
+    // Click "Khôi phục bản nháp dở"
+    const restoreBtn = screen.getByTestId('btn-restore-draft');
+    fireEvent.click(restoreBtn);
+
+    // State should be restored
+    expect(screen.getByTestId('manuscript-title-input')).toHaveValue('Tiểu Luận Đang Viết Dở');
+    expect(screen.getByTestId('manuscript-author-input')).toHaveValue('Nguyễn Văn A');
+    expect(screen.getByTestId('manuscript-abstract-input')).toHaveValue('Tóm tắt bài viết thử nghiệm');
+    expect(screen.getByTestId('manuscript-body-textarea')).toHaveValue('Nội dung phục hồi từ bộ nhớ đệm');
+    expect(screen.getByTestId('manuscript-style-select')).toHaveValue('ieee');
+
+    // Banner should disappear
+    expect(screen.queryByTestId('manuscript-draft-banner')).not.toBeInTheDocument();
+
+    unmount();
+
+    // Test Dismiss button
+    localStorage.setItem('knowledgeos_manuscript_draft_topic-nlp', JSON.stringify(savedDraft));
+    render(
+      <ManuscriptStudioModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resources={mockResources}
+        notes={mockNotes}
+        topics={mockTopics}
+        defaultTopicId="topic-nlp"
+      />
+    );
+
+    expect(screen.getByTestId('manuscript-draft-banner')).toBeInTheDocument();
+    const dismissBtn = screen.getByTestId('btn-dismiss-draft');
+    fireEvent.click(dismissBtn);
+
+    expect(screen.queryByTestId('manuscript-draft-banner')).not.toBeInTheDocument();
+    expect(localStorage.getItem('knowledgeos_manuscript_draft_topic-nlp')).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------------
+  // 8. Export to Note & Clear Draft
+  // ---------------------------------------------------------------------------
+  it('8. Xuất bản ghi chú (Export to Note) thành công và xóa draft trong localStorage', async () => {
+    const onExportToNote = vi.fn().mockResolvedValue(undefined);
+    localStorage.setItem(
+      'knowledgeos_manuscript_draft_topic-nlp',
+      JSON.stringify({
+        title: 'Bản Thảo Hoàn Thiện',
+        author: 'Ashish',
+        abstract: 'Abstract',
+        bodyMarkdown: 'Văn bản đầy đủ [@vaswani2017]',
+        style: 'apa',
+        selectedNoteIds: [],
+        includeMatrixAppendix: false,
+        savedAt: Date.now(),
+      })
+    );
+
+    render(
+      <ManuscriptStudioModal
+        isOpen={true}
+        onClose={vi.fn()}
+        resources={mockResources}
+        notes={mockNotes}
+        topics={mockTopics}
+        defaultTopicId="topic-nlp"
+        onExportToNote={onExportToNote}
+      />
+    );
+
+    const exportBtn = screen.getByTestId('btn-export-to-note');
+    expect(exportBtn).toBeInTheDocument();
+    fireEvent.click(exportBtn);
+
+    await waitFor(() => {
+      expect(onExportToNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.any(String),
+          content: expect.any(String),
+          topicId: 'topic-nlp',
+        })
+      );
+    });
+
+    // Draft should be cleaned up from localStorage
+    expect(localStorage.getItem('knowledgeos_manuscript_draft_topic-nlp')).toBeNull();
+  });
 });

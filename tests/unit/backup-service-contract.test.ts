@@ -214,4 +214,140 @@ describe("Backup Service Pure Function & Transaction Contracts", () => {
       })
     );
   });
+
+  it("4. buildBackupSnapshotFromDb và executeReplaceRestore bảo toàn toàn diện Flashcards, Schedules, Reviews, ArchivedDocuments, NoteTopicLinks", async () => {
+    const { buildBackupSnapshotFromDb, executeReplaceRestore } = await import(
+      "../../src/server/services/backupService"
+    );
+
+    const mockDb: any = {
+      category: { findMany: vi.fn().mockResolvedValue([{ id: "cat-1", name: "Triết Học", slug: "triet-hoc", order: 0 }]) },
+      topic: { findMany: vi.fn().mockResolvedValue([{ id: "top-1", title: "Hiện Tượng Học", slug: "hien-tuong-hoc", categoryId: "cat-1", type: "general", description: "Mô tả", content: "Nội dung", tags: [], createdAt: new Date(), updatedAt: new Date(), studyProgress: null, sourceLinks: [] }]) },
+      note: { findMany: vi.fn().mockResolvedValue([{ id: "note-1", topicId: "top-1", title: "Ghi chú 1", content: "Nội dung note", type: "study", isPrivate: false, tags: [], createdAt: new Date(), updatedAt: new Date() }]) },
+      resource: { findMany: vi.fn().mockResolvedValue([{ id: "res-1", topicId: "top-1", title: "Tài liệu 1", type: "pdf", createdAt: new Date() }]) },
+      tag: { findMany: vi.fn().mockResolvedValue([{ id: "tag-1", name: "Philosophy", slug: "philosophy", count: 1 }]) },
+      flashcard: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "card-1",
+            topicId: "top-1",
+            noteId: "note-1",
+            type: "basic",
+            front: "Ý thức là gì?",
+            back: "Ý thức luôn là ý thức về một cái gì đó",
+            lifecycleStatus: "active",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            schedule: {
+              id: "sch-1",
+              flashcardId: "card-1",
+              state: "learning",
+              dueAt: new Date(),
+              interval: 1,
+              easeFactor: 2.5,
+              repetitions: 1,
+              lapses: 0,
+              updatedAt: new Date(),
+            },
+            reviews: [
+              {
+                id: "rev-1",
+                clientEventId: "evt-1",
+                flashcardId: "card-1",
+                topicId: "top-1",
+                rating: 3,
+                reviewDurationMs: 5000,
+                reviewedAt: new Date(),
+                stateBefore: "new",
+                stateAfter: "learning",
+                intervalBefore: 0,
+                intervalAfter: 1,
+                easeFactorBefore: 2.5,
+                easeFactorAfter: 2.5,
+                dueBeforeAt: new Date(),
+                dueAfterAt: new Date(),
+              },
+            ],
+          },
+        ]),
+      },
+      archivedDocument: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "doc-1",
+            resourceId: "res-1",
+            fileName: "husserl.pdf",
+            fileSize: 1024,
+            mimeType: "application/pdf",
+            fileFormat: "pdf",
+            contentHash: "a".repeat(64),
+            storageRelPath: "pdf/aa/husserl.pdf",
+            lastPosition: { pageNumber: 5 },
+            lastReadAt: new Date(),
+            readCount: 3,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ]),
+      },
+      noteTopicLink: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "ntl-1",
+            noteId: "note-1",
+            topicId: "top-1",
+          },
+        ]),
+      },
+    };
+
+    const snapshot = await buildBackupSnapshotFromDb(mockDb);
+    expect(snapshot.counts.flashcards).toBe(1);
+    expect(snapshot.counts.archivedDocuments).toBe(1);
+    expect(snapshot.counts.noteTopicLinks).toBe(1);
+    expect(snapshot.data.flashcards?.[0].schedule?.state).toBe("learning");
+    expect(snapshot.data.flashcards?.[0].reviews?.[0].clientEventId).toBe("evt-1");
+    expect(snapshot.data.archivedDocuments?.[0].contentHash).toBe("a".repeat(64));
+    expect(snapshot.data.noteTopicLinks?.[0].id).toBe("ntl-1");
+    expect(snapshot.checksum).toBe(calculateBackupChecksum(snapshot.data));
+
+    // Test restore into mock transaction
+    const restoredItems: string[] = [];
+    const mockTx: any = {
+      category: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("category")) },
+      tag: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("tag")) },
+      topic: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("topic")) },
+      studyProgress: { deleteMany: vi.fn(), create: vi.fn() },
+      knowledgeLink: { deleteMany: vi.fn(), create: vi.fn() },
+      note: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("note")) },
+      resource: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("resource")) },
+      noteTopicLink: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("noteTopicLink")) },
+      flashcard: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("flashcard")) },
+      flashcardSchedule: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("flashcardSchedule")) },
+      flashcardReview: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("flashcardReview")) },
+      archivedDocument: { deleteMany: vi.fn(), create: vi.fn(() => restoredItems.push("archivedDocument")) },
+    };
+
+    await executeReplaceRestore(mockTx, snapshot.data);
+    expect(mockTx.flashcard.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.flashcardSchedule.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.flashcardReview.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.archivedDocument.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.noteTopicLink.create).toHaveBeenCalledTimes(1);
+
+    // Verify correct foreign key dependency insertion sequence
+    const flashcardIdx = restoredItems.indexOf("flashcard");
+    const scheduleIdx = restoredItems.indexOf("flashcardSchedule");
+    const reviewIdx = restoredItems.indexOf("flashcardReview");
+    const docIdx = restoredItems.indexOf("archivedDocument");
+    const noteTopicLinkIdx = restoredItems.indexOf("noteTopicLink");
+    const noteIdx = restoredItems.indexOf("note");
+    const topicIdx = restoredItems.indexOf("topic");
+
+    expect(topicIdx).toBeLessThan(noteTopicLinkIdx);
+    expect(noteIdx).toBeLessThan(noteTopicLinkIdx);
+    expect(flashcardIdx).toBeLessThan(scheduleIdx);
+    expect(flashcardIdx).toBeLessThan(reviewIdx);
+    expect(docIdx).toBeGreaterThan(topicIdx);
+  });
 });

@@ -16,6 +16,7 @@ import {
   Quote,
   History,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { GroundedArtifactDTO } from '../../types/researchHub';
 
@@ -24,8 +25,8 @@ interface ArtifactReviewDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onArtifactUpdated?: (updated: GroundedArtifactDTO) => void;
-  onNoteCreated?: () => void;
-  onFlashcardsCreated?: () => void;
+  onNoteCreated?: (note?: any) => void;
+  onFlashcardsCreated?: (count?: number) => void;
 }
 
 export function ArtifactReviewDrawer({
@@ -48,6 +49,7 @@ export function ArtifactReviewDrawer({
 
   // Flashcards extraction/generation form state
   const [showCardForm, setShowCardForm] = useState(false);
+  const [isExtractingCards, setIsExtractingCards] = useState(false);
   const [cardItems, setCardItems] = useState<Array<{ front: string; back: string }>>([
     { front: '', back: '' },
   ]);
@@ -119,6 +121,49 @@ export function ArtifactReviewDrawer({
     }
   };
 
+  const handleAiExtractCards = async () => {
+    if (!artifact?.rawContent) return;
+    setIsExtractingCards(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch('/api/gemini/generate-cards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topicTitle: artifact.title,
+          content: artifact.rawContent,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Không thể trích xuất thẻ bằng AI');
+      }
+      const data = await res.json();
+      if (Array.isArray(data.cards) && data.cards.length > 0) {
+        const extracted = data.cards
+          .map((c: any) => ({
+            front: c.question || c.front || '',
+            back: c.answer || c.back || '',
+          }))
+          .filter((c: any) => c.front && c.back);
+
+        if (extracted.length > 0) {
+          setCardItems(extracted);
+          setActionMessage({
+            type: 'success',
+            text: `AI đã trích xuất thành công ${extracted.length} thẻ ghi nhớ từ nội dung!`,
+          });
+          return;
+        }
+      }
+      throw new Error('AI không tìm thấy nội dung phù hợp để tạo thẻ ghi nhớ');
+    } catch (err) {
+      setActionMessage({ type: 'error', text: (err as Error).message });
+    } finally {
+      setIsExtractingCards(false);
+    }
+  };
+
   const handleImportNote = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
@@ -136,6 +181,8 @@ export function ArtifactReviewDrawer({
           title: noteTitle || artifact.title,
           type: noteType,
           tags: tagsArray,
+          targetTopicId: artifact.topicId,
+          rawContent: artifact.rawContent,
         }),
       });
 
@@ -143,9 +190,12 @@ export function ArtifactReviewDrawer({
         throw new Error('Không thể nhập artifact thành Note');
       }
 
+      const result = await res.json();
+
       setActionMessage({ type: 'success', text: 'Đã nhập thành Note thành công!' });
       setShowNoteForm(false);
-      onNoteCreated?.();
+      window.dispatchEvent(new CustomEvent('note-created', { detail: result?.note }));
+      onNoteCreated?.(result?.note);
 
       // Refresh artifact data
       const refreshRes = await fetch(`/api/artifacts/${artifact.id}`);
@@ -176,6 +226,8 @@ export function ArtifactReviewDrawer({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           flashcards: validCards.map((c) => ({ front: c.front, back: c.back, type: 'basic' })),
+          targetTopicId: artifact.topicId,
+          rawContent: artifact.rawContent,
         }),
       });
 
@@ -183,12 +235,17 @@ export function ArtifactReviewDrawer({
         throw new Error('Không thể tạo flashcards từ artifact');
       }
 
+      const result = await res.json();
+
       setActionMessage({
         type: 'success',
         text: `Đã sinh ${validCards.length} flashcards thành công!`,
       });
       setShowCardForm(false);
-      onFlashcardsCreated?.();
+      window.dispatchEvent(new CustomEvent('flashcard-updated', {
+        detail: { count: validCards.length, topicId: artifact.topicId }
+      }));
+      onFlashcardsCreated?.(validCards.length);
 
       // Refresh artifact data
       const refreshRes = await fetch(`/api/artifacts/${artifact.id}`);
@@ -495,13 +552,28 @@ export function ArtifactReviewDrawer({
                   <Sparkles className="w-4 h-4 text-amber-700 dark:text-amber-400" />
                   Sinh Flashcards SRS từ Artifact
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowCardForm(false)}
-                  className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAiExtractCards}
+                    disabled={isExtractingCards || isProcessing}
+                    className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-2xs disabled:opacity-50 transition"
+                  >
+                    {isExtractingCards ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isExtractingCards ? 'Đang trích xuất...' : '✨ AI Trích xuất thẻ'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCardForm(false)}
+                    className="text-stone-400 hover:text-stone-600 dark:text-stone-500 dark:hover:text-stone-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3 max-h-60 overflow-y-auto">

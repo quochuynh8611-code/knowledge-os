@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-18T03:15:52.364Z",
+  "timestamp": "2026-10-27T08:59:27.058Z",
   "tier": "T0",
   "passed": false,
   "durationMs": 1,
@@ -22,7 +22,7 @@
     {
       "step": "SMK-02: tools/list verification",
       "status": "SUCCESS",
-      "durationMs": 0,
+      "durationMs": 1,
       "details": {
         "count": 8,
         "tools": [

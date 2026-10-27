@@ -51,6 +51,11 @@ export function DailyDueReviewWidget({
 
   useEffect(() => {
     fetchProgress();
+    const handleUpdate = () => {
+      fetchProgress();
+    };
+    window.addEventListener("flashcard-updated", handleUpdate);
+    return () => window.removeEventListener("flashcard-updated", handleUpdate);
   }, [fetchProgress]);
 
   const handleLaunchReview = () => {

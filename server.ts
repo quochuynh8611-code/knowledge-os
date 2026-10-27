@@ -16,6 +16,7 @@ import { createBackupRouter } from "./src/server/routes/backupRoutes";
 import { createFlashcardRouter } from "./src/server/routes/flashcardRoutes";
 import { createDocsRouter } from "./src/server/routes/docsRoutes";
 import { createArchiveRouter } from "./src/server/routes/archiveRoutes";
+import { createExcerptRouter } from "./src/server/routes/excerptRoutes";
 import { createResearchSessionRouter } from "./src/server/routes/researchSessionRoutes";
 import {
   createResearchProviderRuntimeDiagnostics,
@@ -203,9 +204,10 @@ export function createServerApp(deps?: ServerAppDeps): express.Express {
   app.use("/api", createDocsRouter());
 
   // ==========================================
-  // PHASE 18A: LOCAL ARCHIVE STORAGE ROUTES
+  // PHASE 18A: LOCAL ARCHIVE STORAGE & RESEARCH EXCERPTS ROUTES
   // ==========================================
   app.use("/api", createArchiveRouter({ prisma: activePrisma }));
+  app.use("/api", createExcerptRouter(activePrisma));
 
   // ==========================================
   // READ-ONLY OBSIDIAN VAULT BRIDGE & VAULT PROFILE MANAGER (PHASE P4.1 - P4.3B)

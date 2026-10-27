@@ -342,6 +342,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
     });
+    dataRepository.createResearchInboxItem?.(newItem).catch((err) => {
+      console.warn("Failed to persist inbox item via repository:", err);
+    });
     return newItem;
   }, []);
 
@@ -353,6 +356,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
     });
+    dataRepository.processResearchInboxItem?.(id, true).catch((err) => {
+      console.warn("Failed to update inbox item via repository:", err);
+    });
   }, []);
 
   const processInboxItem = useCallback(async (id: string) => {
@@ -363,6 +369,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
     });
+    dataRepository.processResearchInboxItem?.(id, true).catch((err) => {
+      console.warn("Failed to update inbox item via repository:", err);
+    });
   }, []);
 
   const deleteInboxItem = useCallback(async (id: string) => {
@@ -370,6 +379,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       const updated = prev.filter((item) => item.id !== id);
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       return updated;
+    });
+    dataRepository.deleteResearchInboxItem?.(id).catch((err) => {
+      console.warn("Failed to delete inbox item via repository:", err);
     });
   }, []);
 
@@ -388,6 +400,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       const updated = [excerpt, ...prev.filter((e) => e.id !== excerpt.id)];
       safeSetLocalStorageItem(`${STORAGE_KEY}_research_excerpts`, JSON.stringify(updated));
       return updated;
+    });
+    dataRepository.createResearchExcerpt?.(excerpt).catch((err) => {
+      console.warn("Failed to persist excerpt via repository:", err);
     });
     return excerpt;
   }, []);
@@ -414,6 +429,10 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
         safeSetLocalStorageItem(`${STORAGE_KEY}_research_inbox`, JSON.stringify(updated));
       }
       return changed ? updated : prev;
+    });
+
+    dataRepository.deleteResearchExcerpt?.(id).catch((err) => {
+      console.warn("Failed to delete excerpt via repository:", err);
     });
   }, []);
 
@@ -464,6 +483,10 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
           return updated;
         }
         return prev;
+      });
+
+      dataRepository.updateResearchExcerpt?.(id, updates).catch((err) => {
+        console.warn("Failed to update excerpt via repository:", err);
       });
 
       return updatedItem;
@@ -1230,6 +1253,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
         if (hasValidCategories) {
           setCategories(normCats);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_categories`, JSON.stringify(normCats));
         }
 
         const notesRes = await fetch(
@@ -1246,7 +1270,10 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
             Array.isArray(notesData[0]?.topicIds));
 
         const safeNotes = hasValidNotes ? notesData : notes;
-        if (hasValidNotes) setNotes(safeNotes);
+        if (hasValidNotes) {
+          setNotes(safeNotes);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(safeNotes));
+        }
 
         const resourcesRes = await fetch(
           `${window.location.origin}/api/resources`,
@@ -1262,10 +1289,14 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
           );
 
         const safeResources = hasValidResources ? resourcesData : resources;
-        if (hasValidResources) setResources(safeResources);
+        if (hasValidResources) {
+          setResources(safeResources);
+          safeSetLocalStorageItem(`${STORAGE_KEY}_resources`, JSON.stringify(safeResources));
+        }
 
         const normTopics = normalizeTopics(topicsData);
         setTopics(normTopics);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_topics`, JSON.stringify(normTopics));
 
         // Persist via repository (no raw localStorage calls here)
         dataRepository
@@ -1291,12 +1322,21 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
       if (data.categories && data.categories.length > 0) {
-        setCategories(normalizeCategories(data.categories));
+        const nc = normalizeCategories(data.categories);
+        setCategories(nc);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_categories`, JSON.stringify(nc));
       }
       const normTopics = normalizeTopics(data.topics);
       setTopics(normTopics);
-      if (data.notes) setNotes(data.notes);
-      if (data.resources) setResources(data.resources);
+      safeSetLocalStorageItem(`${STORAGE_KEY}_topics`, JSON.stringify(normTopics));
+      if (data.notes) {
+        setNotes(data.notes);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(data.notes));
+      }
+      if (data.resources) {
+        setResources(data.resources);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_resources`, JSON.stringify(data.resources));
+      }
       if (data.tags) setTags(data.tags);
 
       return true;
@@ -1308,6 +1348,37 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       return false;
     }
   };
+
+  // Listen for global domain events (e.g. Note created from external integrations like NotebookLM)
+  useEffect(() => {
+    const handleNoteCreated = (e: Event) => {
+      const customEvent = e as CustomEvent<Note>;
+      const newNote = customEvent.detail;
+      if (newNote && newNote.id) {
+        setNotes((prev) => {
+          if (prev.some((n) => n.id === newNote.id)) return prev;
+          const updated = [newNote, ...prev];
+          safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(updated));
+          return updated;
+        });
+      }
+      reloadAllData().catch(console.error);
+    };
+
+    const handleNotesUpdated = () => {
+      reloadAllData().catch(console.error);
+    };
+
+    window.addEventListener("note-created", handleNoteCreated);
+    window.addEventListener("notes-updated", handleNotesUpdated);
+    window.addEventListener("reload-data", handleNotesUpdated);
+
+    return () => {
+      window.removeEventListener("note-created", handleNoteCreated);
+      window.removeEventListener("notes-updated", handleNotesUpdated);
+      window.removeEventListener("reload-data", handleNotesUpdated);
+    };
+  }, []);
 
   const knowledgeValue = useMemo<DomainDataContextType>(
     () => ({

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   X,
   FileSignature,
@@ -12,8 +12,10 @@ import {
   FileCode,
   BookOpen,
   Hash,
+  Clock,
 } from 'lucide-react';
 import type { Resource, Note } from '../../types';
+import { useData } from '../../context/DataContext';
 import {
   ManuscriptCitationStyle,
   buildCitekeyRegistry,
@@ -34,9 +36,31 @@ export interface ManuscriptStudioModalProps {
   notes?: Note[];
   topics?: Array<{ id: string; title: string }>;
   defaultTopicId?: string;
+  onExportToNote?: (note: { title: string; content: string; topicId?: string; tags?: string[] }) => void | Promise<void>;
 }
 
 type OutputTab = 'preview' | 'markdown' | 'latex' | 'bibtex';
+
+interface ManuscriptDraft {
+  title: string;
+  author: string;
+  abstract: string;
+  bodyMarkdown: string;
+  style: ManuscriptCitationStyle;
+  selectedNoteIds: string[];
+  includeMatrixAppendix: boolean;
+  savedAt: number;
+}
+
+function useSafeData() {
+  try {
+    return useData();
+  } catch {
+    return {
+      addNote: undefined,
+    };
+  }
+}
 
 export function ManuscriptStudioModal({
   isOpen,
@@ -45,7 +69,12 @@ export function ManuscriptStudioModal({
   notes = [],
   topics = [],
   defaultTopicId,
+  onExportToNote,
 }: ManuscriptStudioModalProps) {
+  const safeData = useSafeData();
+  const currentTopicId = defaultTopicId || topics[0]?.id || 'global';
+  const draftKey = `knowledgeos_manuscript_draft_${currentTopicId}`;
+
   const [title, setTitle] = useState<string>('Bản Thảo Nghiên Cứu Khoa Học');
   const [author, setAuthor] = useState<string>('');
   const [abstract, setAbstract] = useState<string>('');
@@ -57,7 +86,110 @@ export function ManuscriptStudioModal({
   const [activeTab, setActiveTab] = useState<OutputTab>('preview');
   const [copied, setCopied] = useState<boolean>(false);
 
+  // Draft Management State
+  const [showDraftBanner, setShowDraftBanner] = useState<boolean>(false);
+  const [draftData, setDraftData] = useState<ManuscriptDraft | null>(null);
+  const [isExported, setIsExported] = useState<boolean>(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Check existing draft on open
+  useEffect(() => {
+    if (!isOpen) {
+      setShowDraftBanner(false);
+      setDraftData(null);
+      return;
+    }
+
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        const parsed: ManuscriptDraft = JSON.parse(saved);
+        const hasContent =
+          (parsed.bodyMarkdown && parsed.bodyMarkdown.trim().length > 0) ||
+          (parsed.abstract && parsed.abstract.trim().length > 0) ||
+          (parsed.title && parsed.title !== 'Bản Thảo Nghiên Cứu Khoa Học') ||
+          (parsed.author && parsed.author.trim().length > 0) ||
+          (parsed.selectedNoteIds && parsed.selectedNoteIds.length > 0);
+
+        if (hasContent) {
+          setDraftData(parsed);
+          setShowDraftBanner(true);
+        }
+      }
+    } catch (err) {
+      console.error('[ManuscriptStudio] Failed to read draft from localStorage', err);
+    }
+  }, [isOpen, draftKey]);
+
+  // Auto-save draft to localStorage (debounce 500ms)
+  useEffect(() => {
+    if (!isOpen || showDraftBanner) return;
+
+    const timer = setTimeout(() => {
+      const hasContent =
+        bodyMarkdown.trim().length > 0 ||
+        abstract.trim().length > 0 ||
+        (title.trim().length > 0 && title !== 'Bản Thảo Nghiên Cứu Khoa Học') ||
+        author.trim().length > 0 ||
+        selectedNoteIds.size > 0;
+
+      if (hasContent) {
+        const draft: ManuscriptDraft = {
+          title,
+          author,
+          abstract,
+          bodyMarkdown,
+          style,
+          selectedNoteIds: Array.from(selectedNoteIds),
+          includeMatrixAppendix,
+          savedAt: Date.now(),
+        };
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(draft));
+        } catch (err) {
+          console.error('[ManuscriptStudio] Failed to auto-save draft', err);
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [
+    isOpen,
+    showDraftBanner,
+    draftKey,
+    title,
+    author,
+    abstract,
+    bodyMarkdown,
+    style,
+    selectedNoteIds,
+    includeMatrixAppendix,
+  ]);
+
+  const handleRestoreDraft = () => {
+    if (!draftData) return;
+    setTitle(draftData.title || 'Bản Thảo Nghiên Cứu Khoa Học');
+    setAuthor(draftData.author || '');
+    setAbstract(draftData.abstract || '');
+    setBodyMarkdown(draftData.bodyMarkdown || '');
+    if (draftData.style) setStyle(draftData.style);
+    if (draftData.selectedNoteIds) {
+      setSelectedNoteIds(new Set(draftData.selectedNoteIds));
+    }
+    setIncludeMatrixAppendix(!!draftData.includeMatrixAppendix);
+    setShowDraftBanner(false);
+  };
+
+  const handleDismissDraft = () => {
+    setShowDraftBanner(false);
+    try {
+      localStorage.removeItem(draftKey);
+    } catch (err) {
+      console.error('[ManuscriptStudio] Failed to remove dismissed draft', err);
+    }
+    setDraftData(null);
+  };
 
   // Citekey registry
   const registry = useMemo(() => buildCitekeyRegistry(resources), [resources]);
@@ -130,6 +262,37 @@ export function ManuscriptStudioModal({
       }, 0);
     } else {
       setBodyMarkdown((prev) => (prev ? `${prev} ${token}` : token));
+    }
+  };
+
+  const handleExportToNote = async () => {
+    try {
+      const targetTopicId = currentTopicId !== 'global' ? currentTopicId : (topics[0]?.id || '');
+      const notePayload = {
+        title: title.trim() || 'Bản Thảo Nghiên Cứu',
+        content: compiled.compiledMarkdown,
+        topicId: targetTopicId,
+        tags: ['manuscript', style],
+      };
+
+      if (onExportToNote) {
+        await onExportToNote(notePayload);
+      } else if (safeData.addNote) {
+        safeData.addNote(notePayload);
+      }
+
+      // Xóa draft trong localStorage sau khi xuất bản ghi chú thành công
+      try {
+        localStorage.removeItem(draftKey);
+      } catch (err) {
+        console.error('[ManuscriptStudio] Failed to clear draft after export', err);
+      }
+      setShowDraftBanner(false);
+      setDraftData(null);
+      setIsExported(true);
+      setTimeout(() => setIsExported(false), 2500);
+    } catch (err) {
+      console.error('[ManuscriptStudio] Failed to export manuscript to note', err);
     }
   };
 
@@ -212,6 +375,16 @@ export function ManuscriptStudioModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportToNote}
+              data-testid="btn-export-to-note"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
+              title="Xuất bản nội dung thành ghi chú mới trong kho tri thức"
+            >
+              {isExported ? <Check className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+              <span>{isExported ? 'Đã xuất bản' : 'Xuất bản ghi chú (Export to Note)'}</span>
+            </button>
+
             <button
               onClick={handleCopy}
               data-testid="btn-copy-manuscript"
@@ -341,6 +514,39 @@ export function ManuscriptStudioModal({
             </button>
           </div>
         </div>
+
+        {/* Unsaved Draft Recovery Banner */}
+        {showDraftBanner && draftData && (
+          <div
+            data-testid="manuscript-draft-banner"
+            className="mx-6 mt-3 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-150"
+          >
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                <strong>Phát hiện bản nháp dở:</strong> Có nội dung bản thảo đã được tự động lưu. Bạn có muốn khôi phục không?
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                data-testid="btn-restore-draft"
+                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition cursor-pointer shadow-2xs"
+              >
+                Khôi phục bản nháp dở
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissDraft}
+                data-testid="btn-dismiss-draft"
+                className="px-2.5 py-1 bg-stone-200 dark:bg-stone-700 hover:bg-stone-300 dark:hover:bg-stone-600 text-stone-700 dark:text-stone-300 rounded-lg font-medium transition cursor-pointer"
+              >
+                Bỏ qua
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Unresolved Citekey Lint Warning */}
         {compiled.unresolvedCitekeys.length > 0 && (

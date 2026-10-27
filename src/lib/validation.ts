@@ -373,13 +373,22 @@ export function serializeCanonicalBackupData(data: unknown): string {
     string,
     unknown
   >;
-  const canonical = {
+  const canonical: Record<string, unknown> = {
     categories: Array.isArray(src.categories) ? src.categories : [],
     topics: Array.isArray(src.topics) ? src.topics : [],
     notes: Array.isArray(src.notes) ? src.notes : [],
     resources: Array.isArray(src.resources) ? src.resources : [],
     tags: Array.isArray(src.tags) ? src.tags : [],
   };
+  if (Array.isArray(src.flashcards)) {
+    canonical.flashcards = src.flashcards;
+  }
+  if (Array.isArray(src.archivedDocuments)) {
+    canonical.archivedDocuments = src.archivedDocuments;
+  }
+  if (Array.isArray(src.noteTopicLinks)) {
+    canonical.noteTopicLinks = src.noteTopicLinks;
+  }
   return JSON.stringify(sortKeysRecursive(canonical));
 }
 
@@ -629,11 +638,18 @@ export function validateBackupSnapshotPreflight(rawSnapshot: unknown): {
   };
 }
 
+export const NoteTopicLinkSchema = z.object({
+  id: z.string().min(1, "Link ID không được để trống"),
+  noteId: z.string().min(1, "Note ID không được để trống"),
+  topicId: z.string().min(1, "Topic ID không được để trống"),
+});
+export type ValidatedNoteTopicLink = z.infer<typeof NoteTopicLinkSchema>;
+
 export const BackupSnapshotSchema = z.object({
   version: z
     .string()
     .regex(/^2\.\d+\.\d+$/, "Version must be semver 2.x format (e.g. 2.0.0)"),
-  exportedAt: z.string().datetime(),
+  exportedAt: z.string().datetime().or(z.string().min(1)),
   checksum: z
     .string()
     .regex(/^[a-f0-9]{64}$/, "Checksum must be a 64-char SHA-256 hex string"),
@@ -643,6 +659,9 @@ export const BackupSnapshotSchema = z.object({
     notes: z.number().int().nonnegative(),
     resources: z.number().int().nonnegative(),
     tags: z.number().int().nonnegative(),
+    flashcards: z.number().int().nonnegative().optional(),
+    archivedDocuments: z.number().int().nonnegative().optional(),
+    noteTopicLinks: z.number().int().nonnegative().optional(),
   }),
   data: z.object({
     categories: z.array(CategorySchema),
@@ -650,6 +669,9 @@ export const BackupSnapshotSchema = z.object({
     notes: z.array(NoteSchema),
     resources: z.array(ResourceSchema),
     tags: z.array(TagSchema),
+    flashcards: z.lazy(() => z.array(FlashcardSchema)).optional(),
+    archivedDocuments: z.lazy(() => z.array(ArchivedDocumentSchema)).optional(),
+    noteTopicLinks: z.array(NoteTopicLinkSchema).optional(),
   }),
 });
 
@@ -664,6 +686,9 @@ export const RestoreRequestSchema = z
     path: ["confirmReplace"],
   });
 
+export const RestoreBackupInputSchema = RestoreRequestSchema;
+export type ValidatedRestoreBackupInput = z.infer<typeof RestoreBackupInputSchema>;
+
 export const RestoreResponseSchema = z.object({
   success: z.boolean(),
   mode: z.enum(["replace", "merge"]),
@@ -674,6 +699,9 @@ export const RestoreResponseSchema = z.object({
     notes: z.number().int().nonnegative(),
     resources: z.number().int().nonnegative(),
     tags: z.number().int().nonnegative(),
+    flashcards: z.number().int().nonnegative().optional(),
+    archivedDocuments: z.number().int().nonnegative().optional(),
+    noteTopicLinks: z.number().int().nonnegative().optional(),
   }),
 });
 
@@ -1003,6 +1031,7 @@ export const FlashcardSuspendDuplicateSchema = z.object({
 export const FlashcardSchema = FlashcardCreateSchema.extend({
   id: z.string().min(1, "Flashcard ID không được để trống"),
   schedule: FlashcardScheduleSchema.optional(),
+  reviews: z.lazy(() => z.array(FlashcardReviewSchema)).optional(),
   createdAt: z.string().datetime().or(z.string().min(1)).optional(),
   updatedAt: z.string().datetime().or(z.string().min(1)).optional(),
 });
@@ -1060,6 +1089,8 @@ export const FlashcardReviewInputSchema = z
       .number()
       .int("reviewDurationMs phải là số nguyên")
       .min(0, "reviewDurationMs phải lớn hơn hoặc bằng 0"),
+    algorithm: z.enum(["sm2", "fsrs"]).optional(),
+    desiredRetention: z.number().min(0.70).max(0.97).optional(),
   })
   .refine((data) => !!(data.flashcardId || data.cardId), {
     message: "flashcardId hoặc cardId không được để trống",
@@ -1230,9 +1261,12 @@ export const ResearchExcerptCreateSchema = z.object({
 
 export const ResearchExcerptUpdateSchema = z.object({
   highlightColor: z.string().optional(),
-  userNote: z.string().optional(),
+  userNote: z.string().nullable().optional(),
   status: ResearchExcerptStatusEnum.optional(),
-  targetNoteId: z.string().optional(),
+  targetNoteId: z.string().nullable().optional(),
+  selectedText: z.string().optional(),
+  topicId: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 export const ResearchInboxItemSchema = z.object({

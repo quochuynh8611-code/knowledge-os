@@ -27,35 +27,42 @@ export function FlashcardAnalyticsWidget({
 
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
-    setError(null);
 
-    const url = topicId
-      ? `/api/flashcards/progress?topicId=${encodeURIComponent(topicId)}`
-      : "/api/flashcards/progress";
+    const loadData = () => {
+      setLoading(true);
+      setError(null);
 
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to load analytics (HTTP ${res.status})`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (isMounted) {
-          setStats(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : "Error loading data");
-          setLoading(false);
-        }
-      });
+      const url = topicId
+        ? `/api/flashcards/progress?topicId=${encodeURIComponent(topicId)}`
+        : "/api/flashcards/progress";
+
+      fetch(url)
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`Failed to load analytics (HTTP ${res.status})`);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (isMounted) {
+            setStats(data);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (isMounted) {
+            setError(err instanceof Error ? err.message : "Error loading data");
+            setLoading(false);
+          }
+        });
+    };
+
+    loadData();
+    window.addEventListener("flashcard-updated", loadData);
 
     return () => {
       isMounted = false;
+      window.removeEventListener("flashcard-updated", loadData);
     };
   }, [topicId]);
 

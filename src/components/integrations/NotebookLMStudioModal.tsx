@@ -51,7 +51,7 @@ export function NotebookLMStudioModal({
   topic,
   runtimeStatus = 'unknown',
 }: NotebookLMStudioModalProps) {
-  const { topics, notes, resources } = useData();
+  const { topics, notes, resources, reloadAllData } = useData();
 
   // 1. Core Workflow Navigation State
   const [activeStep, setActiveStep] = useState<NotebookLMWorkspaceStep>('source');
@@ -693,11 +693,13 @@ export function NotebookLMStudioModal({
         isOpen={Boolean(reviewingArtifact)}
         onClose={() => setReviewingArtifact(null)}
         onArtifactUpdated={handleArtifactUpdated}
-        onNoteCreated={() => {
+        onNoteCreated={async () => {
           if (currentTopic) syncSession(currentTopic.id);
+          await reloadAllData().catch(console.error);
         }}
-        onFlashcardsCreated={() => {
+        onFlashcardsCreated={(count) => {
           if (currentTopic) syncSession(currentTopic.id);
+          reloadAllData().catch(console.error);
         }}
       />
     </div>

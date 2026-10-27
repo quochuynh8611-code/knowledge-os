@@ -105,6 +105,11 @@ export function CardBrowser({
 
   useEffect(() => {
     loadCards();
+    const handleUpdate = () => {
+      loadCards();
+    };
+    window.addEventListener("flashcard-updated", handleUpdate);
+    return () => window.removeEventListener("flashcard-updated", handleUpdate);
   }, [loadCards]);
 
   // Topic lookup map

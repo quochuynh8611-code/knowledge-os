@@ -22,6 +22,7 @@ export interface ImportNoteOptions {
   type?: string;
   tags?: string[];
   targetTopicId?: string;
+  rawContent?: string;
 }
 
 export interface ImportFlashcardItem {
@@ -152,55 +153,61 @@ export class ArtifactIngestionService {
 
   async importToNote(artifactId: string, options: ImportNoteOptions = {}) {
     const artifact = await this.getArtifactById(artifactId);
-    if (!artifact) {
-      throw new Error(`Artifact ${artifactId} not found`);
+    const topicId = options.targetTopicId || artifact?.topicId;
+    if (!topicId) {
+      throw new Error(`Target topic ID is required for note import (artifact: ${artifactId})`);
     }
 
-    const topicId = options.targetTopicId || artifact.topicId;
-    const noteTitle = options.title || artifact.title;
+    const noteTitle = options.title || artifact?.title || "Ghi chú từ NotebookLM";
+    const noteContent = options.rawContent || artifact?.rawContent || "";
 
     // Create Note in DB
     const note = await this.prisma.note.create({
       data: {
         topicId,
         title: noteTitle,
-        content: artifact.rawContent,
+        content: noteContent,
         type: options.type || "insight",
-        tags: options.tags || ["notebooklm-artifact", artifact.artifactType],
+        tags: options.tags || ["notebooklm-artifact", artifact?.artifactType || "study_guide"],
       },
     });
 
-    // Create ArtifactImport record
-    const artifactImport = await this.prisma.artifactImport.create({
-      data: {
-        artifactId,
-        targetType: "note",
-        targetNoteId: note.id,
-        status: "success",
-        itemCount: 1,
-      },
-    });
-
-    // Update artifact status
-    const newStatus = artifact.status === "received" ? "partially_imported" : artifact.status;
-    await this.prisma.groundedArtifact.update({
-      where: { id: artifactId },
-      data: { status: newStatus },
-    });
-
-    // Record timeline event
-    await this.prisma.researchTimelineEvent.create({
-      data: {
-        sessionId: artifact.sessionId,
-        topicId: artifact.topicId,
-        eventType: "note_imported",
-        eventData: {
-          artifactId,
-          noteId: note.id,
-          noteTitle: note.title,
+    let artifactImport = null;
+    if (artifact) {
+      // Create ArtifactImport record
+      artifactImport = await this.prisma.artifactImport.create({
+        data: {
+          artifactId: artifact.id,
+          targetType: "note",
+          targetNoteId: note.id,
+          status: "success",
+          itemCount: 1,
         },
-      },
-    });
+      });
+
+      // Update artifact status
+      const newStatus = artifact.status === "received" ? "partially_imported" : artifact.status;
+      await this.prisma.groundedArtifact.update({
+        where: { id: artifact.id },
+        data: { status: newStatus },
+      });
+
+      // Record timeline event
+      if (artifact.sessionId) {
+        await this.prisma.researchTimelineEvent.create({
+          data: {
+            sessionId: artifact.sessionId,
+            topicId: artifact.topicId,
+            eventType: "note_imported",
+            eventData: {
+              artifactId: artifact.id,
+              noteId: note.id,
+              noteTitle: note.title,
+            },
+          },
+        });
+      }
+    }
 
     return { note, artifactImport };
   }
@@ -210,16 +217,15 @@ export class ArtifactIngestionService {
     cards: ImportFlashcardItem[],
     targetTopicId?: string
   ) {
-    const artifact = await this.getArtifactById(artifactId);
-    if (!artifact) {
-      throw new Error(`Artifact ${artifactId} not found`);
+    let artifact = await this.getArtifactById(artifactId);
+    const topicId = targetTopicId || artifact?.topicId;
+    if (!topicId) {
+      throw new Error("Target topic ID is required for flashcard import");
     }
 
     if (!cards || cards.length === 0) {
       throw new Error("No flashcard items provided for import");
     }
-
-    const topicId = targetTopicId || artifact.topicId;
 
     const createdCards = [];
     for (const card of cards) {
@@ -245,35 +251,40 @@ export class ArtifactIngestionService {
       createdCards.push(created);
     }
 
-    // Create ArtifactImport record
-    const artifactImport = await this.prisma.artifactImport.create({
-      data: {
-        artifactId,
-        targetType: "flashcards",
-        status: "success",
-        itemCount: createdCards.length,
-      },
-    });
-
-    // Update artifact status
-    const newStatus = artifact.status === "received" ? "partially_imported" : artifact.status;
-    await this.prisma.groundedArtifact.update({
-      where: { id: artifactId },
-      data: { status: newStatus },
-    });
-
-    // Record timeline event
-    await this.prisma.researchTimelineEvent.create({
-      data: {
-        sessionId: artifact.sessionId,
-        topicId: artifact.topicId,
-        eventType: "flashcards_generated",
-        eventData: {
-          artifactId,
-          cardCount: createdCards.length,
+    let artifactImport = null;
+    if (artifact) {
+      // Create ArtifactImport record
+      artifactImport = await this.prisma.artifactImport.create({
+        data: {
+          artifactId: artifact.id,
+          targetType: "flashcards",
+          status: "success",
+          itemCount: createdCards.length,
         },
-      },
-    });
+      });
+
+      // Update artifact status
+      const newStatus = artifact.status === "received" ? "partially_imported" : artifact.status;
+      await this.prisma.groundedArtifact.update({
+        where: { id: artifact.id },
+        data: { status: newStatus },
+      });
+
+      // Record timeline event
+      if (artifact.sessionId) {
+        await this.prisma.researchTimelineEvent.create({
+          data: {
+            sessionId: artifact.sessionId,
+            topicId: artifact.topicId,
+            eventType: "flashcards_generated",
+            eventData: {
+              artifactId: artifact.id,
+              cardCount: createdCards.length,
+            },
+          },
+        });
+      }
+    }
 
     return { flashcards: createdCards, artifactImport };
   }

@@ -8,7 +8,16 @@ import {
 export async function buildBackupSnapshotFromDb(
   db: PrismaClient | any,
 ): Promise<ValidatedBackupSnapshot> {
-  const [categories, topics, notes, resources, tags] = await Promise.all([
+  const [
+    categories,
+    topics,
+    notes,
+    resources,
+    tags,
+    flashcards,
+    archivedDocuments,
+    noteTopicLinks,
+  ] = await Promise.all([
     db.category.findMany({ orderBy: { order: "asc" } }),
     db.topic.findMany({
       include: {
@@ -20,6 +29,21 @@ export async function buildBackupSnapshotFromDb(
     db.note.findMany({ orderBy: { createdAt: "asc" } }),
     db.resource.findMany({ orderBy: { createdAt: "asc" } }),
     db.tag.findMany({ orderBy: { name: "asc" } }),
+    db.flashcard
+      ? db.flashcard.findMany({
+          include: {
+            schedule: true,
+            reviews: { orderBy: { reviewedAt: "asc" } },
+          },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve([]),
+    db.archivedDocument
+      ? db.archivedDocument.findMany({ orderBy: { createdAt: "asc" } })
+      : Promise.resolve([]),
+    db.noteTopicLink
+      ? db.noteTopicLink.findMany({ orderBy: { id: "asc" } })
+      : Promise.resolve([]),
   ]);
 
   const formattedCategories = categories.map((c: any) => ({
@@ -106,32 +130,111 @@ export async function buildBackupSnapshotFromDb(
     count: t.count,
   }));
 
+  const formattedFlashcards = (flashcards || []).map((f: any) => ({
+    id: f.id,
+    topicId: f.topicId,
+    noteId: f.noteId ?? undefined,
+    resourceId: f.resourceId ?? undefined,
+    type: f.type,
+    front: f.front,
+    back: f.back,
+    lifecycleStatus: f.lifecycleStatus,
+    createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : f.createdAt,
+    updatedAt: f.updatedAt instanceof Date ? f.updatedAt.toISOString() : f.updatedAt,
+    schedule: f.schedule
+      ? {
+          id: f.schedule.id,
+          flashcardId: f.schedule.flashcardId,
+          state: f.schedule.state,
+          dueAt: f.schedule.dueAt instanceof Date ? f.schedule.dueAt.toISOString() : f.schedule.dueAt,
+          interval: f.schedule.interval,
+          easeFactor: f.schedule.easeFactor,
+          repetitions: f.schedule.repetitions,
+          lapses: f.schedule.lapses,
+          lastReviewedAt: f.schedule.lastReviewedAt instanceof Date ? f.schedule.lastReviewedAt.toISOString() : f.schedule.lastReviewedAt ?? undefined,
+          updatedAt: f.schedule.updatedAt instanceof Date ? f.schedule.updatedAt.toISOString() : f.schedule.updatedAt,
+        }
+      : undefined,
+    reviews: (f.reviews || []).map((r: any) => ({
+      id: r.id,
+      clientEventId: r.clientEventId,
+      flashcardId: r.flashcardId,
+      topicId: r.topicId,
+      rating: r.rating,
+      reviewDurationMs: r.reviewDurationMs,
+      reviewedAt: r.reviewedAt instanceof Date ? r.reviewedAt.toISOString() : r.reviewedAt,
+      stateBefore: r.stateBefore,
+      stateAfter: r.stateAfter,
+      intervalBefore: r.intervalBefore,
+      intervalAfter: r.intervalAfter,
+      easeFactorBefore: r.easeFactorBefore,
+      easeFactorAfter: r.easeFactorAfter,
+      dueBeforeAt: r.dueBeforeAt instanceof Date ? r.dueBeforeAt.toISOString() : r.dueBeforeAt,
+      dueAfterAt: r.dueAfterAt instanceof Date ? r.dueAfterAt.toISOString() : r.dueAfterAt,
+    })),
+  }));
+
+  const formattedArchivedDocuments = (archivedDocuments || []).map((doc: any) => ({
+    id: doc.id,
+    resourceId: doc.resourceId ?? undefined,
+    fileName: doc.fileName,
+    fileSize: doc.fileSize,
+    mimeType: doc.mimeType,
+    fileFormat: doc.fileFormat,
+    contentHash: doc.contentHash,
+    storageRelPath: doc.storageRelPath,
+    lastPosition: doc.lastPosition ?? undefined,
+    lastReadAt: doc.lastReadAt instanceof Date ? doc.lastReadAt.toISOString() : doc.lastReadAt ?? undefined,
+    readCount: doc.readCount ?? 0,
+    sourceType: doc.sourceType ?? undefined,
+    sourcePath: doc.sourcePath ?? undefined,
+    sourceKey: doc.sourceKey ?? undefined,
+    createdAt: doc.createdAt instanceof Date ? doc.createdAt.toISOString() : doc.createdAt,
+    updatedAt: doc.updatedAt instanceof Date ? doc.updatedAt.toISOString() : doc.updatedAt,
+  }));
+
+  const formattedNoteTopicLinks = (noteTopicLinks || []).map((link: any) => ({
+    id: link.id,
+    noteId: link.noteId,
+    topicId: link.topicId,
+  }));
+
   const canonicalData = {
     categories: formattedCategories,
     topics: formattedTopics,
     notes: formattedNotes,
     resources: formattedResources,
     tags: formattedTags,
+    flashcards: formattedFlashcards,
+    archivedDocuments: formattedArchivedDocuments,
+    noteTopicLinks: formattedNoteTopicLinks,
   };
 
-  const checksum = calculateBackupChecksum(canonicalData);
+  const preliminaryChecksum = calculateBackupChecksum(canonicalData);
 
   const snapshot = {
     version: "2.0.0",
     exportedAt: new Date().toISOString(),
-    checksum,
+    checksum: preliminaryChecksum,
     counts: {
       categories: formattedCategories.length,
       topics: formattedTopics.length,
       notes: formattedNotes.length,
       resources: formattedResources.length,
       tags: formattedTags.length,
+      flashcards: formattedFlashcards.length,
+      archivedDocuments: formattedArchivedDocuments.length,
+      noteTopicLinks: formattedNoteTopicLinks.length,
     },
     data: canonicalData,
   };
 
-  return BackupSnapshotSchema.parse(snapshot);
+  const parsed = BackupSnapshotSchema.parse(snapshot);
+  parsed.checksum = calculateBackupChecksum(parsed.data);
+  return parsed;
 }
+
+export const createBackupSnapshot = buildBackupSnapshotFromDb;
 
 /**
  * Deletes all database records across all tables in reverse foreign key order.
@@ -298,6 +401,108 @@ export async function executeReplaceRestore(
         createdAt: resItem.createdAt ? new Date(resItem.createdAt) : undefined,
       },
     });
+  }
+
+  // 8. Nạp NoteTopicLinks (sau Notes và Topics)
+  if (tx.noteTopicLink && data.noteTopicLinks && data.noteTopicLinks.length > 0) {
+    for (const link of data.noteTopicLinks) {
+      await tx.noteTopicLink.create({
+        data: {
+          id: link.id,
+          noteId: link.noteId,
+          topicId: link.topicId,
+        },
+      });
+    }
+  }
+
+  // 9. Nạp Flashcards, Schedules & Reviews
+  if (tx.flashcard && data.flashcards && data.flashcards.length > 0) {
+    for (const card of data.flashcards) {
+      await tx.flashcard.create({
+        data: {
+          id: card.id,
+          topicId: card.topicId,
+          noteId: card.noteId ?? null,
+          resourceId: card.resourceId ?? null,
+          type: card.type,
+          front: card.front,
+          back: card.back,
+          lifecycleStatus: card.lifecycleStatus ?? "active",
+          createdAt: card.createdAt ? new Date(card.createdAt) : undefined,
+          updatedAt: card.updatedAt ? new Date(card.updatedAt) : undefined,
+        },
+      });
+
+      if (tx.flashcardSchedule && card.schedule) {
+        await tx.flashcardSchedule.create({
+          data: {
+            id: card.schedule.id,
+            flashcardId: card.id,
+            state: card.schedule.state,
+            dueAt: new Date(card.schedule.dueAt || (card.schedule as any).due),
+            interval: card.schedule.interval ?? 0,
+            easeFactor: card.schedule.easeFactor ?? 2.5,
+            repetitions: card.schedule.repetitions ?? 0,
+            lapses: card.schedule.lapses ?? 0,
+            lastReviewedAt: (card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              ? new Date(card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              : null,
+            updatedAt: card.schedule.updatedAt ? new Date(card.schedule.updatedAt) : new Date(),
+          },
+        });
+      }
+
+      if (tx.flashcardReview && card.reviews && card.reviews.length > 0) {
+        for (const review of card.reviews) {
+          await tx.flashcardReview.create({
+            data: {
+              id: review.id,
+              clientEventId: review.clientEventId,
+              flashcardId: card.id,
+              topicId: review.topicId,
+              rating: review.rating,
+              reviewDurationMs: review.reviewDurationMs ?? 0,
+              reviewedAt: new Date(review.reviewedAt),
+              stateBefore: review.stateBefore,
+              stateAfter: review.stateAfter,
+              intervalBefore: review.intervalBefore,
+              intervalAfter: review.intervalAfter,
+              easeFactorBefore: review.easeFactorBefore,
+              easeFactorAfter: review.easeFactorAfter,
+              dueBeforeAt: new Date(review.dueBeforeAt || (review as any).dueBefore),
+              dueAfterAt: new Date(review.dueAfterAt || (review as any).dueAfter),
+            },
+          });
+        }
+      }
+    }
+  }
+
+  // 10. Nạp ArchivedDocuments
+  if (tx.archivedDocument && data.archivedDocuments && data.archivedDocuments.length > 0) {
+    for (const doc of data.archivedDocuments) {
+      await tx.archivedDocument.create({
+        data: {
+          id: doc.id,
+          resourceId: doc.resourceId ?? null,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          fileFormat: doc.fileFormat,
+          contentHash: doc.contentHash,
+          storageRelPath: doc.storageRelPath,
+          lastPosition: doc.lastPosition ?? undefined,
+          lastReadAt: doc.lastReadAt ? new Date(doc.lastReadAt) : null,
+          readCount: doc.readCount ?? 0,
+          sourceType: doc.sourceType ?? null,
+          sourcePath: doc.sourcePath ?? null,
+          sourceKey: doc.sourceKey ?? null,
+          createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
+          updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
+        },
+      });
+    }
   }
 }
 
@@ -538,5 +743,116 @@ export async function executeMergeRestore(
         notes: resItem.notes,
       },
     });
+  }
+
+  // 6. NoteTopicLinks
+  if (tx.noteTopicLink && data.noteTopicLinks && data.noteTopicLinks.length > 0) {
+    for (const link of data.noteTopicLinks) {
+      const existing = await tx.noteTopicLink.findUnique({
+        where: { id: link.id },
+      });
+      if (!existing) {
+        await tx.noteTopicLink.create({
+          data: {
+            id: link.id,
+            noteId: link.noteId,
+            topicId: link.topicId,
+          },
+        });
+      }
+    }
+  }
+
+  // 7. Flashcards & Schedules
+  if (tx.flashcard && data.flashcards && data.flashcards.length > 0) {
+    for (const card of data.flashcards) {
+      await tx.flashcard.upsert({
+        where: { id: card.id },
+        create: {
+          id: card.id,
+          topicId: card.topicId,
+          noteId: card.noteId ?? null,
+          resourceId: card.resourceId ?? null,
+          type: card.type,
+          front: card.front,
+          back: card.back,
+          lifecycleStatus: card.lifecycleStatus ?? "active",
+          createdAt: card.createdAt ? new Date(card.createdAt) : undefined,
+          updatedAt: card.updatedAt ? new Date(card.updatedAt) : undefined,
+        },
+        update: {
+          front: card.front,
+          back: card.back,
+          type: card.type,
+          lifecycleStatus: card.lifecycleStatus ?? "active",
+          updatedAt: card.updatedAt ? new Date(card.updatedAt) : new Date(),
+        },
+      });
+
+      if (tx.flashcardSchedule && card.schedule) {
+        await tx.flashcardSchedule.upsert({
+          where: { flashcardId: card.id },
+          create: {
+            id: card.schedule.id,
+            flashcardId: card.id,
+            state: card.schedule.state,
+            dueAt: new Date(card.schedule.dueAt || (card.schedule as any).due),
+            interval: card.schedule.interval ?? 0,
+            easeFactor: card.schedule.easeFactor ?? 2.5,
+            repetitions: card.schedule.repetitions ?? 0,
+            lapses: card.schedule.lapses ?? 0,
+            lastReviewedAt: (card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              ? new Date(card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              : null,
+            updatedAt: card.schedule.updatedAt ? new Date(card.schedule.updatedAt) : new Date(),
+          },
+          update: {
+            state: card.schedule.state,
+            dueAt: new Date(card.schedule.dueAt || (card.schedule as any).due),
+            interval: card.schedule.interval ?? 0,
+            easeFactor: card.schedule.easeFactor ?? 2.5,
+            repetitions: card.schedule.repetitions ?? 0,
+            lapses: card.schedule.lapses ?? 0,
+            lastReviewedAt: (card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              ? new Date(card.schedule.lastReviewedAt || (card.schedule as any).lastReviewed)
+              : null,
+            updatedAt: new Date(),
+          },
+        });
+      }
+    }
+  }
+
+  // 8. ArchivedDocuments
+  if (tx.archivedDocument && data.archivedDocuments && data.archivedDocuments.length > 0) {
+    for (const doc of data.archivedDocuments) {
+      await tx.archivedDocument.upsert({
+        where: { id: doc.id },
+        create: {
+          id: doc.id,
+          resourceId: doc.resourceId ?? null,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+          fileFormat: doc.fileFormat,
+          contentHash: doc.contentHash,
+          storageRelPath: doc.storageRelPath,
+          lastPosition: doc.lastPosition ?? undefined,
+          lastReadAt: doc.lastReadAt ? new Date(doc.lastReadAt) : null,
+          readCount: doc.readCount ?? 0,
+          sourceType: doc.sourceType ?? null,
+          sourcePath: doc.sourcePath ?? null,
+          sourceKey: doc.sourceKey ?? null,
+          createdAt: doc.createdAt ? new Date(doc.createdAt) : undefined,
+          updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : undefined,
+        },
+        update: {
+          lastPosition: doc.lastPosition ?? undefined,
+          lastReadAt: doc.lastReadAt ? new Date(doc.lastReadAt) : null,
+          readCount: doc.readCount ?? 0,
+          updatedAt: new Date(),
+        },
+      });
+    }
   }
 }
