@@ -6,6 +6,7 @@ import {
   generateTagSlug,
   resolveTopicIds,
 } from "../../lib/researchStorageHelpers";
+import { syncTopicTags } from "../services/tagSyncService";
 
 export function createSyncRouter(prisma: PrismaClient | any): Router {
   const router = Router();
@@ -202,37 +203,9 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           }
           topicsCount++;
 
-          // Dual-write TopicTag relations
-          if (tx.topicTag && normTags.length > 0) {
-            for (const tagName of normTags) {
-              const slug = generateTagSlug(tagName);
-              const tag = await tx.tag.upsert({
-                where: { slug },
-                create: {
-                  id: `tag-${slug}`,
-                  name: tagName,
-                  slug,
-                  color: "#D97706",
-                  count: 0,
-                },
-                update: {
-                  name: tagName,
-                },
-              });
-              await tx.topicTag.upsert({
-                where: {
-                  topicId_tagId: {
-                    topicId: topic.id,
-                    tagId: tag.id,
-                  },
-                },
-                create: {
-                  topicId: topic.id,
-                  tagId: tag.id,
-                },
-                update: {},
-              });
-            }
+          // Canonical TopicTag synchronization & pruning (ADR-079 / PR-2)
+          if (savedTopicId) {
+            await syncTopicTags(tx, savedTopicId, topic.tags || []);
           }
 
           // Study Progress

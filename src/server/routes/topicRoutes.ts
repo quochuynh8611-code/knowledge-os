@@ -8,73 +8,7 @@ import {
   normalizeTopicTags,
   generateTagSlug,
 } from "../../lib/researchStorageHelpers";
-
-async function syncTopicTags(
-  tx: any,
-  topicId: string,
-  normalizedTags: string[],
-): Promise<void> {
-  if (!tx.tag || !tx.topicTag) return;
-
-  const tagRecords: { id: string; slug: string }[] = [];
-  for (const tagName of normalizedTags) {
-    const slug = generateTagSlug(tagName);
-    const tag = await tx.tag.upsert({
-      where: { slug },
-      create: {
-        id: `tag-${slug}`,
-        name: tagName,
-        slug,
-        color: "#D97706",
-        count: 0,
-      },
-      update: {
-        name: tagName,
-      },
-    });
-    tagRecords.push(tag);
-  }
-
-  const currentTagIds = new Set(tagRecords.map((t) => t.id));
-
-  // Find existing relations for this topic
-  const existingLinks = (await tx.topicTag.findMany({
-    where: { topicId },
-  })) || [];
-
-  // Prune obsolete links
-  const linksToDelete = existingLinks.filter(
-    (link: any) => !currentTagIds.has(link.tagId),
-  );
-  if (linksToDelete.length > 0) {
-    await tx.topicTag.deleteMany({
-      where: {
-        topicId,
-        tagId: { in: linksToDelete.map((l: any) => l.tagId) },
-      },
-    });
-  }
-
-  // Create new relations
-  const existingTagIds = new Set(existingLinks.map((l: any) => l.tagId));
-  for (const tag of tagRecords) {
-    if (!existingTagIds.has(tag.id)) {
-      await tx.topicTag.upsert({
-        where: {
-          topicId_tagId: {
-            topicId,
-            tagId: tag.id,
-          },
-        },
-        create: {
-          topicId,
-          tagId: tag.id,
-        },
-        update: {},
-      });
-    }
-  }
-}
+import { syncTopicTags } from "../services/tagSyncService";
 
 export function createTopicRouter(prisma: PrismaClient | any): Router {
   const router = Router();
@@ -244,11 +178,9 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
             },
           });
 
-          if (normalizedTags.length > 0) {
-            await syncTopicTags(tx, updated.id, normalizedTags);
-          }
+          await syncTopicTags(tx, updated.id, normalizedTags);
 
-          return { topic: updated, isCreated: false };
+          return { topic: { ...updated, tags: normalizedTags }, isCreated: false };
         }
 
         // Create new topic
@@ -266,11 +198,9 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
           },
         });
 
-        if (normalizedTags.length > 0) {
-          await syncTopicTags(tx, created.id, normalizedTags);
-        }
+        await syncTopicTags(tx, created.id, normalizedTags);
 
-        return { topic: created, isCreated: true };
+        return { topic: { ...created, tags: normalizedTags }, isCreated: true };
       });
 
       res.status(result.isCreated ? 201 : 200).json(result.topic);
@@ -332,13 +262,14 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
       }
 
       const topic = await executeInTx(async (tx: any) => {
-        const updated = await tx.topic.update({
+        let updated = await tx.topic.update({
           where: { id: req.params.id },
           data: updateData,
         });
 
         if (normalizedTags !== undefined) {
           await syncTopicTags(tx, req.params.id, normalizedTags);
+          updated = { ...updated, tags: normalizedTags };
         }
 
         return updated;
