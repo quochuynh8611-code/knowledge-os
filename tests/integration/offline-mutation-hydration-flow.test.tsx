@@ -13,7 +13,7 @@ import type { SyncMutation } from "../../src/lib/syncQueue";
 const SYNC_QUEUE_STORAGE_KEY = "phat_hoc_huyen_hoc_sync_queue";
 
 function TestConsumer() {
-  const { categories, topics, notes } = useData();
+  const { categories, topics, notes, resources } = useData();
   return (
     <div>
       <div data-testid="category-count">{categories.length}</div>
@@ -37,6 +37,14 @@ function TestConsumer() {
         {notes.map((n) => (
           <li key={n.id} data-testid={`note-${n.id}`}>
             {n.title}
+          </li>
+        ))}
+      </ul>
+      <div data-testid="resource-count">{resources.length}</div>
+      <ul data-testid="resource-list">
+        {resources.map((r) => (
+          <li key={r.id} data-testid={`res-${r.id}`}>
+            {r.title}
           </li>
         ))}
       </ul>
@@ -531,6 +539,101 @@ describe("Phase 2 Integration: Offline Mutation Reconciliation on Hydration (ADR
 
     // Mutation delete vẫn còn trong queue
     expect(syncQueueService.getQueue().some((m) => m.entityId === "topic-t1")).toBe(true);
+  });
+
+  // ─── Scenario 7 ──────────────────────────────────────────────────────────
+
+  it("Scenario 7: Offline category deletion cascades across related knowledge entities", async () => {
+    // Given the server holds category "C1", topic "T1", note "N1" and resource "R1"
+    const serverCategoryC1 = {
+      id: "cat-1",
+      name: "Phật Học Cơ Bản",
+      slug: "phat-hoc-co-ban",
+      type: "phat-hoc",
+      parentId: null,
+    };
+    const serverTopicT1 = {
+      id: "topic-t1",
+      title: "Tứ Diệu Đế",
+      slug: "tu-dieu-de",
+      categoryId: "cat-1",
+      type: "phat-hoc",
+      tags: [],
+      links: [],
+      studyProgress: {
+        topicId: "topic-t1",
+        status: "not_started",
+        progress: 0,
+      },
+      createdAt: "2026-10-26T08:00:00Z",
+      updatedAt: "2026-10-26T08:00:00Z",
+    };
+    const serverNoteN1 = {
+      id: "note-n1",
+      topicId: "topic-t1",
+      title: "Khổ Đế",
+      content: "Nội dung Khổ Đế",
+      type: "study",
+    };
+    const serverResourceR1 = {
+      id: "res-r1",
+      topicId: "topic-t1",
+      title: "Kinh Chuyển Pháp Luân",
+      type: "book",
+      url: "https://example.com/kinh",
+    };
+
+    // And the user deletes category "C1" while offline
+    // And the category delete mutation is queued
+    const mutations: SyncMutation[] = [
+      {
+        id: "mut-del-c1",
+        entityType: "category",
+        action: "delete",
+        entityId: "cat-1",
+        clientTimestamp: "2026-10-26T09:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+    safeSetLocalStorageItem(SYNC_QUEUE_STORAGE_KEY, JSON.stringify(mutations));
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/api/categories")) return { ok: true, json: async () => [serverCategoryC1] } as Response;
+      if (url.includes("/api/topics")) return { ok: true, json: async () => [serverTopicT1] } as Response;
+      if (url.includes("/api/notes")) return { ok: true, json: async () => [serverNoteN1] } as Response;
+      if (url.includes("/api/resources")) return { ok: true, json: async () => [serverResourceR1] } as Response;
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    // When the application reloads before the queue is flushed
+    render(
+      <DataProvider>
+        <TestConsumer />
+      </DataProvider>
+    );
+
+    // Chờ hydration xử lý
+    // Then category "C1" is not visible
+    // And topic "T1" is not visible
+    // And note "N1" is not visible
+    // And resource "R1" is not visible
+    await waitFor(() => {
+      expect(screen.queryByTestId("cat-cat-1")).toBeNull();
+      expect(screen.queryByTestId("topic-topic-t1")).toBeNull();
+      expect(screen.queryByTestId("note-note-n1")).toBeNull();
+      expect(screen.queryByTestId("res-res-r1")).toBeNull();
+    });
+
+    expect(screen.getByTestId("category-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("topic-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("note-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("resource-count")).toHaveTextContent("0");
+
+    // And the delete mutation remains in the sync queue
+    const queue = syncQueueService.getQueue();
+    expect(queue.some((m) => m.entityId === "cat-1" && m.action === "delete")).toBe(true);
   });
 });
 

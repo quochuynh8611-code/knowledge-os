@@ -425,34 +425,70 @@ export function reconcileSnapshotWithQueue<T extends ReconcilableSnapshot>(
     }
   }
 
-  // 5. Deletes per collection
-  const deleteCategoryIds = new Set(
+  // 5. Cascade Delete: category → topic → note / resource
+  const deletedCategoryIds = new Set(
     activeMutations
       .filter((m) => m.entityType === "category" && m.action === "delete")
       .map((m) => m.entityId)
   );
-  const deleteTopicIds = new Set(
+  const deletedCategorySlugs = new Set(
+    categories
+      .filter((c) => deletedCategoryIds.has(c.id))
+      .map((c) => c.slug)
+      .filter(Boolean)
+  );
+
+  const deletedTopicIds = new Set(
     activeMutations
       .filter((m) => m.entityType === "topic" && m.action === "delete")
       .map((m) => m.entityId)
   );
-  const deleteNoteIds = new Set(
+
+  // Cascade category deletion to topics
+  for (const t of topics) {
+    if (
+      deletedCategoryIds.has(t.categoryId) ||
+      Boolean(t.categorySlug && deletedCategorySlugs.has(t.categorySlug))
+    ) {
+      deletedTopicIds.add(t.id);
+    }
+  }
+
+  const deletedNoteIds = new Set(
     activeMutations
       .filter((m) => m.entityType === "note" && m.action === "delete")
       .map((m) => m.entityId)
   );
-  const deleteResourceIds = new Set(
+
+  // Cascade topic deletion to notes
+  for (const n of notes) {
+    if (
+      deletedTopicIds.has(n.topicId) ||
+      (Array.isArray(n.topicIds) && n.topicIds.some((tid: string) => deletedTopicIds.has(tid)))
+    ) {
+      deletedNoteIds.add(n.id);
+    }
+  }
+
+  const deletedResourceIds = new Set(
     activeMutations
       .filter((m) => m.entityType === "resource" && m.action === "delete")
       .map((m) => m.entityId)
   );
 
+  // Cascade topic deletion to resources
+  for (const r of resources) {
+    if (deletedTopicIds.has(r.topicId)) {
+      deletedResourceIds.add(r.id);
+    }
+  }
+
   return {
     ...serverSnapshot,
-    categories: categories.filter((c) => !deleteCategoryIds.has(c.id)),
-    topics: topics.filter((t) => !deleteTopicIds.has(t.id)),
-    notes: notes.filter((n) => !deleteNoteIds.has(n.id)),
-    resources: resources.filter((r) => !deleteResourceIds.has(r.id)),
+    categories: categories.filter((c) => !deletedCategoryIds.has(c.id)),
+    topics: topics.filter((t) => !deletedTopicIds.has(t.id)),
+    notes: notes.filter((n) => !deletedNoteIds.has(n.id)),
+    resources: resources.filter((r) => !deletedResourceIds.has(r.id)),
     tags: [...(serverSnapshot.tags || [])],
   };
 }

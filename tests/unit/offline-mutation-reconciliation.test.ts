@@ -303,4 +303,175 @@ describe("Phase 2 Unit: Offline Mutation Reconciliation (ADR-078)", () => {
     expect(queue[0].status).toBe(originalStatus);
     expect(queue[0].id).toBe("mut-immutable-1");
   });
+
+  // ─── 7. Cascade Delete: Category Deletion Cascades to Topics, Notes, Resources ─
+
+  it("7. Pending delete category must cascade-hide its topics, notes and resources", () => {
+    // Server có C1, T1 thuộc C1, N1 thuộc T1, R1 thuộc T1.
+    // Queue có delete category C1.
+    const queue: SyncMutation[] = [
+      {
+        id: "mut-del-c1",
+        entityType: "category",
+        action: "delete",
+        entityId: "cat-1",
+        clientTimestamp: "2026-10-26T12:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+
+    const result = reconcileSnapshotWithQueue(initialSnapshot, queue);
+
+    // C1, T1, N1, R1 đều không còn trong snapshot
+    expect(result.categories.some((c) => c.id === "cat-1")).toBe(false);
+    expect(result.topics.some((t) => t.id === "top-1")).toBe(false);
+    expect(result.notes.some((n) => n.id === "note-1")).toBe(false);
+    expect(result.resources.some((r) => r.id === "res-1")).toBe(false);
+  });
+
+  // ─── 8. Cascade Delete: Topic Deletion Cascades to Notes and Resources ────────
+
+  it("8. Pending delete topic must cascade-hide its notes and resources", () => {
+    // Server có T1, N1 thuộc T1, R1 thuộc T1.
+    // Queue có delete topic T1.
+    const queue: SyncMutation[] = [
+      {
+        id: "mut-del-t1",
+        entityType: "topic",
+        action: "delete",
+        entityId: "top-1",
+        clientTimestamp: "2026-10-26T12:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+
+    const result = reconcileSnapshotWithQueue(initialSnapshot, queue);
+
+    expect(result.categories.some((c) => c.id === "cat-1")).toBe(true);
+    expect(result.topics.some((t) => t.id === "top-1")).toBe(false);
+    expect(result.notes.some((n) => n.id === "note-1")).toBe(false);
+    expect(result.resources.some((r) => r.id === "res-1")).toBe(false);
+  });
+
+  // ─── 9. Selective Delete: Note Deletion Removes Only Target Note ──────────────
+
+  it("9. Pending delete note must remove only that note", () => {
+    const note2: Note = {
+      ...baseNote,
+      id: "note-2",
+      title: "Ghi chú thứ hai",
+    };
+    const snapshotWithTwoNotes = {
+      ...initialSnapshot,
+      notes: [baseNote, note2],
+    };
+
+    const queue: SyncMutation[] = [
+      {
+        id: "mut-del-n1",
+        entityType: "note",
+        action: "delete",
+        entityId: "note-1",
+        clientTimestamp: "2026-10-26T12:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+
+    const result = reconcileSnapshotWithQueue(snapshotWithTwoNotes, queue);
+
+    expect(result.notes.some((n) => n.id === "note-1")).toBe(false);
+    expect(result.notes.some((n) => n.id === "note-2")).toBe(true);
+    expect(result.topics.some((t) => t.id === "top-1")).toBe(true);
+  });
+
+  // ─── 10. Selective Delete: Resource Deletion Removes Only Target Resource ─────
+
+  it("10. Pending delete resource must remove only that resource", () => {
+    const resource2: Resource = {
+      ...baseResource,
+      id: "res-2",
+      title: "Tài liệu thứ hai",
+    };
+    const snapshotWithTwoResources = {
+      ...initialSnapshot,
+      resources: [baseResource, resource2],
+    };
+
+    const queue: SyncMutation[] = [
+      {
+        id: "mut-del-r1",
+        entityType: "resource",
+        action: "delete",
+        entityId: "res-1",
+        clientTimestamp: "2026-10-26T12:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+
+    const result = reconcileSnapshotWithQueue(snapshotWithTwoResources, queue);
+
+    expect(result.resources.some((r) => r.id === "res-1")).toBe(false);
+    expect(result.resources.some((r) => r.id === "res-2")).toBe(true);
+    expect(result.topics.some((t) => t.id === "top-1")).toBe(true);
+  });
+
+  // ─── 11. Coalesce & Ghost Prevention ──────────────────────────────────────────
+
+  it("11. Cascade delete prevents resurrected ghosts when child entity was also pending save in same queue", () => {
+    const offlineTopicT2: Topic = {
+      ...baseTopic,
+      id: "top-2",
+      title: "Topic offline gán vào cat-1",
+      categoryId: "cat-1",
+    };
+    const offlineNoteN2: Note = {
+      ...baseNote,
+      id: "note-2",
+      title: "Note offline gán vào top-1",
+      topicId: "top-1",
+    };
+
+    const queue: SyncMutation[] = [
+      {
+        id: "mut-save-t2",
+        entityType: "topic",
+        action: "save",
+        entityId: "top-2",
+        payload: offlineTopicT2,
+        clientTimestamp: "2026-10-26T11:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+      {
+        id: "mut-save-n2",
+        entityType: "note",
+        action: "save",
+        entityId: "note-2",
+        payload: offlineNoteN2,
+        clientTimestamp: "2026-10-26T11:05:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+      {
+        id: "mut-del-c1",
+        entityType: "category",
+        action: "delete",
+        entityId: "cat-1",
+        clientTimestamp: "2026-10-26T12:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ];
+
+    const result = reconcileSnapshotWithQueue(initialSnapshot, queue);
+
+    expect(result.categories.some((c) => c.id === "cat-1")).toBe(false);
+    expect(result.topics.some((t) => t.id === "top-1" || t.id === "top-2")).toBe(false);
+    expect(result.notes.some((n) => n.id === "note-1" || n.id === "note-2")).toBe(false);
+    expect(result.resources.some((r) => r.id === "res-1")).toBe(false);
+  });
 });
