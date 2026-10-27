@@ -7,6 +7,7 @@ import {
   resolveTopicIds,
 } from "../../lib/researchStorageHelpers";
 import { syncTopicTags } from "../services/tagSyncService";
+import { syncNoteTopicLinks } from "../services/noteCascadeService";
 
 export function createSyncRouter(prisma: PrismaClient | any): Router {
   const router = Router();
@@ -290,26 +291,13 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
           });
           notesCount++;
 
-          // Dual-write NoteTopicLink relations
-          // Chỉ upsert link cho các topicId thực sự tồn tại trong DB (đã resolve qua topicIdMap)
-          if (tx.noteTopicLink && resolvedTopicIds.length > 0) {
-            for (const tid of resolvedTopicIds) {
-              const resolvedTid = topicIdMap.get(tid);
-              if (!resolvedTid) continue; // bỏ qua topic không tồn tại, tránh FK violation
-              await tx.noteTopicLink.upsert({
-                where: {
-                  noteId_topicId: {
-                    noteId: note.id,
-                    topicId: resolvedTid,
-                  },
-                },
-                create: {
-                  noteId: note.id,
-                  topicId: resolvedTid,
-                },
-                update: {},
-              });
-            }
+          // Canonical NoteTopicLink synchronization & pruning (ADR-079 / PR-3)
+          if (tx.noteTopicLink) {
+            const validResolvedTopicIds = resolvedTopicIds
+              .map((tid) => topicIdMap.get(tid))
+              .filter((tid): tid is string => Boolean(tid));
+
+            await syncNoteTopicLinks(tx, note.id, validResolvedTopicIds);
           }
         }
 

@@ -9,6 +9,7 @@ import {
   generateTagSlug,
 } from "../../lib/researchStorageHelpers";
 import { syncTopicTags } from "../services/tagSyncService";
+import { deleteTopicSafely } from "../services/noteCascadeService";
 
 export function createTopicRouter(prisma: PrismaClient | any): Router {
   const router = Router();
@@ -290,10 +291,10 @@ export function createTopicRouter(prisma: PrismaClient | any): Router {
 
   router.delete("/topics/:id", async (req, res) => {
     try {
-      await prisma.topic.delete({
-        where: { id: req.params.id },
+      const result = await executeInTx(async (tx: any) => {
+        return deleteTopicSafely(tx, req.params.id);
       });
-      res.json({ success: true, id: req.params.id });
+      res.json(result);
     } catch (err: any) {
       if (err?.code === "P2025") {
         return res.json({

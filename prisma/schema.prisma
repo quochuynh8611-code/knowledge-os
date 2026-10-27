@@ -66,8 +66,8 @@ model Topic {
 
 model Note {
   id         String   @id @default(uuid())
-  topicId    String
-  topic      Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topicId    String?
+  topic      Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
   title      String
   content    String
   sourcePath String?  // nullable — matches Note.sourcePath in types/index.ts

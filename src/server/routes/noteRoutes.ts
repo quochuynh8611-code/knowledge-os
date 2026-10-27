@@ -5,6 +5,7 @@ import {
   NoteUpdateSchema,
 } from "../../lib/validation";
 import { resolveTopicIds } from "../../lib/researchStorageHelpers";
+import { syncNoteTopicLinks } from "../services/noteCascadeService";
 
 async function executeInTx<T>(
   prisma: any,
@@ -14,46 +15,6 @@ async function executeInTx<T>(
     return prisma.$transaction(callback);
   }
   return callback(prisma);
-}
-
-async function syncNoteTopicLinks(
-  tx: any,
-  noteId: string,
-  targetTopicIds: string[]
-) {
-  if (!tx.noteTopicLink) return;
-
-  const existingLinks: Array<{ topicId: string }> =
-    await tx.noteTopicLink.findMany({
-      where: { noteId },
-      select: { topicId: true },
-    });
-
-  const existingTopicIds = new Set(existingLinks.map((l) => l.topicId));
-  const newTopicIds = new Set(targetTopicIds);
-
-  const toRemove = [...existingTopicIds].filter((tid) => !newTopicIds.has(tid));
-  if (toRemove.length > 0) {
-    await tx.noteTopicLink.deleteMany({
-      where: {
-        noteId,
-        topicId: { in: toRemove },
-      },
-    });
-  }
-
-  for (const topicId of targetTopicIds) {
-    await tx.noteTopicLink.upsert({
-      where: {
-        noteId_topicId: { noteId, topicId },
-      },
-      create: {
-        noteId,
-        topicId,
-      },
-      update: {},
-    });
-  }
 }
 
 export function createNoteRouter(prisma: PrismaClient | any): Router {
