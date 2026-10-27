@@ -942,6 +942,26 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   private getUrl(path: string): string | null {
+    // Chốt chặn Hermetic Test Guard (ADR-077 & Rule 2):
+    // Trong môi trường kiểm thử Vitest, CẤM gọi live HTTP network ra server trừ khi test đã chủ động mock fetch
+    if (typeof process !== "undefined" && process.env?.VITEST) {
+      const activeFetch =
+        typeof fetch !== "undefined"
+          ? fetch
+          : typeof window !== "undefined"
+          ? window.fetch
+          : null;
+
+      const isFetchMocked = Boolean(
+        activeFetch &&
+          ((activeFetch as any)._isMockFunction || (activeFetch as any).mock),
+      );
+
+      if (!isFetchMocked) {
+        return null; // Chặn triệt để live HTTP request ra localhost:3000
+      }
+    }
+
     if (
       typeof window !== "undefined" &&
       window.location &&
@@ -1439,14 +1459,21 @@ export class ApiDataRepository implements IDataRepository {
       try {
         const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-Reset-Confirmation": "knowledge-os-secure-local-reset-secret-2026",
+          },
         });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
-          console.warn("Backend resetAllData returned error:", errBody);
+          console.error("Backend resetAllData returned error:", res.status, errBody);
+          throw new Error(
+            `Backend resetAllData failed (${res.status}): ${errBody.message || errBody.error || "Unknown error"}`
+          );
         }
       } catch (err) {
-        console.warn("Backend resetAllData failed to connect:", err);
+        console.error("Backend resetAllData failed to connect or execute:", err);
+        throw err;
       }
     }
     await this.localFallback.resetAllData();

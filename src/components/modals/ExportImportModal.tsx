@@ -418,16 +418,24 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
     }
   };
 
-  const handleResetConfirm = () => {
+  const handleResetConfirm = async () => {
     if (!isResetAcknowledged) return;
     if (
       window.confirm(
         'Thao tác này sẽ xóa toàn bộ dữ liệu nghiên cứu hiện có trên trình duyệt và không thể hoàn tác nếu chưa sao lưu. Bạn có chắc chắn muốn nạp lại dữ liệu mẫu ban đầu?'
       )
     ) {
-      resetToDefaultData();
-      setIsResetAcknowledged(false);
-      onClose();
+      try {
+        const maybePromise = resetToDefaultData();
+        if (maybePromise && typeof (maybePromise as any).then === 'function') {
+          await maybePromise;
+        }
+        setIsResetAcknowledged(false);
+        onClose();
+      } catch (err) {
+        console.error('[ExportImportModal] Reset failed:', err);
+        alert('Lỗi: Không thể làm sạch cơ sở dữ liệu trên máy chủ. Dữ liệu chưa bị xóa.');
+      }
     }
   };
 

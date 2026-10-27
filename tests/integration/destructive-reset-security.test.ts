@@ -195,4 +195,36 @@ describe("Destructive Reset Endpoint Security (Integration ADR-077)", () => {
     expect(blockedRes.status).toBe(429);
     expect(blockedRes.body.error).toBe("TOO_MANY_REQUESTS");
   });
+
+  it("10. Chốt chặn 1: Trên môi trường cá nhân (development/localhost), nếu thiếu header X-Reset-Confirmation, server tự động fallback thành công 200", async () => {
+    process.env.NODE_ENV = "development";
+    delete process.env.RESET_CONFIRMATION_TOKEN;
+
+    app.use("/api", createBackupRouter(mockPrisma, mockLimiter));
+
+    // Gửi request không có bất kỳ header X-Reset-Confirmation nào
+    const res = await request(app)
+      .post("/api/data/reset")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("11. Chốt chặn 1: Trên môi trường cá nhân (development/localhost), client gửi default token thì server luôn chấp nhận 200", async () => {
+    process.env.NODE_ENV = "development";
+    process.env.RESET_CONFIRMATION_TOKEN = "custom-server-token-123";
+
+    app.use("/api", createBackupRouter(mockPrisma, mockLimiter));
+
+    // Client gửi DEFAULT_RESET_CONFIRMATION_TOKEN
+    const res = await request(app)
+      .post("/api/data/reset")
+      .set("X-Reset-Confirmation", "knowledge-os-secure-local-reset-secret-2026");
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
 });

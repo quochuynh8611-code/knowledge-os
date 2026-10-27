@@ -214,7 +214,7 @@ interface DataContextType {
   // Export, Reset & Rehydration
   exportAllDataJSON: () => string;
   importAllDataJSON: (jsonString: string) => boolean;
-  resetToDefaultData: () => void;
+  resetToDefaultData: () => void | Promise<void>;
   reloadAllData: () => Promise<boolean>;
 }
 
@@ -1201,11 +1201,11 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const resetToDefaultData = () => {
-    // Delegate storage cleanup to repository (sole owner of all localStorage keys)
-    dataRepository.resetAllData().catch((err) => {
-      console.warn("resetAllData storage cleanup failed:", err);
-    });
+  const resetToDefaultData = async () => {
+    // CHỐT CHẶN 2: Bắt buộc backend xác nhận làm sạch CSDL thành công 100% trước khi xóa local state
+    // Nếu gặp lỗi, ném lỗi ra ngoài và DỪNG NGAY, tuyệt đối không "xóa giả vờ"
+    await dataRepository.resetAllData();
+
     safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
     setFocusDomainIdState(null);
     setCategories(normalizeCategories(INITIAL_CATEGORIES));
@@ -1215,6 +1215,9 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
     setTags(INITIAL_TAGS);
     setResearchInboxItems([]);
     setResearchExcerpts([]);
+
+    // Sau khi reset database thành công, cập nhật isServerHydratedRef.current = true để tránh auto-sync ghi ngược dữ liệu rác
+    isServerHydratedRef.current = true;
   };
 
   // Rehydration Action (Phase 2C - Post Restore / Manual Sync)

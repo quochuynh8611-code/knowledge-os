@@ -119,7 +119,7 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
     expect(localStorage.getItem(FOCUS_DOMAIN_STORAGE_KEY)).toBeNull();
   });
 
-  it('5. resetToDefaultData cleans up both in-memory focusDomainId and persisted storage key', () => {
+  it('5. resetToDefaultData cleans up both in-memory focusDomainId and persisted storage key', async () => {
     localStorage.setItem(FOCUS_DOMAIN_STORAGE_KEY, 'cat-root-dong-y');
 
     render(
@@ -130,7 +130,7 @@ describe('Phase 14B: DataContext & Persistence Layer (Wave 14B.1)', () => {
 
     expect(screen.getByTestId('focus-id').textContent).toBe('cat-root-dong-y');
 
-    act(() => {
+    await act(async () => {
       screen.getByTestId('reset-btn').click();
     });
 
