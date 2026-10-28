@@ -4,6 +4,7 @@ import {
   exportMindMapToMarkdown,
   MindMapTreeProjection,
   computeRadialNodeSideMap,
+  getStableBranchPaletteIndex,
   MindMapTreeNode,
 } from "../../src/lib/mindmapProjection";
 import { parseMindMapMarkdownOutline } from "../../src/lib/mindmapImportParser";
@@ -740,6 +741,38 @@ describe("Mind Map v1 Derived Read-Model Projection", () => {
 
       // Even index 2 -> right
       expect(sideMap.get("child-2")).toBe("right");
+    });
+  });
+
+  describe("Stable Branch Palette Projection & Hashing", () => {
+    it("assigns stable branchKey to level 1 children and propagates to all descendants", () => {
+      const projection = projectToMindMapTree(
+        { topics: mockTopics, notes: mockNotes, resources: mockResources },
+        "topic-tu-dieu-de"
+      );
+      expect(projection).not.toBeNull();
+      const tree = projection!.tree;
+
+      // Root has no branchKey
+      expect(tree.branchKey).toBeUndefined();
+
+      // Hop 1 children have branchKey equal to their own id
+      expect(tree.children.length).toBeGreaterThan(0);
+      for (const branch of tree.children) {
+        expect(branch.branchKey).toBe(branch.id);
+
+        // Deeper descendants inherit the branch's branchKey
+        for (const child of branch.children) {
+          expect(child.branchKey).toBe(branch.id);
+        }
+      }
+    });
+
+    it("getStableBranchPaletteIndex is deterministic and safe for null/undefined/empty", () => {
+      expect(getStableBranchPaletteIndex("")).toBe(0);
+      expect(getStableBranchPaletteIndex(null)).toBe(0);
+      expect(getStableBranchPaletteIndex(undefined)).toBe(0);
+      expect(getStableBranchPaletteIndex("branch-alpha")).toBe(getStableBranchPaletteIndex("branch-alpha"));
     });
   });
 });

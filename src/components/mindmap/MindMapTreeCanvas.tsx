@@ -5,7 +5,10 @@ import {
   MindMapCrossEdge,
   MindMapCycleAnnotation,
   computeRadialNodeSideMap,
+  getStableBranchPaletteIndex,
 } from "../../lib/mindmapProjection";
+
+export { getStableBranchPaletteIndex };
 import { MindMapCrossLinksLayer } from "./MindMapCrossLinksLayer";
 import { MindMapMinimap } from "./MindMapMinimap";
 import {
@@ -1390,6 +1393,7 @@ export function MindMapTreeCanvas({
       <div
         data-node-id={node.id}
         data-testid={`node-card-${node.id}`}
+        data-palette-id={branchColor?.id}
         data-connect-accept={isConnectValid ? "true" : undefined}
         data-connect-reject={connectRejectReason || undefined}
         data-selected={isSelected ? "true" : undefined}
@@ -1426,7 +1430,11 @@ export function MindMapTreeCanvas({
                   ? `${direction === "left" ? `border-r-4 ${branchColor.border}` : `border-l-4 ${branchColor.border}`} ${branchColor.bg}`
                   : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
               }`
-            : "py-2 px-2.5 rounded-xl text-xs font-medium bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 shadow-2xs"
+            : `py-2 px-2.5 rounded-xl text-xs font-medium ${
+                branchColor
+                  ? `${direction === "left" ? `border-r-2 ${branchColor.border}` : `border-l-2 ${branchColor.border}`} ${branchColor.bg}`
+                  : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+              } shadow-2xs`
         } border transition-all duration-200 ${
           isConnectValid
             ? "ring-2 ring-indigo-500 shadow-lg bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500"
@@ -1951,8 +1959,9 @@ export function MindMapTreeCanvas({
         {leftChildren.length > 0 && (
           <div className="flex flex-col items-end gap-6 border-r border-stone-300 dark:border-stone-700 pr-6 py-2">
             {leftChildren.map((child) => {
-              const originalIndex = root.children.indexOf(child);
-              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              const branchKey = child.branchKey || child.id;
+              const paletteIndex = getStableBranchPaletteIndex(branchKey);
+              const palette = BRANCH_PALETTES[paletteIndex % BRANCH_PALETTES.length];
               return renderRadialBranch(child, "left", 1, palette);
             })}
           </div>
@@ -1967,8 +1976,9 @@ export function MindMapTreeCanvas({
         {rightChildren.length > 0 && (
           <div className="flex flex-col items-start gap-6 border-l border-stone-300 dark:border-stone-700 pl-6 py-2">
             {rightChildren.map((child) => {
-              const originalIndex = root.children.indexOf(child);
-              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              const branchKey = child.branchKey || child.id;
+              const paletteIndex = getStableBranchPaletteIndex(branchKey);
+              const palette = BRANCH_PALETTES[paletteIndex % BRANCH_PALETTES.length];
               return renderRadialBranch(child, "right", 1, palette);
             })}
           </div>
