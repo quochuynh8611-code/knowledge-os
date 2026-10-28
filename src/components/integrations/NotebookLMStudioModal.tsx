@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import {
   packageSourceForNotebookLM,
@@ -7,9 +8,12 @@ import {
   parseArtifactMarkdownFile,
   getStoredArtifacts,
   saveArtifact,
+  updateStoredArtifact,
+  computeArtifactContentHash,
   deleteArtifact,
   NotebookLMArtifact,
   NotebookLMArtifactType,
+  deduplicateArtifacts,
 } from '../../lib/notebooklm';
 import {
   createAntigravityHandoffJob,
@@ -90,6 +94,7 @@ export function NotebookLMStudioModal({
   const [localArtifacts, setLocalArtifacts] = useState<NotebookLMArtifact[]>([]);
   const [showAddArtifact, setShowAddArtifact] = useState(false);
   const [artifactType, setArtifactType] = useState<NotebookLMArtifactType>('audio_overview_summary');
+  const [suggestedArtifactType, setSuggestedArtifactType] = useState<NotebookLMArtifactType | null>(null);
   const [artifactTitle, setArtifactTitle] = useState('');
   const [artifactContent, setArtifactContent] = useState('');
   const [notebookUrl, setNotebookUrl] = useState('');
@@ -102,9 +107,20 @@ export function NotebookLMStudioModal({
   // 8. Review Drawer State
   const [reviewingArtifact, setReviewingArtifact] = useState<GroundedArtifactDTO | null>(null);
 
+  // 9. Sync Warning State
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
+
   // Focus trap ref
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
   const initialFocusRef = useRef<HTMLButtonElement | null>(null);
+
+  // Session idempotency and abort controller refs
+  const currentSessionRef = useRef<ResearchSessionDTO | null>(null);
+  const activeSyncAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    currentSessionRef.current = currentSession;
+  }, [currentSession]);
 
   useFocusTrap(modalContainerRef, isOpen, {
     initialFocusRef,
@@ -114,17 +130,34 @@ export function NotebookLMStudioModal({
 
   const currentTopic = topics.find((t) => t.id === selectedTopicId) || topic || topics[0];
 
-  // Fetch or create research session on topic change
-  const syncSession = useCallback(async (topicId: string) => {
+  // Fetch or create research session on topic change with idempotency & abort guard
+  const syncSession = useCallback(async (topicId: string, force = false) => {
+    if (!topicId) return;
+
+    // Do not re-request if the current active session already matches topicId unless forced reconciliation
+    if (!force && currentSessionRef.current?.topicId === topicId) {
+      return;
+    }
+
+    // Cancel previous pending session request to avoid race conditions when switching topics rapidly
+    if (activeSyncAbortControllerRef.current) {
+      activeSyncAbortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    activeSyncAbortControllerRef.current = controller;
+
     try {
       const res = await fetch('/api/research-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicId }),
+        signal: controller.signal,
       });
       if (res.ok) {
         const data = await res.json();
         setCurrentSession(data);
+        currentSessionRef.current = data;
         if (data.artifacts) {
           setSessionArtifacts((prev) => {
             const dbArtifacts: GroundedArtifactDTO[] = data.artifacts.map((a: any) => ({
@@ -142,10 +175,48 @@ export function NotebookLMStudioModal({
           });
         }
       }
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return;
+      }
       // Offline fallback
+    } finally {
+      if (activeSyncAbortControllerRef.current === controller) {
+        activeSyncAbortControllerRef.current = null;
+      }
     }
   }, []);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (activeSyncAbortControllerRef.current) {
+        activeSyncAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const getOrEnsureSession = async (topicId: string): Promise<ResearchSessionDTO | null> => {
+    if (currentSessionRef.current && currentSessionRef.current.topicId === topicId) {
+      return currentSessionRef.current;
+    }
+    try {
+      const res = await fetch('/api/research-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentSession(data);
+        currentSessionRef.current = data;
+        return data;
+      }
+    } catch {
+      // offline
+    }
+    return null;
+  };
 
   // Sync selectedTopicId when modal is opened or topic prop changes
   useEffect(() => {
@@ -179,11 +250,10 @@ export function NotebookLMStudioModal({
   // Topic Artifact Count for stepper badge
   const displayLocalArtifacts = localArtifacts.filter((a) => a.topicId === currentTopic?.id);
   const displaySessionArtifacts = sessionArtifacts.filter((a) => a.topicId === currentTopic?.id);
-  const currentTopicArtifactCount =
-    displayLocalArtifacts.length +
-    displaySessionArtifacts.filter(
-      (sa) => !displayLocalArtifacts.some((la) => la.title === sa.title)
-    ).length;
+  const currentTopicArtifactCount = deduplicateArtifacts(
+    displaySessionArtifacts,
+    displayLocalArtifacts
+  ).count;
 
   const currentTopicExcerptsCount = currentTopic
     ? researchExcerpts.filter((e) => e.topicId === currentTopic.id).length
@@ -198,18 +268,32 @@ export function NotebookLMStudioModal({
       setCopiedSource(true);
       setTimeout(() => setCopiedSource(false), 2000);
 
-      if (currentSession && currentTopic) {
-        await fetch(`/api/research-sessions/${currentSession.id}/package-sources`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            content: sourceDocument,
-            sourceCount:
-              notes.filter((n) => n.topicId === currentTopic.id).length +
-              resources.filter((r) => r.topicId === currentTopic.id).length +
-              currentTopicExcerptsCount,
-          }),
-        }).catch(() => {});
+      if (currentTopic) {
+        const session = await getOrEnsureSession(currentTopic.id);
+        if (session) {
+          try {
+            const res = await fetch(`/api/research-sessions/${session.id}/package-sources`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: sourceDocument,
+                sourceCount:
+                  notes.filter((n) => n.topicId === currentTopic.id).length +
+                  resources.filter((r) => r.topicId === currentTopic.id).length +
+                  currentTopicExcerptsCount,
+              }),
+            });
+            if (!res.ok) {
+              setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+            } else {
+              setSyncWarning(null);
+            }
+          } catch {
+            setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+          }
+        } else {
+          setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+        }
       }
     } catch (err) {
       console.error('Failed to copy source to clipboard', err);
@@ -226,9 +310,10 @@ export function NotebookLMStudioModal({
     a.click();
     URL.revokeObjectURL(url);
 
-    if (currentSession) {
+    const session = await getOrEnsureSession(currentTopic.id);
+    if (session) {
       try {
-        await fetch(`/api/research-sessions/${currentSession.id}/package-sources`, {
+        const res = await fetch(`/api/research-sessions/${session.id}/package-sources`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -238,10 +323,18 @@ export function NotebookLMStudioModal({
               resources.filter((r) => r.topicId === currentTopic.id).length +
               currentTopicExcerptsCount,
           }),
-        }).catch(() => {});
+        });
+        if (!res.ok) {
+          setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+        } else {
+          setSyncWarning(null);
+        }
       } catch (e) {
         console.error('Failed to sync source package', e);
+        setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
       }
+    } else {
+      setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
     }
   };
 
@@ -257,15 +350,29 @@ export function NotebookLMStudioModal({
       setCopiedPrompt(true);
       setTimeout(() => setCopiedPrompt(false), 2000);
 
-      if (currentSession) {
-        await fetch(`/api/research-sessions/${currentSession.id}/task-prompt`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            promptMode: promptArtifactType,
-            promptText: taskPrompt,
-          }),
-        }).catch(() => {});
+      if (currentTopic) {
+        const session = await getOrEnsureSession(currentTopic.id);
+        if (session) {
+          try {
+            const res = await fetch(`/api/research-sessions/${session.id}/task-prompt`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                promptMode: promptArtifactType,
+                promptText: taskPrompt,
+              }),
+            });
+            if (!res.ok) {
+              setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+            } else {
+              setSyncWarning(null);
+            }
+          } catch {
+            setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+          }
+        } else {
+          setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+        }
       }
     } catch (err) {
       console.error('Failed to copy prompt to clipboard', err);
@@ -288,10 +395,11 @@ export function NotebookLMStudioModal({
       setActiveJob(job);
       setHandoffJobs(getStoredHandoffJobs());
 
-      if (currentSession) {
+      const session = await getOrEnsureSession(currentTopic.id);
+      if (session) {
         try {
           const cliCmd = buildAntigravityCLICommand(job);
-          await fetch(`/api/research-sessions/${currentSession.id}/task-prompt`, {
+          const res = await fetch(`/api/research-sessions/${session.id}/task-prompt`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -299,10 +407,18 @@ export function NotebookLMStudioModal({
               promptText: taskPrompt,
               cliCommandHint: cliCmd,
             }),
-          }).catch(() => {});
+          });
+          if (!res.ok) {
+            setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
+          } else {
+            setSyncWarning(null);
+          }
         } catch (e) {
           console.error('Failed to sync prompt to session', e);
+          setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
         }
+      } else {
+        setSyncWarning('Đã thực hiện cục bộ, nhưng chưa đồng bộ vào phiên nghiên cứu.');
       }
     } finally {
       setIsHandoffSubmitting(false);
@@ -311,6 +427,13 @@ export function NotebookLMStudioModal({
 
   const handleExecuteLiveResearch = async () => {
     if (!currentTopic || !currentSession || isLiveExecuting) return;
+
+    if (promptArtifactType === 'audio_overview_summary') {
+      setLiveExecutionError(
+        'Loại artifact này (Audio Overview) chưa hỗ trợ thực thi trực tiếp; hãy dùng "Chuẩn bị Handoff Antigravity".'
+      );
+      return;
+    }
 
     const hasActualSourceContent =
       Boolean(currentTopic.description && currentTopic.description.trim().length > 0) ||
@@ -336,10 +459,7 @@ export function NotebookLMStudioModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           preferredProviderId: 'notebooklm-enterprise',
-          promptArtifactType:
-            promptArtifactType === 'audio_overview_summary'
-              ? 'study_guide'
-              : promptArtifactType,
+          promptArtifactType,
           customInstructions: customInstructions || undefined,
           ephemeralWorkspace: true,
           sources: [
@@ -432,7 +552,7 @@ export function NotebookLMStudioModal({
       setActiveStep('results');
 
       // Secondary background reconciliation: sync session from DB without blocking direct render
-      syncSession(currentTopic.id).catch((syncErr) => {
+      syncSession(currentTopic.id, true).catch((syncErr) => {
         console.warn(
           '[NotebookLMStudioModal] Background syncSession reconciliation failed:',
           syncErr
@@ -483,7 +603,8 @@ export function NotebookLMStudioModal({
         const parsed = parseArtifactMarkdownFile(text, currentTopic.id);
         setArtifactTitle(parsed.title);
         setArtifactContent(parsed.content);
-        setArtifactType(parsed.type);
+        setArtifactType(parsed.suggestedType || parsed.type);
+        setSuggestedArtifactType(parsed.suggestedType || parsed.type);
         setShowAddArtifact(true);
         setValidationError(null);
       }
@@ -509,7 +630,15 @@ export function NotebookLMStudioModal({
 
     setValidationError(null);
 
-    // Save to local storage for backward compatibility & offline preview
+    const contentHash = computeArtifactContentHash({
+      topicId: currentTopic.id,
+      type: artifactType,
+      title: validation.sanitized!.title,
+      content: validation.sanitized!.content,
+    });
+    const idempotencyKey = `local-art-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    // Save to local storage as pending draft initially for offline safety
     const savedLocal = saveArtifact({
       topicId: currentTopic.id,
       type: artifactType,
@@ -519,8 +648,11 @@ export function NotebookLMStudioModal({
       source: 'antigravity-2.0',
       target: 'notebooklm',
       status: 'imported',
+      syncStatus: 'pending',
+      idempotencyKey,
+      contentHash,
     });
-    setLocalArtifacts((prev) => [savedLocal, ...prev]);
+    setLocalArtifacts(getStoredArtifacts());
 
     const completedJob = completeMatchingHandoffJob({
       topicId: currentTopic.id,
@@ -533,23 +665,26 @@ export function NotebookLMStudioModal({
       }
     }
 
-    // Save to backend if session is active
-    if (currentSession) {
+    // Save to backend if session is active or can be ensured
+    const session = await getOrEnsureSession(currentTopic.id);
+    if (session) {
       try {
-        const latestPackage = currentSession.sourcePackages?.[0];
-        const latestPrompt = currentSession.taskPrompts?.[0];
+        const latestPackage = session.sourcePackages?.[0];
+        const latestPrompt = session.taskPrompts?.[0];
 
         const res = await fetch('/api/artifacts/ingest', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionId: currentSession.id,
+            sessionId: session.id,
             sourcePackageId: latestPackage?.id || null,
             taskPromptId: latestPrompt?.id || null,
             topicId: currentTopic.id,
-            artifactType: artifactType === 'audio_overview_summary' ? 'study_guide' : artifactType,
+            artifactType,
             title: validation.sanitized!.title,
             rawContent: validation.sanitized!.content,
+            contentHash,
+            idempotencyKey,
             metadata: {
               notebookUrl: validation.sanitized!.notebookUrl || null,
               source: 'antigravity-2.0',
@@ -560,20 +695,92 @@ export function NotebookLMStudioModal({
 
         if (res.ok) {
           const { artifact } = await res.json();
+          updateStoredArtifact(savedLocal.id, {
+            id: artifact.id,
+            syncStatus: 'synced',
+          });
+          setLocalArtifacts(getStoredArtifacts());
           setSessionArtifacts((prev) => [
             { ...artifact, sourcePackageVersion: latestPackage?.version || 1 },
             ...prev,
           ]);
+        } else {
+          updateStoredArtifact(savedLocal.id, { syncStatus: 'pending' });
+          setLocalArtifacts(getStoredArtifacts());
         }
       } catch (err) {
         console.error('Failed to ingest artifact to backend', err);
+        updateStoredArtifact(savedLocal.id, { syncStatus: 'pending' });
+        setLocalArtifacts(getStoredArtifacts());
       }
     }
 
     setShowAddArtifact(false);
+    setSuggestedArtifactType(null);
     setArtifactTitle('');
     setArtifactContent('');
     setNotebookUrl('');
+  };
+
+  const handleRetryArtifactSync = async (artifact: NotebookLMArtifact) => {
+    if (!currentTopic) return;
+    const session = await getOrEnsureSession(currentTopic.id);
+    if (!session) {
+      setSyncWarning('Chưa thể đồng bộ artifact vì chưa có phiên nghiên cứu.');
+      return;
+    }
+    try {
+      const latestPackage = session.sourcePackages?.[0];
+      const latestPrompt = session.taskPrompts?.[0];
+
+      const res = await fetch('/api/artifacts/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          sourcePackageId: latestPackage?.id || null,
+          taskPromptId: latestPrompt?.id || null,
+          topicId: currentTopic.id,
+          artifactType: artifact.type,
+          title: artifact.title,
+          rawContent: artifact.content,
+          contentHash: artifact.contentHash,
+          idempotencyKey: artifact.idempotencyKey,
+          metadata: {
+            notebookUrl: artifact.notebookUrl || null,
+            source: artifact.source,
+            target: artifact.target,
+          },
+        }),
+      });
+
+      if (res.ok) {
+        const { artifact: serverArt } = await res.json();
+        updateStoredArtifact(artifact.id, {
+          id: serverArt.id,
+          syncStatus: 'synced',
+        });
+        setLocalArtifacts(getStoredArtifacts());
+        setSessionArtifacts((prev) => [
+          { ...serverArt, sourcePackageVersion: latestPackage?.version || 1 },
+          ...prev,
+        ]);
+        setSyncWarning(null);
+      } else {
+        updateStoredArtifact(artifact.id, { syncStatus: 'failed' });
+        setLocalArtifacts(getStoredArtifacts());
+        setSyncWarning('Retry đồng bộ artifact thất bại. Vui lòng thử lại.');
+      }
+    } catch (err: unknown) {
+      console.error('Failed to retry artifact sync', err);
+      updateStoredArtifact(artifact.id, { syncStatus: 'failed' });
+      setLocalArtifacts(getStoredArtifacts());
+      const msg =
+        err instanceof Error && err.message
+          ? `Retry đồng bộ thất bại: ${err.message}`
+          : 'Retry đồng bộ artifact thất bại.';
+      setSyncWarning(msg);
+    }
   };
 
   const handleDeleteLocalArtifact = (id: string) => {
@@ -617,6 +824,25 @@ export function NotebookLMStudioModal({
 
         {/* 3. Main Step View Area */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs text-stone-700 dark:text-stone-300 bg-stone-50/40 dark:bg-stone-900/40">
+          {syncWarning && (
+            <div
+              data-testid="sync-warning-banner"
+              className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs animate-in fade-in duration-200"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>{syncWarning}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSyncWarning(null)}
+                className="text-amber-700 dark:text-amber-300 hover:underline font-medium ml-2 px-1 py-0.5 rounded focus:outline-hidden"
+              >
+                Đóng
+              </button>
+            </div>
+          )}
+
           {activeStep === 'source' && (
             <NotebookLMSourceStep
               currentTopic={currentTopic}
@@ -677,10 +903,13 @@ export function NotebookLMStudioModal({
               onSaveNewArtifact={handleSaveNewArtifact}
               onCancelAddArtifact={() => {
                 setShowAddArtifact(false);
+                setSuggestedArtifactType(null);
                 setValidationError(null);
               }}
+              suggestedArtifactType={suggestedArtifactType}
               onFileUpload={handleFileUpload}
               onDeleteLocalArtifact={handleDeleteLocalArtifact}
+              onRetryArtifactSync={handleRetryArtifactSync}
               onReviewArtifact={(art) => setReviewingArtifact(art)}
               onSelectTopicId={setSelectedTopicId}
               allTopics={topics}
@@ -713,11 +942,11 @@ export function NotebookLMStudioModal({
         onClose={() => setReviewingArtifact(null)}
         onArtifactUpdated={handleArtifactUpdated}
         onNoteCreated={async () => {
-          if (currentTopic) syncSession(currentTopic.id);
+          if (currentTopic) syncSession(currentTopic.id, true);
           await reloadAllData().catch(console.error);
         }}
         onFlashcardsCreated={(count) => {
-          if (currentTopic) syncSession(currentTopic.id);
+          if (currentTopic) syncSession(currentTopic.id, true);
           reloadAllData().catch(console.error);
         }}
         onLaunchStudySession={(tId) => {

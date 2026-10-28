@@ -137,6 +137,7 @@ export function NotebookLMSourceStep({
 
             <button
               type="button"
+              data-testid="btn-copy-source-document"
               onClick={onCopySource}
               className="px-2.5 py-1.5 bg-white dark:bg-stone-800 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-lg text-xs font-medium border border-stone-300 dark:border-stone-700 flex items-center gap-1.5 transition cursor-pointer"
             >
@@ -150,6 +151,7 @@ export function NotebookLMSourceStep({
 
             <button
               type="button"
+              data-testid="btn-download-source-file"
               onClick={onDownloadSourceFile}
               className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition shadow-2xs cursor-pointer"
             >

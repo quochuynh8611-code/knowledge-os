@@ -20,7 +20,15 @@ export interface MindMapTreeNode {
   studyStatus?: TopicStatus;
   progress?: number;
   hopDistance: number;
+  /** ID của node cha trực tiếp trong cây phân cấp (undefined đối với nút gốc) */
   parentHopId?: string;
+  /**
+   * Khóa định danh của nhánh cấp 1 mà node trực thuộc (dùng để gán palette màu ổn định).
+   * Node gốc (hop 0) không có branchKey (undefined).
+   * Node cấp 1 có branchKey = node.id.
+   * Node cấp sâu hơn (hop >= 2) kế thừa branchKey từ tổ tiên cấp 1.
+   */
+  branchKey?: string;
   edgeTypeToParent?: SemanticEdgeType;
   edgeStrength?: number;
   tags: string[];
@@ -230,6 +238,18 @@ export function projectToMindMapTree(
 
   rootNode.children = childrenMap.get(rootTopicId) || [];
   sortChildren(rootNode.children);
+
+  // 5.5 Assign stable branchKey to all branch root descendants
+  const assignBranchKeys = (node: MindMapTreeNode, currentBranchKey: string) => {
+    node.branchKey = currentBranchKey;
+    for (const child of node.children) {
+      assignBranchKeys(child, currentBranchKey);
+    }
+  };
+
+  for (const branchChild of rootNode.children) {
+    assignBranchKeys(branchChild, branchChild.id);
+  }
 
   // 6. Extract cross-edges and cycle annotations from subgraph.edges
   const treeEdgeKeys = new Set<string>();
@@ -470,3 +490,65 @@ export function exportMindMapToMarkdown(
 
   return lines.join("\n");
 }
+
+/**
+ * Computes a pure, deterministic lookup map assigning 'left' or 'right' to every descendant node in a radial_balanced mindmap tree.
+ * 
+ * Rules:
+ * - Root has no side (not included in the map).
+ * - Hop 1 children of root: even index (0, 2, 4...) -> 'right'; odd index (1, 3, 5...) -> 'left'
+ *   matching the alternating radial layout convention.
+ * - All descendants of a Hop 1 child inherit that branch root's side.
+ * - Pure function, does not mutate tree.
+ * - Safe on empty tree, null/undefined, duplicate node ids, and single-branch trees.
+ */
+export function computeRadialNodeSideMap(
+  root: MindMapTreeNode | null | undefined
+): Map<string, 'left' | 'right'> {
+  const sideMap = new Map<string, 'left' | 'right'>();
+  if (!root || !Array.isArray(root.children) || root.children.length === 0) {
+    return sideMap;
+  }
+
+  const assignBranchSide = (node: MindMapTreeNode, side: 'left' | 'right') => {
+    sideMap.set(node.id, side);
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        assignBranchSide(child, side);
+      }
+    }
+  };
+
+  root.children.forEach((child, index) => {
+    const side: 'left' | 'right' = index % 2 === 0 ? 'right' : 'left';
+    assignBranchSide(child, side);
+  });
+
+  return sideMap;
+}
+
+/**
+ * Computes a pure, deterministic palette index from a branch identifier (e.g. branch root ID).
+ * 
+ * Guarantees:
+ * - Deterministic: same branchKey always produces the exact same index.
+ * - No Math.random() and no array render-index dependency.
+ * - Safe on empty string, null, or undefined (returns 0).
+ * - Always returns a non-negative integer.
+ */
+export function getStableBranchPaletteIndex(branchKey?: string | null): number {
+  if (!branchKey || typeof branchKey !== "string") {
+    return 0;
+  }
+  const key = branchKey.trim();
+  if (key.length === 0) {
+    return 0;
+  }
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+

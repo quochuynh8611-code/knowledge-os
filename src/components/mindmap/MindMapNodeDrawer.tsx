@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Check, Edit3, Tag, Hash, Bookmark, Link2, Trash2, Plus, Sparkles, GraduationCap } from "lucide-react";
 import { MindMapTreeNode } from "../../lib/mindmapProjection";
 import { MindMapDocumentEdge } from "../../types/mindmapDocument";
@@ -7,6 +7,23 @@ import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
 import { hasAcademicNotation } from "../../lib/academicNotation";
 import { AcademicMarkdown } from "../ui/AcademicMarkdown";
 import { dataRepository } from "../../context/DataContext";
+import { FlashcardType } from "../../types/flashcard";
+
+/**
+ * Computes a standardized idempotency key for mindmap flashcard creation:
+ * format: mindmap-flashcard:{topicId}:{nodeId}
+ * Returns null if topicId or nodeId is missing/empty.
+ */
+export function computeMindMapFlashcardIdempotencyKey(
+  topicId?: string | null,
+  nodeId?: string | null
+): string | null {
+  if (!topicId || !nodeId) return null;
+  const cleanTopicId = topicId.trim();
+  const cleanNodeId = nodeId.trim();
+  if (!cleanTopicId || !cleanNodeId) return null;
+  return `mindmap-flashcard:${cleanTopicId}:${cleanNodeId}`;
+}
 
 export interface MindMapDrawerNode extends MindMapTreeNode {
   semanticBadge?: string;
@@ -25,8 +42,17 @@ export interface MindMapNodeDrawerProps {
   onRemoveCrossLink?: (edgeId: string) => void;
   treeRoot?: MindMapTreeNode | null;
   // Phase M8 Flashcard Props
-  onCreateFlashcard?: (card: { topicId: string; front: string; back: string }) => Promise<void> | void;
+  onCreateFlashcard?: (card: {
+    topicId: string;
+    type?: FlashcardType;
+    front: string;
+    back: string;
+    idempotencyKey?: string;
+    nodeId?: string;
+  }) => Promise<any> | any;
   onShowToast?: (message: string, type: "success" | "error" | "info") => void;
+  topicId?: string;
+  onOpenFlashcard?: (flashcardId: string) => void;
 }
 
 export function MindMapNodeDrawer({
@@ -41,6 +67,8 @@ export function MindMapNodeDrawer({
   treeRoot,
   onCreateFlashcard,
   onShowToast,
+  topicId,
+  onOpenFlashcard,
 }: MindMapNodeDrawerProps) {
   const [titleInput, setTitleInput] = useState<string>("");
   const [targetNodeId, setTargetNodeId] = useState<string>("");
@@ -48,6 +76,9 @@ export function MindMapNodeDrawer({
   const [labelInput, setLabelInput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [flashcardMessage, setFlashcardMessage] = useState<string | null>(null);
+  const [isCreatingFlashcard, setIsCreatingFlashcard] = useState(false);
+  const isCreatingRef = useRef(false);
+  const [existingCard, setExistingCard] = useState<any | null>(null);
 
   useEffect(() => {
     if (node) {
@@ -57,38 +88,103 @@ export function MindMapNodeDrawer({
       setLabelInput("");
       setErrorMessage(null);
       setFlashcardMessage(null);
+      setExistingCard(null);
+      isCreatingRef.current = false;
+      setIsCreatingFlashcard(false);
     }
   }, [node?.id, node?.title]);
 
   const handleCreateFlashcard = async () => {
+    if (isCreatingRef.current || isCreatingFlashcard) return;
     if (!node) return;
+
+    isCreatingRef.current = true;
+    setIsCreatingFlashcard(true);
+
     try {
+      // Resolve topicId: explicit prop -> treeRoot.id -> node.parentHopId -> node.id
+      const effectiveTopicId =
+        topicId?.trim() ||
+        (treeRoot?.id && treeRoot.id !== node.id ? treeRoot.id : undefined) ||
+        node.parentHopId?.trim() ||
+        node.id?.trim();
+
+      const idempotencyKey = computeMindMapFlashcardIdempotencyKey(
+        effectiveTopicId,
+        node.id
+      );
+
+      if (!idempotencyKey) {
+        setFlashcardMessage("Dữ liệu không hợp lệ: thiếu topicId hoặc nodeId");
+        return;
+      }
+
+      // Check if flashcard already exists via dataRepository
+      if (dataRepository?.getFlashcards) {
+        try {
+          const existingCards = await dataRepository.getFlashcards({
+            topicId: effectiveTopicId,
+          });
+          const found = existingCards.find(
+            (c) => (c as any).idempotencyKey === idempotencyKey
+          );
+          if (found) {
+            setExistingCard(found);
+            if ((found as any).syncStatus === "synced" || !(found as any).syncStatus) {
+              setFlashcardMessage("Flashcard cho nhánh này đã tồn tại");
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not check existing flashcards:", e);
+        }
+      }
+
       const front = node.title;
       const back =
         node.children && node.children.length > 0
           ? node.children.map((c) => `• ${c.title}`).join("\n")
-          : (node.categoryName ? `Lĩnh vực: ${node.categoryName}` : `Ghi chú cho ${node.title}`);
+          : node.categoryName
+          ? `Lĩnh vực: ${node.categoryName}`
+          : `Ghi chú cho ${node.title}`;
 
-      const topicId = node.parentHopId || node.id;
-
+      let resultCard: any = null;
       if (onCreateFlashcard) {
-        await onCreateFlashcard({ topicId, front, back });
-      } else if (dataRepository?.createFlashcard) {
-        await dataRepository.createFlashcard({
-          topicId,
+        resultCard = await onCreateFlashcard({
+          topicId: effectiveTopicId,
           type: "basic",
           front,
           back,
+          idempotencyKey,
+          nodeId: node.id,
+        });
+      } else if (dataRepository?.createFlashcard) {
+        resultCard = await dataRepository.createFlashcard({
+          topicId: effectiveTopicId,
+          type: "basic",
+          front,
+          back,
+          idempotencyKey,
           lifecycleStatus: "active",
         });
       }
-      setFlashcardMessage("Đã tạo thẻ ôn tập thành công!");
-      onShowToast?.("Đã tạo thẻ ôn tập thành công!", "success");
-      setTimeout(() => setFlashcardMessage(null), 3000);
-    } catch (err) {
+
+      if (resultCard && resultCard.syncStatus === "pending") {
+        setFlashcardMessage("Đã lưu tạm cục bộ, chưa đồng bộ backend");
+        onShowToast?.("Đã lưu tạm cục bộ, chưa đồng bộ backend", "info");
+      } else {
+        setFlashcardMessage("Đã tạo thẻ ôn tập thành công!");
+        onShowToast?.("Đã tạo thẻ ôn tập thành công!", "success");
+        setTimeout(() => setFlashcardMessage(null), 3000);
+      }
+    } catch (err: any) {
       console.error("Failed to create flashcard:", err);
-      setFlashcardMessage("Lỗi khi tạo flashcard");
-      setTimeout(() => setFlashcardMessage(null), 3000);
+      setFlashcardMessage(
+        err?.message ? `Lỗi: ${err.message}` : "Lỗi khi tạo flashcard"
+      );
+    } finally {
+      isCreatingRef.current = false;
+      setIsCreatingFlashcard(false);
     }
   };
 
@@ -395,19 +491,42 @@ export function MindMapNodeDrawer({
             type="button"
             data-testid="btn-create-flashcard-from-branch"
             onClick={handleCreateFlashcard}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+            disabled={isCreatingFlashcard}
+            className={`w-full flex items-center justify-center gap-1.5 px-3 py-2 ${
+              isCreatingFlashcard
+                ? "bg-amber-300 dark:bg-amber-700/50 cursor-not-allowed opacity-75"
+                : "bg-amber-500 hover:bg-amber-600 cursor-pointer"
+            } text-white rounded-xl text-xs font-semibold transition shadow-xs`}
             title="Tạo Flashcards từ nhánh này"
           >
-            <GraduationCap className="w-3.5 h-3.5" />
-            <span>Tạo Flashcards từ nhánh này</span>
+            <GraduationCap className={`w-3.5 h-3.5 ${isCreatingFlashcard ? "animate-spin" : ""}`} />
+            <span>{isCreatingFlashcard ? "Đang tạo flashcard..." : "Tạo Flashcards từ nhánh này"}</span>
           </button>
           {flashcardMessage && (
-            <p
-              data-testid="flashcard-export-feedback"
-              className="text-center text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
-            >
-              {flashcardMessage}
-            </p>
+            <div className="flex flex-col items-center gap-1.5">
+              <p
+                data-testid="flashcard-export-feedback"
+                className={`text-center text-[11px] font-medium ${
+                  flashcardMessage.includes("Lỗi") || flashcardMessage.includes("không hợp lệ")
+                    ? "text-rose-600 dark:text-rose-400"
+                    : flashcardMessage.includes("đã tồn tại") || flashcardMessage.includes("chưa đồng bộ")
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                {flashcardMessage}
+              </p>
+              {existingCard && onOpenFlashcard && (
+                <button
+                  type="button"
+                  data-testid="btn-open-existing-flashcard"
+                  onClick={() => onOpenFlashcard(existingCard.id)}
+                  className="text-[11px] text-indigo-600 dark:text-indigo-400 underline hover:no-underline font-semibold cursor-pointer"
+                >
+                  Mở thẻ ôn tập hiện có
+                </button>
+              )}
+            </div>
           )}
         </div>
 

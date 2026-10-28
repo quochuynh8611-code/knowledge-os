@@ -3,6 +3,9 @@ import {
   projectToMindMapTree,
   exportMindMapToMarkdown,
   MindMapTreeProjection,
+  computeRadialNodeSideMap,
+  getStableBranchPaletteIndex,
+  MindMapTreeNode,
 } from "../../src/lib/mindmapProjection";
 import { parseMindMapMarkdownOutline } from "../../src/lib/mindmapImportParser";
 import { buildAdjacencyGraph } from "../../src/lib/knowledgeGraph";
@@ -627,6 +630,149 @@ describe("Mind Map v1 Derived Read-Model Projection", () => {
       const out2 = exportMindMapToMarkdown(projection2!);
 
       expect(out1).toBe(out2);
+    });
+  });
+
+  describe("computeRadialNodeSideMap (Side Allocation for Radial Balanced Layout)", () => {
+    it("handles empty or null/undefined tree safely", () => {
+      expect(computeRadialNodeSideMap(null).size).toBe(0);
+      expect(computeRadialNodeSideMap(undefined).size).toBe(0);
+
+      const emptyRoot: MindMapTreeNode = {
+        id: "root",
+        title: "Root",
+        type: "topic",
+        domain: "general",
+        hopDistance: 0,
+        tags: [],
+        children: [],
+      };
+      expect(computeRadialNodeSideMap(emptyRoot).size).toBe(0);
+    });
+
+    it("assigns even-index hop 1 children to right and odd-index to left, with descendants inheriting side", () => {
+      const tree: MindMapTreeNode = {
+        id: "root",
+        title: "Root",
+        type: "topic",
+        domain: "general",
+        hopDistance: 0,
+        tags: [],
+        children: [
+          {
+            id: "child-0",
+            title: "Child 0 (even)",
+            type: "topic",
+            domain: "general",
+            hopDistance: 1,
+            parentHopId: "root",
+            tags: [],
+            children: [
+              {
+                id: "grandchild-0-a",
+                title: "Grandchild 0A",
+                type: "note",
+                domain: "general",
+                hopDistance: 2,
+                parentHopId: "child-0",
+                tags: [],
+                children: [
+                  {
+                    id: "greatgrandchild-0-a-1",
+                    title: "Great Grandchild 0A1",
+                    type: "note",
+                    domain: "general",
+                    hopDistance: 3,
+                    parentHopId: "grandchild-0-a",
+                    tags: [],
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            id: "child-1",
+            title: "Child 1 (odd)",
+            type: "topic",
+            domain: "general",
+            hopDistance: 1,
+            parentHopId: "root",
+            tags: [],
+            children: [
+              {
+                id: "grandchild-1-a",
+                title: "Grandchild 1A",
+                type: "note",
+                domain: "general",
+                hopDistance: 2,
+                parentHopId: "child-1",
+                tags: [],
+                children: [],
+              },
+            ],
+          },
+          {
+            id: "child-2",
+            title: "Child 2 (even)",
+            type: "topic",
+            domain: "general",
+            hopDistance: 1,
+            parentHopId: "root",
+            tags: [],
+            children: [],
+          },
+        ],
+      };
+
+      const sideMap = computeRadialNodeSideMap(tree);
+
+      // Root has no side in sideMap
+      expect(sideMap.has("root")).toBe(false);
+
+      // Even index 0 -> right and all descendants
+      expect(sideMap.get("child-0")).toBe("right");
+      expect(sideMap.get("grandchild-0-a")).toBe("right");
+      expect(sideMap.get("greatgrandchild-0-a-1")).toBe("right");
+
+      // Odd index 1 -> left and all descendants
+      expect(sideMap.get("child-1")).toBe("left");
+      expect(sideMap.get("grandchild-1-a")).toBe("left");
+
+      // Even index 2 -> right
+      expect(sideMap.get("child-2")).toBe("right");
+    });
+  });
+
+  describe("Stable Branch Palette Projection & Hashing", () => {
+    it("assigns stable branchKey to level 1 children and propagates to all descendants", () => {
+      const projection = projectToMindMapTree(
+        { topics: mockTopics, notes: mockNotes, resources: mockResources },
+        "topic-tu-dieu-de"
+      );
+      expect(projection).not.toBeNull();
+      const tree = projection!.tree;
+
+      // Root has no branchKey
+      expect(tree.branchKey).toBeUndefined();
+
+      // Hop 1 children have branchKey equal to their own id
+      expect(tree.children.length).toBeGreaterThan(0);
+      for (const branch of tree.children) {
+        expect(branch.branchKey).toBe(branch.id);
+
+        // Deeper descendants inherit the branch's branchKey
+        for (const child of branch.children) {
+          expect(child.branchKey).toBe(branch.id);
+        }
+      }
+    });
+
+    it("getStableBranchPaletteIndex is deterministic and safe for null/undefined/empty", () => {
+      expect(getStableBranchPaletteIndex("")).toBe(0);
+      expect(getStableBranchPaletteIndex(null)).toBe(0);
+      expect(getStableBranchPaletteIndex(undefined)).toBe(0);
+      expect(getStableBranchPaletteIndex("branch-alpha")).toBe(getStableBranchPaletteIndex("branch-alpha"));
     });
   });
 });

@@ -4,7 +4,11 @@ import {
   MindMapLayoutMode,
   MindMapCrossEdge,
   MindMapCycleAnnotation,
+  computeRadialNodeSideMap,
+  getStableBranchPaletteIndex,
 } from "../../lib/mindmapProjection";
+
+export { getStableBranchPaletteIndex };
 import { MindMapCrossLinksLayer } from "./MindMapCrossLinksLayer";
 import { MindMapMinimap } from "./MindMapMinimap";
 import {
@@ -51,17 +55,19 @@ export const BRANCH_PALETTES: BranchPalette[] = [
   { id: "teal", border: "border-teal-500", text: "text-teal-600 dark:text-teal-400", bg: "bg-teal-50 dark:bg-teal-950/30", line: "border-teal-400 dark:border-teal-600" },
 ];
 
+export const CITATION_SPLIT_REGEX = /(\[\d+(?:[–\-,\s]*\d+)*\])/g;
+export const CITATION_TEST_REGEX = /^\[\d+(?:[–\-,\s]*\d+)*\]$/;
+
 export function renderTitleWithCitations(
   title: string,
   onCitationClick?: (citation: string) => void
 ): React.ReactNode {
-  const citationRegex = /(\[\d+(?:[–\-,\s]*\d+)*\])/g;
-  const parts = title.split(citationRegex);
+  const parts = title.split(CITATION_SPLIT_REGEX);
   if (parts.length === 1) {
     return title;
   }
   return parts.map((part, index) => {
-    if (citationRegex.test(part)) {
+    if (CITATION_TEST_REGEX.test(part)) {
       return (
         <span
           key={index}
@@ -100,6 +106,7 @@ interface MindMapTreeCanvasProps {
   onRevealNode?: (nodeId: string) => void;
   onNavigateToResource?: (citation: string, node: MindMapTreeNode) => void;
   findNoteContent?: (nodeId: string) => string | undefined;
+  onToggleQuickPeek?: (nodeId: string | null) => void;
 
   // Phase P2 & M3: Interactive Editing Props
   isEditable?: boolean;
@@ -240,10 +247,18 @@ function InlineNodeEditor({
   );
 }
 
+export const USER_MIN_ZOOM = 0.5;
+export const USER_MAX_ZOOM = 2.0;
+export const FIT_MIN_ZOOM = 0.1;
+
 /**
  * Clamps zoom scale to strictly bounded [min, max] interval.
  */
-export function clampZoom(zoom: number, min = 0.5, max = 2.0): number {
+export function clampZoom(
+  zoom: number,
+  min: number = USER_MIN_ZOOM,
+  max: number = USER_MAX_ZOOM
+): number {
   if (isNaN(zoom)) return 1.0;
   return Math.min(max, Math.max(min, +zoom.toFixed(2)));
 }
@@ -291,7 +306,7 @@ export function computeFitScale(
   const scaleY = availableHeight / unscaledHeight;
   const computedScale = Math.min(scaleX, scaleY);
 
-  const clampedScale = clampZoom(computedScale, 0.5, 2.0);
+  const clampedScale = clampZoom(computedScale, FIT_MIN_ZOOM, USER_MAX_ZOOM);
 
   return {
     scale: clampedScale,
@@ -316,6 +331,7 @@ export function MindMapTreeCanvas({
   onRevealNode,
   onNavigateToResource,
   findNoteContent,
+  onToggleQuickPeek,
   isEditable,
   isDrawerOpen,
   focusedNodeId: propFocusedNodeId,
@@ -535,6 +551,10 @@ export function MindMapTreeCanvas({
     return { nodeMap: nodes, parentMap: parents };
   }, [tree]);
 
+  const radialSideMap = useMemo(() => {
+    return computeRadialNodeSideMap(tree);
+  }, [tree]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (shouldIgnoreCanvasShortcut(e.target)) {
       return;
@@ -610,7 +630,19 @@ export function MindMapTreeCanvas({
       return;
     }
 
-    if (e.key === " " || e.key === "Spacebar") {
+    // Shift+Space: Toggle Quick Peek on focused node
+    if (e.shiftKey && (e.key === " " || e.key === "Spacebar")) {
+      e.preventDefault();
+      if (currentId && editingNodeId !== currentId) {
+        const next = peekNodeId === currentId ? null : currentId;
+        setPeekNodeId(next);
+        onToggleQuickPeek?.(next);
+      }
+      return;
+    }
+
+    // Plain Space: Toggle collapse on focused node (preserving test contract)
+    if (!e.shiftKey && (e.key === " " || e.key === "Spacebar")) {
       e.preventDefault();
       if (focusedNodeId && currentNode && currentNode.children.length > 0 && onToggleCollapse) {
         onToggleCollapse(focusedNodeId);
@@ -756,46 +788,35 @@ export function MindMapTreeCanvas({
       }
     }
 
-    // Space shortcut: Toggle Quick Peek on focused node
-    if (e.key === " " && currentId && editingNodeId !== currentId) {
-      e.preventDefault();
-      setPeekNodeId((prev) => (prev === currentId ? null : currentId));
-      return;
-    }
-
     if (layoutMode === "radial_balanced") {
       const isRoot = currentId === tree.id;
+      const side = radialSideMap.get(currentId);
+
       if (e.key === "ArrowRight") {
         e.preventDefault();
         if (isRoot) {
           const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
           if (rightChildren.length > 0) setFocusedNodeId(rightChildren[0].id);
+        } else if (side === "right") {
+          const childId = getFirstChild(currentNode);
+          if (childId) setFocusedNodeId(childId);
         } else {
-          const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
-          const isRight = rightChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
-          if (isRight) {
-            const childId = getFirstChild(currentNode);
-            if (childId) setFocusedNodeId(childId);
-          } else {
-            const parentId = getParent(currentId);
-            if (parentId) setFocusedNodeId(parentId);
-          }
+          // Node on left side: ArrowRight moves towards root/parent
+          const parentId = getParent(currentId);
+          if (parentId) setFocusedNodeId(parentId);
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (isRoot) {
           const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
           if (leftChildren.length > 0) setFocusedNodeId(leftChildren[0].id);
+        } else if (side === "left") {
+          const childId = getFirstChild(currentNode);
+          if (childId) setFocusedNodeId(childId);
         } else {
-          const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
-          const isLeft = leftChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
-          if (isLeft) {
-            const childId = getFirstChild(currentNode);
-            if (childId) setFocusedNodeId(childId);
-          } else {
-            const parentId = getParent(currentId);
-            if (parentId) setFocusedNodeId(parentId);
-          }
+          // Node on right side: ArrowLeft moves towards root/parent
+          const parentId = getParent(currentId);
+          if (parentId) setFocusedNodeId(parentId);
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
@@ -1372,6 +1393,7 @@ export function MindMapTreeCanvas({
       <div
         data-node-id={node.id}
         data-testid={`node-card-${node.id}`}
+        data-palette-id={branchColor?.id}
         data-connect-accept={isConnectValid ? "true" : undefined}
         data-connect-reject={connectRejectReason || undefined}
         data-selected={isSelected ? "true" : undefined}
@@ -1408,7 +1430,11 @@ export function MindMapTreeCanvas({
                   ? `${direction === "left" ? `border-r-4 ${branchColor.border}` : `border-l-4 ${branchColor.border}`} ${branchColor.bg}`
                   : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
               }`
-            : "py-2 px-2.5 rounded-xl text-xs font-medium bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 shadow-2xs"
+            : `py-2 px-2.5 rounded-xl text-xs font-medium ${
+                branchColor
+                  ? `${direction === "left" ? `border-r-2 ${branchColor.border}` : `border-l-2 ${branchColor.border}`} ${branchColor.bg}`
+                  : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+              } shadow-2xs`
         } border transition-all duration-200 ${
           isConnectValid
             ? "ring-2 ring-indigo-500 shadow-lg bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500"
@@ -1698,7 +1724,8 @@ export function MindMapTreeCanvas({
         {/* Study Co-Pilot Quick Peek Popover */}
         {peekNodeId === node.id && editingNodeId !== node.id && (
           <div
-            data-testid={`peek-popover-${node.id}`}
+            data-testid="mindmap-quick-peek"
+            data-peek-popover-id={`peek-popover-${node.id}`}
             onClick={(e) => e.stopPropagation()}
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[320px] p-3 rounded-xl bg-white/95 dark:bg-stone-900/95 shadow-xl border border-stone-200 dark:border-stone-700 text-xs backdrop-blur-md pointer-events-auto"
           >
@@ -1932,8 +1959,9 @@ export function MindMapTreeCanvas({
         {leftChildren.length > 0 && (
           <div className="flex flex-col items-end gap-6 border-r border-stone-300 dark:border-stone-700 pr-6 py-2">
             {leftChildren.map((child) => {
-              const originalIndex = root.children.indexOf(child);
-              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              const branchKey = child.branchKey || child.id;
+              const paletteIndex = getStableBranchPaletteIndex(branchKey);
+              const palette = BRANCH_PALETTES[paletteIndex % BRANCH_PALETTES.length];
               return renderRadialBranch(child, "left", 1, palette);
             })}
           </div>
@@ -1948,8 +1976,9 @@ export function MindMapTreeCanvas({
         {rightChildren.length > 0 && (
           <div className="flex flex-col items-start gap-6 border-l border-stone-300 dark:border-stone-700 pl-6 py-2">
             {rightChildren.map((child) => {
-              const originalIndex = root.children.indexOf(child);
-              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              const branchKey = child.branchKey || child.id;
+              const paletteIndex = getStableBranchPaletteIndex(branchKey);
+              const palette = BRANCH_PALETTES[paletteIndex % BRANCH_PALETTES.length];
               return renderRadialBranch(child, "right", 1, palette);
             })}
           </div>

@@ -13,6 +13,7 @@ import {
   Layers,
   HelpCircle,
   Share2,
+  RefreshCw,
 } from 'lucide-react';
 import { NotebookLMResultsStepProps } from './types';
 import {
@@ -20,7 +21,11 @@ import {
   mapLocalArtifactTypeToDTO,
   mapLocalArtifactStatusToDTO,
 } from './utils';
-import { NotebookLMArtifactType } from '../../../lib/notebooklm';
+import {
+  NotebookLMArtifactType,
+  deduplicateArtifacts,
+  computeArtifactContentHash,
+} from '../../../lib/notebooklm';
 
 export function NotebookLMResultsStep({
   currentTopic,
@@ -40,8 +45,10 @@ export function NotebookLMResultsStep({
   validationError,
   onSaveNewArtifact,
   onCancelAddArtifact,
+  suggestedArtifactType,
   onFileUpload,
   onDeleteLocalArtifact,
+  onRetryArtifactSync,
   onReviewArtifact,
   onSelectTopicId,
   allTopics,
@@ -55,12 +62,21 @@ export function NotebookLMResultsStep({
   const displaySessionArtifacts = sessionArtifacts.filter(
     (a) => a.topicId === currentTopic?.id
   );
-  // Canonical backend session artifacts take precedence; local artifacts with matching title or ID are filtered out
+  // Canonical backend session artifacts take precedence; local artifacts are deduplicated by id, idempotencyKey, or contentHash (never title)
   const dedupedLocalArtifacts = displayLocalArtifacts.filter(
-    (la) => !displaySessionArtifacts.some((sa) => sa.title === la.title || sa.id === la.id)
+    (la) =>
+      !displaySessionArtifacts.some((sa) => {
+        if (la.id && sa.id && la.id === sa.id) return true;
+        if (la.idempotencyKey && sa.idempotencyKey && la.idempotencyKey === sa.idempotencyKey) return true;
+        const laHash = la.contentHash || computeArtifactContentHash(la);
+        const saHash = sa.contentHash || computeArtifactContentHash(sa);
+        return laHash === saHash;
+      })
   );
-  const totalArtifactCount =
-    displaySessionArtifacts.length + dedupedLocalArtifacts.length;
+  const totalArtifactCount = deduplicateArtifacts(
+    displaySessionArtifacts,
+    displayLocalArtifacts
+  ).count;
 
   // Other topics that have local artifacts for Quick Switch
   const otherTopicsWithArtifacts = allTopics.filter((t) => {
@@ -175,7 +191,15 @@ export function NotebookLMResultsStep({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Loại kết quả NotebookLM:
+                <span>Loại kết quả NotebookLM:</span>
+                {suggestedArtifactType && (
+                  <span
+                    data-testid="artifact-suggested-type-badge"
+                    className="ml-1.5 px-1.5 py-0.5 rounded-sm bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-normal border border-amber-200 dark:border-amber-800"
+                  >
+                    Loại đề xuất từ tệp (vui lòng xác nhận trước khi lưu)
+                  </span>
+                )}
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {(
@@ -348,9 +372,31 @@ export function NotebookLMResultsStep({
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
                     {art.source || 'antigravity-2.0'}
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    {art.target || 'notebooklm'}
-                  </span>
+                  {art.syncStatus === 'pending' || art.syncStatus === 'failed' ? (
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        data-testid={`artifact-sync-status-badge-${art.id}`}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
+                      >
+                        Chưa đồng bộ backend
+                      </span>
+                      {onRetryArtifactSync && (
+                        <button
+                          type="button"
+                          data-testid="btn-retry-artifact-sync"
+                          onClick={() => onRetryArtifactSync(art)}
+                          className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Thử lại đồng bộ</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      {art.target || 'notebooklm'}
+                    </span>
+                  )}
                   {art.notebookUrl && (
                     <a
                       href={art.notebookUrl}

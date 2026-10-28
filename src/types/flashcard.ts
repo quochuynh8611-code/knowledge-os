@@ -28,6 +28,8 @@ export interface Flashcard {
   back: string;
   citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus; // Default: 'active'
+  idempotencyKey?: string | null;
+  syncStatus?: "synced" | "pending" | "failed";
   schedule?: FlashcardSchedule;
   createdAt: string;
   updatedAt: string;
@@ -99,6 +101,8 @@ export interface FlashcardCreateInput {
   back: string;
   citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus;
+  idempotencyKey?: string;
+  syncStatus?: "synced" | "pending" | "failed";
 }
 
 export interface FlashcardUpdateInput {
@@ -110,6 +114,8 @@ export interface FlashcardUpdateInput {
   back?: string;
   citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus;
+  idempotencyKey?: string;
+  syncStatus?: "synced" | "pending" | "failed";
 }
 
 export interface FlashcardReviewInput {

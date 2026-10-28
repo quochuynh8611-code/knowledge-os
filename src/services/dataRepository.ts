@@ -111,6 +111,7 @@ export interface IDataRepository {
   resetAllData(): Promise<boolean>;
 
   // 9. Flashcards & Spaced Repetition (Phase F4)
+  getFlashcards?(filters?: { topicId?: string }): Promise<Flashcard[]>;
   createFlashcard?(input: unknown): Promise<Flashcard>;
   updateFlashcard?(id: string, input: unknown): Promise<Flashcard>;
   deleteFlashcard?(id: string): Promise<boolean>;
@@ -499,8 +500,38 @@ export class LocalStorageDataRepository implements IDataRepository {
   }
 
   // 9. Flashcards & Spaced Repetition (Offline LocalStorage implementation)
+  async getFlashcards(filters?: { topicId?: string }): Promise<Flashcard[]> {
+    const cards = this._getFlashcards();
+    if (filters?.topicId) {
+      return cards.filter((c) => c.topicId === filters.topicId);
+    }
+    return cards;
+  }
+
   async createFlashcard(input: unknown): Promise<Flashcard> {
     const parsed = FlashcardCreateSchema.parse(input);
+    const idempotencyKey = parsed.idempotencyKey || (input as any)?.idempotencyKey;
+    const cards = this._getFlashcards();
+    if (idempotencyKey) {
+      const existingIndex = cards.findIndex(
+        (c) => c.idempotencyKey === idempotencyKey
+      );
+      if (existingIndex !== -1) {
+        // If updating an existing card with synced status from backend
+        if (parsed.syncStatus === "synced" && cards[existingIndex].syncStatus !== "synced") {
+          const updated: Flashcard = {
+            ...cards[existingIndex],
+            ...((input as any).id ? { id: (input as any).id } : {}),
+            syncStatus: "synced",
+            updatedAt: new Date().toISOString(),
+          };
+          cards[existingIndex] = updated;
+          this._saveFlashcards(cards);
+          return updated;
+        }
+        return cards[existingIndex];
+      }
+    }
     const now = new Date().toISOString();
     const id = `fc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const newCard: Flashcard = {
@@ -512,6 +543,8 @@ export class LocalStorageDataRepository implements IDataRepository {
       front: parsed.front,
       back: parsed.back,
       lifecycleStatus: parsed.lifecycleStatus || "active",
+      idempotencyKey: idempotencyKey || null,
+      syncStatus: parsed.syncStatus || "synced",
       createdAt: now,
       updatedAt: now,
       schedule: {
@@ -527,7 +560,6 @@ export class LocalStorageDataRepository implements IDataRepository {
         updatedAt: now,
       },
     };
-    const cards = this._getFlashcards();
     cards.push(newCard);
     this._saveFlashcards(cards);
     return newCard;
@@ -1538,23 +1570,68 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   // 9. Flashcards & Spaced Repetition (REST API integration)
-  async createFlashcard(input: unknown): Promise<Flashcard> {
-    const fallbackCard = await this.localFallback.createFlashcard(input);
-    const url = this.getUrl("/flashcards") || `${this.apiBaseUrl}/flashcards`;
+  async getFlashcards(filters?: { topicId?: string }): Promise<Flashcard[]> {
+    const url = this.getUrl(
+      filters?.topicId
+        ? `/flashcards?topicId=${encodeURIComponent(filters.topicId)}`
+        : "/flashcards"
+    );
+    if (!url) {
+      return this.localFallback.getFlashcards(filters);
+    }
     try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
+      const res = await fetch(url);
       if (res.ok) {
-        const data = await res.json();
-        return data;
+        return await res.json();
       }
     } catch {
       // offline fallback
     }
-    return fallbackCard;
+    return this.localFallback.getFlashcards(filters);
+  }
+
+  async createFlashcard(input: unknown): Promise<Flashcard> {
+    const parsed = FlashcardCreateSchema.parse(input);
+    const idempotencyKey = parsed.idempotencyKey || (input as any)?.idempotencyKey;
+    const url = this.getUrl("/flashcards");
+
+    if (url) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          const serverCard = await res.json();
+          const syncedCard: Flashcard = {
+            ...serverCard,
+            idempotencyKey: idempotencyKey || (serverCard as any)?.idempotencyKey || null,
+            syncStatus: "synced",
+          };
+          await this.localFallback.createFlashcard(syncedCard);
+          return syncedCard;
+        }
+      } catch {
+        // offline / network error
+      }
+
+      const fallbackCard = await this.localFallback.createFlashcard({
+        ...(input as any),
+        syncStatus: "pending",
+      });
+
+      return {
+        ...fallbackCard,
+        syncStatus: "pending",
+      };
+    }
+
+    // Hermetic test guard: When getUrl returns null, we run hermetically in local repository
+    return this.localFallback.createFlashcard({
+      ...(input as any),
+      syncStatus: (input as any)?.syncStatus ?? "synced",
+    });
   }
 
   async updateFlashcard(id: string, input: unknown): Promise<Flashcard> {
