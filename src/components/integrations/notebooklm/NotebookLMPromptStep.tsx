@@ -25,7 +25,22 @@ const ARTIFACT_TYPE_CONFIG: Array<{
   {
     id: 'audio_overview_summary',
     label: 'Audio Overview',
-    description: 'Tóm tắt chuyên sâu từ Podcast đối thoại 2 Hosts',
+    description: 'Kịch bản & tóm tắt đối thoại 2 Hosts',
+  },
+  {
+    id: 'dialectic_matrix',
+    label: 'Ma Trận Phản Biện',
+    description: 'Đối chiếu đa trường phái, đồng thuận & dị biệt',
+  },
+  {
+    id: 'socratic_inquiry',
+    label: 'Vấn Đáp Socratic',
+    description: 'Khai phá điểm mù luận lý & 5 câu hỏi đào sâu',
+  },
+  {
+    id: 'mindmap_outline',
+    label: 'Sơ Đồ Tư Duy',
+    description: 'Dàn ý phân cấp tương thích Mindmap OS',
   },
   {
     id: 'briefing_doc',
@@ -34,8 +49,8 @@ const ARTIFACT_TYPE_CONFIG: Array<{
   },
   {
     id: 'faq',
-    label: 'FAQ',
-    description: 'Bộ câu hỏi thường gặp & giải đáp luận lý',
+    label: 'FAQ Luận Lý',
+    description: 'Bộ câu hỏi thường gặp & giải đáp luận cứ',
   },
   {
     id: 'source_pack',
@@ -61,10 +76,6 @@ export function NotebookLMPromptStep({
   liveExecutionError = null,
   onExecuteLiveResearch,
 }: NotebookLMPromptStepProps) {
-  const selectedTypeConfig =
-    ARTIFACT_TYPE_CONFIG.find((t) => t.id === promptArtifactType) ||
-    ARTIFACT_TYPE_CONFIG[0];
-
   return (
     <div className="space-y-4">
       {/* 1. Prompt Configuration Card */}
@@ -152,9 +163,9 @@ export function NotebookLMPromptStep({
         {/* Artifact Type Selector */}
         <div className="space-y-1.5">
           <label className="block text-[11px] font-bold text-stone-700 dark:text-stone-300">
-            Loại Artifact Mục Tiêu Cho Antigravity 2.0:
+            Loại Artifact Mục Tiêu Cho Antigravity 2.0 &amp; NotebookLM:
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {ARTIFACT_TYPE_CONFIG.map((item) => {
               const isSelected = promptArtifactType === item.id;
               return (

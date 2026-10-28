@@ -6,13 +6,16 @@ import {
   Copy,
   CheckCircle2,
   BookOpen,
-  Eye,
   ArrowRight,
   Maximize2,
   Minimize2,
+  Quote,
+  Gauge,
+  Sparkles,
 } from 'lucide-react';
 import { NotebookLMSourceStepProps } from './types';
 import { getTopicSourceSummary } from './utils';
+import { estimateSourceMetrics } from '../../../lib/notebooklm';
 import {
   getCompactTopicOptions,
   getTopicDomainLabel,
@@ -28,6 +31,7 @@ export function NotebookLMSourceStep({
   onToggleShowAllTopics,
   notes,
   resources,
+  excerpts = [],
   sourceDocument,
   copiedSource,
   onCopySource,
@@ -42,7 +46,8 @@ export function NotebookLMSourceStep({
     [topics, selectedTopicId, showAllTopics]
   );
 
-  const summary = getTopicSourceSummary(currentTopic, notes, resources, sourceDocument);
+  const summary = getTopicSourceSummary(currentTopic, notes, resources, sourceDocument, excerpts);
+  const metrics = React.useMemo(() => estimateSourceMetrics(sourceDocument), [sourceDocument]);
 
   return (
     <div className="space-y-4">
@@ -154,7 +159,7 @@ export function NotebookLMSourceStep({
           </div>
         </div>
 
-        {/* Metric Badges */}
+        {/* Metric Badges & Token Estimation */}
         <div className="flex flex-wrap items-center gap-2 text-[11px] text-blue-900/80 dark:text-blue-300/80">
           <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-stone-900/80 border border-blue-200 dark:border-blue-900 font-mono">
             {summary.notesCount} Ghi chú
@@ -162,11 +167,23 @@ export function NotebookLMSourceStep({
           <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-stone-900/80 border border-blue-200 dark:border-blue-900 font-mono">
             {summary.resourcesCount} Thư tịch
           </span>
+          {summary.excerptsCount > 0 && (
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-mono font-semibold flex items-center gap-1">
+              <Quote className="w-3 h-3 text-indigo-600" />
+              {summary.excerptsCount} Trích đoạn
+            </span>
+          )}
           <span className="px-2 py-0.5 rounded-md bg-white/80 dark:bg-stone-900/80 border border-blue-200 dark:border-blue-900 font-mono">
             {summary.linksCount} Đồ thị 1-hop
           </span>
+
+          <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-mono font-medium flex items-center gap-1">
+            <Gauge className="w-3 h-3 text-emerald-600" />
+            <span>~{metrics.wordCount.toLocaleString('vi-VN')} từ (~{metrics.estimatedTokens.toLocaleString('vi-VN')} tokens)</span>
+          </span>
+
           <span className="text-[11px] text-stone-500 dark:text-stone-400 ml-auto hidden sm:inline">
-            Tự động tổng hợp 5 phần chuẩn hóa cho NotebookLM
+            Tự động tổng hợp 6 phần chuẩn hóa cho NotebookLM
           </span>
         </div>
 

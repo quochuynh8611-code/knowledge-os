@@ -87,4 +87,39 @@ Dưới đây là các điểm mấu chốt:
     expect(cards[0].front).toBe("Câu hỏi số 1?");
     expect(cards[49].front).toBe("Câu hỏi số 50?");
   });
+
+  it("7. Trích xuất thành công khối mã CSV chuẩn RFC 4180 (Basic & Cloze, escaped quotes)", () => {
+    const text = `
+Dưới đây là các thẻ ghi nhớ đã trích xuất:
+
+\`\`\`csv
+front,back,type
+"Khái niệm ""Spaced Repetition"" là gì?","Kỹ thuật lặp lại ngắt quãng tối ưu hóa việc ghi nhớ","basic"
+"{{c1::Solanum procumbens}} là tên khoa học của cây cà gai leo","Cà gai leo","cloze"
+\`\`\`
+    `;
+
+    const cards = extractFlashcardsFromResearchResult(text);
+    expect(cards).toHaveLength(2);
+    expect(cards[0].front).toBe('Khái niệm "Spaced Repetition" là gì?');
+    expect(cards[0].back).toBe("Kỹ thuật lặp lại ngắt quãng tối ưu hóa việc ghi nhớ");
+    expect(cards[0].type).toBe("basic");
+
+    expect(cards[1].front).toBe("{{c1::Solanum procumbens}} là tên khoa học của cây cà gai leo");
+    expect(cards[1].back).toBe("Cà gai leo");
+    expect(cards[1].type).toBe("cloze");
+  });
+
+  it("8. Trích xuất thành công CSV trần không có code fence", () => {
+    const text = `front,back,type
+"Active Recall là gì?","Chủ động gợi nhớ thông tin từ não bộ thay vì đọc thụ động","basic"
+"Hệ số Ease Factor mặc định là bao nhiêu?","2.5","basic"`;
+
+    const cards = extractFlashcardsFromResearchResult(text);
+    expect(cards).toHaveLength(2);
+    expect(cards[0].front).toBe("Active Recall là gì?");
+    expect(cards[0].back).toContain("Chủ động gợi nhớ");
+    expect(cards[1].front).toContain("Ease Factor");
+    expect(cards[1].back).toBe("2.5");
+  });
 });

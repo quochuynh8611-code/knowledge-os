@@ -4,6 +4,7 @@
  */
 
 import { detectClozeFromSelection } from "./detectClozeFromSelection";
+import { parseFlashcardDelimitedText } from "./csvFlashcardParser";
 
 export interface ParsedCard {
   front: string;
@@ -214,7 +215,27 @@ export function extractFlashcardsFromResearchResult(text: string): ParsedCard[] 
 
   const cards: ParsedCard[] = [];
 
-  // 1. Try Q&A block regex pattern
+  // 1. Try CSV block or raw CSV with header (RFC 4180 format)
+  const csvBlockMatch = text.match(/```(?:csv)?\s*([\s\S]*?)```/i);
+  const candidateCsv = csvBlockMatch ? csvBlockMatch[1].trim() : text.trim();
+
+  if (/(?:^|\n)\s*["']?front["']?\s*,\s*["']?back["']?/i.test(candidateCsv)) {
+    const csvResult = parseFlashcardDelimitedText(candidateCsv, { defaultTopicId: "auto-topic" });
+    if (csvResult.validRows.length > 0) {
+      for (const row of csvResult.validRows) {
+        if (row.card) {
+          cards.push({
+            front: row.card.front,
+            back: row.card.back || undefined,
+            type: row.card.type || "basic",
+          });
+        }
+      }
+      return cards.slice(0, MAX_BATCH_LIMIT);
+    }
+  }
+
+  // 2. Try Q&A block regex pattern
   // Matches Q/Question/Câu hỏi/Mặt trước ... followed by A/Answer/Trả lời/Đáp án/Mặt sau ...
   const qaRegex =
     /(?:^|\n)(?:[-*]\s+|\d+[\.)]\s+)?(?:\*\*|#+\s*)?(?:Q(?:uestion)?|Câu\s*hỏi|Mặt\s*trước)(?:\s*\d+)?(?:\*\*)?[:：]\s*([\s\S]*?)(?:\n\s*(?:\*\*|#+\s*)?(?:A(?:nswer)?|Trả\s*lời|Đáp\s*án|Mặt\s*sau)(?:\s*\d+)?(?:\*\*)?[:：]\s*([\s\S]*?))(?=(?:\n\s*(?:[-*]\s+|\d+[\.)]\s+)?(?:\*\*|#+\s*)?(?:Q(?:uestion)?|Câu\s*hỏi|Mặt\s*trước)(?:\s*\d+)?(?:\*\*)?[:：])|$)/gi;

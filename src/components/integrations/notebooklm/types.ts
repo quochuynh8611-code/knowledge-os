@@ -1,4 +1,4 @@
-import { Topic, Note, Resource } from '../../../types';
+import { Topic, Note, Resource, ResearchExcerpt } from '../../../types';
 import { NotebookLMArtifact, NotebookLMArtifactType } from '../../../lib/notebooklm';
 import { AntigravityHandoffJob, AntigravityJobStatus } from '../../../lib/antigravityPipeline';
 import { ResearchSessionDTO, GroundedArtifactDTO } from '../../../types/researchHub';
@@ -17,6 +17,7 @@ export interface TopicSourceSummary {
   domainLabel: string;
   notesCount: number;
   resourcesCount: number;
+  excerptsCount: number;
   linksCount: number;
   hasDescription: boolean;
   hasContent: boolean;
@@ -54,6 +55,7 @@ export interface NotebookLMSourceStepProps {
   onToggleShowAllTopics: () => void;
   notes: Note[];
   resources: Resource[];
+  excerpts?: ResearchExcerpt[];
   sourceDocument: string;
   copiedSource: boolean;
   onCopySource: () => void;
@@ -104,6 +106,7 @@ export interface NotebookLMResultsStepProps {
   onSelectTopicId: (id: string) => void;
   allTopics: Topic[];
   onBackToPrompt: () => void;
+  onLaunchStudySession?: (topicId: string) => void;
 }
 
 export interface AdvancedTechnicalDetailsProps {

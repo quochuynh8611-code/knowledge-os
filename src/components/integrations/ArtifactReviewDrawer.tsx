@@ -17,8 +17,14 @@ import {
   History,
   CheckCircle2,
   Loader2,
+  FolderSync,
 } from 'lucide-react';
 import { GroundedArtifactDTO } from '../../types/researchHub';
+import {
+  getObsidianNewNoteUri,
+  getStoredVaultName,
+  sanitizeFileName,
+} from '../../lib/obsidian';
 
 interface ArtifactReviewDrawerProps {
   artifact: GroundedArtifactDTO | null;
@@ -27,6 +33,7 @@ interface ArtifactReviewDrawerProps {
   onArtifactUpdated?: (updated: GroundedArtifactDTO) => void;
   onNoteCreated?: (note?: any) => void;
   onFlashcardsCreated?: (count?: number) => void;
+  onLaunchStudySession?: (topicId: string) => void;
 }
 
 export function ArtifactReviewDrawer({
@@ -36,10 +43,46 @@ export function ArtifactReviewDrawer({
   onArtifactUpdated,
   onNoteCreated,
   onFlashcardsCreated,
+  onLaunchStudySession,
 }: ArtifactReviewDrawerProps) {
   const [activeTab, setActiveTab] = useState<'content' | 'citations' | 'imports'>('content');
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleExportToObsidian = () => {
+    if (!artifact) return;
+    const vaultName = getStoredVaultName();
+    const fileName = sanitizeFileName(artifact.title);
+    const obsidianContent = [
+      '---',
+      `title: "${artifact.title.replace(/"/g, '\\"')}"`,
+      `artifact_type: "${artifact.artifactType}"`,
+      `source_version: ${artifact.sourcePackageVersion || 1}`,
+      `created_at: "${artifact.createdAt}"`,
+      'tags: ["notebooklm/artifact", "grounded-research"]',
+      '---',
+      '',
+      artifact.rawContent,
+    ].join('\n');
+
+    // Trigger Obsidian App via URI
+    const uri = getObsidianNewNoteUri(vaultName, fileName, obsidianContent);
+    window.open(uri, '_self');
+
+    // Also download a clean .md backup
+    const blob = new Blob([obsidianContent], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${fileName}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    setActionMessage({
+      type: 'success',
+      text: `Đã kết nối Obsidian (Vault: ${vaultName}) và xuất tệp ${fileName}.md!`,
+    });
+  };
 
   // Note import modal/form state
   const [showNoteForm, setShowNoteForm] = useState(false);
@@ -346,18 +389,30 @@ export function ArtifactReviewDrawer({
         {/* Feedback Alert */}
         {actionMessage && (
           <div
-            className={`mx-5 mt-4 p-3 rounded-xl text-xs flex items-center gap-2 animate-in fade-in duration-150 ${
+            className={`mx-5 mt-4 p-3 rounded-xl text-xs flex flex-wrap items-center justify-between gap-2 animate-in fade-in duration-150 ${
               actionMessage.type === 'success'
                 ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
                 : 'bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
             }`}
           >
-            {actionMessage.type === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            ) : (
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <div className="flex items-center gap-2">
+              {actionMessage.type === 'success' ? (
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+              )}
+              <span>{actionMessage.text}</span>
+            </div>
+            {actionMessage.type === 'success' && onLaunchStudySession && (
+              <button
+                type="button"
+                onClick={() => onLaunchStudySession(artifact.topicId)}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-2xs cursor-pointer transition ml-auto"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Ôn tập ngay (SRS)</span>
+              </button>
             )}
-            <span>{actionMessage.text}</span>
           </div>
         )}
 
@@ -400,6 +455,16 @@ export function ArtifactReviewDrawer({
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Sinh Flashcards</span>
+          </button>
+
+          <button
+            data-testid="btn-export-obsidian"
+            onClick={handleExportToObsidian}
+            disabled={isProcessing}
+            className="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer disabled:opacity-50"
+          >
+            <FolderSync className="w-3.5 h-3.5" />
+            <span>Xuất sang Obsidian</span>
           </button>
 
           {artifact.status !== 'archived' && (

@@ -1,11 +1,14 @@
-import { Topic, Note, Resource } from '../types';
+import { Topic, Note, Resource, ResearchExcerpt } from '../types';
 
 export type NotebookLMArtifactType =
   | 'source_pack'
   | 'study_guide'
   | 'briefing_doc'
   | 'audio_overview_summary'
-  | 'faq';
+  | 'faq'
+  | 'dialectic_matrix'
+  | 'socratic_inquiry'
+  | 'mindmap_outline';
 
 export type ArtifactSource = 'antigravity-2.0' | 'manual';
 export type ArtifactTarget = 'notebooklm' | 'general';
@@ -22,6 +25,14 @@ export interface NotebookLMArtifact {
   source?: ArtifactSource;
   target?: ArtifactTarget;
   status?: ArtifactStatus;
+}
+
+export interface SourceMetrics {
+  wordCount: number;
+  estimatedTokens: number;
+  characterCount: number;
+  readingTimeMinutes: number;
+  capacityStatus: 'optimal' | 'moderate' | 'heavy';
 }
 
 export const NOTEBOOKLM_STORAGE_KEY = 'phat_hoc_notebooklm_artifacts_v1';
@@ -74,15 +85,55 @@ export function deleteArtifact(id: string): void {
 }
 
 /**
- * Package a topic into a dense, clean Source Document ready for NotebookLM Upload
+ * Ước lượng số từ, số token và tình trạng dung lượng tài liệu nguồn cho NotebookLM
+ */
+export function estimateSourceMetrics(content: string): SourceMetrics {
+  const text = (content || '').trim();
+  if (!text) {
+    return {
+      wordCount: 0,
+      estimatedTokens: 0,
+      characterCount: 0,
+      readingTimeMinutes: 0,
+      capacityStatus: 'optimal',
+    };
+  }
+
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const characterCount = text.length;
+  // Ước tính hệ số token trung bình cho tiếng Việt/Anh học thuật: ~1.35 tokens/từ
+  const estimatedTokens = Math.round(words * 1.35);
+  const readingTimeMinutes = Math.max(1, Math.round(words / 200));
+
+  let capacityStatus: 'optimal' | 'moderate' | 'heavy' = 'optimal';
+  if (words > 12000) {
+    capacityStatus = 'heavy';
+  } else if (words > 4000) {
+    capacityStatus = 'moderate';
+  }
+
+  return {
+    wordCount: words,
+    estimatedTokens,
+    characterCount,
+    readingTimeMinutes,
+    capacityStatus,
+  };
+}
+
+/**
+ * Đóng gói chủ đề thành Tài liệu Nguồn khảo cứu chuẩn hóa (Source Document)
+ * Hỗ trợ tự động gom 6 phân đoạn: Định vị, Luận thuyết, Đồ thị 1-hop, Ghi chú, Thư tịch, và Trích đoạn sách.
  */
 export function packageSourceForNotebookLM(
   topic: Topic,
   notes: Note[] = [],
-  resources: Resource[] = []
+  resources: Resource[] = [],
+  excerpts: ResearchExcerpt[] = []
 ): string {
   const topicNotes = (notes || []).filter((n) => n.topicId === topic.id);
   const topicResources = (resources || []).filter((r) => r.topicId === topic.id);
+  const topicExcerpts = (excerpts || []).filter((e) => e.topicId === topic.id);
 
   const domainLabel = (topic.categoryName || topic.type || 'KHÁC').toUpperCase();
 
@@ -127,6 +178,20 @@ export function packageSourceForNotebookLM(
     doc += '\n';
   }
 
+  if (topicExcerpts.length > 0) {
+    doc += `[PHẦN 6: TRÍCH ĐOẠN ĐẶC SẮC TỪ SÁCH & TÀI LIỆU KHẢO CỨU]\n`;
+    topicExcerpts.forEach((exc, idx) => {
+      const authorText = exc.citationSnapshot?.author ? ` - ${exc.citationSnapshot.author}` : '';
+      const sourceTitle = exc.citationSnapshot?.title || 'Tài liệu thư viện';
+      doc += `${idx + 1}. Trích dẫn [Nguồn: ${sourceTitle}${authorText}]:\n`;
+      doc += `   "${exc.selectedText}"\n`;
+      if (exc.userNote) {
+        doc += `   *Chiêm nghiệm / Ghi chú đính kèm:* ${exc.userNote}\n`;
+      }
+      doc += '\n';
+    });
+  }
+
   return doc;
 }
 
@@ -140,18 +205,24 @@ export function generateNotebookLMTaskPrompt(
 ): string {
   const typeDescriptions: Record<NotebookLMArtifactType, string> = {
     study_guide: 'Tạo Study Guide / Giáo trình khảo cứu có cấu trúc',
-    audio_overview_summary: 'Tạo Tóm tắt chuyên sâu từ Audio Overview / Podcast 2 Hosts',
+    audio_overview_summary: 'Tạo Kịch Bản & Tóm Tắt Chuyên Sâu Audio Overview (Podcast 2 Hosts)',
     briefing_doc: 'Tạo Briefing Doc / Báo cáo tổng kết học thuật cô đọng',
     faq: 'Tạo Bộ Câu Hỏi Thường Gặp (FAQ) & Giải Đáp Trọng Tâm',
-    source_pack: 'Tạo Gói Nguồn Khảo Cứu Chuẩn Hóa (Source Pack)',
+    source_pack: 'Tạo Gói Nguồn Khảo CỨu Chuẩn Hóa (Source Pack)',
+    dialectic_matrix: 'Tạo Ma Trận Phản Biện & Đối Chiếu Luận Điểm Đa Trường Phái',
+    socratic_inquiry: 'Khai Phá Lỗ Hổng Tri Thức & 5 Câu Hỏi Đào Sâu (Socratic Inquiry)',
+    mindmap_outline: 'Tạo Dàn Ý Sơ Đồ Tư Duy Chuẩn Markdown (Tương thích Mindmap OS)',
   };
 
   const outputRequirements: Record<NotebookLMArtifactType, string> = {
     study_guide: '1. Khái niệm cốt lõi & Thuật ngữ đối chiếu\n2. Hệ thống luận điểm & Trích dẫn kinh điển\n3. Bảng phân tích chi pháp / tương quan\n4. Câu hỏi ôn tập & Hướng thực hành quán chiếu',
-    audio_overview_summary: '1. Chủ đề đối thoại chính giữa 2 hosts\n2. Các luận điểm then chốt và góc nhìn sâu sắc\n3. Điểm nhấn đối chiếu học thuật\n4. Đúc kết thực tiễn cho người học',
+    audio_overview_summary: '1. Định vị 2 Hosts: Host 1 (Chuyên gia hàn lâm, phân tích hệ thống) & Host 2 (Người thực hành truy vấn ứng dụng)\n2. Các luận điểm then chốt và các điểm nghẽn nhận thức được tháo gỡ\n3. Trích đoạn đối thoại đắt giá nhất giữa 2 hosts\n4. Đúc kết thực tiễn và hành động cho người học',
     briefing_doc: '1. Tổng quan vấn đề nghiên cứu\n2. Bối cảnh và nguồn dữ liệu khảo cứu\n3. Đánh giá phát hiện chính\n4. Kết luận học thuật',
     faq: '1. Tối thiểu 5 câu hỏi cốt lõi về bản thể và luận lý\n2. Câu trả lời chính xác dựa trên tài liệu nguồn\n3. Trích dẫn thuật ngữ gốc',
     source_pack: '1. Chuẩn hóa định dạng tài liệu nguồn sạch\n2. Loại bỏ nhiễu và định vị phân đoạn\n3. Sắp xếp mục lục luận chứng',
+    dialectic_matrix: '1. Bảng ma trận đối chiếu: Trường phái / Tác giả vs Luận cứ vs Kết luận\n2. Phân tích các điểm đồng thuận cốt lõi và dị biệt mấu chốt\n3. Cơ sở văn bản và trích dẫn kiểm chứng cho từng quan điểm\n4. Câu hỏi phản biện mở cho nghiên cứu tiếp nối',
+    socratic_inquiry: '1. Liệt kê các tiền đề và giả định ngầm định trong tài liệu nguồn\n2. Chỉ ra các "điểm mù" (blind spots) hoặc lỗ hổng luận lý cần đào sâu\n3. 5 câu hỏi truy vấn Socratic phân tầng (từ bản chất định nghĩa đến hệ quả thực hành)\n4. Phương pháp tự kiểm chứng (Active Inquiry) cho người học',
+    mindmap_outline: '1. Tiêu đề trung tâm định dạng `# Tên Chủ Đề`\n2. Các nhánh chính cấp 1 định dạng `## Nhánh Tri Thức`\n3. Các nút lá cấp 2 và cấp 3 định dạng gạch đầu dòng `- Nhánh con [nhãn quan hệ]`\n4. Mỗi nút ngắn gọn, cô đọng (dưới 15 từ) để tương thích trực tiếp với trình duyệt Mindmap',
   };
 
   const targetDesc = typeDescriptions[artifactType] || typeDescriptions.study_guide;
@@ -239,6 +310,12 @@ export function parseArtifactMarkdownFile(
   const lower = (title + ' ' + content).toLowerCase();
   if (lower.includes('audio overview') || lower.includes('podcast')) {
     type = 'audio_overview_summary';
+  } else if (lower.includes('dialectic') || lower.includes('phản biện') || lower.includes('ma trận đối chiếu')) {
+    type = 'dialectic_matrix';
+  } else if (lower.includes('socratic') || lower.includes('lỗ hổng tri thức') || lower.includes('vấn đáp')) {
+    type = 'socratic_inquiry';
+  } else if (lower.includes('mindmap') || lower.includes('sơ đồ tư duy') || lower.includes('markmap')) {
+    type = 'mindmap_outline';
   } else if (lower.includes('briefing') || lower.includes('báo cáo tổng kết')) {
     type = 'briefing_doc';
   } else if (lower.includes('faq') || lower.includes('câu hỏi thường gặp')) {

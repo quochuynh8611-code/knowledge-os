@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createGeminiRouter } from "../../src/server/routes/geminiRoutes";
+import {
+  createGeminiRouter,
+  resolveGeminiErrorResponse,
+} from "../../src/server/routes/geminiRoutes";
 
 describe("Gemini Routes Contract & Behavior Integration", () => {
   let mockGenAI: any;
@@ -311,6 +314,17 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
         });
 
       expect(capturedSystemInstruction).toContain("Hãy tạo cẩm nang học tập toàn diện gồm 5 phần");
+
+      await request(app)
+        .post("/api/gemini/research")
+        .send({
+          prompt: "Tạo thẻ ghi nhớ",
+          outputFormat: "flashcards",
+        });
+
+      expect(capturedSystemInstruction).toContain("[Yêu cầu định dạng bắt buộc cho Flashcards]");
+      expect(capturedSystemInstruction).toContain("BẮT BUỘC trả về các thẻ ghi nhớ ở ĐỊNH DẠNG CSV CHUẨN");
+      expect(capturedSystemInstruction).toContain("front,back,type");
     });
   });
 
@@ -463,6 +477,65 @@ describe("Gemini Routes Contract & Behavior Integration", () => {
           process.env.GEMINI_MODEL = originalEnv;
         }
       }
+    });
+  });
+
+  describe("Gemini Error Resolution & Quota Filtering", () => {
+    it("15. Trả về thông báo hết Quota và status 429 khi lỗi chứa mã 429", () => {
+      const err = { status: 429, message: "Too Many Requests" };
+      const res = resolveGeminiErrorResponse(err, "Fallback");
+      expect(res.isQuotaExceeded).toBe(true);
+      expect(res.statusCode).toBe(429);
+      expect(res.friendlyMsg).toBe(
+        "Khóa GEMINI_API_KEY đã hết hạn mức sử dụng (Quota Exceeded / Rate Limit). Vui lòng cập nhật API Key mới trong file .env."
+      );
+    });
+
+    it("16. Trả về thông báo hết Quota khi message chứa chữ 'quota'", () => {
+      const err = new Error("Resource has exhausted quota for project 123456");
+      const res = resolveGeminiErrorResponse(err, "Fallback");
+      expect(res.isQuotaExceeded).toBe(true);
+      expect(res.statusCode).toBe(429);
+      expect(res.friendlyMsg).toContain("Khóa GEMINI_API_KEY đã hết hạn mức sử dụng");
+    });
+
+    it("17. Trả về thông báo hết Quota khi message chứa 'resource has been exhausted'", () => {
+      const err = new Error("RESOURCE_EXHAUSTED: Resource has been exhausted (e.g. check quota).");
+      const res = resolveGeminiErrorResponse(err, "Fallback");
+      expect(res.isQuotaExceeded).toBe(true);
+      expect(res.statusCode).toBe(429);
+      expect(res.friendlyMsg).toContain("Khóa GEMINI_API_KEY đã hết hạn mức sử dụng");
+    });
+
+    it("18. Trả về thông báo quá tải tạm thời khi lỗi 503 hoặc overloaded (không phải hết quota)", () => {
+      const err = { status: 503, message: "The model is overloaded. Please try again later." };
+      const res = resolveGeminiErrorResponse(err, "Fallback");
+      expect(res.isQuotaExceeded).toBe(false);
+      expect(res.statusCode).toBe(503);
+      expect(res.friendlyMsg).toBe(
+        "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503). Vui lòng thử lại sau 5–10 giây."
+      );
+    });
+
+    it("19. Endpoint POST /api/gemini/research trả về 429 và thông báo Quota khi Gemini ném lỗi Quota", async () => {
+      mockGenerateContent.mockRejectedValue(
+        new Error("GoogleGenerativeAIError: [429 Too Many Requests] Resource has been exhausted")
+      );
+
+      const app = express();
+      app.use(express.json());
+      app.use("/api", createGeminiRouter(() => mockGenAI));
+
+      const res = await request(app)
+        .post("/api/gemini/research")
+        .send({
+          prompt: "Khảo sát khi hết quota",
+        });
+
+      expect(res.status).toBe(429);
+      expect(res.body.error).toBe(
+        "Khóa GEMINI_API_KEY đã hết hạn mức sử dụng (Quota Exceeded / Rate Limit). Vui lòng cập nhật API Key mới trong file .env."
+      );
     });
   });
 });

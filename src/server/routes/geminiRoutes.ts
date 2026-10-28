@@ -20,6 +20,64 @@ import {
 } from "../services/sourceRegistryAdapter";
 import { resolveMultipleScopedObsidianFiles } from "../services/obsidianFileResolver";
 
+export interface GeminiErrorResponse {
+  friendlyMsg: string;
+  statusCode: number;
+  isQuotaExceeded: boolean;
+}
+
+export function resolveGeminiErrorResponse(
+  error: any,
+  fallbackMessage: string,
+): GeminiErrorResponse {
+  const status = error?.status || error?.code || error?.error?.code;
+  const statusStr = String(error?.status || error?.code || error?.error?.status || "");
+  const message = (error?.message || (typeof error === "string" ? error : "")).toLowerCase();
+  let errorJson = "";
+  try {
+    errorJson = typeof error === "object" ? JSON.stringify(error).toLowerCase() : "";
+  } catch {
+    errorJson = "";
+  }
+
+  const isQuotaExceeded =
+    status === 429 ||
+    statusStr.toUpperCase() === "RESOURCE_EXHAUSTED" ||
+    message.includes("429") ||
+    message.includes("quota") ||
+    message.includes("resource has been exhausted") ||
+    message.includes("resource_exhausted") ||
+    errorJson.includes("429") ||
+    errorJson.includes("quota") ||
+    errorJson.includes("resource has been exhausted") ||
+    errorJson.includes("resource_exhausted");
+
+  if (isQuotaExceeded) {
+    return {
+      friendlyMsg:
+        "Khóa GEMINI_API_KEY đã hết hạn mức sử dụng (Quota Exceeded / Rate Limit). Vui lòng cập nhật API Key mới trong file .env.",
+      statusCode: 429,
+      isQuotaExceeded: true,
+    };
+  }
+
+  const isOverloaded = isRetryableGeminiError(error);
+  if (isOverloaded) {
+    return {
+      friendlyMsg:
+        "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503). Vui lòng thử lại sau 5–10 giây.",
+      statusCode: 503,
+      isQuotaExceeded: false,
+    };
+  }
+
+  return {
+    friendlyMsg: error?.message || fallbackMessage,
+    statusCode: 500,
+    isQuotaExceeded: false,
+  };
+}
+
 export function createGeminiRouter(
   getGenAI: () => GoogleGenAI | null,
   getVaultManager?: () => ObsidianVaultManager | null,
@@ -194,7 +252,17 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
       }
 
       if (outputFormat === "flashcards") {
-        systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Flashcards]: Hãy tạo ra các cặp câu hỏi - câu trả lời ôn tập sâu sắc (có câu hỏi cơ bản và câu hỏi kiểm chứng khái niệm). Định dạng rõ ràng theo mẫu Q: [Câu hỏi] và A: [Câu trả lời] hoặc danh sách gạch đầu dòng [Mặt trước] :: [Mặt sau].`;
+        systemInstruction += `\n\n[Yêu cầu định dạng bắt buộc cho Flashcards]: BẮT BUỘC trả về các thẻ ghi nhớ ở ĐỊNH DẠNG CSV CHUẨN (tương thích 100% với trình nhập CSV của Knowledge OS và Anki).
+Định dạng yêu cầu trong trường "content":
+\`\`\`csv
+front,back,type
+"Câu hỏi / khái niệm mặt trước 1","Câu trả lời / định nghĩa chi tiết mặt sau 1","basic"
+"{{c1::Từ khóa đục lỗ}} là hoạt chất chính trong cây cà gai leo","Cà gai leo","cloze"
+\`\`\`
+Ràng buộc định dạng:
+1. Dòng đầu tiên bắt buộc là header: front,back,type
+2. Tất cả các trường dữ liệu bắt buộc bọc trong dấu ngoặc kép đôi "", nếu bên trong nội dung có dấu ngoặc kép thì escape thành "".
+3. Không chèn thêm văn bản giải thích dài dòng bên ngoài khối mã CSV.`;
       } else if (outputFormat === "research_brief") {
         systemInstruction += `\n\n[Yêu cầu định dạng bổ sung cho Research Brief]: Bài khảo cứu cần có tóm tắt điều hành (Executive Summary), luận điểm chính (Core Theses), phân tích luận cứ và kết luận định hướng.`;
       } else if (outputFormat === "study_guide") {
@@ -245,11 +313,11 @@ Yêu cầu định dạng phản hồi: BẮT BUỘC trả về duy nhất một
       logStructuredEvent("error", "GEMINI_RESEARCH_API_ERROR", {
         error: error?.message || String(error),
       });
-      const isOverloaded = isRetryableGeminiError(error);
-      const friendlyMsg = isOverloaded
-        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
-        : error.message || "Lỗi xử lý yêu cầu nghiên cứu từ Gemini API.";
-      res.status(500).json({
+      const { friendlyMsg, statusCode } = resolveGeminiErrorResponse(
+        error,
+        "Lỗi xử lý yêu cầu nghiên cứu từ Gemini API.",
+      );
+      res.status(statusCode).json({
         error: friendlyMsg,
       });
     }
@@ -316,11 +384,11 @@ Trả về kết quả ở dạng JSON thuần túy theo cấu trúc:
       res.json({ links: parsedLinks });
     } catch (error: any) {
       console.error("Semantic Link Error:", error);
-      const isOverloaded = isRetryableGeminiError(error);
-      const friendlyMsg = isOverloaded
-        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
-        : error.message || "Lỗi phân tích liên kết tri thức.";
-      res.status(500).json({ error: friendlyMsg });
+      const { friendlyMsg, statusCode } = resolveGeminiErrorResponse(
+        error,
+        "Lỗi phân tích liên kết tri thức.",
+      );
+      res.status(statusCode).json({ error: friendlyMsg });
     }
   });
 
@@ -373,11 +441,11 @@ Yêu cầu định dạng JSON:
       res.json({ cards });
     } catch (error: any) {
       console.error("Generate Cards Error:", error);
-      const isOverloaded = isRetryableGeminiError(error);
-      const friendlyMsg = isOverloaded
-        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
-        : error.message || "Lỗi sinh thẻ ôn tập.";
-      res.status(500).json({ error: friendlyMsg });
+      const { friendlyMsg, statusCode } = resolveGeminiErrorResponse(
+        error,
+        "Lỗi sinh thẻ ôn tập.",
+      );
+      res.status(statusCode).json({ error: friendlyMsg });
     }
   });
 
@@ -469,12 +537,11 @@ Yêu cầu định dạng JSON:
       logStructuredEvent("error", "GEMINI_MINDMAP_EXPAND_ERROR", {
         error: error?.message || String(error),
       });
-      const isOverloaded = isRetryableGeminiError(error);
-      const friendlyMsg = isOverloaded
-        ? "Hệ thống AI hiện đang tiếp nhận lượng truy cập cao (503/429). Vui lòng thử lại sau 5–10 giây."
-        : error?.message ||
-          "Lỗi xử lý yêu cầu mở rộng sơ đồ tư duy từ Gemini API.";
-      res.status(500).json({ error: friendlyMsg });
+      const { friendlyMsg, statusCode } = resolveGeminiErrorResponse(
+        error,
+        "Lỗi xử lý yêu cầu mở rộng sơ đồ tư duy từ Gemini API.",
+      );
+      res.status(statusCode).json({ error: friendlyMsg });
     }
   });
 

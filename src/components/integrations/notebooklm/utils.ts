@@ -1,4 +1,4 @@
-import { Topic, Note, Resource } from '../../../types';
+import { Topic, Note, Resource, ResearchExcerpt } from '../../../types';
 import { AntigravityJobStatus } from '../../../lib/antigravityPipeline';
 import { StepItemConfig, TopicSourceSummary, StatusBadgeInfo, NotebookLMWorkspaceStep } from './types';
 import { getTopicDomainLabel } from '../../../lib/topicSelector';
@@ -28,7 +28,8 @@ export function getTopicSourceSummary(
   topic: Topic | undefined,
   notes: Note[] = [],
   resources: Resource[] = [],
-  sourceDocument: string = ''
+  sourceDocument: string = '',
+  excerpts: ResearchExcerpt[] = []
 ): TopicSourceSummary {
   if (!topic) {
     return {
@@ -36,6 +37,7 @@ export function getTopicSourceSummary(
       domainLabel: 'Không xác định',
       notesCount: 0,
       resourcesCount: 0,
+      excerptsCount: 0,
       linksCount: 0,
       hasDescription: false,
       hasContent: false,
@@ -45,6 +47,7 @@ export function getTopicSourceSummary(
 
   const topicNotes = notes.filter((n) => n.topicId === topic.id);
   const topicResources = resources.filter((r) => r.topicId === topic.id);
+  const topicExcerpts = (excerpts || []).filter((e) => e.topicId === topic.id);
   const linksCount = topic.links?.length || 0;
   const domainLabel = getTopicDomainLabel(topic);
 
@@ -53,6 +56,7 @@ export function getTopicSourceSummary(
     domainLabel,
     notesCount: topicNotes.length,
     resourcesCount: topicResources.length,
+    excerptsCount: topicExcerpts.length,
     linksCount,
     hasDescription: Boolean(topic.description && topic.description.trim().length > 0),
     hasContent: Boolean(topic.content && topic.content.trim().length > 0),
@@ -138,6 +142,9 @@ const VALID_NOTEBOOKLM_ARTIFACT_TYPES: ReadonlySet<string> = new Set([
   'briefing_doc',
   'faq',
   'source_pack',
+  'dialectic_matrix',
+  'socratic_inquiry',
+  'mindmap_outline',
 ]);
 
 const VALID_LOCAL_ARTIFACT_STATUSES: ReadonlySet<string> = new Set([
@@ -179,12 +186,15 @@ export function mapLocalArtifactTypeToDTO(type: unknown): DTOArtifactType {
   switch (normalized) {
     case 'study_guide':
     case 'audio_overview_summary':
+    case 'dialectic_matrix':
       return 'study_guide';
     case 'briefing_doc':
       return 'briefing_doc';
     case 'faq':
+    case 'socratic_inquiry':
       return 'qa_pair';
     case 'source_pack':
+    case 'mindmap_outline':
       return 'raw_markdown';
   }
 }

@@ -51,7 +51,14 @@ export function NotebookLMStudioModal({
   topic,
   runtimeStatus = 'unknown',
 }: NotebookLMStudioModalProps) {
-  const { topics, notes, resources, reloadAllData } = useData();
+  const {
+    topics,
+    notes,
+    resources,
+    researchExcerpts = [],
+    reloadAllData,
+    openFlashcardReview,
+  } = useData();
 
   // 1. Core Workflow Navigation State
   const [activeStep, setActiveStep] = useState<NotebookLMWorkspaceStep>('source');
@@ -162,7 +169,7 @@ export function NotebookLMStudioModal({
 
   // Derived Documents & Prompts
   const sourceDocument = currentTopic
-    ? packageSourceForNotebookLM(currentTopic, notes, resources)
+    ? packageSourceForNotebookLM(currentTopic, notes, resources, researchExcerpts)
     : '';
 
   const taskPrompt = currentTopic
@@ -177,6 +184,10 @@ export function NotebookLMStudioModal({
     displaySessionArtifacts.filter(
       (sa) => !displayLocalArtifacts.some((la) => la.title === sa.title)
     ).length;
+
+  const currentTopicExcerptsCount = currentTopic
+    ? researchExcerpts.filter((e) => e.topicId === currentTopic.id).length
+    : 0;
 
   // Handlers
   const handleCopySource = async () => {
@@ -195,7 +206,8 @@ export function NotebookLMStudioModal({
             content: sourceDocument,
             sourceCount:
               notes.filter((n) => n.topicId === currentTopic.id).length +
-              resources.filter((r) => r.topicId === currentTopic.id).length,
+              resources.filter((r) => r.topicId === currentTopic.id).length +
+              currentTopicExcerptsCount,
           }),
         }).catch(() => {});
       }
@@ -223,7 +235,8 @@ export function NotebookLMStudioModal({
             content: sourceDocument,
             sourceCount:
               notes.filter((n) => n.topicId === currentTopic.id).length +
-              resources.filter((r) => r.topicId === currentTopic.id).length,
+              resources.filter((r) => r.topicId === currentTopic.id).length +
+              currentTopicExcerptsCount,
           }),
         }).catch(() => {});
       } catch (e) {
@@ -304,6 +317,7 @@ export function NotebookLMStudioModal({
       Boolean(currentTopic.content && currentTopic.content.trim().length > 0) ||
       notes.some((n) => n.topicId === currentTopic.id) ||
       resources.some((r) => r.topicId === currentTopic.id) ||
+      currentTopicExcerptsCount > 0 ||
       Boolean(currentSession.sourcePackages && currentSession.sourcePackages.length > 0);
 
     if (!hasActualSourceContent) {
@@ -613,6 +627,7 @@ export function NotebookLMStudioModal({
               onToggleShowAllTopics={() => setShowAllTopics(!showAllTopics)}
               notes={notes}
               resources={resources}
+              excerpts={researchExcerpts}
               sourceDocument={sourceDocument}
               copiedSource={copiedSource}
               onCopySource={handleCopySource}
@@ -670,6 +685,10 @@ export function NotebookLMStudioModal({
               onSelectTopicId={setSelectedTopicId}
               allTopics={topics}
               onBackToPrompt={() => setActiveStep('prompt')}
+              onLaunchStudySession={(tId) => {
+                onClose();
+                openFlashcardReview?.(tId);
+              }}
             />
           )}
 
@@ -700,6 +719,10 @@ export function NotebookLMStudioModal({
         onFlashcardsCreated={(count) => {
           if (currentTopic) syncSession(currentTopic.id);
           reloadAllData().catch(console.error);
+        }}
+        onLaunchStudySession={(tId) => {
+          onClose();
+          openFlashcardReview?.(tId);
         }}
       />
     </div>

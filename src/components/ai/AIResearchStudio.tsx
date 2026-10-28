@@ -387,7 +387,16 @@ export function AIResearchStudio({ currentTopic, onClose }: AIResearchStudioProp
               'Không tìm thấy nội dung hợp lệ từ các tài liệu Obsidian đã chọn (file đã bị đổi tên hoặc xóa khỏi ổ đĩa). Vui lòng chọn lại tài liệu hoặc bỏ chọn nguồn Obsidian.'
           );
         }
-        throw new Error(data.error || 'Lỗi kết nối máy chủ AI.');
+        if (Array.isArray(data.details) && data.details.length > 0) {
+          const detailMessages = data.details
+            .map((d: any) => d.message)
+            .filter(Boolean)
+            .join('; ');
+          if (detailMessages) {
+            throw new Error(detailMessages);
+          }
+        }
+        throw new Error(data.message || data.error || 'Lỗi kết nối máy chủ AI.');
       }
 
       // 3. Validating response

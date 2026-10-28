@@ -180,6 +180,84 @@ Dưới đây là các câu hỏi ôn tập:
     });
   });
 
+  it('2b. Chọn định dạng Flashcards khi AI trả về chuẩn CSV RFC 4180 và nạp vào SRS thành công', async () => {
+    const user = userEvent.setup();
+    const createFlashcardSpy = vi.fn().mockResolvedValue({
+      id: 'fc-csv-1',
+      topicId: mockTopic.id,
+      front: 'Q1',
+      back: 'A1',
+      type: 'basic',
+    });
+    (dataRepository as any).createFlashcard = createFlashcardSpy;
+
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/api/obsidian/vaults')) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ vaults: [] }) });
+      }
+      if (url.includes('/api/gemini/research')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              result: '```csv\nfront,back,type\n"Khái niệm ""Spaced Repetition"" là gì?","Kỹ thuật ôn tập ngắt quãng","basic"\n"{{c1::Solanum procumbens}} là tên cà gai leo","Cà gai leo","cloze"\n```',
+              isStructured: true,
+              citations: [],
+              uncertainties: [],
+            }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled URL: ${url}`));
+    });
+
+    render(
+      <DataProvider>
+        <AIResearchStudio currentTopic={mockTopic} />
+      </DataProvider>
+    );
+
+    const formatSelect = screen.getByLabelText(/Định dạng đầu ra/i);
+    fireEvent.change(formatSelect, { target: { value: 'flashcards' } });
+
+    const textarea = screen.getByPlaceholderText(/Đặt câu hỏi khảo cứu/i);
+    await user.type(textarea, 'Tạo thẻ CSV');
+
+    const submitBtn = screen.getByRole('button', { name: /^Khảo Cứu$/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('btn-import-srs')).toBeInTheDocument();
+    });
+
+    const importBtn = screen.getByTestId('btn-import-srs');
+    await user.click(importBtn);
+
+    await waitFor(() => {
+      expect(createFlashcardSpy).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('import-card-message')).toHaveTextContent(
+        'Đã nạp 2 thẻ nhớ SRS thành công!'
+      );
+    });
+
+    // Check payload passed to repository
+    expect(createFlashcardSpy).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        front: 'Khái niệm "Spaced Repetition" là gì?',
+        back: 'Kỹ thuật ôn tập ngắt quãng',
+        type: 'basic',
+      })
+    );
+    expect(createFlashcardSpy).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        front: '{{c1::Solanum procumbens}} là tên cà gai leo',
+        back: 'Cà gai leo',
+        type: 'cloze',
+      })
+    );
+  });
+
   it('3. Lưu thành note từ Study Guide gắn đúng tag #Study-Guide và tiêu đề phù hợp', async () => {
     const user = userEvent.setup();
 
