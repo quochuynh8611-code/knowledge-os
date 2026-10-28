@@ -51,17 +51,19 @@ export const BRANCH_PALETTES: BranchPalette[] = [
   { id: "teal", border: "border-teal-500", text: "text-teal-600 dark:text-teal-400", bg: "bg-teal-50 dark:bg-teal-950/30", line: "border-teal-400 dark:border-teal-600" },
 ];
 
+export const CITATION_SPLIT_REGEX = /(\[\d+(?:[–\-,\s]*\d+)*\])/g;
+export const CITATION_TEST_REGEX = /^\[\d+(?:[–\-,\s]*\d+)*\]$/;
+
 export function renderTitleWithCitations(
   title: string,
   onCitationClick?: (citation: string) => void
 ): React.ReactNode {
-  const citationRegex = /(\[\d+(?:[–\-,\s]*\d+)*\])/g;
-  const parts = title.split(citationRegex);
+  const parts = title.split(CITATION_SPLIT_REGEX);
   if (parts.length === 1) {
     return title;
   }
   return parts.map((part, index) => {
-    if (citationRegex.test(part)) {
+    if (CITATION_TEST_REGEX.test(part)) {
       return (
         <span
           key={index}
@@ -100,6 +102,7 @@ interface MindMapTreeCanvasProps {
   onRevealNode?: (nodeId: string) => void;
   onNavigateToResource?: (citation: string, node: MindMapTreeNode) => void;
   findNoteContent?: (nodeId: string) => string | undefined;
+  onToggleQuickPeek?: (nodeId: string | null) => void;
 
   // Phase P2 & M3: Interactive Editing Props
   isEditable?: boolean;
@@ -316,6 +319,7 @@ export function MindMapTreeCanvas({
   onRevealNode,
   onNavigateToResource,
   findNoteContent,
+  onToggleQuickPeek,
   isEditable,
   isDrawerOpen,
   focusedNodeId: propFocusedNodeId,
@@ -610,7 +614,19 @@ export function MindMapTreeCanvas({
       return;
     }
 
-    if (e.key === " " || e.key === "Spacebar") {
+    // Shift+Space: Toggle Quick Peek on focused node
+    if (e.shiftKey && (e.key === " " || e.key === "Spacebar")) {
+      e.preventDefault();
+      if (currentId && editingNodeId !== currentId) {
+        const next = peekNodeId === currentId ? null : currentId;
+        setPeekNodeId(next);
+        onToggleQuickPeek?.(next);
+      }
+      return;
+    }
+
+    // Plain Space: Toggle collapse on focused node (preserving test contract)
+    if (!e.shiftKey && (e.key === " " || e.key === "Spacebar")) {
       e.preventDefault();
       if (focusedNodeId && currentNode && currentNode.children.length > 0 && onToggleCollapse) {
         onToggleCollapse(focusedNodeId);
@@ -754,13 +770,6 @@ export function MindMapTreeCanvas({
         }
         return;
       }
-    }
-
-    // Space shortcut: Toggle Quick Peek on focused node
-    if (e.key === " " && currentId && editingNodeId !== currentId) {
-      e.preventDefault();
-      setPeekNodeId((prev) => (prev === currentId ? null : currentId));
-      return;
     }
 
     if (layoutMode === "radial_balanced") {
@@ -1698,7 +1707,8 @@ export function MindMapTreeCanvas({
         {/* Study Co-Pilot Quick Peek Popover */}
         {peekNodeId === node.id && editingNodeId !== node.id && (
           <div
-            data-testid={`peek-popover-${node.id}`}
+            data-testid="mindmap-quick-peek"
+            data-peek-popover-id={`peek-popover-${node.id}`}
             onClick={(e) => e.stopPropagation()}
             className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[320px] p-3 rounded-xl bg-white/95 dark:bg-stone-900/95 shadow-xl border border-stone-200 dark:border-stone-700 text-xs backdrop-blur-md pointer-events-auto"
           >

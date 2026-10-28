@@ -81,6 +81,18 @@ describe("Academic MindMap Upgrade - Phase 1: Visual Ergonomics & Citation Badge
 
     fireEvent.click(badges[0]);
     expect(onCitationClick).toHaveBeenCalledWith("[9-11]");
+
+    // Verify stateless consecutive matching without /g lastIndex drift
+    const { container: c2 } = render(
+      <div>
+        {renderTitleWithCitations("Luận đề [1] và chú giải [2-3] cùng đối chiếu [1, 2]", onCitationClick)}
+      </div>
+    );
+    const badges2 = c2.querySelectorAll('[data-testid="citation-badge"]');
+    expect(badges2).toHaveLength(3);
+    expect(badges2[0].textContent).toBe("[1]");
+    expect(badges2[1].textContent).toBe("[2-3]");
+    expect(badges2[2].textContent).toBe("[1, 2]");
   });
 
   it("applies depth visual hierarchy styles based on hopDistance", () => {

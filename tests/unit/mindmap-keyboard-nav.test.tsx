@@ -288,14 +288,16 @@ describe("Mind Map Phase K1: Keyboard Navigation & A11y Tree Traversal", () => {
   });
 
   describe("3. Action Keys (Space, Enter, Home, Escape)", () => {
-    it("Scenario 3.1: Space key invokes onToggleCollapse on focused node", () => {
+    it("Scenario 3.1: Space key invokes onToggleCollapse on focused node, and Shift+Space triggers Quick Peek", () => {
       const handleToggleCollapse = vi.fn();
+      const handleToggleQuickPeek = vi.fn();
 
       render(
         <MindMapTreeCanvas
           tree={sampleTree}
           layoutMode="tree_horizontal"
           onToggleCollapse={handleToggleCollapse}
+          onToggleQuickPeek={handleToggleQuickPeek}
         />
       );
 
@@ -308,6 +310,25 @@ describe("Mind Map Phase K1: Keyboard Navigation & A11y Tree Traversal", () => {
       // Press Space
       fireEvent.keyDown(canvasBackdrop, { key: " ", code: "Space" });
       expect(handleToggleCollapse).toHaveBeenCalledWith("node-root");
+
+      // Verify Quick Peek is not open initially
+      expect(screen.queryByTestId("mindmap-quick-peek")).not.toBeInTheDocument();
+
+      // Press Shift+Space (Quick Peek) - must NOT call onToggleCollapse again
+      handleToggleCollapse.mockClear();
+      fireEvent.keyDown(canvasBackdrop, { key: " ", code: "Space", shiftKey: true });
+      expect(handleToggleCollapse).not.toHaveBeenCalled();
+
+      // MUST assert that Quick Peek popover is actually opened in DOM
+      const quickPeek = screen.getByTestId("mindmap-quick-peek");
+      expect(quickPeek).toBeInTheDocument();
+      expect(quickPeek).toHaveTextContent("Gốc Cây");
+      expect(handleToggleQuickPeek).toHaveBeenCalledWith("node-root");
+
+      // Press Shift+Space again - toggles Quick Peek closed
+      fireEvent.keyDown(canvasBackdrop, { key: " ", code: "Space", shiftKey: true });
+      expect(screen.queryByTestId("mindmap-quick-peek")).not.toBeInTheDocument();
+      expect(handleToggleQuickPeek).toHaveBeenCalledWith(null);
     });
 
     it("Scenario 3.2: Enter key invokes onSelectTopic on focused topic node", () => {
