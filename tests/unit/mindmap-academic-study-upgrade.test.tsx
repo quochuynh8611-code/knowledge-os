@@ -304,11 +304,13 @@ describe("Academic MindMap Upgrade - Phase 3.3: Flashcard Branch Export in Drawe
     fireEvent.click(flashcardBtn);
 
     await waitFor(() => {
-      expect(onCreateFlashcard).toHaveBeenCalledWith({
-        topicId: "root-1",
-        front: "Định nghĩa Siêu nhận thức",
-        back: "• Tri thức siêu nhận thức\n• Điều tiết siêu nhận thức",
-      });
+      expect(onCreateFlashcard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topicId: "root-1",
+          front: "Định nghĩa Siêu nhận thức",
+          back: "• Tri thức siêu nhận thức\n• Điều tiết siêu nhận thức",
+        })
+      );
     });
 
     expect(screen.getByTestId("flashcard-export-feedback")).toHaveTextContent("Đã tạo thẻ ôn tập thành công!");

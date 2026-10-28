@@ -2472,6 +2472,7 @@ export function MindMapView() {
         <MindMapNodeDrawer
           isOpen={Boolean(activeDrawerNode)}
           node={activeDrawerNode}
+          topicId={activeRootTopicId}
           onClose={() => setActiveDrawerNodeId(null)}
           onUpdateTitle={handleUpdateNodeTitleFromDrawer}
           crossLinks={workingDocumentCrossLinks}

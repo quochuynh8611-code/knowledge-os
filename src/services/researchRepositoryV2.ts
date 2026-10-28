@@ -254,6 +254,13 @@ export class ResearchRepositoryV2 implements IDataRepository {
 
   // ── Flashcard Delegation ──────────────────────────────────────────────
 
+  async getFlashcards(filters?: { topicId?: string }): Promise<any[]> {
+    if (this.base.getFlashcards) {
+      return this.base.getFlashcards(filters);
+    }
+    return [];
+  }
+
   async createFlashcard(input: unknown): Promise<any> {
     if (this.base.createFlashcard) {
       return this.base.createFlashcard(input);
