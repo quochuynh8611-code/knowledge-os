@@ -244,10 +244,18 @@ function InlineNodeEditor({
   );
 }
 
+export const USER_MIN_ZOOM = 0.5;
+export const USER_MAX_ZOOM = 2.0;
+export const FIT_MIN_ZOOM = 0.1;
+
 /**
  * Clamps zoom scale to strictly bounded [min, max] interval.
  */
-export function clampZoom(zoom: number, min = 0.5, max = 2.0): number {
+export function clampZoom(
+  zoom: number,
+  min: number = USER_MIN_ZOOM,
+  max: number = USER_MAX_ZOOM
+): number {
   if (isNaN(zoom)) return 1.0;
   return Math.min(max, Math.max(min, +zoom.toFixed(2)));
 }
@@ -295,7 +303,7 @@ export function computeFitScale(
   const scaleY = availableHeight / unscaledHeight;
   const computedScale = Math.min(scaleX, scaleY);
 
-  const clampedScale = clampZoom(computedScale, 0.5, 2.0);
+  const clampedScale = clampZoom(computedScale, FIT_MIN_ZOOM, USER_MAX_ZOOM);
 
   return {
     scale: clampedScale,

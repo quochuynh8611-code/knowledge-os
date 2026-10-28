@@ -307,12 +307,11 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
 
       fireEvent.click(btnFit);
 
-      // (400 - 64) / 800 = 336 / 800 = 0.42 -> clamped at 0.5
-      // or (600 - 64) / 1000 = 536 / 1000 = 0.54
-      expect(canvasContent.style.transform).toMatch(/translate\(0px, 0px\) scale\(0\.[5-9]\d*\)/);
+      // (400 - 64) / 800 = 336 / 800 = 0.42 (fits below 0.5 down to FIT_MIN_ZOOM 0.1)
+      expect(canvasContent.style.transform).toContain("scale(0.42)");
     });
 
-    it("Scenario 11: Very large content with computed scale < 0.5 clamps at minimum 0.5", () => {
+    it("Scenario 11: Very large content with computed scale < 0.5 scales down to FIT_MIN_ZOOM (0.1) instead of being cut off at 0.5", () => {
       render(
         <MindMapTreeCanvas
           tree={mockTree}
@@ -327,6 +326,7 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
       const btnZoomReset = screen.getByTestId("btn-zoom-reset");
 
       // Mock geometry: backdrop (400 x 300), content (2000 x 2000)
+      // Available: height = 300 - 64 = 236 -> 236 / 2000 = 0.118 -> 0.12
       vi.spyOn(backdrop, "getBoundingClientRect").mockReturnValue({
         width: 400,
         height: 300,
@@ -353,8 +353,8 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
 
       fireEvent.click(btnFit);
 
-      expect(btnZoomReset).toHaveTextContent("50%");
-      expect(canvasContent.style.transform).toContain("scale(0.5)");
+      expect(btnZoomReset).toHaveTextContent("12%");
+      expect(canvasContent.style.transform).toContain("scale(0.12)");
       expect(canvasContent.style.transform).toContain("translate(0px, 0px)");
     });
 
@@ -552,6 +552,27 @@ describe("Mind Map Phase B1: Minimal Viewport Zoom Controls", () => {
 
       const fitZeroContent = computeFitScale(800, 600, 0, 0, 1.0, 64);
       expect(fitZeroContent).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+    });
+
+    it("Scenario: Fit zoom bounds separate FIT_MIN_ZOOM (0.1) from USER_MIN_ZOOM (0.5)", () => {
+      // 1. Scenario: Canvas lớn phải fit toàn bộ
+      // Given backdrop 1200x800 and content 4000x3000
+      const fitLarge = computeFitScale(1200, 800, 4000, 3000, 1.0, 64);
+      expect(fitLarge.scale).toBeLessThan(0.5);
+      expect(fitLarge.scale).toBeGreaterThanOrEqual(0.1);
+
+      // 2. Scenario: Canvas nhỏ không phóng quá giới hạn
+      const fitSmall = computeFitScale(1200, 800, 200, 150, 1.0, 64);
+      expect(fitSmall.scale).toBeLessThanOrEqual(2.0);
+
+      // 3. Scenario: Kích thước không hợp lệ phải fail-closed
+      expect(computeFitScale(0, 800, 4000, 3000, 1.0, 64)).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+      expect(computeFitScale(1200, -100, 4000, 3000, 1.0, 64)).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+      expect(computeFitScale(1200, 800, NaN, 3000, 1.0, 64)).toEqual({ scale: 1.0, pan: { x: 0, y: 0 } });
+
+      // 4. Scenario: Zoom thủ công vẫn bị giới hạn [0.5, 2.0]
+      expect(clampZoom(0.2)).toBe(0.5);
+      expect(clampZoom(3.0)).toBe(2.0);
     });
 
     it("Scenario 18: Viewport interactions are read-only and do not mutate tree structure", () => {
