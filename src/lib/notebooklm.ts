@@ -27,6 +27,7 @@ export interface NotebookLMArtifact {
   status?: ArtifactStatus;
   idempotencyKey?: string | null;
   contentHash?: string | null;
+  syncStatus?: 'synced' | 'pending' | 'failed';
 }
 
 export interface SourceMetrics {
@@ -155,6 +156,9 @@ export function getStoredArtifacts(): NotebookLMArtifact[] {
       source: item.source || 'antigravity-2.0',
       target: item.target || 'notebooklm',
       status: item.status || 'imported',
+      syncStatus: item.syncStatus || 'synced',
+      idempotencyKey: item.idempotencyKey || null,
+      contentHash: item.contentHash || null,
     }));
   } catch {
     return [];
@@ -162,15 +166,24 @@ export function getStoredArtifacts(): NotebookLMArtifact[] {
 }
 
 export function saveArtifact(
-  artifact: Omit<NotebookLMArtifact, 'id' | 'createdAt'>
+  artifact: Omit<NotebookLMArtifact, 'id' | 'createdAt'> & {
+    id?: string;
+    createdAt?: string;
+    idempotencyKey?: string | null;
+    contentHash?: string | null;
+    syncStatus?: 'synced' | 'pending' | 'failed';
+  }
 ): NotebookLMArtifact {
   const newArtifact: NotebookLMArtifact = {
     ...artifact,
-    id: `artifact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    createdAt: new Date().toISOString(),
+    id: artifact.id || `artifact-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    createdAt: artifact.createdAt || new Date().toISOString(),
     source: artifact.source || 'antigravity-2.0',
     target: artifact.target || 'notebooklm',
     status: artifact.status || 'imported',
+    idempotencyKey: artifact.idempotencyKey || null,
+    contentHash: artifact.contentHash || null,
+    syncStatus: artifact.syncStatus || 'synced',
   };
   const list = getStoredArtifacts();
   list.unshift(newArtifact);
@@ -180,6 +193,28 @@ export function saveArtifact(
     console.error('Failed to store NotebookLM artifact', e);
   }
   return newArtifact;
+}
+
+export function updateStoredArtifact(
+  idOrKey: string,
+  updates: Partial<NotebookLMArtifact>
+): NotebookLMArtifact | null {
+  const list = getStoredArtifacts();
+  const index = list.findIndex(
+    (a) => a.id === idOrKey || (a.idempotencyKey && a.idempotencyKey === idOrKey)
+  );
+  if (index === -1) return null;
+  const updated: NotebookLMArtifact = {
+    ...list[index],
+    ...updates,
+  };
+  list[index] = updated;
+  try {
+    localStorage.setItem(NOTEBOOKLM_STORAGE_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error('Failed to update NotebookLM artifact', e);
+  }
+  return updated;
 }
 
 export function deleteArtifact(id: string): void {

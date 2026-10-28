@@ -13,6 +13,7 @@ import {
   Layers,
   HelpCircle,
   Share2,
+  RefreshCw,
 } from 'lucide-react';
 import { NotebookLMResultsStepProps } from './types';
 import {
@@ -47,6 +48,7 @@ export function NotebookLMResultsStep({
   suggestedArtifactType,
   onFileUpload,
   onDeleteLocalArtifact,
+  onRetryArtifactSync,
   onReviewArtifact,
   onSelectTopicId,
   allTopics,
@@ -370,9 +372,31 @@ export function NotebookLMResultsStep({
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
                     {art.source || 'antigravity-2.0'}
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    {art.target || 'notebooklm'}
-                  </span>
+                  {art.syncStatus === 'pending' || art.syncStatus === 'failed' ? (
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        data-testid={`artifact-sync-status-badge-${art.id}`}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
+                      >
+                        Chưa đồng bộ backend
+                      </span>
+                      {onRetryArtifactSync && (
+                        <button
+                          type="button"
+                          data-testid="btn-retry-artifact-sync"
+                          onClick={() => onRetryArtifactSync(art)}
+                          className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Thử lại đồng bộ</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      {art.target || 'notebooklm'}
+                    </span>
+                  )}
                   {art.notebookUrl && (
                     <a
                       href={art.notebookUrl}

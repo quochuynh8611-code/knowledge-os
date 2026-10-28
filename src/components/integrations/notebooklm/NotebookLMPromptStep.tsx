@@ -92,7 +92,12 @@ export function NotebookLMPromptStep({
                 type="button"
                 data-testid="btn-execute-live-research"
                 onClick={onExecuteLiveResearch}
-                disabled={isLiveExecuting || isHandoffSubmitting || !currentTopic}
+                disabled={isLiveExecuting || isHandoffSubmitting || !currentTopic || promptArtifactType === 'audio_overview_summary'}
+                title={
+                  promptArtifactType === 'audio_overview_summary'
+                    ? 'Loại artifact này (Audio Overview) chưa hỗ trợ thực thi trực tiếp; hãy dùng Chuẩn bị Handoff Antigravity.'
+                    : undefined
+                }
                 className="px-3.5 py-1.5 bg-sky-700 hover:bg-sky-800 text-white rounded-lg font-semibold flex items-center gap-1.5 transition shadow-2xs cursor-pointer text-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLiveExecuting ? (
@@ -145,6 +150,19 @@ export function NotebookLMPromptStep({
             </button>
           </div>
         </div>
+
+        {/* Audio Overview Direct Execution Gating Notice */}
+        {promptArtifactType === 'audio_overview_summary' && (
+          <div
+            data-testid="audio-overview-unsupported-banner"
+            className="p-3 bg-amber-100/90 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 rounded-xl flex items-start gap-2 text-xs text-amber-950 dark:text-amber-200"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-relaxed">
+              <span>Loại artifact này (Audio Overview) chưa hỗ trợ thực thi trực tiếp; hãy dùng &quot;Chuẩn bị Handoff Antigravity&quot;.</span>
+            </div>
+          </div>
+        )}
 
         {/* Live Execution Error / Gating Warning Banner */}
         {liveExecutionError && (
