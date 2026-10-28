@@ -20,7 +20,11 @@ import {
   mapLocalArtifactTypeToDTO,
   mapLocalArtifactStatusToDTO,
 } from './utils';
-import { NotebookLMArtifactType } from '../../../lib/notebooklm';
+import {
+  NotebookLMArtifactType,
+  deduplicateArtifacts,
+  computeArtifactContentHash,
+} from '../../../lib/notebooklm';
 
 export function NotebookLMResultsStep({
   currentTopic,
@@ -40,6 +44,7 @@ export function NotebookLMResultsStep({
   validationError,
   onSaveNewArtifact,
   onCancelAddArtifact,
+  suggestedArtifactType,
   onFileUpload,
   onDeleteLocalArtifact,
   onReviewArtifact,
@@ -55,12 +60,21 @@ export function NotebookLMResultsStep({
   const displaySessionArtifacts = sessionArtifacts.filter(
     (a) => a.topicId === currentTopic?.id
   );
-  // Canonical backend session artifacts take precedence; local artifacts with matching title or ID are filtered out
+  // Canonical backend session artifacts take precedence; local artifacts are deduplicated by id, idempotencyKey, or contentHash (never title)
   const dedupedLocalArtifacts = displayLocalArtifacts.filter(
-    (la) => !displaySessionArtifacts.some((sa) => sa.title === la.title || sa.id === la.id)
+    (la) =>
+      !displaySessionArtifacts.some((sa) => {
+        if (la.id && sa.id && la.id === sa.id) return true;
+        if (la.idempotencyKey && sa.idempotencyKey && la.idempotencyKey === sa.idempotencyKey) return true;
+        const laHash = la.contentHash || computeArtifactContentHash(la);
+        const saHash = sa.contentHash || computeArtifactContentHash(sa);
+        return laHash === saHash;
+      })
   );
-  const totalArtifactCount =
-    displaySessionArtifacts.length + dedupedLocalArtifacts.length;
+  const totalArtifactCount = deduplicateArtifacts(
+    displaySessionArtifacts,
+    displayLocalArtifacts
+  ).count;
 
   // Other topics that have local artifacts for Quick Switch
   const otherTopicsWithArtifacts = allTopics.filter((t) => {
@@ -175,7 +189,15 @@ export function NotebookLMResultsStep({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                Loại kết quả NotebookLM:
+                <span>Loại kết quả NotebookLM:</span>
+                {suggestedArtifactType && (
+                  <span
+                    data-testid="artifact-suggested-type-badge"
+                    className="ml-1.5 px-1.5 py-0.5 rounded-sm bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-normal border border-amber-200 dark:border-amber-800"
+                  >
+                    Loại đề xuất từ tệp (vui lòng xác nhận trước khi lưu)
+                  </span>
+                )}
               </label>
               <div className="flex flex-wrap gap-1.5">
                 {(

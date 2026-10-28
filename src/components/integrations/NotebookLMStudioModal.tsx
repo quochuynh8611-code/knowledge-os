@@ -10,6 +10,7 @@ import {
   deleteArtifact,
   NotebookLMArtifact,
   NotebookLMArtifactType,
+  deduplicateArtifacts,
 } from '../../lib/notebooklm';
 import {
   createAntigravityHandoffJob,
@@ -90,6 +91,7 @@ export function NotebookLMStudioModal({
   const [localArtifacts, setLocalArtifacts] = useState<NotebookLMArtifact[]>([]);
   const [showAddArtifact, setShowAddArtifact] = useState(false);
   const [artifactType, setArtifactType] = useState<NotebookLMArtifactType>('audio_overview_summary');
+  const [suggestedArtifactType, setSuggestedArtifactType] = useState<NotebookLMArtifactType | null>(null);
   const [artifactTitle, setArtifactTitle] = useState('');
   const [artifactContent, setArtifactContent] = useState('');
   const [notebookUrl, setNotebookUrl] = useState('');
@@ -179,11 +181,10 @@ export function NotebookLMStudioModal({
   // Topic Artifact Count for stepper badge
   const displayLocalArtifacts = localArtifacts.filter((a) => a.topicId === currentTopic?.id);
   const displaySessionArtifacts = sessionArtifacts.filter((a) => a.topicId === currentTopic?.id);
-  const currentTopicArtifactCount =
-    displayLocalArtifacts.length +
-    displaySessionArtifacts.filter(
-      (sa) => !displayLocalArtifacts.some((la) => la.title === sa.title)
-    ).length;
+  const currentTopicArtifactCount = deduplicateArtifacts(
+    displaySessionArtifacts,
+    displayLocalArtifacts
+  ).count;
 
   const currentTopicExcerptsCount = currentTopic
     ? researchExcerpts.filter((e) => e.topicId === currentTopic.id).length
@@ -483,7 +484,8 @@ export function NotebookLMStudioModal({
         const parsed = parseArtifactMarkdownFile(text, currentTopic.id);
         setArtifactTitle(parsed.title);
         setArtifactContent(parsed.content);
-        setArtifactType(parsed.type);
+        setArtifactType(parsed.suggestedType || parsed.type);
+        setSuggestedArtifactType(parsed.suggestedType || parsed.type);
         setShowAddArtifact(true);
         setValidationError(null);
       }
@@ -571,6 +573,7 @@ export function NotebookLMStudioModal({
     }
 
     setShowAddArtifact(false);
+    setSuggestedArtifactType(null);
     setArtifactTitle('');
     setArtifactContent('');
     setNotebookUrl('');
@@ -677,8 +680,10 @@ export function NotebookLMStudioModal({
               onSaveNewArtifact={handleSaveNewArtifact}
               onCancelAddArtifact={() => {
                 setShowAddArtifact(false);
+                setSuggestedArtifactType(null);
                 setValidationError(null);
               }}
+              suggestedArtifactType={suggestedArtifactType}
               onFileUpload={handleFileUpload}
               onDeleteLocalArtifact={handleDeleteLocalArtifact}
               onReviewArtifact={(art) => setReviewingArtifact(art)}

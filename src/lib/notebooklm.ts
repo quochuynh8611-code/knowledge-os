@@ -25,6 +25,8 @@ export interface NotebookLMArtifact {
   source?: ArtifactSource;
   target?: ArtifactTarget;
   status?: ArtifactStatus;
+  idempotencyKey?: string | null;
+  contentHash?: string | null;
 }
 
 export interface SourceMetrics {
@@ -33,6 +35,111 @@ export interface SourceMetrics {
   characterCount: number;
   readingTimeMinutes: number;
   capacityStatus: 'optimal' | 'moderate' | 'heavy';
+  isEstimate?: boolean;
+}
+
+export interface AnyArtifactLike {
+  id?: string;
+  idempotencyKey?: string | null;
+  contentHash?: string | null;
+  topicId?: string;
+  type?: string;
+  artifactType?: string;
+  title?: string;
+  content?: string;
+  rawContent?: string;
+  [key: string]: any;
+}
+
+/**
+ * Computes a deterministic content hash from topicId, artifactType, title, and content.
+ * Does not use Math.random().
+ */
+export function computeArtifactContentHash(artifact: {
+  topicId?: string;
+  artifactType?: string;
+  type?: string;
+  title?: string;
+  content?: string;
+  rawContent?: string;
+}): string {
+  const tId = (artifact.topicId || '').trim();
+  const aType = (artifact.artifactType || artifact.type || '').trim();
+  const title = (artifact.title || '').trim();
+  const content = (artifact.rawContent || artifact.content || '').trim();
+  const payload = `${tId}:::${aType}:::${title}:::${content}`;
+
+  let hash = 2166136261;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `hash-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * Deduplicates and merges artifacts using precedence:
+ * 1. id if present
+ * 2. idempotencyKey if present
+ * 3. contentHash if present (or computed deterministic hash)
+ * 
+ * Never uses title as identifier. Two artifacts with same title but different
+ * id/idempotencyKey/contentHash are both kept and counted as 2.
+ * Pure function: does not mutate input arrays.
+ */
+export function deduplicateArtifacts<
+  T extends AnyArtifactLike = AnyArtifactLike,
+  U extends AnyArtifactLike = T
+>(
+  primaryArtifacts: T[] = [],
+  secondaryArtifacts: U[] = []
+): {
+  mergedArtifacts: (T | U)[];
+  count: number;
+} {
+  const merged: (T | U)[] = [];
+  const seenIds = new Set<string>();
+  const seenIdempotencyKeys = new Set<string>();
+  const seenContentHashes = new Set<string>();
+
+  const processItem = (item: T | U) => {
+    if (!item) return;
+
+    // Check precedence 1: id
+    if (item.id && seenIds.has(item.id)) {
+      return;
+    }
+
+    // Check precedence 2: idempotencyKey
+    if (item.idempotencyKey && seenIdempotencyKeys.has(item.idempotencyKey)) {
+      return;
+    }
+
+    // Check precedence 3: contentHash
+    const hash = item.contentHash || computeArtifactContentHash(item);
+    if (hash && seenContentHashes.has(hash)) {
+      return;
+    }
+
+    // Record keys
+    if (item.id) seenIds.add(item.id);
+    if (item.idempotencyKey) seenIdempotencyKeys.add(item.idempotencyKey);
+    if (hash) seenContentHashes.add(hash);
+
+    merged.push(item);
+  };
+
+  for (const item of primaryArtifacts) {
+    processItem(item);
+  }
+  for (const item of secondaryArtifacts) {
+    processItem(item);
+  }
+
+  return {
+    mergedArtifacts: merged,
+    count: merged.length,
+  };
 }
 
 export const NOTEBOOKLM_STORAGE_KEY = 'phat_hoc_notebooklm_artifacts_v1';
@@ -85,30 +192,37 @@ export function deleteArtifact(id: string): void {
 }
 
 /**
- * Ước lượng số từ, số token và tình trạng dung lượng tài liệu nguồn cho NotebookLM
+ * Ước lượng số từ, số token và tình trạng dung lượng tài liệu nguồn cho NotebookLM.
+ * Tham số maxTokens mặc định 500,000 (NotebookLM standard capacity).
  */
-export function estimateSourceMetrics(content: string): SourceMetrics {
+export function estimateSourceMetrics(
+  content: string,
+  maxTokens: number = 500000
+): SourceMetrics {
   const text = (content || '').trim();
-  if (!text) {
-    return {
-      wordCount: 0,
-      estimatedTokens: 0,
-      characterCount: 0,
-      readingTimeMinutes: 0,
-      capacityStatus: 'optimal',
-    };
-  }
-
-  const words = text.split(/\s+/).filter(Boolean).length;
+  const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
   const characterCount = text.length;
   // Ước tính hệ số token trung bình cho tiếng Việt/Anh học thuật: ~1.35 tokens/từ
   const estimatedTokens = Math.round(words * 1.35);
-  const readingTimeMinutes = Math.max(1, Math.round(words / 200));
+  const readingTimeMinutes = Math.max(0, Math.round(words / 200));
 
+  // Fail-closed guard: nếu maxTokens không hợp lệ (<= 0, NaN, hoặc non-number), fail-closed về 'heavy'
+  if (typeof maxTokens !== 'number' || isNaN(maxTokens) || maxTokens <= 0) {
+    return {
+      wordCount: words,
+      estimatedTokens,
+      characterCount,
+      readingTimeMinutes,
+      capacityStatus: 'heavy',
+      isEstimate: true,
+    };
+  }
+
+  const ratio = estimatedTokens / maxTokens;
   let capacityStatus: 'optimal' | 'moderate' | 'heavy' = 'optimal';
-  if (words > 12000) {
+  if (ratio > 0.8) {
     capacityStatus = 'heavy';
-  } else if (words > 4000) {
+  } else if (ratio > 0.5) {
     capacityStatus = 'moderate';
   }
 
@@ -118,6 +232,7 @@ export function estimateSourceMetrics(content: string): SourceMetrics {
     characterCount,
     readingTimeMinutes,
     capacityStatus,
+    isEstimate: true,
   };
 }
 
@@ -275,6 +390,13 @@ export function validateArtifactImportInput(
     };
   }
 
+  if (!title) {
+    return {
+      valid: false,
+      error: 'Tiêu đề artifact không được để trống',
+    };
+  }
+
   return {
     valid: true,
     sanitized: {
@@ -286,7 +408,8 @@ export function validateArtifactImportInput(
 }
 
 /**
- * Trích xuất thông tin tiêu đề và phân loại tự động từ tệp Markdown
+ * Trích xuất thông tin tiêu đề và phân loại tự động từ tệp Markdown.
+ * Trả về suggestedType và requiresConfirmation: true để người dùng xác nhận loại kết quả.
  */
 export function parseArtifactMarkdownFile(
   rawContent: string,
@@ -294,11 +417,13 @@ export function parseArtifactMarkdownFile(
 ): {
   title: string;
   content: string;
+  suggestedType: NotebookLMArtifactType;
   type: NotebookLMArtifactType;
+  requiresConfirmation: boolean;
 } {
   const content = rawContent.trim();
   let title = 'Tài liệu tổng hợp từ NotebookLM';
-  let type: NotebookLMArtifactType = 'study_guide';
+  let suggestedType: NotebookLMArtifactType = 'study_guide';
 
   // Extract first H1 heading if present (# Title)
   const h1Match = content.match(/^#\s+(.+)$/m);
@@ -309,24 +434,26 @@ export function parseArtifactMarkdownFile(
   // Infer type from content keywords if available
   const lower = (title + ' ' + content).toLowerCase();
   if (lower.includes('audio overview') || lower.includes('podcast')) {
-    type = 'audio_overview_summary';
+    suggestedType = 'audio_overview_summary';
   } else if (lower.includes('dialectic') || lower.includes('phản biện') || lower.includes('ma trận đối chiếu')) {
-    type = 'dialectic_matrix';
+    suggestedType = 'dialectic_matrix';
   } else if (lower.includes('socratic') || lower.includes('lỗ hổng tri thức') || lower.includes('vấn đáp')) {
-    type = 'socratic_inquiry';
+    suggestedType = 'socratic_inquiry';
   } else if (lower.includes('mindmap') || lower.includes('sơ đồ tư duy') || lower.includes('markmap')) {
-    type = 'mindmap_outline';
+    suggestedType = 'mindmap_outline';
   } else if (lower.includes('briefing') || lower.includes('báo cáo tổng kết')) {
-    type = 'briefing_doc';
+    suggestedType = 'briefing_doc';
   } else if (lower.includes('faq') || lower.includes('câu hỏi thường gặp')) {
-    type = 'faq';
+    suggestedType = 'faq';
   } else if (lower.includes('source pack') || lower.includes('tài liệu nguồn')) {
-    type = 'source_pack';
+    suggestedType = 'source_pack';
   }
 
   return {
     title,
     content,
-    type,
+    suggestedType,
+    type: suggestedType,
+    requiresConfirmation: true,
   };
 }

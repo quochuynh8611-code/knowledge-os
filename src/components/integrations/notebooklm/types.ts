@@ -100,6 +100,7 @@ export interface NotebookLMResultsStepProps {
   validationError: string | null;
   onSaveNewArtifact: (e: React.FormEvent) => void;
   onCancelAddArtifact: () => void;
+  suggestedArtifactType?: NotebookLMArtifactType | null;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDeleteLocalArtifact: (id: string) => void;
   onReviewArtifact: (artifact: GroundedArtifactDTO) => void;
