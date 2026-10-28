@@ -20,6 +20,7 @@ export interface MindMapTreeNode {
   studyStatus?: TopicStatus;
   progress?: number;
   hopDistance: number;
+  /** ID của node cha trực tiếp trong cây phân cấp (undefined đối với nút gốc) */
   parentHopId?: string;
   edgeTypeToParent?: SemanticEdgeType;
   edgeStrength?: number;
@@ -469,4 +470,40 @@ export function exportMindMapToMarkdown(
   renderNodeRecursive(tree, 0, tree.id);
 
   return lines.join("\n");
+}
+
+/**
+ * Computes a pure, deterministic lookup map assigning 'left' or 'right' to every descendant node in a radial_balanced mindmap tree.
+ * 
+ * Rules:
+ * - Root has no side (not included in the map).
+ * - Hop 1 children of root: even index (0, 2, 4...) -> 'right'; odd index (1, 3, 5...) -> 'left'
+ *   matching the alternating radial layout convention.
+ * - All descendants of a Hop 1 child inherit that branch root's side.
+ * - Pure function, does not mutate tree.
+ * - Safe on empty tree, null/undefined, duplicate node ids, and single-branch trees.
+ */
+export function computeRadialNodeSideMap(
+  root: MindMapTreeNode | null | undefined
+): Map<string, 'left' | 'right'> {
+  const sideMap = new Map<string, 'left' | 'right'>();
+  if (!root || !Array.isArray(root.children) || root.children.length === 0) {
+    return sideMap;
+  }
+
+  const assignBranchSide = (node: MindMapTreeNode, side: 'left' | 'right') => {
+    sideMap.set(node.id, side);
+    if (Array.isArray(node.children)) {
+      for (const child of node.children) {
+        assignBranchSide(child, side);
+      }
+    }
+  };
+
+  root.children.forEach((child, index) => {
+    const side: 'left' | 'right' = index % 2 === 0 ? 'right' : 'left';
+    assignBranchSide(child, side);
+  });
+
+  return sideMap;
 }

@@ -392,4 +392,198 @@ describe("Mind Map Phase K1: Keyboard Navigation & A11y Tree Traversal", () => {
       expect(mockOpenTopicDetail).not.toHaveBeenCalled();
     });
   });
+
+  describe("5. Radial Balanced Layout Keyboard Navigation (Side Map)", () => {
+    const radialDeepTree: MindMapTreeNode = {
+      id: "root",
+      title: "Root",
+      type: "topic",
+      domain: "phat-hoc",
+      hopDistance: 0,
+      tags: [],
+      children: [
+        {
+          id: "hop1-right",
+          title: "Hop 1 Right",
+          type: "topic",
+          domain: "phat-hoc",
+          hopDistance: 1,
+          parentHopId: "root",
+          tags: [],
+          children: [
+            {
+              id: "hop2-right",
+              title: "Hop 2 Right",
+              type: "topic",
+              domain: "phat-hoc",
+              hopDistance: 2,
+              parentHopId: "hop1-right",
+              tags: [],
+              children: [
+                {
+                  id: "hop3-right",
+                  title: "Hop 3 Right",
+                  type: "topic",
+                  domain: "phat-hoc",
+                  hopDistance: 3,
+                  parentHopId: "hop2-right",
+                  tags: [],
+                  children: [
+                    {
+                      id: "hop4-right",
+                      title: "Hop 4 Right",
+                      type: "topic",
+                      domain: "phat-hoc",
+                      hopDistance: 4,
+                      parentHopId: "hop3-right",
+                      tags: [],
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "hop1-left",
+          title: "Hop 1 Left",
+          type: "topic",
+          domain: "phat-hoc",
+          hopDistance: 1,
+          parentHopId: "root",
+          tags: [],
+          children: [
+            {
+              id: "hop2-left",
+              title: "Hop 2 Left",
+              type: "topic",
+              domain: "phat-hoc",
+              hopDistance: 2,
+              parentHopId: "hop1-left",
+              tags: [],
+              children: [
+                {
+                  id: "hop3-left",
+                  title: "Hop 3 Left",
+                  type: "topic",
+                  domain: "phat-hoc",
+                  hopDistance: 3,
+                  parentHopId: "hop2-left",
+                  tags: [],
+                  children: [
+                    {
+                      id: "hop4-left",
+                      title: "Hop 4 Left",
+                      type: "topic",
+                      domain: "phat-hoc",
+                      hopDistance: 4,
+                      parentHopId: "hop3-left",
+                      tags: [],
+                      children: [],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it("Scenario: Điều hướng sâu ở nhánh phải (hop3-right -> ArrowRight -> hop4-right)", () => {
+      render(<MindMapTreeCanvas tree={radialDeepTree} layoutMode="radial_balanced" />);
+      const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+      // Focus root -> hop1-right -> hop2-right -> hop3-right
+      fireEvent.keyDown(canvasBackdrop, { key: "Home", code: "Home" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop1-right"]')).toHaveAttribute("data-focused", "true");
+
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop2-right"]')).toHaveAttribute("data-focused", "true");
+
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop3-right"]')).toHaveAttribute("data-focused", "true");
+
+      // On hop3-right, pressing ArrowRight MUST advance to hop4-right
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop4-right"]')).toHaveAttribute("data-focused", "true");
+    });
+
+    it("Scenario: Điều hướng sâu ở nhánh trái (hop3-left -> ArrowLeft -> hop4-left)", () => {
+      render(<MindMapTreeCanvas tree={radialDeepTree} layoutMode="radial_balanced" />);
+      const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+      // Focus root -> hop1-left -> hop2-left -> hop3-left
+      fireEvent.keyDown(canvasBackdrop, { key: "Home", code: "Home" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop1-left"]')).toHaveAttribute("data-focused", "true");
+
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop2-left"]')).toHaveAttribute("data-focused", "true");
+
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop3-left"]')).toHaveAttribute("data-focused", "true");
+
+      // On hop3-left, pressing ArrowLeft MUST advance to hop4-left
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop4-left"]')).toHaveAttribute("data-focused", "true");
+    });
+
+    it("Scenario: Quay về cha ở nhánh phải (hop4-right -> ArrowLeft -> hop3-right)", () => {
+      render(<MindMapTreeCanvas tree={radialDeepTree} layoutMode="radial_balanced" />);
+      const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+      // Home -> hop1-right -> hop2-right -> hop3-right -> hop4-right
+      fireEvent.keyDown(canvasBackdrop, { key: "Home", code: "Home" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop4-right"]')).toHaveAttribute("data-focused", "true");
+
+      // Navigate back towards parent with ArrowLeft
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop3-right"]')).toHaveAttribute("data-focused", "true");
+    });
+
+    it("Scenario: Quay về cha ở nhánh trái (hop4-left -> ArrowRight -> hop3-left)", () => {
+      render(<MindMapTreeCanvas tree={radialDeepTree} layoutMode="radial_balanced" />);
+      const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+      // Home -> hop1-left -> hop2-left -> hop3-left -> hop4-left
+      fireEvent.keyDown(canvasBackdrop, { key: "Home", code: "Home" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop4-left"]')).toHaveAttribute("data-focused", "true");
+
+      // On left side, pressing ArrowRight moves towards root (parent)
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop3-left"]')).toHaveAttribute("data-focused", "true");
+    });
+
+    it("Scenario: Root chọn đúng phía (ArrowRight -> hop1-right, ArrowLeft -> hop1-left)", () => {
+      render(<MindMapTreeCanvas tree={radialDeepTree} layoutMode="radial_balanced" />);
+      const canvasBackdrop = screen.getByTestId("mindmap-canvas-backdrop");
+
+      // Focus root
+      fireEvent.keyDown(canvasBackdrop, { key: "Home", code: "Home" });
+      expect(document.querySelector('[data-node-id="root"]')).toHaveAttribute("data-focused", "true");
+
+      // ArrowRight chooses hop1-right
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowRight", code: "ArrowRight" });
+      expect(document.querySelector('[data-node-id="hop1-right"]')).toHaveAttribute("data-focused", "true");
+
+      // Go back to root
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="root"]')).toHaveAttribute("data-focused", "true");
+
+      // ArrowLeft chooses hop1-left
+      fireEvent.keyDown(canvasBackdrop, { key: "ArrowLeft", code: "ArrowLeft" });
+      expect(document.querySelector('[data-node-id="hop1-left"]')).toHaveAttribute("data-focused", "true");
+    });
+  });
 });

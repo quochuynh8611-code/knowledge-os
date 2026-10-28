@@ -4,6 +4,7 @@ import {
   MindMapLayoutMode,
   MindMapCrossEdge,
   MindMapCycleAnnotation,
+  computeRadialNodeSideMap,
 } from "../../lib/mindmapProjection";
 import { MindMapCrossLinksLayer } from "./MindMapCrossLinksLayer";
 import { MindMapMinimap } from "./MindMapMinimap";
@@ -539,6 +540,10 @@ export function MindMapTreeCanvas({
     return { nodeMap: nodes, parentMap: parents };
   }, [tree]);
 
+  const radialSideMap = useMemo(() => {
+    return computeRadialNodeSideMap(tree);
+  }, [tree]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (shouldIgnoreCanvasShortcut(e.target)) {
       return;
@@ -774,37 +779,33 @@ export function MindMapTreeCanvas({
 
     if (layoutMode === "radial_balanced") {
       const isRoot = currentId === tree.id;
+      const side = radialSideMap.get(currentId);
+
       if (e.key === "ArrowRight") {
         e.preventDefault();
         if (isRoot) {
           const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
           if (rightChildren.length > 0) setFocusedNodeId(rightChildren[0].id);
+        } else if (side === "right") {
+          const childId = getFirstChild(currentNode);
+          if (childId) setFocusedNodeId(childId);
         } else {
-          const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
-          const isRight = rightChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
-          if (isRight) {
-            const childId = getFirstChild(currentNode);
-            if (childId) setFocusedNodeId(childId);
-          } else {
-            const parentId = getParent(currentId);
-            if (parentId) setFocusedNodeId(parentId);
-          }
+          // Node on left side: ArrowRight moves towards root/parent
+          const parentId = getParent(currentId);
+          if (parentId) setFocusedNodeId(parentId);
         }
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
         if (isRoot) {
           const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
           if (leftChildren.length > 0) setFocusedNodeId(leftChildren[0].id);
+        } else if (side === "left") {
+          const childId = getFirstChild(currentNode);
+          if (childId) setFocusedNodeId(childId);
         } else {
-          const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
-          const isLeft = leftChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
-          if (isLeft) {
-            const childId = getFirstChild(currentNode);
-            if (childId) setFocusedNodeId(childId);
-          } else {
-            const parentId = getParent(currentId);
-            if (parentId) setFocusedNodeId(parentId);
-          }
+          // Node on right side: ArrowLeft moves towards root/parent
+          const parentId = getParent(currentId);
+          if (parentId) setFocusedNodeId(parentId);
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
