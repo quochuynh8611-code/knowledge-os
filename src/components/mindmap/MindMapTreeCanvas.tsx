@@ -25,11 +25,61 @@ import {
   Check,
   X,
   Sparkles,
+  Eye,
+  EyeOff,
+  GraduationCap,
 } from "lucide-react";
 import { shouldIgnoreCanvasShortcut } from "../../lib/mindmapHistory";
 import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
 import { MindMapDocumentEdge } from "../../types/mindmapDocument";
 import { LinkType } from "../../types";
+
+export interface BranchPalette {
+  id: string;
+  border: string;
+  text: string;
+  bg: string;
+  line: string;
+}
+
+export const BRANCH_PALETTES: BranchPalette[] = [
+  { id: "sky", border: "border-sky-500", text: "text-sky-600 dark:text-sky-400", bg: "bg-sky-50 dark:bg-sky-950/30", line: "border-sky-400 dark:border-sky-600" },
+  { id: "emerald", border: "border-emerald-500", text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-950/30", line: "border-emerald-400 dark:border-emerald-600" },
+  { id: "violet", border: "border-violet-500", text: "text-violet-600 dark:text-violet-400", bg: "bg-violet-50 dark:bg-violet-950/30", line: "border-violet-400 dark:border-violet-600" },
+  { id: "amber", border: "border-amber-500", text: "text-amber-600 dark:text-amber-400", bg: "bg-amber-50 dark:bg-amber-950/30", line: "border-amber-400 dark:border-amber-600" },
+  { id: "rose", border: "border-rose-500", text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-950/30", line: "border-rose-400 dark:border-rose-600" },
+  { id: "teal", border: "border-teal-500", text: "text-teal-600 dark:text-teal-400", bg: "bg-teal-50 dark:bg-teal-950/30", line: "border-teal-400 dark:border-teal-600" },
+];
+
+export function renderTitleWithCitations(
+  title: string,
+  onCitationClick?: (citation: string) => void
+): React.ReactNode {
+  const citationRegex = /(\[\d+(?:[–\-,\s]*\d+)*\])/g;
+  const parts = title.split(citationRegex);
+  if (parts.length === 1) {
+    return title;
+  }
+  return parts.map((part, index) => {
+    if (citationRegex.test(part)) {
+      return (
+        <span
+          key={index}
+          data-testid="citation-badge"
+          onClick={(e) => {
+            e.stopPropagation();
+            onCitationClick?.(part);
+          }}
+          title={`Tra cứu trích dẫn ${part}`}
+          className="inline-flex items-center px-1.5 py-0.2 mx-0.5 rounded-md text-[10px] font-mono bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 font-semibold cursor-pointer hover:bg-amber-200 transition"
+        >
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
 
 interface MindMapTreeCanvasProps {
   tree: MindMapTreeNode;
@@ -43,6 +93,13 @@ interface MindMapTreeCanvasProps {
   onToggleCollapse?: (nodeId: string) => void;
   onSelectTopic?: (topicId: string) => void;
   onFocusNode?: (nodeId: string) => void;
+
+  // Active Recall & Study Co-Pilot Props
+  isStudyModeActive?: boolean;
+  revealedNodeIds?: Set<string>;
+  onRevealNode?: (nodeId: string) => void;
+  onNavigateToResource?: (citation: string, node: MindMapTreeNode) => void;
+  findNoteContent?: (nodeId: string) => string | undefined;
 
   // Phase P2 & M3: Interactive Editing Props
   isEditable?: boolean;
@@ -254,6 +311,11 @@ export function MindMapTreeCanvas({
   onToggleCollapse,
   onSelectTopic,
   onFocusNode,
+  isStudyModeActive = false,
+  revealedNodeIds,
+  onRevealNode,
+  onNavigateToResource,
+  findNoteContent,
   isEditable,
   isDrawerOpen,
   focusedNodeId: propFocusedNodeId,
@@ -289,6 +351,10 @@ export function MindMapTreeCanvas({
   const [focusedCrossLinkNodeId, setFocusedCrossLinkNodeId] = useState<string | null>(null);
   const [internalFocusedNodeId, setInternalFocusedNodeId] = useState<string | null>(null);
   const focusedNodeId = propFocusedNodeId !== undefined ? propFocusedNodeId : internalFocusedNodeId;
+
+  // Study Co-Pilot Quick Peek State
+  const [peekNodeId, setPeekNodeId] = useState<string | null>(null);
+  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Phase M7a & M8a: Cross-Link Inspection, Selection & Quick Action State
   const [selectedCrossLinkIds, setSelectedCrossLinkIds] = useState<Set<string>>(new Set());
@@ -690,7 +756,57 @@ export function MindMapTreeCanvas({
       }
     }
 
-    if (isHorizontal) {
+    // Space shortcut: Toggle Quick Peek on focused node
+    if (e.key === " " && currentId && editingNodeId !== currentId) {
+      e.preventDefault();
+      setPeekNodeId((prev) => (prev === currentId ? null : currentId));
+      return;
+    }
+
+    if (layoutMode === "radial_balanced") {
+      const isRoot = currentId === tree.id;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (isRoot) {
+          const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
+          if (rightChildren.length > 0) setFocusedNodeId(rightChildren[0].id);
+        } else {
+          const rightChildren = tree.children.filter((_, i) => i % 2 === 0);
+          const isRight = rightChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
+          if (isRight) {
+            const childId = getFirstChild(currentNode);
+            if (childId) setFocusedNodeId(childId);
+          } else {
+            const parentId = getParent(currentId);
+            if (parentId) setFocusedNodeId(parentId);
+          }
+        }
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (isRoot) {
+          const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
+          if (leftChildren.length > 0) setFocusedNodeId(leftChildren[0].id);
+        } else {
+          const leftChildren = tree.children.filter((_, i) => i % 2 === 1);
+          const isLeft = leftChildren.some((c) => c.id === currentId || nodeMap.get(currentId)?.parentHopId === c.id);
+          if (isLeft) {
+            const childId = getFirstChild(currentNode);
+            if (childId) setFocusedNodeId(childId);
+          } else {
+            const parentId = getParent(currentId);
+            if (parentId) setFocusedNodeId(parentId);
+          }
+        }
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const nextSibling = getSibling(currentId, 1);
+        if (nextSibling) setFocusedNodeId(nextSibling);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const prevSibling = getSibling(currentId, -1);
+        if (prevSibling) setFocusedNodeId(prevSibling);
+      }
+    } else if (isHorizontal) {
       // Horizontal layout: Right -> child, Left -> parent, Down -> next sibling, Up -> prev sibling
       if (e.key === "ArrowRight") {
         e.preventDefault();
@@ -1140,8 +1256,14 @@ export function MindMapTreeCanvas({
     );
   };
 
-  const renderNodeCard = (node: MindMapTreeNode) => {
+  const renderNodeCard = (
+    node: MindMapTreeNode,
+    depth: number = 0,
+    branchColor?: BranchPalette,
+    direction: "left" | "right" | "root" = "right"
+  ) => {
     const isRoot = node.hopDistance === 0;
+    const isDepth1 = node.hopDistance === 1;
     const isTopic = node.type === "topic";
     const hasChildren = node.children.length > 0;
     const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
@@ -1152,6 +1274,9 @@ export function MindMapTreeCanvas({
     const isSearchMatch = isSearchActive && matchingNodeIds.has(node.id);
     const isSearchDimmed = isSearchActive && !isSearchMatch;
     const isFocused = focusedNodeId === node.id;
+    const isMasked = Boolean(
+      isStudyModeActive && node.hopDistance >= 1 && !revealedNodeIds?.has(node.id)
+    );
 
     const handleClick = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -1238,6 +1363,11 @@ export function MindMapTreeCanvas({
       }
     };
 
+    const citationMatches = node.title.match(/\[\d+(?:[–\-,\s]*\d+)*\]/g) || [];
+    const nodeCrossLinks = (crossEdges || []).filter(
+      (edge) => edge.sourceNodeId === node.id || edge.targetNodeId === node.id
+    );
+
     return (
       <div
         data-node-id={node.id}
@@ -1256,10 +1386,30 @@ export function MindMapTreeCanvas({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onMouseEnter={() => setHoveredNodeId(node.id)}
-        onMouseLeave={() => setHoveredNodeId(null)}
+        onMouseEnter={() => {
+          setHoveredNodeId(node.id);
+          if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
+          peekTimeoutRef.current = setTimeout(() => {
+            setPeekNodeId(node.id);
+          }, 250);
+        }}
+        onMouseLeave={() => {
+          setHoveredNodeId(null);
+          if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current);
+          setPeekNodeId(null);
+        }}
         onClick={handleClick}
-        className={`group relative flex flex-col p-3 rounded-xl border transition-all duration-200 ${
+        className={`group relative flex flex-col ${
+          isRoot
+            ? "p-4 sm:p-5 shadow-md bg-amber-500/10 dark:bg-amber-500/20 border-2 border-amber-500 rounded-2xl"
+            : isDepth1
+            ? `p-3 shadow-xs rounded-xl ${
+                branchColor
+                  ? `${direction === "left" ? `border-r-4 ${branchColor.border}` : `border-l-4 ${branchColor.border}`} ${branchColor.bg}`
+                  : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
+              }`
+            : "py-2 px-2.5 rounded-xl text-xs font-medium bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60 shadow-2xs"
+        } border transition-all duration-200 ${
           isConnectValid
             ? "ring-2 ring-indigo-500 shadow-lg bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500"
             : connectRejectReason
@@ -1276,11 +1426,7 @@ export function MindMapTreeCanvas({
                     ? "ring-2 ring-amber-500 shadow-md bg-amber-100/90 dark:bg-amber-900/60 border-amber-500"
                     : isPeerHighlighted
                       ? "ring-2 ring-amber-400/80 dark:ring-amber-500/80 shadow-xs bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600"
-                      : isRoot
-                        ? "bg-amber-50/90 dark:bg-amber-950/50 border-amber-400/80 dark:border-amber-600/80 shadow-xs ring-1 ring-amber-400/30"
-                        : isTopic
-                          ? "bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 hover:border-amber-500/60 dark:hover:border-amber-500/60"
-                          : "bg-stone-50/80 dark:bg-stone-900/60 border-stone-200/60 dark:border-stone-800/60"
+                      : ""
         } ${
           isSearchDimmed ? "opacity-35" : ""
         } ${
@@ -1312,6 +1458,27 @@ export function MindMapTreeCanvas({
 
           <div className="flex items-center gap-1">
             {renderStatusBadge(node)}
+
+            {/* Study Mode Mask/Reveal Toggle Button */}
+            {isStudyModeActive && node.hopDistance >= 1 && (
+              <button
+                type="button"
+                data-testid={`btn-study-mask-${node.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRevealNode?.(node.id);
+                }}
+                className="p-0.5 rounded hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-400 hover:text-amber-600 transition cursor-pointer flex items-center"
+                title={isMasked ? "Nhấp để lật mở đáp án" : "Đã mở - Nhấp để che lại"}
+              >
+                {isMasked ? (
+                  <EyeOff className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                ) : (
+                  <Eye className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                )}
+              </button>
+            )}
+
             {/* Collapse/Expand Toggle Affordance */}
             {hasChildren && (
               <button
@@ -1355,8 +1522,32 @@ export function MindMapTreeCanvas({
             onCancel={onCancelRename}
           />
         ) : (
-          <div className="font-semibold text-xs text-stone-800 dark:text-stone-200 line-clamp-2 leading-snug">
-            {node.title}
+          <div
+            className={`transition-all duration-200 ${
+              isMasked
+                ? "filter blur-[6px] select-none opacity-40 hover:opacity-75 cursor-pointer"
+                : ""
+            }`}
+            onClick={(e) => {
+              if (isStudyModeActive && isMasked) {
+                e.stopPropagation();
+                onRevealNode?.(node.id);
+              }
+            }}
+          >
+            <div
+              className={`leading-snug line-clamp-2 ${
+                isRoot
+                  ? "text-sm sm:text-base font-extrabold text-stone-900 dark:text-stone-50"
+                  : isDepth1
+                  ? "text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-100"
+                  : "text-xs font-medium text-stone-700 dark:text-stone-300"
+              }`}
+            >
+              {renderTitleWithCitations(node.title, (citation) => {
+                onNavigateToResource?.(citation, node);
+              })}
+            </div>
           </div>
         )}
 
@@ -1394,7 +1585,11 @@ export function MindMapTreeCanvas({
         {/* Phase P2: Interactive Node Editing Toolbar */}
         {isEditable && editingNodeId !== node.id && (
           <div
-            className="mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800/60 flex items-center justify-end gap-1"
+            className={`mt-2 pt-1.5 border-t border-stone-100 dark:border-stone-800/60 flex items-center justify-end gap-1 transition-opacity duration-150 ${
+              isFocused || isSelected || editingNodeId === node.id
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -1494,9 +1689,99 @@ export function MindMapTreeCanvas({
             onPointerUp={handleConnectPointerUp}
             onPointerCancel={handleConnectPointerCancel}
             onClick={(e) => e.stopPropagation()}
-            className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center cursor-crosshair shadow-sm ring-2 ring-white dark:ring-stone-900 z-10 transition-transform hover:scale-125"
+            className={`absolute ${direction === "left" ? "-left-2" : "-right-2"} top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white flex items-center justify-center cursor-crosshair shadow-sm ring-2 ring-white dark:ring-stone-900 z-10 transition-transform hover:scale-125`}
           >
             <div className="w-1.5 h-1.5 rounded-full bg-white pointer-events-none" />
+          </div>
+        )}
+
+        {/* Study Co-Pilot Quick Peek Popover */}
+        {peekNodeId === node.id && editingNodeId !== node.id && (
+          <div
+            data-testid={`peek-popover-${node.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 min-w-[220px] max-w-[320px] p-3 rounded-xl bg-white/95 dark:bg-stone-900/95 shadow-xl border border-stone-200 dark:border-stone-700 text-xs backdrop-blur-md pointer-events-auto"
+          >
+            <div className="flex items-center justify-between gap-1 pb-1.5 mb-1.5 border-b border-stone-100 dark:border-stone-800">
+              <span className="font-semibold text-stone-800 dark:text-stone-200 truncate">
+                {node.title}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPeekNodeId(null);
+                }}
+                className="p-0.5 text-stone-400 hover:text-stone-600 rounded transition cursor-pointer"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+
+            {node.type === "note" && (
+              <div className="text-[11px] text-stone-600 dark:text-stone-400 line-clamp-4 mb-2">
+                {findNoteContent ? findNoteContent(node.id) || "Ghi chú học thuật" : "Ghi chú học thuật"}
+              </div>
+            )}
+
+            {citationMatches.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1">
+                {citationMatches.map((cit, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    data-testid="btn-peek-lookup-citation"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onNavigateToResource?.(cit, node);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500 hover:bg-amber-600 text-white transition cursor-pointer"
+                  >
+                    <span>Tra cứu {cit} trong Tài liệu gốc</span>
+                    <ArrowRight className="w-2.5 h-2.5" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {nodeCycles.length > 0 && (
+              <div className="text-[10px] text-amber-700 dark:text-amber-400 font-medium mb-1">
+                Chu trình khép kín: {nodeCycles.map((c) => c.targetAncestorTitle || c.targetAncestorId).join(", ")}
+              </div>
+            )}
+
+            {nodeCrossLinks.length > 0 && (
+              <div className="pt-1.5 border-t border-stone-100 dark:border-stone-800">
+                <div className="text-[10px] uppercase font-semibold text-stone-400 mb-1">
+                  Liên kết chéo ({nodeCrossLinks.length})
+                </div>
+                <div className="space-y-1">
+                  {nodeCrossLinks.slice(0, 3).map((edge) => {
+                    const peerTitle =
+                      edge.sourceNodeId === node.id ? edge.targetTitle : edge.sourceTitle;
+                    const semanticLabel =
+                      edge.type === "prerequisite"
+                        ? "Tiên quyết"
+                        : edge.type === "contradicts"
+                        ? "Đối chiếu"
+                        : edge.type === "advanced"
+                        ? "Nâng cao"
+                        : "Liên quan";
+                    return (
+                      <div
+                        key={edge.id}
+                        className="flex items-center justify-between text-[11px] text-stone-600 dark:text-stone-400"
+                      >
+                        <span className="truncate max-w-[130px]">{peerTitle}</span>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] bg-stone-100 dark:bg-stone-800 font-mono text-stone-500">
+                          {semanticLabel}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1562,6 +1847,111 @@ export function MindMapTreeCanvas({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderRadialBranch = (
+    node: MindMapTreeNode,
+    direction: "left" | "right",
+    depth: number,
+    branchColor?: BranchPalette
+  ): React.ReactNode => {
+    const isCollapsed = Boolean(collapsedNodeIds?.has(node.id));
+    const showChildren = node.children.length > 0 && !isCollapsed;
+
+    if (direction === "left") {
+      return (
+        <div key={node.id} className="relative flex items-center flex-row-reverse">
+          {/* Branch Arm from Bracket to Child */}
+          <div className={`absolute -right-6 w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+          <div className="shrink-0">{renderNodeCard(node, depth, branchColor, "left")}</div>
+
+          {showChildren && (
+            <div className="flex items-center flex-row-reverse">
+              <div className={`w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+              <div
+                className={`relative pr-6 py-2 flex flex-col items-end gap-4 border-r ${
+                  branchColor ? branchColor.line : "border-stone-300 dark:border-stone-700"
+                }`}
+              >
+                {node.children.map((child) => (
+                  <div key={child.id} className="relative flex items-center flex-row-reverse">
+                    <div className={`absolute -right-6 w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+                    {renderRadialBranch(child, "left", depth + 1, branchColor)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div key={node.id} className="relative flex items-center">
+        {/* Branch Arm from Bracket to Child */}
+        <div className={`absolute -left-6 w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+        <div className="shrink-0">{renderNodeCard(node, depth, branchColor, "right")}</div>
+
+        {showChildren && (
+          <div className="flex items-center">
+            <div className={`w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+            <div
+              className={`relative pl-6 py-2 flex flex-col gap-4 border-l ${
+                branchColor ? branchColor.line : "border-stone-300 dark:border-stone-700"
+              }`}
+            >
+              {node.children.map((child) => (
+                <div key={child.id} className="relative flex items-center">
+                  <div className={`absolute -left-6 w-6 h-px ${branchColor ? branchColor.line : "bg-stone-300 dark:bg-stone-700"}`} />
+                  {renderRadialBranch(child, "right", depth + 1, branchColor)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderRadialTree = (root: MindMapTreeNode): React.ReactNode => {
+    const isRootCollapsed = Boolean(collapsedNodeIds?.has(root.id));
+    const rightChildren = isRootCollapsed
+      ? []
+      : root.children.filter((_, index) => index % 2 === 0);
+    const leftChildren = isRootCollapsed
+      ? []
+      : root.children.filter((_, index) => index % 2 === 1);
+
+    return (
+      <div className="flex items-center justify-center gap-8 md:gap-12 min-w-max">
+        {/* Nhánh Cây Trái (Grow Leftwards) */}
+        {leftChildren.length > 0 && (
+          <div className="flex flex-col items-end gap-6 border-r border-stone-300 dark:border-stone-700 pr-6 py-2">
+            {leftChildren.map((child) => {
+              const originalIndex = root.children.indexOf(child);
+              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              return renderRadialBranch(child, "left", 1, palette);
+            })}
+          </div>
+        )}
+
+        {/* Nút Gốc Trung Tâm */}
+        <div className="relative shrink-0 z-20">
+          {renderNodeCard(root, 0, undefined, "root")}
+        </div>
+
+        {/* Nhánh Cây Phải (Grow Rightwards) */}
+        {rightChildren.length > 0 && (
+          <div className="flex flex-col items-start gap-6 border-l border-stone-300 dark:border-stone-700 pl-6 py-2">
+            {rightChildren.map((child) => {
+              const originalIndex = root.children.indexOf(child);
+              const palette = BRANCH_PALETTES[originalIndex % BRANCH_PALETTES.length];
+              return renderRadialBranch(child, "right", 1, palette);
+            })}
           </div>
         )}
       </div>
@@ -1656,7 +2046,11 @@ export function MindMapTreeCanvas({
             isConnecting={Boolean(connectingState)}
           />
         )}
-        {isHorizontal ? renderHorizontalTree(tree) : renderVerticalTree(tree)}
+        {layoutMode === "radial_balanced"
+          ? renderRadialTree(tree)
+          : isHorizontal
+          ? renderHorizontalTree(tree)
+          : renderVerticalTree(tree)}
 
         {/* Phase M7a: Floating On-Canvas Cross-Link Quick Inspect Popover */}
         {(() => {

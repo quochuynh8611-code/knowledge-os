@@ -9,7 +9,7 @@ import {
 } from "./knowledgeGraph";
 import { Topic, Note, Resource, TopicStatus, CategoryType } from "../types";
 
-export type MindMapLayoutMode = "tree_horizontal" | "tree_vertical";
+export type MindMapLayoutMode = "tree_horizontal" | "tree_vertical" | "radial_balanced";
 
 export interface MindMapTreeNode {
   id: string;

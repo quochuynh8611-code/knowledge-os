@@ -7,12 +7,14 @@
  * - Zero schema change / Zero backend mutation / Zero uncaught exceptions.
  */
 
+import { MindMapLayoutMode } from "./mindmapProjection";
+
 export const MINDMAP_STORAGE_PREFIX = "knowledge_os_mindmap_view_state_v1:";
 
 export interface MindMapLocalViewState {
   version: 1;
   topicId: string;
-  layoutMode: "tree_horizontal" | "tree_vertical";
+  layoutMode: MindMapLayoutMode;
   collapsedNodeIds: string[];
   showCrossLinks?: boolean;
   updatedAt: string;
@@ -87,7 +89,9 @@ export function loadMindMapViewState(topicId: string): MindMapLocalViewState {
         layoutMode:
           parsed.layoutMode === "tree_vertical"
             ? "tree_vertical"
-            : "tree_horizontal",
+            : parsed.layoutMode === "radial_balanced"
+              ? "radial_balanced"
+              : "tree_horizontal",
         collapsedNodeIds: sanitizeCollapsedIds(parsed.collapsedNodeIds),
         showCrossLinks:
           typeof parsed.showCrossLinks === "boolean"
@@ -132,7 +136,9 @@ export function saveMindMapViewState(
       layoutMode:
         state.layoutMode === "tree_vertical"
           ? "tree_vertical"
-          : "tree_horizontal",
+          : state.layoutMode === "radial_balanced"
+            ? "radial_balanced"
+            : "tree_horizontal",
       collapsedNodeIds: sanitizedIds,
       showCrossLinks: Boolean(state.showCrossLinks),
       updatedAt: new Date().toISOString(),

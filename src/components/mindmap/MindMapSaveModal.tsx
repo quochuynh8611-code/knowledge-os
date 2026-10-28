@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, AlertTriangle, FileText, Layers, Check } from 'lucide-react';
 import { MindMapDocumentSummary } from '../../types/mindmapDocument';
+import { MindMapLayoutMode } from '../../lib/mindmapProjection';
 
 export interface MindMapSaveModalProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ export interface MindMapSaveModalProps {
   defaultTitle?: string;
   isVolatile?: boolean;
   nodesCount: number;
-  layoutMode: 'tree_horizontal' | 'tree_vertical';
+  layoutMode: MindMapLayoutMode;
 }
 
 export function MindMapSaveModal({

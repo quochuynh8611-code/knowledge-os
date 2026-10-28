@@ -46,8 +46,10 @@ export interface MindMapVersion {
   createdAt: string; // ISO 8601 timestamp
 }
 
+export type MindMapLayoutMode = 'tree_horizontal' | 'tree_vertical' | 'radial_balanced';
+
 export interface MindMapVersionViewState {
-  layoutMode: 'tree_horizontal' | 'tree_vertical';
+  layoutMode: MindMapLayoutMode;
   collapsedNodeIds: string[];
   showCrossLinks: boolean;
 }

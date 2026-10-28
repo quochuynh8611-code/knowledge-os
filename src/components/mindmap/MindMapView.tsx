@@ -66,6 +66,10 @@ import {
   Redo2,
   ChevronRight,
   ChevronDown,
+  GitFork,
+  GraduationCap,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   MindMapDocumentHistoryState,
@@ -171,6 +175,10 @@ export function MindMapView() {
     type: ToastType;
   } | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Study Mode Active Recall State (Phase M8)
+  const [isStudyModeActive, setIsStudyModeActive] = useState<boolean>(false);
+  const [revealedNodeIds, setRevealedNodeIds] = useState<Set<string>>(new Set());
 
   // Persistence State (Phase P1)
   const [activeMode, setActiveMode] =
@@ -535,6 +543,51 @@ export function MindMapView() {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [projection, topicMap]);
+
+  // Phase M8: Active Recall & Quick Peek Callbacks
+  const handleRevealAllStudyNodes = useCallback(() => {
+    const ids = new Set<string>();
+    const collectIds = (node: MindMapTreeNode) => {
+      ids.add(node.id);
+      for (const child of node.children) {
+        collectIds(child);
+      }
+    };
+    if (projection?.tree) {
+      collectIds(projection.tree);
+    }
+    setRevealedNodeIds(ids);
+  }, [projection]);
+
+  const handleRevealSingleNode = useCallback((nodeId: string) => {
+    setRevealedNodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
+  const findNoteContent = useCallback(
+    (nodeId: string): string | undefined => {
+      const foundNote = notes.find((n) => n.id === nodeId);
+      return foundNote?.content;
+    },
+    [notes]
+  );
+
+  const handleNavigateToResource = useCallback(
+    (citation: string, node: MindMapTreeNode) => {
+      setToast({
+        message: `Đang tra cứu ${citation} cho ${node.title}`,
+        type: "info",
+      });
+    },
+    []
+  );
 
   // Export Mind Map to standalone SVG file
   const handleExportSvg = useCallback(() => {
@@ -1780,6 +1833,67 @@ export function MindMapView() {
               <AlignVerticalDistributeCenter className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Dọc</span>
             </button>
+            <button
+              type="button"
+              onClick={() => handleSetLayoutMode("radial_balanced")}
+              data-testid="btn-layout-radial"
+              title="Bố cục tỏa tròn 2 phía cân bằng"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                layoutMode === "radial_balanced"
+                  ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-300 shadow-2xs"
+                  : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+              }`}
+            >
+              <GitFork className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Tỏa 2 bên</span>
+            </button>
+          </div>
+
+          {/* Active Recall / Study Mode Toggle (Phase M8) */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              data-testid="btn-toggle-study-mode"
+              onClick={() => {
+                setIsStudyModeActive((prev) => !prev);
+                setRevealedNodeIds(new Set());
+              }}
+              title="Chế độ Ôn tập Chủ động (Active Recall / Blind Retrieval)"
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                isStudyModeActive
+                  ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                  : "bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Ôn tập</span>
+              {isStudyModeActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              )}
+            </button>
+
+            {isStudyModeActive && (
+              <>
+                <button
+                  type="button"
+                  data-testid="btn-study-reveal-all"
+                  onClick={handleRevealAllStudyNodes}
+                  className="px-2 py-1 text-[11px] font-medium bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg transition cursor-pointer"
+                  title="Lật mở tất cả các thẻ"
+                >
+                  Mở tất cả
+                </button>
+                <button
+                  type="button"
+                  data-testid="btn-study-mask-all"
+                  onClick={() => setRevealedNodeIds(new Set())}
+                  className="px-2 py-1 text-[11px] font-medium bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-lg transition cursor-pointer"
+                  title="Che lại tất cả"
+                >
+                  Che lại
+                </button>
+              </>
+            )}
           </div>
 
           {/* Cross-Links Overlay Toggle */}
@@ -2128,6 +2242,11 @@ export function MindMapView() {
           onOpenDrawerForNode={(nodeId) => {
             setActiveDrawerNodeId(nodeId);
           }}
+          isStudyModeActive={isStudyModeActive}
+          revealedNodeIds={revealedNodeIds}
+          onRevealNode={handleRevealSingleNode}
+          onNavigateToResource={handleNavigateToResource}
+          findNoteContent={findNoteContent}
         />
       ) : (
         <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
@@ -2360,6 +2479,7 @@ export function MindMapView() {
           onAddCrossLink={handleAddCrossLinkFromDrawer}
           onRemoveCrossLink={handleRemoveCrossLinkFromDrawer}
           treeRoot={workingDocumentTree || projection?.tree}
+          onShowToast={(message, type) => setToast({ message, type })}
         />
       )}
 

@@ -118,7 +118,69 @@ export function exportMindMapToSvg(
   // 2. Position nodes recursively
   const nodeMap = new Map<string, SvgLayoutNode>();
 
-  if (isHorizontal) {
+  if (layoutMode === "radial_balanced") {
+    // Radial Balanced Layout: Split root children left and right
+    const rightChildren = rootLayout.children.filter((_, i) => i % 2 === 0);
+    const leftChildren = rootLayout.children.filter((_, i) => i % 2 === 1);
+
+    let leftCurrentY = MARGIN_Y;
+    function layoutLeft(item: SvgLayoutNode, depth: number): number {
+      item.x = -depth * (NODE_WIDTH + GAP_X);
+      nodeMap.set(item.node.id, item);
+
+      if (item.children.length === 0) {
+        item.y = leftCurrentY;
+        leftCurrentY += NODE_HEIGHT + GAP_Y;
+        return item.y;
+      }
+
+      const childYs: number[] = [];
+      for (const child of item.children) {
+        childYs.push(layoutLeft(child, depth + 1));
+      }
+      item.y = (childYs[0] + childYs[childYs.length - 1]) / 2;
+      return item.y;
+    }
+
+    let rightCurrentY = MARGIN_Y;
+    function layoutRight(item: SvgLayoutNode, depth: number): number {
+      item.x = depth * (NODE_WIDTH + GAP_X);
+      nodeMap.set(item.node.id, item);
+
+      if (item.children.length === 0) {
+        item.y = rightCurrentY;
+        rightCurrentY += NODE_HEIGHT + GAP_Y;
+        return item.y;
+      }
+
+      const childYs: number[] = [];
+      for (const child of item.children) {
+        childYs.push(layoutRight(child, depth + 1));
+      }
+      item.y = (childYs[0] + childYs[childYs.length - 1]) / 2;
+      return item.y;
+    }
+
+    const leftYs = leftChildren.map((child) => layoutLeft(child, 1));
+    const rightYs = rightChildren.map((child) => layoutRight(child, 1));
+
+    rootLayout.x = 0;
+    const allChildYs = [...leftYs, ...rightYs];
+    rootLayout.y = allChildYs.length > 0
+      ? (Math.min(...allChildYs) + Math.max(...allChildYs)) / 2
+      : MARGIN_Y;
+    nodeMap.set(rootLayout.node.id, rootLayout);
+
+    // Normalize coordinates so minX starts at MARGIN_X
+    let minX = 0;
+    for (const item of nodeMap.values()) {
+      minX = Math.min(minX, item.x);
+    }
+    const xShift = MARGIN_X - minX;
+    for (const item of nodeMap.values()) {
+      item.x += xShift;
+    }
+  } else if (isHorizontal) {
     let currentY = MARGIN_Y;
 
     function layoutHorizontal(item: SvgLayoutNode, depth: number): number {
@@ -183,7 +245,29 @@ export function exportMindMapToSvg(
 
   function renderConnectors(item: SvgLayoutNode) {
     for (const child of item.children) {
-      if (isHorizontal) {
+      if (layoutMode === "radial_balanced") {
+        if (child.x >= item.x) {
+          // Child to the right
+          const x1 = item.x + item.width;
+          const y1 = item.y + item.height / 2;
+          const x2 = child.x;
+          const y2 = child.y + child.height / 2;
+          const midX = (x1 + x2) / 2;
+          connectorPaths.push(
+            `<path d="M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}" fill="none" stroke="#d6d3d1" stroke-width="2" />`
+          );
+        } else {
+          // Child to the left
+          const x1 = item.x;
+          const y1 = item.y + item.height / 2;
+          const x2 = child.x + child.width;
+          const y2 = child.y + child.height / 2;
+          const midX = (x1 + x2) / 2;
+          connectorPaths.push(
+            `<path d="M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}" fill="none" stroke="#d6d3d1" stroke-width="2" />`
+          );
+        }
+      } else if (isHorizontal) {
         const x1 = item.x + item.width;
         const y1 = item.y + item.height / 2;
         const x2 = child.x;

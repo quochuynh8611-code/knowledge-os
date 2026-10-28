@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { X, Check, Edit3, Tag, Hash, Bookmark, Link2, Trash2, Plus, Sparkles } from "lucide-react";
+import { X, Check, Edit3, Tag, Hash, Bookmark, Link2, Trash2, Plus, Sparkles, GraduationCap } from "lucide-react";
 import { MindMapTreeNode } from "../../lib/mindmapProjection";
 import { MindMapDocumentEdge } from "../../types/mindmapDocument";
 import { LinkType } from "../../types";
 import { validateCrossLinkMutation } from "../../lib/mindmapCrossLinks";
 import { hasAcademicNotation } from "../../lib/academicNotation";
 import { AcademicMarkdown } from "../ui/AcademicMarkdown";
+import { dataRepository } from "../../context/DataContext";
 
 export interface MindMapDrawerNode extends MindMapTreeNode {
   semanticBadge?: string;
@@ -23,6 +24,9 @@ export interface MindMapNodeDrawerProps {
   onAddCrossLink?: (edge: { targetNodeId: string; edgeType: LinkType; label?: string }) => void;
   onRemoveCrossLink?: (edgeId: string) => void;
   treeRoot?: MindMapTreeNode | null;
+  // Phase M8 Flashcard Props
+  onCreateFlashcard?: (card: { topicId: string; front: string; back: string }) => Promise<void> | void;
+  onShowToast?: (message: string, type: "success" | "error" | "info") => void;
 }
 
 export function MindMapNodeDrawer({
@@ -35,12 +39,15 @@ export function MindMapNodeDrawer({
   onAddCrossLink,
   onRemoveCrossLink,
   treeRoot,
+  onCreateFlashcard,
+  onShowToast,
 }: MindMapNodeDrawerProps) {
   const [titleInput, setTitleInput] = useState<string>("");
   const [targetNodeId, setTargetNodeId] = useState<string>("");
   const [edgeType, setEdgeType] = useState<LinkType>("related");
   const [labelInput, setLabelInput] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [flashcardMessage, setFlashcardMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (node) {
@@ -49,8 +56,41 @@ export function MindMapNodeDrawer({
       setEdgeType("related");
       setLabelInput("");
       setErrorMessage(null);
+      setFlashcardMessage(null);
     }
   }, [node?.id, node?.title]);
+
+  const handleCreateFlashcard = async () => {
+    if (!node) return;
+    try {
+      const front = node.title;
+      const back =
+        node.children && node.children.length > 0
+          ? node.children.map((c) => `• ${c.title}`).join("\n")
+          : (node.categoryName ? `Lĩnh vực: ${node.categoryName}` : `Ghi chú cho ${node.title}`);
+
+      const topicId = node.parentHopId || node.id;
+
+      if (onCreateFlashcard) {
+        await onCreateFlashcard({ topicId, front, back });
+      } else if (dataRepository?.createFlashcard) {
+        await dataRepository.createFlashcard({
+          topicId,
+          type: "basic",
+          front,
+          back,
+          lifecycleStatus: "active",
+        });
+      }
+      setFlashcardMessage("Đã tạo thẻ ôn tập thành công!");
+      onShowToast?.("Đã tạo thẻ ôn tập thành công!", "success");
+      setTimeout(() => setFlashcardMessage(null), 3000);
+    } catch (err) {
+      console.error("Failed to create flashcard:", err);
+      setFlashcardMessage("Lỗi khi tạo flashcard");
+      setTimeout(() => setFlashcardMessage(null), 3000);
+    }
+  };
 
   if (!isOpen || !node) {
     return null;
@@ -344,6 +384,31 @@ export function MindMapNodeDrawer({
               <span>Thêm liên kết</span>
             </button>
           </div>
+        </div>
+
+        {/* Phase M8: Flashcard Study Export */}
+        <div className="pt-3 border-t border-stone-100 dark:border-stone-800 space-y-2">
+          <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider block">
+            Học tập chủ động (Study Co-Pilot)
+          </span>
+          <button
+            type="button"
+            data-testid="btn-create-flashcard-from-branch"
+            onClick={handleCreateFlashcard}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+            title="Tạo Flashcards từ nhánh này"
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>Tạo Flashcards từ nhánh này</span>
+          </button>
+          {flashcardMessage && (
+            <p
+              data-testid="flashcard-export-feedback"
+              className="text-center text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+            >
+              {flashcardMessage}
+            </p>
+          )}
         </div>
 
         {/* Read-Only Metadata */}
