@@ -25,6 +25,7 @@ import {
   AntigravityHandoffJob,
 } from '../../lib/antigravityPipeline';
 import { sanitizeFileName } from '../../lib/obsidian';
+import { logStructuredEvent } from '../../lib/security';
 import { Topic } from '../../types';
 import { ResearchSessionDTO, GroundedArtifactDTO } from '../../types/researchHub';
 import { ArtifactReviewDrawer } from './ArtifactReviewDrawer';
@@ -707,11 +708,21 @@ export function NotebookLMStudioModal({
         } else {
           updateStoredArtifact(savedLocal.id, { syncStatus: 'pending' });
           setLocalArtifacts(getStoredArtifacts());
+          logStructuredEvent('warn', 'ARTIFACT_INGEST_FALLBACK', {
+            reason: `Backend status ${res.status}`,
+            artifactType,
+            idempotencyKey,
+          });
         }
       } catch (err) {
         console.error('Failed to ingest artifact to backend', err);
         updateStoredArtifact(savedLocal.id, { syncStatus: 'pending' });
         setLocalArtifacts(getStoredArtifacts());
+        logStructuredEvent('warn', 'ARTIFACT_INGEST_FALLBACK', {
+          reason: (err as Error)?.message || 'Network error',
+          artifactType,
+          idempotencyKey,
+        });
       }
     }
 
@@ -770,6 +781,11 @@ export function NotebookLMStudioModal({
         updateStoredArtifact(artifact.id, { syncStatus: 'failed' });
         setLocalArtifacts(getStoredArtifacts());
         setSyncWarning('Retry đồng bộ artifact thất bại. Vui lòng thử lại.');
+        logStructuredEvent('warn', 'ARTIFACT_INGEST_FALLBACK', {
+          reason: `Retry failed with HTTP status ${res.status}`,
+          artifactType: artifact.type,
+          idempotencyKey: artifact.idempotencyKey,
+        });
       }
     } catch (err: unknown) {
       console.error('Failed to retry artifact sync', err);
@@ -780,6 +796,11 @@ export function NotebookLMStudioModal({
           ? `Retry đồng bộ thất bại: ${err.message}`
           : 'Retry đồng bộ artifact thất bại.';
       setSyncWarning(msg);
+      logStructuredEvent('warn', 'ARTIFACT_INGEST_FALLBACK', {
+        reason: (err as Error)?.message || 'Retry network error',
+        artifactType: artifact.type,
+        idempotencyKey: artifact.idempotencyKey,
+      });
     }
   };
 
