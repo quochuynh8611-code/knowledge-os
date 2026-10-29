@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog,
 and this project adheres to Semantic Versioning.
 
+## [0.1.1] - 2026-10-29
+
+### Added
+- Added production migration safety guard (`scripts/safe-prisma-db-push.mjs`) preventing accidental `prisma db push` in production.
+- Added v0.1.0/v0.1.1 deployment runbook (`docs/release/deployment-v0.1.1.md`) with migration, verification, and rollback procedures.
+- Added structured logs (`FLASHCARD_P2002_RECOVERED`, `ARTIFACT_INGEST_DUPLICATE`, `ARTIFACT_INGEST_FALLBACK`) with credential redaction.
+- Added automated database backup (`scripts/backup-database.mjs`) with SHA-256 checksum generation and verification (`scripts/verify-backup.mjs`).
+- Added backup retention policy enforcer (`scripts/prune-backups.mjs`) protecting newest backups with `BACKUP_MIN_KEEP`.
+- Added standalone health probe script (`scripts/health-probe.mjs`) with optional webhook alerting.
+- Added Docker Compose maintenance profile for off-path backup execution.
+
 ## [0.1.0] - 2026-10-29
 
 ### Added
