@@ -188,6 +188,7 @@ model Flashcard {
   front           String
   back            String
   lifecycleStatus String             @default("active") // 'active' | 'suspended' | 'archived'
+  idempotencyKey  String?            @unique
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   schedule        FlashcardSchedule?

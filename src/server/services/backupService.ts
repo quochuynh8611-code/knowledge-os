@@ -139,6 +139,7 @@ export async function buildBackupSnapshotFromDb(
     front: f.front,
     back: f.back,
     lifecycleStatus: f.lifecycleStatus,
+    idempotencyKey: f.idempotencyKey ?? undefined,
     createdAt: f.createdAt instanceof Date ? f.createdAt.toISOString() : f.createdAt,
     updatedAt: f.updatedAt instanceof Date ? f.updatedAt.toISOString() : f.updatedAt,
     schedule: f.schedule
@@ -429,6 +430,7 @@ export async function executeReplaceRestore(
           front: card.front,
           back: card.back,
           lifecycleStatus: card.lifecycleStatus ?? "active",
+          idempotencyKey: card.idempotencyKey ?? null,
           createdAt: card.createdAt ? new Date(card.createdAt) : undefined,
           updatedAt: card.updatedAt ? new Date(card.updatedAt) : undefined,
         },
@@ -777,6 +779,7 @@ export async function executeMergeRestore(
           front: card.front,
           back: card.back,
           lifecycleStatus: card.lifecycleStatus ?? "active",
+          idempotencyKey: card.idempotencyKey ?? null,
           createdAt: card.createdAt ? new Date(card.createdAt) : undefined,
           updatedAt: card.updatedAt ? new Date(card.updatedAt) : undefined,
         },

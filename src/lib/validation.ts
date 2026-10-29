@@ -997,7 +997,7 @@ export const FlashcardCreateSchema = z.object({
   front: z.string().min(1, "Mặt trước không được để trống"),
   back: z.string({ message: "Mặt sau không được để trống" }),
   lifecycleStatus: FlashcardLifecycleStatusEnum.default("active"),
-  idempotencyKey: z.string().optional(),
+  idempotencyKey: z.string().min(1).optional(),
   syncStatus: z.enum(["synced", "pending", "failed"]).optional(),
 });
 

@@ -46,6 +46,7 @@ function mapPrismaFlashcard(record: any): Flashcard {
     front: record.front,
     back: record.back,
     lifecycleStatus: record.lifecycleStatus as FlashcardLifecycleStatus,
+    idempotencyKey: record.idempotencyKey ?? undefined,
     createdAt:
       record.createdAt instanceof Date
         ? record.createdAt.toISOString()
@@ -135,34 +136,71 @@ function mapPrismaReview(record: any): FlashcardReview {
  */
 export async function createFlashcard(input: unknown): Promise<Flashcard> {
   const validated = FlashcardCreateSchema.parse(input);
+  const idempotencyKey = validated.idempotencyKey?.trim() || null;
 
-  return await prisma.$transaction(async (tx) => {
-    const card = await tx.flashcard.create({
-      data: {
-        topicId: validated.topicId,
-        noteId: validated.noteId ?? null,
-        resourceId: validated.resourceId ?? null,
-        type: validated.type,
-        front: validated.front,
-        back: validated.back,
-        lifecycleStatus: validated.lifecycleStatus,
-      },
+  // 1. If idempotencyKey is provided, check if it already exists before creating
+  if (idempotencyKey) {
+    const existing = await prisma.flashcard.findUnique({
+      where: { idempotencyKey },
+      include: { schedule: true },
     });
+    if (existing) {
+      return mapPrismaFlashcard(existing);
+    }
+  }
 
-    const schedule = await tx.flashcardSchedule.create({
-      data: {
-        flashcardId: card.id,
-        state: "new",
-        dueAt: new Date(),
-        interval: 0,
-        easeFactor: 2.5,
-        repetitions: 0,
-        lapses: 0,
-      },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      if (idempotencyKey) {
+        const existingInTx = await tx.flashcard.findUnique({
+          where: { idempotencyKey },
+          include: { schedule: true },
+        });
+        if (existingInTx) {
+          return mapPrismaFlashcard(existingInTx);
+        }
+      }
+
+      const card = await tx.flashcard.create({
+        data: {
+          topicId: validated.topicId,
+          noteId: validated.noteId ?? null,
+          resourceId: validated.resourceId ?? null,
+          type: validated.type,
+          front: validated.front,
+          back: validated.back,
+          lifecycleStatus: validated.lifecycleStatus,
+          idempotencyKey,
+        },
+      });
+
+      const schedule = await tx.flashcardSchedule.create({
+        data: {
+          flashcardId: card.id,
+          state: "new",
+          dueAt: new Date(),
+          interval: 0,
+          easeFactor: 2.5,
+          repetitions: 0,
+          lapses: 0,
+        },
+      });
+
+      return mapPrismaFlashcard({ ...card, schedule });
     });
-
-    return mapPrismaFlashcard({ ...card, schedule });
-  });
+  } catch (err: any) {
+    // 2. Race condition resilience: Handle Prisma unique constraint violation (P2002)
+    if (idempotencyKey && (err?.code === "P2002" || err?.message?.includes("Unique constraint failed"))) {
+      const existingAfterRace = await prisma.flashcard.findUnique({
+        where: { idempotencyKey },
+        include: { schedule: true },
+      });
+      if (existingAfterRace) {
+        return mapPrismaFlashcard(existingAfterRace);
+      }
+    }
+    throw err;
+  }
 }
 
 /**
