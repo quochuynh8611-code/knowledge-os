@@ -527,9 +527,15 @@ export class LocalStorageDataRepository implements IDataRepository {
           };
           cards[existingIndex] = updated;
           this._saveFlashcards(cards);
-          return updated;
+          return {
+            ...updated,
+            outcome: "existing",
+          };
         }
-        return cards[existingIndex];
+        return {
+          ...cards[existingIndex],
+          outcome: "existing",
+        };
       }
     }
     const now = new Date().toISOString();
@@ -562,7 +568,10 @@ export class LocalStorageDataRepository implements IDataRepository {
     };
     cards.push(newCard);
     this._saveFlashcards(cards);
-    return newCard;
+    return {
+      ...newCard,
+      outcome: "created",
+    };
   }
 
   async updateFlashcard(id: string, input: unknown): Promise<Flashcard> {
@@ -1604,10 +1613,21 @@ export class ApiDataRepository implements IDataRepository {
         });
         if (res.ok) {
           const serverCard = await res.json();
+          const isHitHeader =
+            typeof (res as any)?.headers?.get === "function" &&
+            (res as any).headers.get("X-Idempotency-Status") === "HIT";
+          const outcome =
+            serverCard.outcome ??
+            (isHitHeader
+              ? "existing"
+              : res.status === 201
+              ? "created"
+              : "created");
           const syncedCard: Flashcard = {
             ...serverCard,
             idempotencyKey: idempotencyKey || (serverCard as any)?.idempotencyKey || null,
             syncStatus: "synced",
+            outcome,
           };
           await this.localFallback.createFlashcard(syncedCard);
           return syncedCard;
@@ -1624,6 +1644,7 @@ export class ApiDataRepository implements IDataRepository {
       return {
         ...fallbackCard,
         syncStatus: "pending",
+        outcome: (fallbackCard as any)?.outcome ?? "created",
       };
     }
 

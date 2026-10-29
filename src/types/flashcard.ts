@@ -6,6 +6,8 @@ export type FlashcardLifecycleStatus = 'active' | 'suspended' | 'archived';
 
 export type ReviewRating = 1 | 2 | 3 | 4;
 
+export type FlashcardCreationOutcome = 'created' | 'existing';
+
 export type ReaderDocumentFormat = 'epub' | 'pdf' | 'md';
 
 export interface FlashcardCitationProvenance {
@@ -29,6 +31,7 @@ export interface Flashcard {
   citationProvenance?: FlashcardCitationProvenance | null;
   lifecycleStatus?: FlashcardLifecycleStatus; // Default: 'active'
   idempotencyKey?: string | null;
+  outcome?: FlashcardCreationOutcome;
   syncStatus?: "synced" | "pending" | "failed";
   schedule?: FlashcardSchedule;
   createdAt: string;

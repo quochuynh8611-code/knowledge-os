@@ -61,11 +61,18 @@ export async function createFlashcard(req: Request, res: Response) {
   }
   try {
     const created = await flashcardService.createFlashcard(parsed.data);
-    res.status(201).json(created);
+    if (created.outcome === "existing") {
+      res.setHeader("X-Idempotency-Status", "HIT");
+      return res.status(200).json(created);
+    }
+    return res.status(201).json(created);
   } catch (err: unknown) {
-    const msg =
+    const rawMsg =
       err instanceof Error ? err.message : "Failed to create flashcard";
-    res.status(500).json({ error: msg });
+    const sanitizedMsg = rawMsg
+      .replace(/postgres(ql)?:\/\/[^\s]+/gi, "[REDACTED_DATABASE_URL]")
+      .replace(/password=[^\s]+/gi, "password=[REDACTED]");
+    res.status(500).json({ error: sanitizedMsg });
   }
 }
 

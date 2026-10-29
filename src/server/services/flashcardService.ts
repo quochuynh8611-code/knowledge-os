@@ -132,7 +132,7 @@ function mapPrismaReview(record: any): FlashcardReview {
 /**
  * Creates a new flashcard with an initial 1:1 schedule record.
  */
-export async function createFlashcard(input: unknown): Promise<Flashcard> {
+export async function createFlashcard(input: unknown): Promise<Flashcard & { outcome: "created" | "existing" }> {
   const validated = FlashcardCreateSchema.parse(input);
   const idempotencyKey = validated.idempotencyKey?.trim() || null;
 
@@ -143,7 +143,10 @@ export async function createFlashcard(input: unknown): Promise<Flashcard> {
       include: { schedule: true },
     });
     if (existing) {
-      return mapPrismaFlashcard(existing);
+      return {
+        ...mapPrismaFlashcard(existing),
+        outcome: "existing",
+      };
     }
   }
 
@@ -155,7 +158,10 @@ export async function createFlashcard(input: unknown): Promise<Flashcard> {
           include: { schedule: true },
         });
         if (existingInTx) {
-          return mapPrismaFlashcard(existingInTx);
+          return {
+            ...mapPrismaFlashcard(existingInTx),
+            outcome: "existing",
+          };
         }
       }
 
@@ -184,7 +190,10 @@ export async function createFlashcard(input: unknown): Promise<Flashcard> {
         },
       });
 
-      return mapPrismaFlashcard({ ...card, schedule });
+      return {
+        ...mapPrismaFlashcard({ ...card, schedule }),
+        outcome: "created",
+      };
     });
   } catch (err: any) {
     // 2. Race condition resilience: Handle Prisma unique constraint violation (P2002)
@@ -199,7 +208,10 @@ export async function createFlashcard(input: unknown): Promise<Flashcard> {
           flashcardId: existingAfterRace.id,
           topicId: existingAfterRace.topicId,
         });
-        return mapPrismaFlashcard(existingAfterRace);
+        return {
+          ...mapPrismaFlashcard(existingAfterRace),
+          outcome: "existing",
+        };
       }
     }
     throw err;

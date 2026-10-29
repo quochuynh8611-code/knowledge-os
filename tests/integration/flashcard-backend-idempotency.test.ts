@@ -122,6 +122,7 @@ describe("Phase 11: Flashcard Idempotency End-to-End Tests", () => {
     expect(card.id).toMatch(/^fc-/);
     expect(card.id).not.toBe(key);
     expect((card as any).idempotencyKey).toBe(key);
+    expect(card.outcome).toBe("created");
     expect(mockDbCards.length).toBe(1);
     expect(mockDbCards[0].idempotencyKey).toBe(key);
   });
@@ -144,8 +145,10 @@ describe("Phase 11: Flashcard Idempotency End-to-End Tests", () => {
     });
 
     expect(mockDbCards.length).toBe(1);
+    expect(card1.outcome).toBe("created");
     expect(card2.id).toBe(card1.id);
     expect((card2 as any).idempotencyKey).toBe(key);
+    expect(card2.outcome).toBe("existing");
   });
 
   // Scenario 3: API trả idempotencyKey về client

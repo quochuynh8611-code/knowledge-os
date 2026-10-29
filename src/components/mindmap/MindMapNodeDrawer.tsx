@@ -169,12 +169,16 @@ export function MindMapNodeDrawer({
         });
       }
 
-      if (resultCard && resultCard.syncStatus === "pending") {
+      if (resultCard && (resultCard as any).outcome === "existing") {
+        setFlashcardMessage("Thẻ này đã tồn tại — không tạo trùng.");
+        onShowToast?.("Thẻ này đã tồn tại — không tạo trùng.", "info");
+        setTimeout(() => setFlashcardMessage(null), 3000);
+      } else if (resultCard && resultCard.syncStatus === "pending") {
         setFlashcardMessage("Đã lưu tạm cục bộ, chưa đồng bộ backend");
         onShowToast?.("Đã lưu tạm cục bộ, chưa đồng bộ backend", "info");
       } else {
         setFlashcardMessage("Đã tạo thẻ ôn tập thành công!");
-        onShowToast?.("Đã tạo thẻ ôn tập thành công!", "success");
+        onShowToast?.("Đã tạo thẻ ôn tập thành công.", "success");
         setTimeout(() => setFlashcardMessage(null), 3000);
       }
     } catch (err: any) {
