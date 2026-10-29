@@ -23,6 +23,12 @@ export const ArtifactTypeEnum = z.enum([
   "briefing_doc",
   "qa_pair",
   "raw_markdown",
+  "audio_overview_summary",
+  "faq",
+  "dialectic_matrix",
+  "socratic_inquiry",
+  "mindmap_outline",
+  "source_pack",
 ]);
 
 export const ArtifactStatusEnum = z.enum([

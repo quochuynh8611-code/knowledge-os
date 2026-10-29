@@ -182,21 +182,7 @@ export function toLocalArtifactStatus(
 }
 
 export function mapLocalArtifactTypeToDTO(type: unknown): DTOArtifactType {
-  const normalized = toNotebookLMArtifactType(type, 'study_guide');
-  switch (normalized) {
-    case 'study_guide':
-    case 'audio_overview_summary':
-    case 'dialectic_matrix':
-      return 'study_guide';
-    case 'briefing_doc':
-      return 'briefing_doc';
-    case 'faq':
-    case 'socratic_inquiry':
-      return 'qa_pair';
-    case 'source_pack':
-    case 'mindmap_outline':
-      return 'raw_markdown';
-  }
+  return toNotebookLMArtifactType(type, 'study_guide');
 }
 
 export function mapLocalArtifactStatusToDTO(status: unknown): DTOArtifactStatus {
