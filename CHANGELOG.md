@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog,
 and this project adheres to Semantic Versioning.
 
+## [0.2.0] — Phase 25 UX Polish & Product Experience
+
+### Added
+- Explicit confirmation gate before restoring auto-backup snapshots.
+- Distinct flashcard creation feedback for newly created and already-existing cards.
+- Five-state NotebookLM artifact synchronization status:
+  Pending, Synced, Failed, Retrying, AlreadySynchronized.
+- MindMap empty states and minimal onboarding for zero-topic and topic-without-mindmap cases.
+- MindMap keyboard shortcut overlay for discovering existing shortcuts.
+
+### Improved
+- Auto-backup restore now requires explicit destructive-action confirmation.
+- Flashcard creation prevents confusing success feedback for idempotent duplicate submissions.
+- Artifact sync now distinguishes successful sync from already-synchronized artifacts.
+- MindMap onboarding now provides clear next actions instead of a dead-end error message.
+- MindMap shortcuts are now discoverable through a dedicated overlay.
+
+### Safety
+- No database schema changes.
+- No database migrations.
+- No production deployment included in this release preparation.
+
 ## [0.1.1] - 2026-10-29
 
 ### Added

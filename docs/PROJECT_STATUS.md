@@ -1,15 +1,23 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-26<br>
+> **Cập nhật lần cuối:** 2026-10-29<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **ACADEMIC RESEARCH WORKSTATION (HORIZON 1 + HORIZON 2) — TOÀN BỘ 12 PHASE HOÀN TẤT VÀ XÁC MINH 100%. Phase 12 (ADR-116: Global Academic Command Palette & Workflow Router) đã hoàn tất cả 12A (Engine & Intent Parser) và 12B (UI Integration & Global Studio Routing). 100% Quality Gates: 13/13 Phase 12 Tests PASS, 23/23 Existing Command Palette Tests PASS, 79/79 Horizon 2 Master Suite Tests PASS, TypeScript 0 lỗi. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
+> **Trạng thái tổng thể:** 🟢 **PHASE 25 (UX POLISH & PRODUCT EXPERIENCE - ADR-117) HOÀN TẤT VÀ MERGED 100%. Version chuẩn bị: v0.2.0 (Release Preparation — chưa tag, chưa release, chưa deploy production). Các PR #8, #9, #10, #11, #12 đã merged vào origin/main tại commit `2699ca1abd7aeb265413b543e0582ec274044d28`. Quality Gates: TypeScript 0 lỗi, Build thành công, toàn bộ test suite PASS. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Current Baseline / HEAD (Local & origin/main):** Commit `bc4b60c` + Commercial Neutralization Baseline.
+- **Version chuẩn bị:** `0.2.0` (Release Preparation — chưa tag, chưa release, chưa deploy).
+- **Current Baseline / HEAD (origin/main):** Commit `2699ca1abd7aeb265413b543e0582ec274044d28` (sau khi merge PR #12).
+- **Recent Releases:** `v0.1.1` (commit `4f127810d915ca629a91749671683661768b6e8c`), `v0.1.0` (commit `28f030343df7503a3abda8ef4df2813a3aaa5562`).
+- **Phase 25 — UX Polish & Product Experience (ADR-117) — COMPLETE & MERGED:**
+  - PR #8: `feat(ux): require explicit confirmation for backup restore` (Merged)
+  - PR #9: `feat(ux): distinguish created vs existing in flashcard creation feedback` (Merged)
+  - PR #10: `feat(ux): artifact synchronization status` (Merged)
+  - PR #11: `feat(ux): mindmap empty state and onboarding` (Merged)
+  - PR #12: `feat(ux): mindmap keyboard shortcut overlay` (Merged)
 - **Recent Baseline Commits & Documents:**
   - `ADR-076`: Commercial Domain Neutralization & Zero-Default Universal Workspace (`docs/adr/ADR-076-commercial-domain-neutralization.md` + Addendum 1).
   - Session Log (2026-10-17): `docs/session-logs/2026-10-17-hermetic-test-guard-and-zero-default-rule.md`.
