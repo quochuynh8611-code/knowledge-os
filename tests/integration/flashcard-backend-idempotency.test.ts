@@ -73,7 +73,7 @@ describe("Phase 11: Flashcard Idempotency End-to-End Tests", () => {
       return await callback(tx);
     });
 
-    vi.spyOn(prisma.flashcard, "findUnique").mockImplementation(async ({ where }: any) => {
+    (vi.spyOn(prisma.flashcard, "findUnique") as any).mockImplementation(async ({ where }: any) => {
       if (where.idempotencyKey) {
         const found = mockDbCards.find((c) => c.idempotencyKey === where.idempotencyKey);
         if (!found) return null;
@@ -93,7 +93,7 @@ describe("Phase 11: Flashcard Idempotency End-to-End Tests", () => {
       return null;
     });
 
-    vi.spyOn(prisma.flashcard, "findMany").mockImplementation(async ({ where }: any = {}) => {
+    (vi.spyOn(prisma.flashcard, "findMany") as any).mockImplementation(async ({ where }: any = {}) => {
       let res = [...mockDbCards];
       if (where?.topicId) {
         res = res.filter((c) => c.topicId === where.topicId);
