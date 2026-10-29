@@ -49,6 +49,7 @@ export function NotebookLMResultsStep({
   onFileUpload,
   onDeleteLocalArtifact,
   onRetryArtifactSync,
+  retryingArtifactIds,
   onReviewArtifact,
   onSelectTopicId,
   allTopics,
@@ -324,6 +325,32 @@ export function NotebookLMResultsStep({
                       Source package v{art.sourcePackageVersion || 1}
                     </span>
 
+                    {(art as any).isDuplicate || (art as any).syncStatus === 'already_synchronized' ? (
+                      <span
+                        data-testid={`artifact-sync-status-badge-${art.id}`}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 font-semibold flex items-center gap-1"
+                      >
+                        Artifact đã tồn tại trên máy chủ — đã đồng bộ.
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          data-testid={`artifact-sync-status-badge-${art.id}`}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-semibold flex items-center gap-1"
+                        >
+                          Đã đồng bộ artifact.
+                        </span>
+                        {((art as any).syncedAt || art.createdAt) && (
+                          <span
+                            data-testid={`artifact-synced-time-${art.id}`}
+                            className="text-[10px] text-stone-500 dark:text-stone-400 font-mono"
+                          >
+                            ({new Date((art as any).syncedAt || art.createdAt).toLocaleTimeString('vi-VN')})
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold uppercase ${statusInfo.badgeClass}`}
                       title={statusInfo.description}
@@ -372,31 +399,97 @@ export function NotebookLMResultsStep({
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
                     {art.source || 'antigravity-2.0'}
                   </span>
-                  {art.syncStatus === 'pending' || art.syncStatus === 'failed' ? (
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        data-testid={`artifact-sync-status-badge-${art.id}`}
-                        className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
-                      >
-                        Chưa đồng bộ backend
-                      </span>
-                      {onRetryArtifactSync && (
-                        <button
-                          type="button"
-                          data-testid="btn-retry-artifact-sync"
-                          onClick={() => onRetryArtifactSync(art)}
-                          className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    {art.target || 'notebooklm'}
+                  </span>
+                  {(() => {
+                    const isRetrying =
+                      art.syncStatus === 'retrying' ||
+                      Boolean(retryingArtifactIds?.has(art.id));
+
+                    if (isRetrying) {
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            data-testid={`artifact-sync-status-badge-${art.id}`}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold flex items-center gap-1"
+                          >
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <span>Đang thử lại đồng bộ…</span>
+                          </span>
+                          {onRetryArtifactSync && (
+                            <button
+                              type="button"
+                              data-testid="btn-retry-artifact-sync"
+                              disabled={true}
+                              className="px-2 py-0.5 bg-amber-600/50 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-not-allowed opacity-50 shadow-2xs"
+                            >
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>Đang thử lại đồng bộ…</span>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (
+                      art.syncStatus === 'already_synchronized' ||
+                      art.isDuplicate
+                    ) {
+                      return (
+                        <span
+                          data-testid={`artifact-sync-status-badge-${art.id}`}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-700 font-semibold"
                         >
-                          <RefreshCw className="w-3 h-3" />
-                          <span>Thử lại đồng bộ</span>
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                      {art.target || 'notebooklm'}
-                    </span>
-                  )}
+                          Artifact đã tồn tại trên máy chủ — đã đồng bộ.
+                        </span>
+                      );
+                    }
+
+                    if (art.syncStatus === 'synced') {
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            data-testid={`artifact-sync-status-badge-${art.id}`}
+                            className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 font-semibold"
+                          >
+                            Đã đồng bộ artifact.
+                          </span>
+                          {(art.syncedAt || art.createdAt) && (
+                            <span
+                              data-testid={`artifact-synced-time-${art.id}`}
+                              className="text-[10px] text-stone-500 dark:text-stone-400 font-mono"
+                            >
+                              ({new Date(art.syncedAt || art.createdAt).toLocaleTimeString('vi-VN')})
+                            </span>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    // Default pending / failed state
+                    return (
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          data-testid={`artifact-sync-status-badge-${art.id}`}
+                          className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-semibold"
+                        >
+                          Chưa đồng bộ backend
+                        </span>
+                        {onRetryArtifactSync && (
+                          <button
+                            type="button"
+                            data-testid="btn-retry-artifact-sync"
+                            onClick={() => onRetryArtifactSync(art)}
+                            className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Thử lại đồng bộ</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {art.notebookUrl && (
                     <a
                       href={art.notebookUrl}

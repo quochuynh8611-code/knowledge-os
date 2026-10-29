@@ -13,6 +13,7 @@ import {
   deleteArtifact,
   NotebookLMArtifact,
   NotebookLMArtifactType,
+  ArtifactSyncStatus,
   deduplicateArtifacts,
 } from '../../lib/notebooklm';
 import {
@@ -110,6 +111,7 @@ export function NotebookLMStudioModal({
 
   // 9. Sync Warning State
   const [syncWarning, setSyncWarning] = useState<string | null>(null);
+  const [retryingArtifactIds, setRetryingArtifactIds] = useState<Set<string>>(new Set());
 
   // Focus trap ref
   const modalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -695,14 +697,25 @@ export function NotebookLMStudioModal({
         });
 
         if (res.ok) {
-          const { artifact } = await res.json();
+          const { artifact, isDuplicate } = await res.json();
+          const nextSyncStatus: ArtifactSyncStatus = isDuplicate
+            ? 'already_synchronized'
+            : 'synced';
           updateStoredArtifact(savedLocal.id, {
             id: artifact.id,
-            syncStatus: 'synced',
+            syncStatus: nextSyncStatus,
+            isDuplicate: Boolean(isDuplicate),
+            syncedAt: new Date().toISOString(),
           });
           setLocalArtifacts(getStoredArtifacts());
           setSessionArtifacts((prev) => [
-            { ...artifact, sourcePackageVersion: latestPackage?.version || 1 },
+            {
+              ...artifact,
+              sourcePackageVersion: latestPackage?.version || 1,
+              isDuplicate: Boolean(isDuplicate),
+              syncStatus: nextSyncStatus,
+              syncedAt: new Date().toISOString(),
+            },
             ...prev,
           ]);
         } else {
@@ -735,11 +748,18 @@ export function NotebookLMStudioModal({
 
   const handleRetryArtifactSync = async (artifact: NotebookLMArtifact) => {
     if (!currentTopic) return;
+    if (retryingArtifactIds.has(artifact.id)) return;
+
     const session = await getOrEnsureSession(currentTopic.id);
     if (!session) {
       setSyncWarning('Chưa thể đồng bộ artifact vì chưa có phiên nghiên cứu.');
       return;
     }
+
+    setRetryingArtifactIds((prev) => new Set(prev).add(artifact.id));
+    updateStoredArtifact(artifact.id, { syncStatus: 'retrying' });
+    setLocalArtifacts(getStoredArtifacts());
+
     try {
       const latestPackage = session.sourcePackages?.[0];
       const latestPrompt = session.taskPrompts?.[0];
@@ -766,14 +786,25 @@ export function NotebookLMStudioModal({
       });
 
       if (res.ok) {
-        const { artifact: serverArt } = await res.json();
+        const { artifact: serverArt, isDuplicate } = await res.json();
+        const nextSyncStatus: ArtifactSyncStatus = isDuplicate
+          ? 'already_synchronized'
+          : 'synced';
         updateStoredArtifact(artifact.id, {
           id: serverArt.id,
-          syncStatus: 'synced',
+          syncStatus: nextSyncStatus,
+          isDuplicate: Boolean(isDuplicate),
+          syncedAt: new Date().toISOString(),
         });
         setLocalArtifacts(getStoredArtifacts());
         setSessionArtifacts((prev) => [
-          { ...serverArt, sourcePackageVersion: latestPackage?.version || 1 },
+          {
+            ...serverArt,
+            sourcePackageVersion: latestPackage?.version || 1,
+            isDuplicate: Boolean(isDuplicate),
+            syncStatus: nextSyncStatus,
+            syncedAt: new Date().toISOString(),
+          },
           ...prev,
         ]);
         setSyncWarning(null);
@@ -800,6 +831,12 @@ export function NotebookLMStudioModal({
         reason: (err as Error)?.message || 'Retry network error',
         artifactType: artifact.type,
         idempotencyKey: artifact.idempotencyKey,
+      });
+    } finally {
+      setRetryingArtifactIds((prev) => {
+        const next = new Set(prev);
+        next.delete(artifact.id);
+        return next;
       });
     }
   };
@@ -931,6 +968,7 @@ export function NotebookLMStudioModal({
               onFileUpload={handleFileUpload}
               onDeleteLocalArtifact={handleDeleteLocalArtifact}
               onRetryArtifactSync={handleRetryArtifactSync}
+              retryingArtifactIds={retryingArtifactIds}
               onReviewArtifact={(art) => setReviewingArtifact(art)}
               onSelectTopicId={setSelectedTopicId}
               allTopics={topics}

@@ -14,6 +14,13 @@ export type ArtifactSource = 'antigravity-2.0' | 'manual';
 export type ArtifactTarget = 'notebooklm' | 'general';
 export type ArtifactStatus = 'draft' | 'processed' | 'imported';
 
+export type ArtifactSyncStatus =
+  | 'synced'
+  | 'pending'
+  | 'failed'
+  | 'retrying'
+  | 'already_synchronized';
+
 export interface NotebookLMArtifact {
   id: string;
   topicId: string;
@@ -27,7 +34,9 @@ export interface NotebookLMArtifact {
   status?: ArtifactStatus;
   idempotencyKey?: string | null;
   contentHash?: string | null;
-  syncStatus?: 'synced' | 'pending' | 'failed';
+  syncStatus?: ArtifactSyncStatus;
+  syncedAt?: string | null;
+  isDuplicate?: boolean;
 }
 
 export interface SourceMetrics {
