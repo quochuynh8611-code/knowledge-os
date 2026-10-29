@@ -41,6 +41,7 @@ import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import { MindMapSaveModal } from "./MindMapSaveModal";
 import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
 import { MindMapNodeDrawer } from "./MindMapNodeDrawer";
+import { MindMapShortcutModal } from "./MindMapShortcutModal";
 import { TopicFormModal } from "../modals/TopicFormModal";
 import { Toast, ToastType } from "../ui/Toast";
 import {
@@ -74,6 +75,7 @@ import {
   GraduationCap,
   Eye,
   EyeOff,
+  HelpCircle,
 } from "lucide-react";
 import {
   MindMapDocumentHistoryState,
@@ -180,6 +182,7 @@ export function MindMapView({ initialError, onRetry }: MindMapViewProps = {}) {
   const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState<boolean>(false);
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState<boolean>(false);
   const [mindMapError, setMindMapError] = useState<string | null>(initialError || null);
 
   useEffect(() => {
@@ -902,6 +905,23 @@ export function MindMapView({ initialError, onRetry }: MindMapViewProps = {}) {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [activeMode, handleUndo, handleRedo]);
+
+  // Keyboard shortcut listener to toggle shortcut cheatsheet modal (? or Shift + /)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (shouldIgnoreCanvasShortcut(e.target)) return;
+
+      if (e.key === "?" || (e.key === "/" && e.shiftKey)) {
+        e.preventDefault();
+        setIsShortcutModalOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const handleStartRename = useCallback((nodeId: string) => {
     setEditingNodeId(nodeId);
@@ -2120,6 +2140,19 @@ export function MindMapView({ initialError, onRetry }: MindMapViewProps = {}) {
             )}
           </button>
 
+          {/* Keyboard Shortcuts Cheatsheet Opener (PR 5) */}
+          <button
+            type="button"
+            data-testid="btn-mindmap-shortcuts"
+            onClick={() => setIsShortcutModalOpen(true)}
+            title="Bảng phím tắt MindMap (Nhấn ?)"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 hover:border-amber-500/60 dark:hover:border-amber-500/60 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer shadow-2xs"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="hidden sm:inline">Phím tắt</span>
+            <span className="sm:hidden">?</span>
+          </button>
+
           {/* Undo / Redo Actions (Phase P5) */}
           {activeMode === "saved-document" && (
             <div className="flex items-center bg-stone-50 dark:bg-stone-800/80 border border-stone-200 dark:border-stone-700 rounded-xl p-0.5">
@@ -2517,6 +2550,12 @@ export function MindMapView({ initialError, onRetry }: MindMapViewProps = {}) {
         onOpenDocument={handleOpenSavedDocument}
         onRenameDocument={handleRenameDocument}
         onArchiveDocument={handleArchiveDocument}
+      />
+
+      {/* Keyboard Shortcuts Cheatsheet Modal (PR 5) */}
+      <MindMapShortcutModal
+        isOpen={isShortcutModalOpen}
+        onClose={() => setIsShortcutModalOpen(false)}
       />
 
       {/* Delete Node Confirmation Modal */}
