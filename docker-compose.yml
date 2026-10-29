@@ -60,6 +60,29 @@ services:
     networks:
       - knowledge_os_net
 
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: knowledge-os-app:latest
+    container_name: knowledge-os-backup
+    profiles: ["maintenance"]
+    restart: "no"
+    command: node scripts/backup-database.mjs
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      BACKUP_DIR: /app/backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-10}
+      NODE_ENV: production
+    volumes:
+      - ./backups:/app/backups
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - knowledge_os_net
+
 volumes:
   knowledge_os_postgres_data:
     name: knowledge_os_postgres_data

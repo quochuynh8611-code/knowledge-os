@@ -20,11 +20,9 @@ import type {
   FlashcardLifecycleStatus,
   FlashcardPriorityFilter,
 } from "../../types/flashcard";
-import {
-  calculateStreakDays,
-  isLowRetention,
-} from "../../lib/flashcardReviewSessionUtils";
+import { calculateStreakDays, isLowRetention } from "../../lib/flashcardReviewSessionUtils";
 import { Prisma } from "@prisma/client";
+import { logStructuredEvent } from "../../lib/security";
 
 export interface FlashcardProgressStats {
   totalCards: number;
@@ -196,6 +194,11 @@ export async function createFlashcard(input: unknown): Promise<Flashcard> {
         include: { schedule: true },
       });
       if (existingAfterRace) {
+        logStructuredEvent("info", "FLASHCARD_P2002_RECOVERED", {
+          idempotencyKey,
+          flashcardId: existingAfterRace.id,
+          topicId: existingAfterRace.topicId,
+        });
         return mapPrismaFlashcard(existingAfterRace);
       }
     }

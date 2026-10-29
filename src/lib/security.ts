@@ -147,10 +147,11 @@ function sanitizeMetadata(data: unknown): unknown {
     for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
       const lowerKey = key.toLowerCase();
       if (
-        lowerKey.includes("key") ||
+        (lowerKey.includes("key") && lowerKey !== "idempotencykey") ||
         lowerKey.includes("secret") ||
         lowerKey.includes("password") ||
-        lowerKey.includes("token")
+        lowerKey.includes("token") ||
+        lowerKey.includes("rawcontent")
       ) {
         sanitizedObj[key] = "[REDACTED]";
       } else {

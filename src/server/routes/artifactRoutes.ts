@@ -7,6 +7,7 @@ import {
   ImportArtifactNoteSchema,
   ImportArtifactFlashcardsSchema,
 } from "../../lib/researchHubValidation";
+import { logStructuredEvent } from "../../lib/security";
 
 export function createArtifactRouter(prisma: PrismaClient) {
   const router = Router();
@@ -34,6 +35,14 @@ export function createArtifactRouter(prisma: PrismaClient) {
         citations: parsed.data.citations,
         metadata: parsed.data.metadata,
       });
+
+      if (isDuplicate) {
+        logStructuredEvent("info", "ARTIFACT_INGEST_DUPLICATE", {
+          artifactId: artifact.id,
+          idempotencyKey: artifact.idempotencyKey || req.body.idempotencyKey,
+          artifactType: artifact.artifactType,
+        });
+      }
 
       return res.status(isDuplicate ? 200 : 201).json({
         artifact,
