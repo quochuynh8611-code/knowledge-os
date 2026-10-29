@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
+  ShieldAlert,
   History,
   RotateCcw,
   Trash2,
@@ -44,10 +45,23 @@ export function AutoBackupControlPanel({
   } | null>(null);
   const [guardFeedback, setGuardFeedback] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [pendingRestoreSnapshot, setPendingRestoreSnapshot] = useState<AutoBackupSnapshotRecord | null>(null);
 
   useEffect(() => {
     setSnapshots(getAutoBackupSnapshots());
   }, []);
+
+  // Escape key listener to close restore confirmation modal
+  useEffect(() => {
+    if (!pendingRestoreSnapshot) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setPendingRestoreSnapshot(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingRestoreSnapshot]);
 
   const handleToggleEnabled = (e: React.ChangeEvent<HTMLInputElement>) => {
     const updated = saveAutoBackupPreferences({ enabled: e.target.checked });
@@ -324,7 +338,7 @@ export function AutoBackupControlPanel({
                     type="button"
                     data-testid={`restore-auto-snapshot-btn-${snapshot.id}`}
                     disabled={restoringId === snapshot.id}
-                    onClick={() => handleRestore(snapshot)}
+                    onClick={() => setPendingRestoreSnapshot(snapshot)}
                     className="py-1 px-2.5 bg-stone-100 dark:bg-stone-800 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-800 dark:hover:text-amber-300 text-stone-700 dark:text-stone-300 rounded-lg text-xs font-medium flex items-center gap-1 transition cursor-pointer disabled:opacity-50"
                   >
                     <RotateCcw className="w-3 h-3" />
@@ -345,6 +359,94 @@ export function AutoBackupControlPanel({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal for Destructive Auto-Backup Restore */}
+      {pendingRestoreSnapshot && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-restore-title"
+          data-testid="auto-backup-restore-confirm-dialog"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 dark:bg-stone-950/80 backdrop-blur-xs"
+        >
+          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl w-full max-w-md p-5 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <h4
+                  id="confirm-restore-title"
+                  className="text-sm font-bold text-stone-900 dark:text-stone-100"
+                >
+                  Xác Nhận Khôi Phục Bản Sao Lưu
+                </h4>
+                <p className="text-xs text-rose-600 dark:text-rose-400 font-medium leading-relaxed">
+                  Hành động này sẽ ghi đè và thay thế toàn bộ dữ liệu trong không gian làm việc hiện tại! Bạn có chắc chắn muốn tiếp tục?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 dark:text-stone-400">Thời gian tạo:</span>
+                <span className="font-semibold text-stone-900 dark:text-stone-100">
+                  {new Date(pendingRestoreSnapshot.createdAt).toLocaleString('vi-VN')}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 dark:text-stone-400">Quy mô snapshot:</span>
+                <span className="font-mono font-semibold text-stone-900 dark:text-stone-100">
+                  {pendingRestoreSnapshot.totalEntities} thực thể ({(pendingRestoreSnapshot.sizeBytes / 1024).toFixed(1)} KB)
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-stone-500 dark:text-stone-400">Mã định danh:</span>
+                <span className="font-mono text-[10px] text-stone-600 dark:text-stone-300 bg-stone-200 dark:bg-stone-700 px-1.5 py-0.5 rounded">
+                  #{pendingRestoreSnapshot.fingerprint.slice(0, 8)}
+                </span>
+              </div>
+              {pendingRestoreSnapshot.label && (
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-500 dark:text-stone-400">Nhãn lưu:</span>
+                  <span className="italic text-stone-700 dark:text-stone-300">
+                    {pendingRestoreSnapshot.label}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+              * Hệ thống sẽ tự động chụp một bản lưu an toàn (Pre-Restore Snapshot) ngay trước khi thực thi để bạn có thể hoàn tác nếu cần.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <button
+                type="button"
+                data-testid="auto-backup-restore-cancel-btn"
+                onClick={() => setPendingRestoreSnapshot(null)}
+                className="px-3.5 py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                data-testid="auto-backup-restore-confirm-btn"
+                disabled={restoringId === pendingRestoreSnapshot.id}
+                onClick={async () => {
+                  const target = pendingRestoreSnapshot;
+                  setPendingRestoreSnapshot(null);
+                  await handleRestore(target);
+                }}
+                className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{restoringId === pendingRestoreSnapshot.id ? 'Đang khôi phục...' : 'Xác nhận khôi phục'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
