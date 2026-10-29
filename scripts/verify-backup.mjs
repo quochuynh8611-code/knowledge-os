@@ -4,6 +4,7 @@
  * scripts/verify-backup.mjs
  * 
  * Verifies integrity of a backup archive by comparing actual SHA-256 against checksum file.
+ * Prioritizes backup.dump over backup.json when verifying a directory.
  */
 
 import fs from 'fs';
@@ -32,11 +33,16 @@ let checksumFile = '';
 
 if (fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()) {
   targetDir = targetPath;
-  const files = fs.readdirSync(targetDir);
-  const possibleBackup = files.find((f) => f.startsWith('backup.') || f.endsWith('.json') || f.endsWith('.dump'));
-  if (possibleBackup) {
-    backupFile = path.join(targetDir, possibleBackup);
+  const dumpPath = path.join(targetDir, 'backup.dump');
+  const jsonPath = path.join(targetDir, 'backup.json');
+
+  // Explicit priority: backup.dump > backup.json
+  if (fs.existsSync(dumpPath)) {
+    backupFile = dumpPath;
+  } else if (fs.existsSync(jsonPath)) {
+    backupFile = jsonPath;
   }
+
   checksumFile = path.join(targetDir, 'checksum.sha256');
 } else if (fs.existsSync(targetPath)) {
   backupFile = targetPath;
@@ -54,13 +60,13 @@ if (fs.existsSync(targetPath) && fs.statSync(targetPath).isDirectory()) {
   process.exit(1);
 }
 
-if (!fs.existsSync(backupFile) || !fs.existsSync(checksumFile)) {
+if (!backupFile || !fs.existsSync(backupFile) || !fs.existsSync(checksumFile)) {
   console.error(
     JSON.stringify({
       timestamp: new Date().toISOString(),
       level: 'error',
       event: 'BACKUP_CHECKSUM_INVALID',
-      metadata: { targetDir, error: 'Không tìm thấy backup file hoặc checksum.sha256' },
+      metadata: { targetDir, error: 'Không tìm thấy backup file (backup.dump hoặc backup.json) hoặc checksum.sha256' },
     })
   );
   process.exit(1);
@@ -99,4 +105,3 @@ if (actualSha256 === expectedSha256) {
   );
   process.exit(1);
 }
-

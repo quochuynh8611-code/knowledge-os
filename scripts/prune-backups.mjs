@@ -4,7 +4,8 @@
  * scripts/prune-backups.mjs
  * 
  * Retention policy enforcer for database backups.
- * Prunes backups older than BACKUP_RETENTION_DAYS while ensuring the newest backup is NEVER deleted.
+ * Prunes backups older than BACKUP_RETENTION_DAYS while ensuring at least
+ * BACKUP_MIN_KEEP (default 3) latest backups are NEVER deleted.
  */
 
 import fs from 'fs';
@@ -12,6 +13,7 @@ import path from 'path';
 
 const backupDir = path.resolve(process.env.BACKUP_DIR || './backups');
 const retentionDays = parseInt(process.env.BACKUP_RETENTION_DAYS || '10', 10);
+const minKeep = parseInt(process.env.BACKUP_MIN_KEEP || '3', 10);
 
 if (!fs.existsSync(backupDir)) {
   console.log(
@@ -19,7 +21,7 @@ if (!fs.existsSync(backupDir)) {
       timestamp: new Date().toISOString(),
       level: 'info',
       event: 'BACKUP_RETENTION_COMPLETED',
-      metadata: { retainedCount: 0, prunedCount: 0, message: 'Thư mục backup chưa tồn tại' },
+      metadata: { retentionDays, minKeep, retainedCount: 0, prunedCount: 0, message: 'Thư mục backup chưa tồn tại' },
     })
   );
   process.exit(0);
@@ -45,14 +47,16 @@ const maxAgeMs = retentionDays * 24 * 60 * 60 * 1000;
 let prunedCount = 0;
 let retainedCount = 0;
 
-// The latest entry (last in sorted array) is protected
 const totalEntries = entries.length;
+// Always protect at least minKeep (minimum 1) latest backups
+const protectedCount = Math.min(totalEntries, Math.max(1, minKeep));
+const protectIndexThreshold = totalEntries - protectedCount;
 
 entries.forEach((entry, idx) => {
-  const isLatest = idx === totalEntries - 1;
+  const isProtected = idx >= protectIndexThreshold;
   const ageMs = now - entry.mtimeMs;
 
-  if (!isLatest && ageMs > maxAgeMs) {
+  if (!isProtected && ageMs > maxAgeMs) {
     if (entry.isDirectory) {
       fs.rmSync(entry.fullPath, { recursive: true, force: true });
     } else {
@@ -71,10 +75,10 @@ console.log(
     event: 'BACKUP_RETENTION_COMPLETED',
     metadata: {
       retentionDays,
+      minKeep,
       retainedCount,
       prunedCount,
     },
   })
 );
 process.exit(0);
-
