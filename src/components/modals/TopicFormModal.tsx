@@ -11,7 +11,8 @@ interface TopicFormModalProps {
 }
 
 export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModalProps) {
-  const { categories, addTopic, updateTopic, tags: existingTags } = useData();
+  const { categories = [], addTopic, updateTopic, tags: existingTags = [] } = useData() || {};
+  const safeCategories = Array.isArray(categories) ? categories : [];
 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -24,7 +25,7 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
   const [status, setStatus] = useState<TopicStatus>('not_started');
   const [progress, setProgress] = useState(0);
 
-  const rootCategories = useMemo(() => getRootCategories(categories), [categories]);
+  const rootCategories = useMemo(() => getRootCategories(safeCategories), [safeCategories]);
 
   useEffect(() => {
     if (initialTopic) {
@@ -40,9 +41,9 @@ export function TopicFormModal({ isOpen, onClose, initialTopic }: TopicFormModal
     } else {
       setTitle('');
       setSlug('');
-      const defaultCat = categories[0]?.id || '';
+      const defaultCat = safeCategories[0]?.id || '';
       setCategoryId(defaultCat);
-      const defaultCatObj = categories.find((c) => c.id === defaultCat);
+      const defaultCatObj = safeCategories.find((c) => c.id === defaultCat);
       setType(defaultCatObj?.type || rootCategories[0]?.slug || rootCategories[0]?.type || 'general');
       setDescription('');
       setContent('## 1. Giới thiệu tổng quan\n\n## 2. Các nguyên lý cốt lõi\n\n## 3. Ứng dụng thực hành\n');

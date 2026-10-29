@@ -41,6 +41,7 @@ import { MindMapImportPreviewModal } from "./MindMapImportPreviewModal";
 import { MindMapSaveModal } from "./MindMapSaveModal";
 import { MindMapDocumentBrowserModal } from "./MindMapDocumentBrowserModal";
 import { MindMapNodeDrawer } from "./MindMapNodeDrawer";
+import { TopicFormModal } from "../modals/TopicFormModal";
 import { Toast, ToastType } from "../ui/Toast";
 import {
   Network,
@@ -49,6 +50,9 @@ import {
   AlignHorizontalDistributeCenter,
   AlignVerticalDistributeCenter,
   AlertTriangle,
+  AlertCircle,
+  Plus,
+  RefreshCw,
   BookOpen,
   Info,
   Share2,
@@ -153,7 +157,12 @@ function findDocumentNodeById(
   return null;
 }
 
-export function MindMapView() {
+export interface MindMapViewProps {
+  initialError?: string;
+  onRetry?: () => void;
+}
+
+export function MindMapView({ initialError, onRetry }: MindMapViewProps = {}) {
   const { topics, notes, resources, selectedTopicId } = useData();
 
   const [layoutMode, setLayoutMode] =
@@ -170,6 +179,22 @@ export function MindMapView() {
   const [copied, setCopied] = useState<boolean>(false);
   const [isExportingPng, setIsExportingPng] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState<boolean>(false);
+  const [mindMapError, setMindMapError] = useState<string | null>(initialError || null);
+
+  useEffect(() => {
+    if (initialError !== undefined) {
+      setMindMapError(initialError);
+    }
+  }, [initialError]);
+
+  const handleRetryMindMap = useCallback(() => {
+    setMindMapError(null);
+    if (onRetry) {
+      onRetry();
+    }
+  }, [onRetry]);
+
   const [toast, setToast] = useState<{
     message: string;
     type: ToastType;
@@ -1505,6 +1530,49 @@ export function MindMapView() {
 
   const mindMapAiClient = useMemo(() => createGeminiMindMapAiClient(), []);
 
+  // Creation Action for Topic Empty State (PR 4)
+  const handleCreateMindMapForTopic = useCallback(() => {
+    const topic = topicMap.get(activeRootTopicId) || topics[0];
+    if (!topic) return;
+
+    const initialTree: MindMapDocumentNode = {
+      id: topic.id,
+      title: topic.title,
+      nodeType: "topic",
+      children: [],
+    };
+
+    const result = createMindMapDocument({
+      title: `Sơ đồ tư duy: ${topic.title}`,
+      description: topic.description || `Sơ đồ tư duy cho chủ đề ${topic.title}`,
+      rootTopicId: topic.id,
+      treeData: initialTree,
+      crossLinks: [],
+      changeSummary: "Khởi tạo sơ đồ tư duy từ chủ đề",
+      viewState: {
+        layoutMode,
+        collapsedNodeIds: [],
+        showCrossLinks: false,
+      },
+    });
+
+    if (result.success && result.data) {
+      setActiveDocumentId(result.data.document.id);
+      setActiveMode("saved-document");
+      setIsVolatileStorage(result.isVolatile);
+      const projected = documentTreeToProjectedTree(initialTree, layoutMode);
+      setWorkingDocumentTree(projected);
+      setWorkingDocumentCrossLinks([]);
+      setHistoryState(createMindMapDocumentHistory(projected));
+      setIsDirty(false);
+      setSavedDocsRevision((r) => r + 1);
+      setToast({
+        message: `Đã tạo sơ đồ tư duy cho "${topic.title}"`,
+        type: "success",
+      });
+    }
+  }, [activeRootTopicId, topicMap, topics, layoutMode]);
+
   // Persistence Actions (Phase P1 & P2)
   const handleSaveNewDocument = useCallback(
     (title: string, description?: string, changeSummary?: string) => {
@@ -2201,7 +2269,35 @@ export function MindMapView() {
       )}
 
       {/* Main Canvas Stage */}
-      {projection ? (
+      {mindMapError ? (
+        <div
+          data-testid="mindmap-error-state"
+          className="p-8 sm:p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-rose-200 dark:border-rose-900/60 space-y-4 max-w-xl mx-auto my-8 shadow-xs"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto shadow-2xs">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+              Không thể tải sơ đồ tư duy
+            </h3>
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed max-w-md mx-auto">
+              {mindMapError}
+            </p>
+          </div>
+          <div className="pt-2">
+            <button
+              type="button"
+              data-testid="btn-retry-mindmap"
+              onClick={handleRetryMindMap}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Thử lại</span>
+            </button>
+          </div>
+        </div>
+      ) : projection ? (
         <MindMapTreeCanvas
           tree={projection.tree}
           layoutMode={layoutMode}
@@ -2248,16 +2344,144 @@ export function MindMapView() {
           onNavigateToResource={handleNavigateToResource}
           findNoteContent={findNoteContent}
         />
-      ) : (
-        <div className="p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-3">
-          <Network className="w-8 h-8 mx-auto text-stone-400" />
-          <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
-            Không thể sinh sơ đồ tư duy
-          </p>
-          <p className="text-xs text-stone-500 dark:text-stone-400 max-w-md mx-auto">
-            Chủ đề được chọn chưa có dữ liệu hoặc không tồn tại trong cây tri thức.
-          </p>
+      ) : topics.length === 0 ? (
+        /* Empty State A: Workspace has NO topics */
+        <div
+          data-testid="mindmap-empty-state-no-topics"
+          className="p-8 sm:p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-6 max-w-2xl mx-auto my-8 shadow-xs"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 flex items-center justify-center mx-auto shadow-2xs">
+            <Network className="w-6 h-6" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
+              Bắt đầu sơ đồ tư duy đầu tiên
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
+              Sơ đồ tư duy giúp bạn tổ chức chủ đề và phát triển các ý chính một cách trực quan và mạch lạc.
+            </p>
+          </div>
+
+          {/* Primary & Secondary CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <button
+              type="button"
+              data-testid="btn-create-first-topic"
+              onClick={() => setIsTopicModalOpen(true)}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tạo chủ đề &amp; sơ đồ đầu tiên</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-empty-import-markdown"
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <FileCode className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Nhập từ Markdown</span>
+            </button>
+          </div>
+
+          {/* Minimal 3-step Onboarding */}
+          <div className="pt-6 border-t border-stone-100 dark:border-stone-800/80">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-3">
+              Hướng dẫn nhanh 3 bước
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">1</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Chọn chủ đề</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Chọn một chủ đề để bắt đầu.</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">2</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Tạo hoặc nhập</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Tạo sơ đồ từ ghi chú hoặc nhập Markdown.</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">3</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Phát triển ý</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Thêm nhánh chính rồi phát triển ý chi tiết.</p>
+              </div>
+            </div>
+          </div>
         </div>
+      ) : (
+        /* Empty State B: Topics exist, but selected topic has NO MindMap / node */
+        <div
+          data-testid="mindmap-empty-state-no-mindmap"
+          className="p-8 sm:p-12 text-center bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 space-y-6 max-w-2xl mx-auto my-8 shadow-xs"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 flex items-center justify-center mx-auto shadow-2xs">
+            <Network className="w-6 h-6" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white">
+              Chưa có sơ đồ tư duy cho chủ đề này
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
+              Chủ đề được chọn chưa có sơ đồ tư duy. Bạn có thể tạo sơ đồ mới từ chủ đề này hoặc nhập cấu trúc từ Markdown.
+            </p>
+          </div>
+
+          {/* Primary & Secondary CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <button
+              type="button"
+              data-testid="btn-create-mindmap-for-topic"
+              onClick={handleCreateMindMapForTopic}
+              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tạo sơ đồ tư duy</span>
+            </button>
+            <button
+              type="button"
+              data-testid="btn-empty-import-markdown"
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition cursor-pointer"
+            >
+              <FileCode className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Nhập từ Markdown</span>
+            </button>
+          </div>
+
+          {/* Minimal 3-step Onboarding */}
+          <div className="pt-6 border-t border-stone-100 dark:border-stone-800/80">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 dark:text-stone-500 mb-3">
+              Hướng dẫn nhanh 3 bước
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">1</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Chọn chủ đề</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Chọn một chủ đề để bắt đầu.</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">2</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Tạo hoặc nhập</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Tạo sơ đồ từ ghi chú hoặc nhập Markdown.</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200/60 dark:border-stone-700/50 space-y-1.5">
+                <span className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-bold flex items-center justify-center font-mono">3</span>
+                <p className="text-xs font-semibold text-stone-900 dark:text-stone-100">Phát triển ý</p>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-normal">Thêm nhánh chính rồi phát triển ý chi tiết.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Topic Creation Modal (PR 4) */}
+      {isTopicModalOpen && (
+        <TopicFormModal
+          isOpen={isTopicModalOpen}
+          onClose={() => setIsTopicModalOpen(false)}
+        />
       )}
 
       {/* Import / Preview Sandbox Modal */}
