@@ -36,6 +36,7 @@ export interface FlashcardFormModalProps {
   restoreFocusRef?: React.RefObject<HTMLElement | null>;
   defaultNoteId?: string;
   editingCard?: Flashcard | null;
+  onShowToast?: (message: string, type?: "success" | "error" | "info") => void;
 }
 
 const defaultRepository =
@@ -68,6 +69,7 @@ export function FlashcardFormModal({
   restoreFocusRef,
   defaultNoteId,
   editingCard,
+  onShowToast,
 }: FlashcardFormModalProps) {
   const isEdit = Boolean(editingCard);
   const dataContext = useSafeData();
@@ -102,6 +104,11 @@ export function FlashcardFormModal({
   const [errorFront, setErrorFront] = useState<string>("");
   const [errorBack, setErrorBack] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{
+    type: "success" | "info" | "error";
+    text: string;
+  } | null>(null);
+  const isSubmittingRef = useRef<boolean>(false);
 
   const frontInputRef = useRef<HTMLTextAreaElement>(null);
   const prevIsOpenRef = useRef(false);
@@ -260,8 +267,11 @@ export function FlashcardFormModal({
     }
 
     if (hasError) return;
+    if (submitting || isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
+    setFeedbackMessage(null);
     try {
       if (isEdit && editingCard) {
         let updated: Flashcard;
@@ -308,18 +318,32 @@ export function FlashcardFormModal({
           lifecycleStatus: "active",
         });
 
+        const isExisting = (created as any)?.outcome === "existing";
+        const feedbackText = isExisting
+          ? "Thẻ này đã tồn tại — không tạo trùng."
+          : "Đã tạo thẻ ôn tập thành công.";
+        setFeedbackMessage({
+          type: isExisting ? "info" : "success",
+          text: feedbackText,
+        });
+        onShowToast?.(feedbackText, isExisting ? "info" : "success");
         onSuccess?.(created);
         onClose();
       }
     } catch (err: unknown) {
-      const msg =
+      const rawMsg =
         err instanceof Error
           ? err.message
           : isEdit
           ? "Cập nhật thẻ thất bại"
           : "Tạo thẻ thất bại";
-      setErrorFront(msg);
+      const sanitizedMsg = rawMsg
+        .replace(/postgres(ql)?:\/\/[^\s]+/gi, "[REDACTED_URL]")
+        .replace(/password=[^\s]+/gi, "password=[REDACTED]");
+      setErrorFront(sanitizedMsg);
+      setFeedbackMessage({ type: "error", text: sanitizedMsg });
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -388,6 +412,23 @@ export function FlashcardFormModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {/* Feedback Message */}
+          {feedbackMessage && (
+            <div
+              data-testid="flashcard-form-feedback"
+              role="status"
+              className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+                feedbackMessage.type === "error"
+                  ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                  : feedbackMessage.type === "info"
+                  ? "bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800"
+                  : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+              }`}
+            >
+              <span>{feedbackMessage.text}</span>
+            </div>
+          )}
+
           {/* Topic Selector */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">
