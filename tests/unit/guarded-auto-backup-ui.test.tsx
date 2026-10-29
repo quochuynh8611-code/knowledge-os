@@ -149,6 +149,10 @@ describe('Phase 6B: Guarded Auto-Backup UI Integration & Control Panel', () => {
     const restoreBtn = screen.getByTestId(`restore-auto-snapshot-btn-${targetSnapshotId}`);
     fireEvent.click(restoreBtn);
 
+    // Confirmation gate: click confirm button
+    const confirmBtn = screen.getByTestId('auto-backup-restore-confirm-btn');
+    fireEvent.click(confirmBtn);
+
     await waitFor(() => {
       expect(mockRestoreHandler).toHaveBeenCalledTimes(1);
     });
