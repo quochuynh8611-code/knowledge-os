@@ -47,9 +47,13 @@ services:
     container_name: knowledge-os-db-schema
     profiles: ["tools"]
     restart: "no"
-    command: npx prisma db push
+    command: node scripts/safe-prisma-db-push.mjs
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      ALLOW_PRISMA_DB_PUSH: ${ALLOW_PRISMA_DB_PUSH:-false}
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./scripts:/app/scripts:ro
     depends_on:
       postgres:
         condition: service_healthy
