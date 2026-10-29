@@ -18,7 +18,13 @@ export type ArtifactType =
   | 'study_guide'
   | 'briefing_doc'
   | 'qa_pair'
-  | 'raw_markdown';
+  | 'raw_markdown'
+  | 'audio_overview_summary'
+  | 'faq'
+  | 'dialectic_matrix'
+  | 'socratic_inquiry'
+  | 'mindmap_outline'
+  | 'source_pack';
 
 export type ArtifactStatus =
   | 'received'

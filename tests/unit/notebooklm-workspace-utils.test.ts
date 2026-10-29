@@ -162,12 +162,13 @@ describe('NotebookLM Workspace Utils Test Suite (Slice 1)', () => {
     expect(toNotebookLMArtifactType('unknown_type')).toBe('study_guide');
     expect(toNotebookLMArtifactType('unknown_type', 'faq')).toBe('faq');
 
-    // DTO mapping
+    // DTO mapping (Aligned Phase 14 Contract)
     expect(mapLocalArtifactTypeToDTO('study_guide')).toBe('study_guide');
-    expect(mapLocalArtifactTypeToDTO('audio_overview_summary')).toBe('study_guide');
+    expect(mapLocalArtifactTypeToDTO('audio_overview_summary')).toBe('audio_overview_summary');
     expect(mapLocalArtifactTypeToDTO('briefing_doc')).toBe('briefing_doc');
-    expect(mapLocalArtifactTypeToDTO('faq')).toBe('qa_pair');
-    expect(mapLocalArtifactTypeToDTO('source_pack')).toBe('raw_markdown');
+    expect(mapLocalArtifactTypeToDTO('faq')).toBe('faq');
+    expect(mapLocalArtifactTypeToDTO('source_pack')).toBe('source_pack');
+    expect(mapLocalArtifactTypeToDTO('mindmap_outline')).toBe('mindmap_outline');
     expect(mapLocalArtifactTypeToDTO('unknown_type')).toBe('study_guide');
   });
 
