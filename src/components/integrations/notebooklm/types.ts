@@ -104,6 +104,7 @@ export interface NotebookLMResultsStepProps {
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDeleteLocalArtifact: (id: string) => void;
   onRetryArtifactSync?: (artifact: NotebookLMArtifact) => void;
+  retryingArtifactIds?: Set<string>;
   onReviewArtifact: (artifact: GroundedArtifactDTO) => void;
   onSelectTopicId: (id: string) => void;
   allTopics: Topic[];
