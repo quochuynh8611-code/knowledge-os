@@ -1696,7 +1696,10 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   async recordReviewAtomic(input: unknown): Promise<FlashcardReviewResponse> {
-    const url = this.getUrl("/flashcards/review") || `${this.apiBaseUrl}/flashcards/review`;
+    const url = this.getUrl("/flashcards/review");
+    if (!url) {
+      return this.localFallback.recordReviewAtomic(input);
+    }
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -1743,7 +1746,10 @@ export class ApiDataRepository implements IDataRepository {
     topicId?: string;
   }): Promise<FlashcardProgressStats> {
     const query = filters?.topicId ? `?topicId=${encodeURIComponent(filters.topicId)}` : "";
-    const url = this.getUrl(`/flashcards/progress${query}`) || `${this.apiBaseUrl}/flashcards/progress${query}`;
+    const url = this.getUrl(`/flashcards/progress${query}`);
+    if (!url) {
+      return this.localFallback.getFlashcardProgress(filters);
+    }
     try {
       const res = await fetch(url);
       if (res.ok) {

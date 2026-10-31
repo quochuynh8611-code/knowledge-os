@@ -24,6 +24,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ApiDataRepository, LocalStorageDataRepository } from "../../src/services/dataRepository";
+import type { FlashcardReviewResponse, FlashcardReviewInput } from "../../src/types/flashcard";
 
 describe("ApiDataRepository - Flashcard Network Guard Contract", () => {
   interface RecordedCall {
@@ -205,6 +206,75 @@ describe("ApiDataRepository - Flashcard Network Guard Contract", () => {
       expect(dueCards.length).toBeGreaterThanOrEqual(1);
       expect(dueCards[0].topicId).toBe("topic-due");
     });
+
+    it("A4. recordReviewAtomic: does NOT call transport, executes local review calculation and schedule update", async () => {
+      installUnmockedJournalBlocker();
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      const created = await local.createFlashcard({
+        topicId: "topic-review",
+        type: "basic",
+        front: "Front to review",
+        back: "Back to review",
+      });
+
+      const localReviewSpy = vi.spyOn(local, "recordReviewAtomic");
+
+      const reviewInput = {
+        clientEventId: "evt-local-1",
+        flashcardId: created.id,
+        topicId: "topic-review",
+        rating: 3 as const,
+        reviewDurationMs: 2500,
+      };
+
+      const response = await repo.recordReviewAtomic(reviewInput);
+
+      // Transport must NOT be touched
+      expect(journal).toHaveLength(0);
+      // Local fallback called exactly once
+      expect(localReviewSpy).toHaveBeenCalledTimes(1);
+      expect(localReviewSpy).toHaveBeenCalledWith(reviewInput);
+      expect(response.success).toBe(true);
+      expect(response.clientEventId).toBe("evt-local-1");
+      expect(response.schedule.repetitions).toBe(1);
+
+      // Verify entity schedule was actually updated in local persistence
+      const cards = await local.getFlashcards({ topicId: "topic-review" });
+      const found = cards.find((c) => c.id === created.id);
+      expect(found?.schedule?.repetitions).toBe(1);
+    });
+
+    it("A5. getFlashcardProgress: does NOT call transport, returns local progress stats matching filter", async () => {
+      installUnmockedJournalBlocker();
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      await local.createFlashcard({
+        topicId: "topic-p1",
+        type: "basic",
+        front: "P1 Front",
+        back: "P1 Back",
+      });
+      await local.createFlashcard({
+        topicId: "topic-p2",
+        type: "basic",
+        front: "P2 Front",
+        back: "P2 Back",
+      });
+
+      const localProgressSpy = vi.spyOn(local, "getFlashcardProgress");
+
+      const progress = await repo.getFlashcardProgress({ topicId: "topic-p1" });
+
+      // Transport must NOT be touched
+      expect(journal).toHaveLength(0);
+      expect(localProgressSpy).toHaveBeenCalledTimes(1);
+      expect(localProgressSpy).toHaveBeenCalledWith({ topicId: "topic-p1" });
+      expect(progress.totalCards).toBe(1);
+      expect(progress.newCards).toBe(1);
+    });
   });
 
   // =========================================================================
@@ -300,6 +370,117 @@ describe("ApiDataRepository - Flashcard Network Guard Contract", () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/flashcards/due?topicId=topic-1"));
     });
+
+    it("B4. recordReviewAtomic: calls transport with POST /flashcards/review and JSON payload, returns server response and syncs local", async () => {
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      const created = await local.createFlashcard({
+        topicId: "topic-1",
+        type: "basic",
+        front: "Front",
+        back: "Back",
+      });
+
+      const serverResponse: FlashcardReviewResponse = {
+        success: true,
+        duplicate: false,
+        clientEventId: "evt-server-1",
+        review: {
+          id: "rev-server-1",
+          clientEventId: "evt-server-1",
+          flashcardId: created.id,
+          topicId: "topic-1",
+          rating: 3,
+          reviewDurationMs: 1200,
+          reviewedAt: "2026-10-31T12:00:00.000Z",
+          stateBefore: "new",
+          stateAfter: "review",
+          intervalBefore: 0,
+          intervalAfter: 1,
+          easeFactorBefore: 2.5,
+          easeFactorAfter: 2.5,
+          dueBeforeAt: "2026-10-31T12:00:00.000Z",
+          dueAfterAt: "2026-11-01T12:00:00.000Z",
+        },
+        schedule: {
+          id: `fcs-${created.id}`,
+          flashcardId: created.id,
+          state: "review",
+          dueAt: "2026-11-01T12:00:00.000Z",
+          interval: 1,
+          easeFactor: 2.5,
+          repetitions: 1,
+          lapses: 0,
+          lastReviewedAt: "2026-10-31T12:00:00.000Z",
+          updatedAt: "2026-10-31T12:00:00.000Z",
+        },
+      };
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => serverResponse,
+      });
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const reviewInput: FlashcardReviewInput = {
+        clientEventId: "evt-server-1",
+        flashcardId: created.id,
+        topicId: "topic-1",
+        rating: 3,
+        reviewDurationMs: 1200,
+      };
+
+      const localReviewSpy = vi.spyOn(local, "recordReviewAtomic");
+
+      const res = await repo.recordReviewAtomic(reviewInput);
+
+      expect(res).toEqual(serverResponse);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/flashcards/review"),
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reviewInput),
+        })
+      );
+      expect(localReviewSpy).toHaveBeenCalledTimes(1);
+      expect(localReviewSpy).toHaveBeenCalledWith(reviewInput);
+
+      // Verify schedule in local persistence advanced by 1 step
+      const cards = await local.getFlashcards({ topicId: "topic-1" });
+      const found = cards.find((c) => c.id === created.id);
+      expect(found?.schedule?.repetitions).toBe(1);
+      expect(found?.schedule?.state).toBe("review");
+    });
+
+    it("B5. getFlashcardProgress: calls transport with query string and returns server progress", async () => {
+      const serverProgress = {
+        totalCards: 10,
+        newCards: 2,
+        learningCards: 3,
+        reviewCards: 5,
+        dueToday: 4,
+        retentionRate: 85,
+      };
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => serverProgress,
+      });
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      const progress = await repo.getFlashcardProgress({ topicId: "topic-p1" });
+
+      expect(progress.totalCards).toBe(10);
+      expect(progress.retentionRate).toBe(85);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/flashcards/progress?topicId=topic-p1"));
+    });
   });
 
   // =========================================================================
@@ -393,6 +574,158 @@ describe("ApiDataRepository - Flashcard Network Guard Contract", () => {
 
       expect(due).toHaveLength(1);
       expect(due[0].front).toBe("Fallback Front");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("C5. recordReviewAtomic: falls back to local execution when transport returns HTTP 500", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      });
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      const created = await local.createFlashcard({
+        topicId: "topic-err",
+        type: "basic",
+        front: "Front",
+        back: "Back",
+      });
+
+      const localReviewSpy = vi.spyOn(local, "recordReviewAtomic");
+
+      const reviewInput: FlashcardReviewInput = {
+        clientEventId: "evt-fail-500",
+        flashcardId: created.id,
+        topicId: "topic-err",
+        rating: 3,
+        reviewDurationMs: 1500,
+      };
+
+      const res = await repo.recordReviewAtomic(reviewInput);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/flashcards/review"),
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reviewInput),
+        })
+      );
+      expect(localReviewSpy).toHaveBeenCalledTimes(1);
+      expect(localReviewSpy).toHaveBeenCalledWith(reviewInput);
+
+      expect(res.success).toBe(true);
+      expect(res.clientEventId).toBe("evt-fail-500");
+      expect(res.review.flashcardId).toBe(created.id);
+      expect(res.review.rating).toBe(3);
+      expect(res.schedule.repetitions).toBe(1);
+      expect(res.schedule.state).toBe("review");
+
+      // Verify entity schedule was actually updated in local persistence
+      const cards = await local.getFlashcards({ topicId: "topic-err" });
+      const found = cards.find((c) => c.id === created.id);
+      expect(found?.schedule?.repetitions).toBe(1);
+      expect(found?.schedule?.state).toBe("review");
+    });
+
+    it("C6. recordReviewAtomic: falls back to local execution when transport throws network rejection", async () => {
+      const mockFetch = vi.fn().mockRejectedValue(new Error("Network timeout"));
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      const created = await local.createFlashcard({
+        topicId: "topic-err",
+        type: "basic",
+        front: "Front",
+        back: "Back",
+      });
+
+      const localReviewSpy = vi.spyOn(local, "recordReviewAtomic");
+
+      const reviewInput: FlashcardReviewInput = {
+        clientEventId: "evt-fail-reject",
+        flashcardId: created.id,
+        topicId: "topic-err",
+        rating: 1,
+        reviewDurationMs: 3000,
+      };
+
+      const res = await repo.recordReviewAtomic(reviewInput);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/flashcards/review"),
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reviewInput),
+        })
+      );
+      expect(localReviewSpy).toHaveBeenCalledTimes(1);
+      expect(localReviewSpy).toHaveBeenCalledWith(reviewInput);
+
+      expect(res.success).toBe(true);
+      expect(res.clientEventId).toBe("evt-fail-reject");
+      expect(res.review.flashcardId).toBe(created.id);
+      expect(res.review.rating).toBe(1);
+      expect(res.schedule.repetitions).toBe(0);
+      expect(res.schedule.state).toBe("relearning");
+      expect(res.schedule.lapses).toBe(1);
+
+      // Verify entity schedule was actually updated in local persistence
+      const cards = await local.getFlashcards({ topicId: "topic-err" });
+      const found = cards.find((c) => c.id === created.id);
+      expect(found?.schedule?.repetitions).toBe(0);
+      expect(found?.schedule?.state).toBe("relearning");
+      expect(found?.schedule?.lapses).toBe(1);
+    });
+
+    it("C7. getFlashcardProgress: falls back to local repository when transport returns HTTP 500", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      });
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      await local.createFlashcard({
+        topicId: "topic-p-fail",
+        type: "basic",
+        front: "P Front",
+        back: "P Back",
+      });
+
+      const progress = await repo.getFlashcardProgress({ topicId: "topic-p-fail" });
+
+      expect(progress.totalCards).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("C8. getFlashcardProgress: falls back to local repository when transport throws network rejection", async () => {
+      const mockFetch = vi.fn().mockRejectedValue(new Error("Network connection dropped"));
+      globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+      const local = new LocalStorageDataRepository();
+      const repo = new ApiDataRepository("/api", local);
+
+      await local.createFlashcard({
+        topicId: "topic-p-fail2",
+        type: "basic",
+        front: "P Front 2",
+        back: "P Back 2",
+      });
+
+      const progress = await repo.getFlashcardProgress({ topicId: "topic-p-fail2" });
+
+      expect(progress.totalCards).toBe(1);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
