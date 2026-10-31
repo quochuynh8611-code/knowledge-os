@@ -35,9 +35,12 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
 
   const mockTopics: Topic[] = [mockTopicFixture];
 
+  let rehydrationUnexpectedRequests: string[] = [];
+
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem(STORAGE_VERSION_KEY, '4');
+    rehydrationUnexpectedRequests = [];
     vi.restoreAllMocks();
   });
 
@@ -49,12 +52,53 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     <DataProvider>{children}</DataProvider>
   );
 
+  const mockCategory = {
+    id: 'cat-test-1',
+    name: 'Danh Mục Test',
+    slug: 'danh-muc-test',
+    type: 'general',
+  };
+
+  const setupRehydrationFetchMock = () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const fullUrl = String(input);
+      let pathname = fullUrl;
+      try {
+        const parsed = new URL(fullUrl, 'http://localhost:3000');
+        pathname = parsed.pathname;
+      } catch {
+        // raw fallback
+      }
+      const method = (init?.method || 'GET').toUpperCase();
+      const routeKey = `${method} ${pathname}`;
+
+      if (routeKey === 'GET /api/topics') {
+        return { ok: true, status: 200, json: async () => mockTopics, text: async () => JSON.stringify(mockTopics) } as Response;
+      }
+      if (routeKey === 'GET /api/categories') {
+        return { ok: true, status: 200, json: async () => [mockCategory], text: async () => JSON.stringify([mockCategory]) } as Response;
+      }
+      if (routeKey === 'GET /api/notes') {
+        return { ok: true, status: 200, json: async () => [], text: async () => '[]' } as Response;
+      }
+      if (routeKey === 'GET /api/resources') {
+        return { ok: true, status: 200, json: async () => [], text: async () => '[]' } as Response;
+      }
+
+      // Record unexpected requests (including unexpected POST /api/sync/hydrate during reload)
+      rehydrationUnexpectedRequests.push(routeKey);
+      return {
+        ok: false,
+        status: 404,
+        json: async () => ({ error: `Unexpected request rejected: ${routeKey}` }),
+        text: async () => `Unexpected request rejected: ${routeKey}`,
+      } as Response;
+    });
+  };
+
   it('1. reloadAllData gọi dataRepository.loadInitialData và cập nhật toàn bộ state in-memory khi thành công', async () => {
-    // Given: Mock server API phản hồi thành công danh sách topics
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => mockTopics,
-    } as Response);
+    // Given: Mock server API phản hồi hợp lệ cho 4 endpoints topics, categories, notes, resources
+    setupRehydrationFetchMock();
 
     const { result } = renderHook(() => useData(), { wrapper });
 
@@ -70,14 +114,12 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     expect(typeof result.current.reloadAllData).toBe('function');
     expect(reloadSuccess).toBe(true);
     expect(result.current.topics.length).toBeGreaterThan(0);
+    expect(rehydrationUnexpectedRequests).toEqual([]);
   });
 
   it('2. reloadAllData đồng bộ dữ liệu mới vào LocalStorage chỉ SAU KHI load thành công', async () => {
-    // Given: Mock server API phản hồi thành công
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
-      ok: true,
-      json: async () => mockTopics,
-    } as Response);
+    // Given: Mock server API phản hồi hợp lệ cho 4 endpoints
+    setupRehydrationFetchMock();
 
     const { result } = renderHook(() => useData(), { wrapper });
 
@@ -91,6 +133,7 @@ describe('Phase 2C.1: DataContext Rehydration & State Safety Contracts', () => {
     // Then
     expect(typeof result.current.reloadAllData).toBe('function');
     expect(localStorage.getItem(`${STORAGE_KEY}_topics`)).not.toBeNull();
+    expect(rehydrationUnexpectedRequests).toEqual([]);
   });
 
   it('3. reloadAllData trả về false, bảo toàn nguyên vẹn state cũ và không xóa dữ liệu khi loadInitialData thất bại', async () => {

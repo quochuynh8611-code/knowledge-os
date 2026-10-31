@@ -26,7 +26,13 @@
 4. **Post-Restore Rehydration Lifecycle:**
    - Gọi `dataRepository.restoreBackupSnapshot({ snapshot, mode, confirmReplace })`.
    - Khi server trả về thành công, kích hoạt `reloadAllData()` để đồng bộ lại in-memory state của `DataContext`.
-   - Xử lý cô lập lỗi khi rehydrate thất bại (`rehydrate_failed`): Bảo toàn 100% state cũ, không xóa dữ liệu, không ghi đè LocalStorage.
+   - **Empty Rehydration & Server-Authoritative Contract:**
+     - Bốn collections phản hồi `[]` từ server (gồm categories, topics, notes, resources theo Zero-Default Universal Baseline ADR-076 hoặc snapshot clean-slate) là hoàn toàn hợp lệ.
+     - `reloadAllData()` áp dụng `[]` cho cả in-memory state và LocalStorage cache tương ứng của bốn collections này, không được fallback sang dữ liệu cũ chỉ vì `length === 0`.
+     - **Read-Only Backend Contract:** `reloadAllData()` thuần túy là tác vụ đọc và làm tươi (read-only refresh), tuyệt đối không gửi HTTP mutation (như `POST /api/sync/hydrate`) ngược lên server.
+     - **Atomic Snapshot Commit:** Mọi collection thiết yếu (categories, topics, notes, resources) phải được fetch và validate thành công trước khi cập nhật bất kỳ state hay cache nào. Nếu có lỗi mạng hoặc lỗi schema dữ liệu, hủy bỏ toàn bộ quá trình và giữ nguyên state/cache cũ.
+     - **Giới hạn phạm vi Tags & Concurrency:** Cơ chế rehydration và cache preservation ở task này bao phủ 4 collections chính; chưa bao gồm refresh danh mục Tag frontend hoặc multi-tab conflict resolution. Không tuyên bố toàn bộ workspace đã được làm tươi hoàn toàn cho tới khi các miền dữ liệu mở rộng được tích hợp.
+   - Xử lý cô lập lỗi khi rehydrate thất bại (`rehydrate_failed`): Bảo toàn 100% state cũ, không xóa dữ liệu, không ghi đè LocalStorage, và không tự ý retry thao tác restore phá hủy.
 5. **Offline & Fallback Safety Notice:**
    - Hiển thị cảnh báo rõ ràng khi ứng dụng chạy ở chế độ offline thuần LocalStorage (`UNSUPPORTED_OFFLINE_OPERATION`).
 

@@ -528,6 +528,37 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   // Server-canonical state machine guard (prevents auto-syncing stale cache before server hydration completes)
   const isServerHydratedRef = useRef(false);
 
+  // Snapshot-comparison guard: Track server-applied canonical snapshot signature to prevent redundant writeback of unchanged data
+  const lastServerSnapshotSigRef = useRef<string | null>(null);
+
+  /**
+   * Deterministic full data-only serialization of sync payload contents.
+   * Matches the exact entity arrays and derived links payload that syncHydrate persists.
+   * Safe against missing fields, delimiter ambiguity, and hash collisions.
+   */
+  const computeSyncPayloadSignature = (
+    c: Category[],
+    t: Topic[],
+    n: Note[],
+    r: Resource[],
+    tg: Tag[],
+  ): string | null => {
+    try {
+      const payload = {
+        categories: c,
+        topics: t,
+        notes: n,
+        resources: r,
+        tags: tg,
+        links: extractUniqueLinks(t),
+      };
+      return JSON.stringify(payload);
+    } catch (err) {
+      console.warn("Failed to serialize sync payload signature, bypassing snapshot suppression:", err);
+      return null;
+    }
+  };
+
   // Bootstrap Load & Hydration via DataRepository (Server is SSOT)
   useEffect(() => {
     let isMounted = true;
@@ -583,6 +614,12 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   // Auto-sync to LocalStorage/Server via repository: ONLY runs after server hydration completes
   useEffect(() => {
     if (!isServerHydratedRef.current) {
+      return;
+    }
+
+    const currentSig = computeSyncPayloadSignature(categories, topics, notes, resources, tags);
+    if (currentSig !== null && lastServerSnapshotSigRef.current !== null && lastServerSnapshotSigRef.current === currentSig) {
+      // Snapshot matches server-applied canonical state: skip redundant writeback
       return;
     }
 
@@ -1230,91 +1267,81 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
         window.location.origin &&
         window.location.origin.startsWith("http")
       ) {
+        // 1. Fetch Topics
         const topicsRes = await fetch(`${window.location.origin}/api/topics`);
-        if (!topicsRes.ok) {
-          return false;
-        }
+        if (!topicsRes.ok) return false;
         const topicsData = await topicsRes.json();
-        if (!Array.isArray(topicsData) || topicsData.length === 0) {
+        if (!Array.isArray(topicsData)) return false;
+        // Validate all topics elements
+        for (const t of topicsData) {
+          if (!t || typeof t !== "object" || typeof t.id !== "string" || typeof t.title !== "string") {
+            return false;
+          }
+        }
+
+        // 2. Fetch Categories
+        const categoriesRes = await fetch(`${window.location.origin}/api/categories`);
+        if (!categoriesRes.ok) return false;
+        const categoriesData = await categoriesRes.json();
+        if (!Array.isArray(categoriesData)) return false;
+        // Validate all categories elements
+        for (const c of categoriesData) {
+          if (!c || typeof c !== "object" || typeof c.id !== "string" || typeof c.name !== "string" || typeof c.slug !== "string") {
+            return false;
+          }
+        }
+
+        // 3. Fetch Notes
+        const notesRes = await fetch(`${window.location.origin}/api/notes`);
+        if (!notesRes.ok) return false;
+        const notesData = await notesRes.json();
+        if (!Array.isArray(notesData)) return false;
+        // Validate all notes elements
+        for (const n of notesData) {
+          if (!n || typeof n !== "object" || typeof n.id !== "string" || typeof n.content !== "string") {
+            return false;
+          }
+        }
+
+        // 4. Fetch Resources
+        const resourcesRes = await fetch(`${window.location.origin}/api/resources`);
+        if (!resourcesRes.ok) return false;
+        const resourcesData = await resourcesRes.json();
+        if (!Array.isArray(resourcesData)) return false;
+        // Validate all resources elements
+        const validResourceTypes = ["book", "article", "video", "audio", "pdf", "md"];
+        for (const r of resourcesData) {
+          if (!r || typeof r !== "object" || typeof r.id !== "string" || !validResourceTypes.includes(r.type)) {
+            return false;
+          }
+        }
+
+        // All 4 collections verified and validated: Normalize canonically
+        const normCats = normalizeCategories(categoriesData);
+        const normTopics = normalizeTopics(topicsData);
+        const normNotes = normalizeNotes(notesData);
+        const normResources = resourcesData as Resource[];
+
+        // Record server snapshot signature before committing state to prevent auto-sync writeback
+        const newSig = computeSyncPayloadSignature(normCats, normTopics, normNotes, normResources, tags);
+        if (newSig === null) {
+          // Serialization failure: abort reload transaction without updating ref, state, or cache
           return false;
         }
-        const categoriesRes = await fetch(
-          `${window.location.origin}/api/categories`,
-        ).catch(() => null);
-        const categoriesData =
-          categoriesRes && categoriesRes.ok ? await categoriesRes.json() : null;
+        lastServerSnapshotSigRef.current = newSig;
 
-        const hasValidCategories =
-          Array.isArray(categoriesData) &&
-          categoriesData.length > 0 &&
-          typeof categoriesData[0]?.name === "string" &&
-          typeof categoriesData[0]?.slug === "string";
+        // Apply snapshot: Update in-memory state and localStorage cache keys
+        setCategories(normCats);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_categories`, JSON.stringify(normCats));
 
-        const normCats = hasValidCategories
-          ? normalizeCategories(categoriesData)
-          : categories;
-
-        if (hasValidCategories) {
-          setCategories(normCats);
-          safeSetLocalStorageItem(`${STORAGE_KEY}_categories`, JSON.stringify(normCats));
-        }
-
-        const notesRes = await fetch(
-          `${window.location.origin}/api/notes`,
-        ).catch(() => null);
-        const notesData =
-          notesRes && notesRes.ok ? await notesRes.json() : null;
-
-        const hasValidNotes =
-          Array.isArray(notesData) &&
-          notesData.length > 0 &&
-          typeof notesData[0]?.content === "string" &&
-          (typeof notesData[0]?.topicId === "string" ||
-            Array.isArray(notesData[0]?.topicIds));
-
-        const safeNotes = hasValidNotes ? notesData : notes;
-        if (hasValidNotes) {
-          setNotes(safeNotes);
-          safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(safeNotes));
-        }
-
-        const resourcesRes = await fetch(
-          `${window.location.origin}/api/resources`,
-        ).catch(() => null);
-        const resourcesData =
-          resourcesRes && resourcesRes.ok ? await resourcesRes.json() : null;
-
-        const hasValidResources =
-          Array.isArray(resourcesData) &&
-          resourcesData.length > 0 &&
-          ["book", "article", "video", "audio", "pdf"].includes(
-            resourcesData[0]?.type,
-          );
-
-        const safeResources = hasValidResources ? resourcesData : resources;
-        if (hasValidResources) {
-          setResources(safeResources);
-          safeSetLocalStorageItem(`${STORAGE_KEY}_resources`, JSON.stringify(safeResources));
-        }
-
-        const normTopics = normalizeTopics(topicsData);
         setTopics(normTopics);
         safeSetLocalStorageItem(`${STORAGE_KEY}_topics`, JSON.stringify(normTopics));
 
-        // Persist via repository (no raw localStorage calls here)
-        dataRepository
-          .syncHydrate({
-            clientSyncId: `reload-${Date.now()}`,
-            version: "2.0.0",
-            clientTimestamp: new Date().toISOString(),
-            categories: normCats,
-            topics: normTopics,
-            notes: safeNotes,
-            resources: safeResources,
-            tags,
-            links: extractUniqueLinks(normTopics),
-          })
-          .catch(console.error);
+        setNotes(normNotes);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_notes`, JSON.stringify(normNotes));
+
+        setResources(normResources);
+        safeSetLocalStorageItem(`${STORAGE_KEY}_resources`, JSON.stringify(normResources));
 
         return true;
       }
