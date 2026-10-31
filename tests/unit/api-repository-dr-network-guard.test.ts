@@ -27,6 +27,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { ZodError } from "zod";
 import {
   ApiDataRepository,
   LocalStorageDataRepository,
@@ -115,8 +116,8 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       return Promise.reject(SENTINEL_BLOCKER_ERROR);
     };
 
-    delete (plainBlocker as any)._isMockFunction;
-    delete (plainBlocker as any).mock;
+    expect("_isMockFunction" in plainBlocker).toBe(false);
+    expect("mock" in plainBlocker).toBe(false);
     globalThis.fetch = plainBlocker as unknown as typeof fetch;
   };
 
@@ -136,6 +137,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
     } else {
       delete process.env.VITEST;
     }
+    localStorage.clear();
     vi.restoreAllMocks();
   });
 
@@ -149,7 +151,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "exportBackupSnapshot");
 
-      let outcomeError: any = null;
+      let outcomeError: unknown = null;
       try {
         await repo.exportBackupSnapshot();
       } catch (err) {
@@ -159,8 +161,11 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       // Assert 0 transport calls BEFORE asserting outcome/local spy
       expect(journal).toHaveLength(0);
       expect(localSpy).toHaveBeenCalledTimes(1);
+      expect(localSpy).toHaveBeenCalledWith();
       expect(outcomeError).toBeInstanceOf(Error);
-      expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      if (outcomeError instanceof Error) {
+        expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      }
 
       // Verify localStorage was not mutated
       expect(localStorage.getItem("sentinel_storage_marker")).toBe(
@@ -175,7 +180,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "restoreBackupSnapshot");
 
-      let outcomeError: any = null;
+      let outcomeError: unknown = null;
       try {
         await repo.restoreBackupSnapshot(sampleRestoreRequest);
       } catch (err) {
@@ -187,7 +192,9 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       expect(localSpy).toHaveBeenCalledTimes(1);
       expect(localSpy).toHaveBeenCalledWith(sampleRestoreRequest);
       expect(outcomeError).toBeInstanceOf(Error);
-      expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      if (outcomeError instanceof Error) {
+        expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      }
 
       // Verify localStorage was not mutated
       expect(localStorage.getItem("sentinel_storage_marker")).toBe(
@@ -202,7 +209,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "getDbHealth");
 
-      let outcomeError: any = null;
+      let outcomeError: unknown = null;
       try {
         await repo.getDbHealth();
       } catch (err) {
@@ -212,8 +219,11 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       // Assert 0 transport calls BEFORE asserting outcome/local spy
       expect(journal).toHaveLength(0);
       expect(localSpy).toHaveBeenCalledTimes(1);
+      expect(localSpy).toHaveBeenCalledWith();
       expect(outcomeError).toBeInstanceOf(Error);
-      expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      if (outcomeError instanceof Error) {
+        expect(outcomeError.message).toBe(UNSUPPORTED_ERR_MSG);
+      }
 
       // Verify localStorage was not mutated
       expect(localStorage.getItem("sentinel_storage_marker")).toBe(
@@ -238,13 +248,12 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "exportBackupSnapshot");
 
+      const expectedUrl = `${window.location.origin}/api/backup/export`;
       const result = await repo.exportBackupSnapshot();
 
       expect(result).toEqual(sampleSnapshot);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/backup/export")
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expectedUrl);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -259,12 +268,13 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "restoreBackupSnapshot");
 
+      const expectedUrl = `${window.location.origin}/api/backup/restore`;
       const result = await repo.restoreBackupSnapshot(sampleRestoreRequest);
 
       expect(result).toEqual(sampleRestoreResponse);
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/backup/restore"),
+        expectedUrl,
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -285,13 +295,12 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "getDbHealth");
 
+      const expectedUrl = `${window.location.origin}/api/health/db`;
       const result = await repo.getDbHealth();
 
       expect(result).toEqual(sampleHealthResponse);
       expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/health/db")
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expectedUrl);
       expect(localSpy).not.toHaveBeenCalled();
     });
   });
@@ -328,9 +337,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "exportBackupSnapshot");
 
-      await expect(repo.exportBackupSnapshot()).rejects.toThrow(
-        "NETWORK_DISCONNECTED"
-      );
+      await expect(repo.exportBackupSnapshot()).rejects.toBe(networkError);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -364,7 +371,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "exportBackupSnapshot");
 
-      await expect(repo.exportBackupSnapshot()).rejects.toThrow();
+      await expect(repo.exportBackupSnapshot()).rejects.toBeInstanceOf(ZodError);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -401,7 +408,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
 
       await expect(
         repo.restoreBackupSnapshot(sampleRestoreRequest)
-      ).rejects.toThrow("ECONNRESET");
+      ).rejects.toBe(networkError);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -437,7 +444,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
 
       await expect(
         repo.restoreBackupSnapshot(sampleRestoreRequest)
-      ).rejects.toThrow();
+      ).rejects.toBeInstanceOf(ZodError);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -472,7 +479,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "getDbHealth");
 
-      await expect(repo.getDbHealth()).rejects.toThrow("SOCKET_HANGUP");
+      await expect(repo.getDbHealth()).rejects.toBe(networkError);
       expect(localSpy).not.toHaveBeenCalled();
     });
 
@@ -507,7 +514,7 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "getDbHealth");
 
-      await expect(repo.getDbHealth()).rejects.toThrow();
+      await expect(repo.getDbHealth()).rejects.toBeInstanceOf(ZodError);
       expect(localSpy).not.toHaveBeenCalled();
     });
   });
@@ -522,15 +529,15 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "restoreBackupSnapshot");
 
-      const invalidReq = {
+      const invalidReq: ValidatedRestoreRequest = {
         snapshot: sampleSnapshot,
-        mode: "replace" as const,
-        confirmReplace: false, // Refine fails: confirmReplace must be true when mode is replace
+        mode: "replace",
+        confirmReplace: false, // Refine fails at runtime: confirmReplace must be true when mode is replace
       };
 
       await expect(
-        repo.restoreBackupSnapshot(invalidReq as any)
-      ).rejects.toThrow();
+        repo.restoreBackupSnapshot(invalidReq)
+      ).rejects.toBeInstanceOf(ZodError);
 
       expect(journal).toHaveLength(0);
       expect(localSpy).not.toHaveBeenCalled();
@@ -544,15 +551,20 @@ describe("ApiDataRepository - Disaster Recovery Network Guard Contracts", () => 
       const repo = new ApiDataRepository("/api", local);
       const localSpy = vi.spyOn(local, "restoreBackupSnapshot");
 
-      const invalidReq = {
-        snapshot: { ...sampleSnapshot, version: "invalid-semver" },
-        mode: "replace" as const,
+      const invalidSnapshot: ValidatedBackupSnapshot = {
+        ...sampleSnapshot,
+        version: "invalid-semver", // Schema fails: version must be a valid semver string matching regex
+      };
+
+      const invalidReq: ValidatedRestoreRequest = {
+        snapshot: invalidSnapshot,
+        mode: "replace",
         confirmReplace: true,
       };
 
       await expect(
-        repo.restoreBackupSnapshot(invalidReq as any)
-      ).rejects.toThrow();
+        repo.restoreBackupSnapshot(invalidReq)
+      ).rejects.toBeInstanceOf(ZodError);
 
       expect(mockFetch).not.toHaveBeenCalled();
       expect(localSpy).not.toHaveBeenCalled();
