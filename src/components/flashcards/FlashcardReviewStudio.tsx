@@ -21,6 +21,7 @@ import {
   previewCardRatingIntervals,
   migrateSm2ToFsrsState,
   calculateFsrsRetrievability,
+  type RatingPreviewInfo,
 } from "../../lib/fsrsEngine";
 import { shortcutScope } from "../../lib/shortcutScope";
 import { useData } from "../../context/DataContext";
@@ -254,38 +255,37 @@ export function FlashcardReviewStudio({
     };
   }, [currentCard]);
 
-  const ratingPreviews = useMemo(() => {
+  const ratingPreviews = useMemo((): Record<ReviewRating, RatingPreviewInfo> | null => {
     if (!currentCard) return null;
     if (srsAlgorithm === "fsrs") {
       return previewCardRatingIntervals(currentCard.schedule, {
         desiredRetention,
       });
     }
-    const currentInterval = currentCard.schedule?.interval ?? 0;
-    return {
-      1: { intervalDays: 0, nextStability: 1, nextDifficulty: 5 },
-      2: {
-        intervalDays: Math.max(1, currentInterval),
-        nextStability: 1,
-        nextDifficulty: 5,
-      },
-      3: {
-        intervalDays: Math.max(
-          1,
-          Math.round(currentInterval === 0 ? 1 : currentInterval * 2.5)
-        ),
-        nextStability: 1,
-        nextDifficulty: 5,
-      },
-      4: {
-        intervalDays: Math.max(
-          4,
-          Math.round(currentInterval === 0 ? 4 : currentInterval * 3.5)
-        ),
-        nextStability: 1,
-        nextDifficulty: 5,
-      },
+
+    const ratings: ReviewRating[] = [1, 2, 3, 4];
+    const previews: Record<ReviewRating, RatingPreviewInfo> = {
+      1: { intervalDays: 1, nextStability: 1, nextDifficulty: 5 },
+      2: { intervalDays: 1, nextStability: 1, nextDifficulty: 5 },
+      3: { intervalDays: 1, nextStability: 1, nextDifficulty: 5 },
+      4: { intervalDays: 4, nextStability: 1, nextDifficulty: 5 },
     };
+
+    const refDate = new Date();
+    for (const r of ratings) {
+      const calc = calculateFlashcardNextReview({
+        currentSchedule: currentCard.schedule,
+        rating: r,
+        referenceDate: refDate,
+        algorithm: "sm2",
+      });
+      previews[r] = {
+        intervalDays: calc.nextSchedule.interval,
+        nextStability: 1,
+        nextDifficulty: 5,
+      };
+    }
+    return previews;
   }, [currentCard, srsAlgorithm, desiredRetention]);
 
   const getIntervalPreviewText = useCallback(
