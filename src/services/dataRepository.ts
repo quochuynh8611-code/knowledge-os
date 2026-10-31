@@ -1657,7 +1657,10 @@ export class ApiDataRepository implements IDataRepository {
 
   async updateFlashcard(id: string, input: unknown): Promise<Flashcard> {
     const fallbackCard = await this.localFallback.updateFlashcard(id, input);
-    const url = this.getUrl(`/flashcards/${id}`) || `${this.apiBaseUrl}/flashcards/${id}`;
+    const url = this.getUrl(`/flashcards/${id}`);
+    if (!url) {
+      return fallbackCard;
+    }
     try {
       const res = await fetch(url, {
         method: "PUT",
@@ -1676,7 +1679,10 @@ export class ApiDataRepository implements IDataRepository {
 
   async deleteFlashcard(id: string): Promise<boolean> {
     await this.localFallback.deleteFlashcard(id);
-    const url = this.getUrl(`/flashcards/${id}`) || `${this.apiBaseUrl}/flashcards/${id}`;
+    const url = this.getUrl(`/flashcards/${id}`);
+    if (!url) {
+      return true;
+    }
     try {
       const res = await fetch(url, { method: "DELETE" });
       return res.ok;
@@ -1717,7 +1723,10 @@ export class ApiDataRepository implements IDataRepository {
     if (filters?.topicId) params.set("topicId", filters.topicId);
     if (filters?.priority) params.set("priority", filters.priority);
     const query = params.toString() ? `?${params.toString()}` : "";
-    const url = this.getUrl(`/flashcards/due${query}`) || `${this.apiBaseUrl}/flashcards/due${query}`;
+    const url = this.getUrl(`/flashcards/due${query}`);
+    if (!url) {
+      return this.localFallback.getDueFlashcards(filters);
+    }
     try {
       const res = await fetch(url);
       if (res.ok) {
