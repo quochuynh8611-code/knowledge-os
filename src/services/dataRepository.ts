@@ -1525,8 +1525,10 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   async exportBackupSnapshot(): Promise<ValidatedBackupSnapshot> {
-    const url =
-      this.getUrl("/backup/export") || `${this.apiBaseUrl}/backup/export`;
+    const url = this.getUrl("/backup/export");
+    if (!url) {
+      return this.localFallback.exportBackupSnapshot();
+    }
     const res = await fetch(url);
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
@@ -1544,8 +1546,10 @@ export class ApiDataRepository implements IDataRepository {
     req: ValidatedRestoreRequest,
   ): Promise<ValidatedRestoreResponse> {
     const validatedReq = RestoreRequestSchema.parse(req);
-    const url =
-      this.getUrl("/backup/restore") || `${this.apiBaseUrl}/backup/restore`;
+    const url = this.getUrl("/backup/restore");
+    if (!url) {
+      return this.localFallback.restoreBackupSnapshot(validatedReq);
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1564,7 +1568,10 @@ export class ApiDataRepository implements IDataRepository {
   }
 
   async getDbHealth(): Promise<ValidatedDbHealthResponse> {
-    const url = this.getUrl("/health/db") || `${this.apiBaseUrl}/health/db`;
+    const url = this.getUrl("/health/db");
+    if (!url) {
+      return this.localFallback.getDbHealth();
+    }
     const res = await fetch(url);
     if (!res.ok) {
       const errBody = await res.json().catch(() => ({}));
