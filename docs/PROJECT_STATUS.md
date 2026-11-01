@@ -1,24 +1,39 @@
 # 📊 Knowledge OS — Bảng Điều Hành Trạng Thái Dự Án (Project Status & Roadmap)
 
-> **Cập nhật lần cuối:** 2026-10-29<br>
+> **Cập nhật lần cuối:** 2026-11-01<br>
 > **Người phụ trách:** Staff Software Engineer / Technical Architect<br>
-> **Trạng thái tổng thể:** 🟢 **PHASE 25 (UX POLISH & PRODUCT EXPERIENCE - ADR-117) HOÀN TẤT VÀ MERGED 100%. Version chuẩn bị: v0.2.0 (Release Preparation — chưa tag, chưa release, chưa deploy production). Các PR #8, #9, #10, #11, #12 đã merged vào origin/main tại commit `2699ca1abd7aeb265413b543e0582ec274044d28`. Quality Gates: TypeScript 0 lỗi, Build thành công, toàn bộ test suite PASS. Zero-Default Universal Baseline & Hermetic Test Guard tuân thủ tuyệt đối.**<br>
+> **Trạng thái tổng thể:** 🟢 **MỐC TÍCH HỢP RUNTIME ĐƯỢC TÀI LIỆU HÓA TẠI COMMIT `b26206873b37785dd8fb2567c7b4c118f05a4867` (sau khi squash merge PR #19 và trước docs commit). Version phát hành gần nhất: v0.2.0 (gắn tag tại commit `90b662f47b50da1d7ca2d96ac9cae127bd0bcffb`). Các PR hậu phát hành v0.2.0 (#14, #15, #16, #17, #18, #19) đã được squash merge vào `origin/main`. Không thực hiện deploy trong đợt này. Kết quả kiểm thử CI gắn với PR #19 Run 41210693938, attempt 2 (PR HEAD `7570209f9aa8d045e4a05b6a122b768a5ba69553`, synthetic merge SHA `6359b2d54dd35909f9647acd17690ad1f269dc33`) đạt 611/611 test files (5.167 tests passed), TypeScript 0 lỗi, Build thành công. Đã thiết lập network guard cho 8 methods cụ thể trong phạm vi PR #17–#19; nhóm Archive (2 methods) và Research (8 methods) hiện vẫn nằm ngoài scope guard và chưa tái kiểm chứng các method khác. Zero-Default Universal Baseline tuân thủ nghiêm ngặt.**<br>
 > **⚠️ QUY TẮC BẤT BIẾN:** Khi nâng cấp / phát triển tính năng mới, TUYỆT ĐỐI KHÔNG TÙY TIỆN THÊM BẤT KỲ LĨNH VỰC NGHIÊN CỨU (CATEGORIES) HOẶC CHỦ ĐỀ (TOPICS) MẶC ĐỊNH NÀO VÀO HỆ THỐNG.
 
 ---
 
 ## 🔒 1. Khóa Trạng Thái Hiện Hành (Current State Lock)
 
-- **Version chuẩn bị:** `0.2.0` (Release Preparation — chưa tag, chưa release, chưa deploy).
-- **Current Baseline / HEAD (origin/main):** Commit `2699ca1abd7aeb265413b543e0582ec274044d28` (sau khi merge PR #12).
-- **Recent Releases:** `v0.1.1` (commit `4f127810d915ca629a91749671683661768b6e8c`), `v0.1.0` (commit `28f030343df7503a3abda8ef4df2813a3aaa5562`).
+- **Version phát hành gần nhất:** `v0.2.0` (commit `90b662f47b50da1d7ca2d96ac9cae127bd0bcffb`). Mã nguồn hiện tại trên `main` chứa các commit tích hợp sau v0.2.0 và chưa tạo release tag mới.
+- **Mốc tích hợp runtime được tài liệu hóa:** Commit `b26206873b37785dd8fb2567c7b4c118f05a4867` (sau khi squash merge PR #19 và trước docs commit).
+- **Recent Releases:** `v0.2.0` (commit `90b662f47b50da1d7ca2d96ac9cae127bd0bcffb`), `v0.1.1` (commit `f223770d97cd6ef9f56a5d65c71f0c538d99f9a7`), `v0.1.0` (commit `28f030343df7503a3abda8ef4df2813a3aaa5562`).
 - **Phase 25 — UX Polish & Product Experience (ADR-117) — COMPLETE & MERGED:**
   - PR #8: `feat(ux): require explicit confirmation for backup restore` (Merged)
   - PR #9: `feat(ux): distinguish created vs existing in flashcard creation feedback` (Merged)
   - PR #10: `feat(ux): artifact synchronization status` (Merged)
   - PR #11: `feat(ux): mindmap empty state and onboarding` (Merged)
   - PR #12: `feat(ux): mindmap keyboard shortcut overlay` (Merged)
+  - PR #13: `chore(release): prepare v0.2.0` (Merged, Release Tagged `v0.2.0`)
+- **Các PR Tích Hợp Sau v0.2.0 (Merged vào main, chưa tạo release mới, không deploy trong đợt này):**
+  - PR #14: `feat(ux): expand note editor layout and focus writing mode` (Merged tại squash commit `8bf9796051f90ccafbcc2b37fd803c7dd96c5d16`, 2026-10-31T07:12:15Z)
+  - PR #15: `fix(flashcards): align SM-2 rating previews with scheduler` (Merged tại squash commit `b9cdea734c98cc94cc6692e60cdea4c67a0e0d7a`, 2026-10-31T04:35:37Z)
+  - PR #16: `fix(data): accept empty server snapshots without rehydration writeback` (Merged tại squash commit `73313b3d8c79ecf83a33823355388baa27337cc0`, 2026-10-31T06:51:13Z)
+  - PR #17: `fix(data): honor network guard in flashcard repository methods` (Merged tại squash commit `2857c46f624230e7c643976de573bd0eb0b9be1c`, 2026-10-31T09:55:39Z; guard cho 3 flashcard methods: `updateFlashcard`, `deleteFlashcard`, `getDueFlashcards`)
+  - PR #18: `fix(data): honor network guard for flashcard review and progress` (Merged tại squash commit `5efeaf9e12d83610e77b44854e12d29c704bd987`, 2026-10-31T12:58:08Z; guard cho 2 flashcard study methods: `recordReviewAtomic`, `getFlashcardProgress`)
+  - PR #19: `fix(data): honor network guard for backup restore and health` (Merged tại squash commit `b26206873b37785dd8fb2567c7b4c118f05a4867`, 2026-10-31T15:07:14Z; guard cho 3 disaster recovery methods: `exportBackupSnapshot`, `restoreBackupSnapshot`, `getDbHealth`)
+- **Phạm vi bảo vệ của Hermetic Network Guard (ADR-077) cụ thể trong PR #17–#19:**
+  - *Đã bảo vệ:* 8 methods cụ thể trong `ApiDataRepository` gồm `updateFlashcard`, `deleteFlashcard`, `getDueFlashcards` (PR #17); `recordReviewAtomic`, `getFlashcardProgress` (PR #18); `exportBackupSnapshot`, `restoreBackupSnapshot`, `getDbHealth` (PR #19).
+  - *Chưa bảo vệ & Chưa tái kiểm chứng:* Nhóm Archive (2 methods: `getArchivedDocuments`, `updateArchivedDocumentPosition`), nhóm Research Excerpts & Inbox (8 methods), cùng các phương thức khác ngoài phạm vi PR #17–#19 chưa được tái kiểm chứng.
 - **Recent Baseline Commits & Documents:**
+  - Session Log (2026-10-31): `docs/session-logs/2026-10-31-api-data-repository-hermetic-network-guard.md`.
+  - Session Log (2026-10-30): `docs/session-logs/2026-10-30-note-editor-layout-expansion-and-focus-mode.md`.
+  - `ADR-117`: Phase 25 UX State Model & Interaction Contracts (`docs/adr/ADR-117-phase-25-ux-state-model.md`).
+  - Session Log (2026-10-29): `docs/session-logs/2026-10-29-phase-25-ux-polish-and-v0.2.0-release.md`.
   - `ADR-076`: Commercial Domain Neutralization & Zero-Default Universal Workspace (`docs/adr/ADR-076-commercial-domain-neutralization.md` + Addendum 1).
   - Session Log (2026-10-17): `docs/session-logs/2026-10-17-hermetic-test-guard-and-zero-default-rule.md`.
   - Session Log (2026-10-16): `docs/session-logs/2026-10-16-commercial-domain-neutralization-and-zero-default-baseline.md`.
