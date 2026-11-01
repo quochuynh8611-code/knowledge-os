@@ -1771,7 +1771,10 @@ export class ApiDataRepository implements IDataRepository {
 
   // 10. Phase 18B: Local Archive & Reading Position Persistence
   async getArchivedDocuments(): Promise<ArchivedDocument[]> {
-    const url = this.getUrl("/archive/list") || `${this.apiBaseUrl}/archive/list`;
+    const url = this.getUrl("/archive/list");
+    if (!url) {
+      return this.localFallback.getArchivedDocuments();
+    }
     try {
       const res = await fetch(url);
       if (res.ok) {
@@ -1791,9 +1794,10 @@ export class ApiDataRepository implements IDataRepository {
     position: ReadingPositionData
   ): Promise<ArchivedDocument> {
     const localUpdated = await this.localFallback.updateArchivedDocumentPosition(documentId, position);
-    const url =
-      this.getUrl(`/archive/document/${encodeURIComponent(documentId)}/position`) ||
-      `${this.apiBaseUrl}/archive/document/${encodeURIComponent(documentId)}/position`;
+    const url = this.getUrl(`/archive/document/${encodeURIComponent(documentId)}/position`);
+    if (!url) {
+      return localUpdated;
+    }
     try {
       const res = await fetch(url, {
         method: "PATCH",
