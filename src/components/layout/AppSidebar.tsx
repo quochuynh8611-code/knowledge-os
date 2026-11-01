@@ -384,6 +384,7 @@ export function AppSidebar({
                   key={root.id}
                   onClick={() => {
                     setSelectedCategoryFilter(isSelected ? null : root.id);
+                    setSelectedTopicId(null);
                     setActiveTab('topics');
                   }}
                   className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer ${
