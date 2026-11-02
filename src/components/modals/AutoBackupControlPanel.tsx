@@ -22,6 +22,9 @@ import {
   getAutoBackupSnapshots,
   deleteAutoBackupSnapshot,
   runGuardedAutoBackup,
+  getLastAutoBackupResult,
+  AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT,
+  AUTO_BACKUP_PREFERENCES_CHANGED_EVENT,
 } from '../../lib/autoBackupScheduler';
 
 export interface AutoBackupControlPanelProps {
@@ -42,13 +45,64 @@ export function AutoBackupControlPanel({
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'warning' | 'error' | 'info';
     text: string;
-  } | null>(null);
+  } | null>(() => {
+    const lastResult = getLastAutoBackupResult();
+    if (lastResult?.status === 'storage-failed') {
+      return {
+        type: 'error',
+        text: `Lỗi sao lưu tự động ngầm: ${lastResult.reason || 'Không thể ghi bản sao lưu vào localStorage (bộ nhớ đầy hoặc bị chặn).'}`,
+      };
+    }
+    if (lastResult?.status === 'rejected-invalid') {
+      return {
+        type: 'error',
+        text: `Lỗi sao lưu tự động ngầm: ${lastResult.reason || 'Dữ liệu không hợp lệ.'}`,
+      };
+    }
+    return null;
+  });
   const [guardFeedback, setGuardFeedback] = useState<string | null>(null);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [pendingRestoreSnapshot, setPendingRestoreSnapshot] = useState<AutoBackupSnapshotRecord | null>(null);
 
   useEffect(() => {
     setSnapshots(getAutoBackupSnapshots());
+
+    const handleSnapshotSync = () => {
+      setSnapshots(getAutoBackupSnapshots());
+      const lastResult = getLastAutoBackupResult();
+      if (lastResult?.status === 'storage-failed') {
+        setStatusMessage({
+          type: 'error',
+          text: `Lỗi sao lưu tự động ngầm: ${lastResult.reason || 'Không thể ghi bản sao lưu vào localStorage (bộ nhớ đầy hoặc bị chặn).'}`,
+        });
+      } else if (lastResult?.status === 'rejected-invalid') {
+        setStatusMessage({
+          type: 'error',
+          text: `Lỗi sao lưu tự động ngầm: ${lastResult.reason || 'Dữ liệu không hợp lệ.'}`,
+        });
+      } else if (lastResult?.status === 'created') {
+        // Clear any previous auto-backup error when a new snapshot was successfully created
+        setStatusMessage((prev) => (prev?.type === 'error' && prev.text.startsWith('Lỗi sao lưu tự động ngầm:') ? null : prev));
+      }
+    };
+    const handlePrefsSync = () => {
+      setPreferences(getAutoBackupPreferences());
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, handleSnapshotSync);
+      window.addEventListener(AUTO_BACKUP_PREFERENCES_CHANGED_EVENT, handlePrefsSync);
+      window.addEventListener('storage', handleSnapshotSync);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, handleSnapshotSync);
+        window.removeEventListener(AUTO_BACKUP_PREFERENCES_CHANGED_EVENT, handlePrefsSync);
+        window.removeEventListener('storage', handleSnapshotSync);
+      }
+    };
   }, []);
 
   // Escape key listener to close restore confirmation modal
@@ -104,6 +158,11 @@ export function AutoBackupControlPanel({
       setStatusMessage({ type: 'warning', text: reasonText });
     } else if (result.status === 'rejected-invalid') {
       setStatusMessage({ type: 'error', text: `Dữ liệu không hợp lệ: ${result.reason}` });
+    } else if (result.status === 'storage-failed') {
+      setStatusMessage({
+        type: 'error',
+        text: result.reason || 'Lỗi lưu trữ: Không thể ghi bản sao lưu vào localStorage (bộ nhớ đầy hoặc bị chặn).',
+      });
     }
   };
 
@@ -111,10 +170,35 @@ export function AutoBackupControlPanel({
     setRestoringId(snapshot.id);
     try {
       // 1. Capture pre-restore safety snapshot of current workspace state
-      runGuardedAutoBackup(workspacePayload, {
+      const preRestoreResult = runGuardedAutoBackup(workspacePayload, {
         trigger: 'pre-restore',
         label: `Bản lưu an toàn trước khi khôi phục [${snapshot.id.slice(0, 8)}]`,
       });
+
+      if (preRestoreResult.status === 'storage-failed') {
+        setStatusMessage({
+          type: 'error',
+          text: 'Không thể tạo bản lưu an toàn trước khi khôi phục (lỗi lưu trữ). Đã hủy thao tác để bảo vệ dữ liệu hiện tại.',
+        });
+        return;
+      }
+
+      if (preRestoreResult.status === 'rejected-invalid') {
+        setStatusMessage({
+          type: 'error',
+          text: `Không thể tạo bản lưu an toàn trước khi khôi phục (dữ liệu không hợp lệ: ${preRestoreResult.reason || 'sai cấu trúc'}). Đã hủy thao tác để bảo vệ dữ liệu hiện tại.`,
+        });
+        return;
+      }
+
+      if (preRestoreResult.status === 'cancelled') {
+        setStatusMessage({
+          type: 'error',
+          text: 'Tác vụ lưu an toàn trước khi khôi phục đã bị hủy bỏ. Đã dừng thao tác khôi phục.',
+        });
+        return;
+      }
+
       setSnapshots(getAutoBackupSnapshots());
 
       // 2. Delegate to restore handler
@@ -234,7 +318,7 @@ export function AutoBackupControlPanel({
         {/* Action Trigger */}
         <div className="flex items-center justify-between pt-1 border-t border-stone-200 dark:border-stone-700/40">
           <p className="text-[11px] text-stone-500 dark:text-stone-400">
-            Cơ chế bảo vệ: Từ chối ghi đè khi workspace rỗng • Tự động băm SHA-256 khử trùng lặp.
+            Cơ chế bảo vệ: Từ chối ghi đè khi workspace rỗng • Tự động băm SHA-256 khử trùng lặp • Lưu cục bộ trên trình duyệt (không thay thế backup server/file đĩa).
           </p>
           <button
             type="button"

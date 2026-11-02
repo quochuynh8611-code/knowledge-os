@@ -106,6 +106,7 @@ const ObsidianBridgeModal = React.lazy(() =>
   }))
 );
 import { runGuardedAutoBackup } from "./lib/autoBackupScheduler";
+import { useAutoBackupScheduler } from "./hooks/useAutoBackupScheduler";
 const FlashcardReviewStudio = React.lazy(() =>
   import("./components/flashcards/FlashcardReviewStudio").then((m) => ({
     default: m.FlashcardReviewStudio,
@@ -167,11 +168,27 @@ function AppContent() {
     topics,
     notes,
     resources,
+    tags,
+    isHydrated,
+    isOperationInProgress,
     researchExcerpts,
     addNote,
     updateTopicProgress,
     addExcerptToInbox,
   } = useData();
+
+  // Phase 6 Guarded Auto-Backup Runtime Scheduler
+  useAutoBackupScheduler({
+    workspacePayload: {
+      categories,
+      topics,
+      notes,
+      resources,
+      tags,
+    },
+    isHydrated,
+    isOperationInProgress,
+  });
   const { toggleTheme } = useTheme();
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showQuickCaptureModal, setShowQuickCaptureModal] = useState(false);
@@ -304,10 +321,13 @@ function AppContent() {
       onOpenManuscriptStudio: () => setShowManuscriptStudioModal(true),
       onOpenObsidianBridge: () => setShowObsidianBridgeModal(true),
       onTriggerQuickBackup: () => {
-        runGuardedAutoBackup(
-          { categories, topics, notes, resources },
+        const result = runGuardedAutoBackup(
+          { categories, topics, notes, resources, tags },
           { trigger: "manual", label: "Quick Backup từ Command Palette" }
         );
+        if (result.status === "storage-failed") {
+          console.error("[QuickBackup] Failed to persist snapshot:", result.reason);
+        }
       },
       onOpenFlashcardReview: () => setActiveTab("flashcards"),
     },
