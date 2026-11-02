@@ -118,6 +118,7 @@ export async function buildBackupSnapshotFromDb(
     author: r.author ?? undefined,
     url: r.url ?? undefined,
     filePath: r.filePath ?? undefined,
+    openTarget: r.openTarget !== undefined ? r.openTarget : undefined,
     notes: r.notes ?? undefined,
     createdAt: r.createdAt.toISOString(),
   }));
@@ -389,6 +390,16 @@ export async function executeReplaceRestore(
 
   // 7. Nạp Resources
   for (const resItem of data.resources) {
+    const isExplicitlyProvided = Object.prototype.hasOwnProperty.call(
+      resItem,
+      "openTarget"
+    );
+    let normalizedOpenTarget: string | null = null;
+    if (isExplicitlyProvided && resItem.openTarget) {
+      const trimmed = resItem.openTarget.trim();
+      normalizedOpenTarget = trimmed.length > 0 ? trimmed : null;
+    }
+
     await tx.resource.create({
       data: {
         id: resItem.id,
@@ -398,6 +409,7 @@ export async function executeReplaceRestore(
         author: resItem.author,
         url: resItem.url,
         filePath: resItem.filePath,
+        openTarget: normalizedOpenTarget,
         notes: resItem.notes,
         createdAt: resItem.createdAt ? new Date(resItem.createdAt) : undefined,
       },
@@ -723,6 +735,32 @@ export async function executeMergeRestore(
 
   // 5. Resources
   for (const resItem of data.resources) {
+    const isExplicitlyProvided = Object.prototype.hasOwnProperty.call(
+      resItem,
+      "openTarget"
+    );
+    let normalizedOpenTarget: string | null | undefined = undefined;
+    if (isExplicitlyProvided) {
+      if (resItem.openTarget === null || resItem.openTarget === undefined) {
+        normalizedOpenTarget = null;
+      } else {
+        const trimmed = resItem.openTarget.trim();
+        normalizedOpenTarget = trimmed.length > 0 ? trimmed : null;
+      }
+    }
+
+    const updateData: Record<string, any> = {
+      title: resItem.title,
+      type: resItem.type,
+      author: resItem.author,
+      url: resItem.url,
+      filePath: resItem.filePath,
+      notes: resItem.notes,
+    };
+    if (isExplicitlyProvided) {
+      updateData.openTarget = normalizedOpenTarget;
+    }
+
     await tx.resource.upsert({
       where: { id: resItem.id },
       create: {
@@ -733,17 +771,11 @@ export async function executeMergeRestore(
         author: resItem.author,
         url: resItem.url,
         filePath: resItem.filePath,
+        openTarget: isExplicitlyProvided ? normalizedOpenTarget : null,
         notes: resItem.notes,
         createdAt: resItem.createdAt ? new Date(resItem.createdAt) : undefined,
       },
-      update: {
-        title: resItem.title,
-        type: resItem.type,
-        author: resItem.author,
-        url: resItem.url,
-        filePath: resItem.filePath,
-        notes: resItem.notes,
-      },
+      update: updateData,
     });
   }
 

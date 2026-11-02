@@ -95,6 +95,7 @@ model Resource {
   author    String?
   url       String?
   filePath  String?
+  openTarget String?
   notes     String?
   createdAt  DateTime    @default(now())
   // Native Flashcard optional relation

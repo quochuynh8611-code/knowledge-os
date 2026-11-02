@@ -319,6 +319,32 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
             }
           }
 
+          const isExplicitlyProvided = Object.prototype.hasOwnProperty.call(
+            resItem,
+            "openTarget"
+          );
+          let normalizedOpenTarget: string | null | undefined = undefined;
+          if (isExplicitlyProvided) {
+            if (resItem.openTarget === null || resItem.openTarget === undefined) {
+              normalizedOpenTarget = null;
+            } else {
+              const trimmed = resItem.openTarget.trim();
+              normalizedOpenTarget = trimmed.length > 0 ? trimmed : null;
+            }
+          }
+
+          const updateData: Record<string, any> = {
+            title: resItem.title,
+            type: resItem.type,
+            author: resItem.author,
+            url: resItem.url,
+            filePath: resItem.filePath,
+            notes: resItem.notes,
+          };
+          if (isExplicitlyProvided) {
+            updateData.openTarget = normalizedOpenTarget;
+          }
+
           await tx.resource.upsert({
             where: { id: resItem.id },
             create: {
@@ -329,16 +355,10 @@ export function createSyncRouter(prisma: PrismaClient | any): Router {
               author: resItem.author,
               url: resItem.url,
               filePath: resItem.filePath,
+              openTarget: isExplicitlyProvided ? normalizedOpenTarget : null,
               notes: resItem.notes,
             },
-            update: {
-              title: resItem.title,
-              type: resItem.type,
-              author: resItem.author,
-              url: resItem.url,
-              filePath: resItem.filePath,
-              notes: resItem.notes,
-            },
+            update: updateData,
           });
           resourcesCount++;
         }

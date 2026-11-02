@@ -222,7 +222,12 @@ export function ResourceFormModal({ isOpen, onClose, initialResource, defaultTop
 
     let finalUrl: string | undefined;
     let finalPath: string | undefined;
-    let finalOpenTarget: string | undefined = openTarget.trim() || undefined;
+    let finalOpenTarget: string | null | undefined;
+    if (initialResource) {
+      finalOpenTarget = openTarget.trim().length > 0 ? openTarget.trim() : null;
+    } else {
+      finalOpenTarget = openTarget.trim().length > 0 ? openTarget.trim() : undefined;
+    }
 
     if (sourceMode === 'web') {
       if (!url.trim() || url.trim() === 'https://') {

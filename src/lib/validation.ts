@@ -259,7 +259,7 @@ export const ResourceCreateBaseSchema = z.object({
   author: z.string().optional(),
   url: z.string().optional(),
   filePath: z.string().optional(),
-  openTarget: z.string().optional(),
+  openTarget: z.string().nullable().optional(),
   notes: z.string().optional(),
 });
 
