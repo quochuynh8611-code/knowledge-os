@@ -139,6 +139,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
   const [restoreStatus, setRestoreStatus] = useState<
     'idle' | 'submitting' | 'completed' | 'rehydrate_failed' | 'error'
   >('idle');
+  const [restoreErrorMessage, setRestoreErrorMessage] = useState<string | null>(null);
 
   // Legacy Text Import State
   const [importText, setImportText] = useState('');
@@ -349,13 +350,37 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
 
     setIsSubmitting(true);
     setRestoreStatus('submitting');
+    setRestoreErrorMessage(null);
 
     try {
       // Capture pre-restore safety snapshot before destructive restore
-      runGuardedAutoBackup(
+      const preRestoreResult = runGuardedAutoBackup(
         { categories, topics, notes, resources, tags },
         { trigger: 'pre-restore', label: 'Bản lưu an toàn trước khi khôi phục snapshot máy chủ' }
       );
+
+      // Fail-closed safety check: Abort server restore if pre-restore snapshot fails or is invalid
+      if (preRestoreResult.status === 'storage-failed') {
+        setRestoreStatus('error');
+        setRestoreErrorMessage(
+          'Không thể tạo bản lưu an toàn trước khi khôi phục (lỗi lưu trữ: bộ nhớ đầy hoặc bị chặn). Đã hủy thao tác để bảo vệ dữ liệu hiện tại.'
+        );
+        return;
+      }
+
+      if (preRestoreResult.status === 'rejected-invalid') {
+        setRestoreStatus('error');
+        setRestoreErrorMessage(
+          `Không thể tạo bản lưu an toàn trước khi khôi phục (dữ liệu không hợp lệ: ${preRestoreResult.reason || 'sai cấu trúc'}). Đã hủy thao tác để bảo vệ dữ liệu hiện tại.`
+        );
+        return;
+      }
+
+      if (preRestoreResult.status === 'cancelled') {
+        setRestoreStatus('error');
+        setRestoreErrorMessage('Tác vụ lưu an toàn trước khi khôi phục đã bị hủy bỏ. Đã dừng thao tác khôi phục.');
+        return;
+      }
 
       const res = await repo.restoreBackupSnapshot({
         snapshot: parsedSnapshot,
@@ -982,7 +1007,7 @@ export function ExportImportModal({ isOpen, onClose, repository, defaultTab }: E
               {restoreStatus === 'error' && (
                 <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300 text-xs rounded-xl flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>Không thể hoàn tất khôi phục dữ liệu! Vui lòng thử lại.</span>
+                  <span>{restoreErrorMessage || 'Không thể hoàn tất khôi phục dữ liệu! Vui lòng thử lại.'}</span>
                 </div>
               )}
 

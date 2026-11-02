@@ -216,6 +216,11 @@ interface DataContextType {
   importAllDataJSON: (jsonString: string) => boolean;
   resetToDefaultData: () => void | Promise<void>;
   reloadAllData: () => Promise<boolean>;
+
+  // System State & Lifecycle (Phase 6 Auto-Backup Readiness & Operation Guard)
+  isHydrated: boolean;
+  isOperationInProgress: boolean;
+  setIsOperationInProgress: (inProgress: boolean) => void;
 }
 
 export type DomainDataContextType = Omit<
@@ -266,6 +271,10 @@ export const DataContext = createContext<DataContextType | undefined>(undefined)
 function InnerDataProvider({ children }: { children: ReactNode }) {
   // 1. Ensure storage version compatibility before reading local cache
   ensureStorageVersionCompatibility();
+
+  // Phase 6 Auto-Backup Readiness & Operation Guard States
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [isOperationInProgress, setIsOperationInProgress] = useState(false);
 
   // Initialize state from LocalStorage sub-keys (via safe helper) or Seed Data
   const [categories, setCategories] = useState<Category[]>(() => {
@@ -596,6 +605,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
 
         // Enable user-initiated mutations and auto-sync now that canonical data is active
         isServerHydratedRef.current = true;
+        setIsHydrated(true);
       })
       .catch((err) => {
         if (!isMounted) return;
@@ -604,6 +614,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
           err,
         );
         isServerHydratedRef.current = true;
+        setIsHydrated(true);
       });
 
     return () => {
@@ -1205,6 +1216,7 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
   };
 
   const importAllDataJSON = (jsonString: string): boolean => {
+    setIsOperationInProgress(true);
     try {
       const parsed = JSON.parse(jsonString);
       if (parsed.topics && Array.isArray(parsed.topics)) {
@@ -1235,26 +1247,33 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       return false;
     } catch {
       return false;
+    } finally {
+      setIsOperationInProgress(false);
     }
   };
 
   const resetToDefaultData = async () => {
-    // CHỐT CHẶN 2: Bắt buộc backend xác nhận làm sạch CSDL thành công 100% trước khi xóa local state
-    // Nếu gặp lỗi, ném lỗi ra ngoài và DỪNG NGAY, tuyệt đối không "xóa giả vờ"
-    await dataRepository.resetAllData();
+    setIsOperationInProgress(true);
+    try {
+      // CHỐT CHẶN 2: Bắt buộc backend xác nhận làm sạch CSDL thành công 100% trước khi xóa local state
+      // Nếu gặp lỗi, ném lỗi ra ngoài và DỪNG NGAY, tuyệt đối không "xóa giả vờ"
+      await dataRepository.resetAllData();
 
-    safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
-    setFocusDomainIdState(null);
-    setCategories(normalizeCategories(INITIAL_CATEGORIES));
-    setTopics(normalizeTopics(INITIAL_TOPICS));
-    setNotes(INITIAL_NOTES);
-    setResources(INITIAL_RESOURCES);
-    setTags(INITIAL_TAGS);
-    setResearchInboxItems([]);
-    setResearchExcerpts([]);
+      safeRemoveLocalStorageItem(FOCUS_DOMAIN_STORAGE_KEY);
+      setFocusDomainIdState(null);
+      setCategories(normalizeCategories(INITIAL_CATEGORIES));
+      setTopics(normalizeTopics(INITIAL_TOPICS));
+      setNotes(INITIAL_NOTES);
+      setResources(INITIAL_RESOURCES);
+      setTags(INITIAL_TAGS);
+      setResearchInboxItems([]);
+      setResearchExcerpts([]);
 
-    // Sau khi reset database thành công, cập nhật isServerHydratedRef.current = true để tránh auto-sync ghi ngược dữ liệu rác
-    isServerHydratedRef.current = true;
+      // Sau khi reset database thành công, cập nhật isServerHydratedRef.current = true để tránh auto-sync ghi ngược dữ liệu rác
+      isServerHydratedRef.current = true;
+    } finally {
+      setIsOperationInProgress(false);
+    }
   };
 
   // Rehydration Action (Phase 2C - Post Restore / Manual Sync)
@@ -1455,8 +1474,11 @@ function InnerDataProvider({ children }: { children: ReactNode }) {
       importAllDataJSON,
       resetToDefaultData,
       reloadAllData,
+      isHydrated,
+      isOperationInProgress,
+      setIsOperationInProgress,
     }),
-    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount, researchExcerpts, addExcerpt, updateExcerpt, deleteExcerpt],
+    [categories, topics, notes, resources, tags, stats, reviewQueue, focusDomainId, setFocusDomainId, researchInboxItems, addExcerptToInbox, dismissInboxItem, processInboxItem, deleteInboxItem, unprocessedInboxCount, researchExcerpts, addExcerpt, updateExcerpt, deleteExcerpt, isHydrated, isOperationInProgress],
   );
 
   return (

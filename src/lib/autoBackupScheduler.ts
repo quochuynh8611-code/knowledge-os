@@ -73,16 +73,18 @@ export interface AutoBackupSnapshotRecord {
 }
 
 export interface GuardedBackupResult {
-  status: 'created' | 'skipped-empty' | 'skipped-unchanged' | 'rejected-invalid';
+  status: 'created' | 'skipped-empty' | 'skipped-unchanged' | 'rejected-invalid' | 'storage-failed' | 'cancelled';
   reason?: string;
   snapshot?: AutoBackupSnapshotRecord;
   retainedCount: number;
   fingerprint?: string;
 }
 
-// Storage Keys
+// Storage Keys & Events
 export const AUTO_BACKUP_SNAPSHOTS_STORAGE_KEY = 'knowledge_os_auto_backup_snapshots_v1';
 export const AUTO_BACKUP_PREFERENCES_STORAGE_KEY = 'knowledge_os_auto_backup_preferences_v1';
+export const AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT = 'knowledge_os_snapshot_updated';
+export const AUTO_BACKUP_PREFERENCES_CHANGED_EVENT = 'knowledge_os_preferences_changed';
 
 // Limits & Defaults
 export const MIN_INTERVAL_MINUTES = 5;
@@ -92,6 +94,24 @@ export const DEFAULT_INTERVAL_MINUTES = 30;
 export const MIN_SNAPSHOTS = 3;
 export const MAX_SNAPSHOTS = 50;
 export const DEFAULT_MAX_SNAPSHOTS = 10;
+
+// Shared in-memory runtime status for same-tab cross-component observability
+let runtimeLastAutoBackupResult: GuardedBackupResult | null = null;
+
+export function getLastAutoBackupResult(): GuardedBackupResult | null {
+  return runtimeLastAutoBackupResult;
+}
+
+export function setLastAutoBackupResult(result: GuardedBackupResult | null): void {
+  runtimeLastAutoBackupResult = result;
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(
+      new CustomEvent(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, {
+        detail: { action: 'runtime-status', result },
+      })
+    );
+  }
+}
 
 /**
  * Recursively sorts keys of an object to ensure deterministic canonical JSON serialization.
@@ -310,6 +330,9 @@ export function saveAutoBackupPreferences(prefs: Partial<AutoBackupPreferences>)
   };
 
   safeSetLocalStorageItem(AUTO_BACKUP_PREFERENCES_STORAGE_KEY, JSON.stringify(next));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent(AUTO_BACKUP_PREFERENCES_CHANGED_EVENT, { detail: next }));
+  }
   return next;
 }
 
@@ -376,6 +399,9 @@ export function deleteAutoBackupSnapshot(id: string): AutoBackupSnapshotRecord[]
   const snapshots = getAutoBackupSnapshots();
   const remaining = snapshots.filter((s) => s.id !== id);
   safeSetLocalStorageItem(AUTO_BACKUP_SNAPSHOTS_STORAGE_KEY, JSON.stringify(remaining));
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, { detail: { action: 'delete', id } }));
+  }
   return remaining;
 }
 
@@ -384,6 +410,9 @@ export function deleteAutoBackupSnapshot(id: string): AutoBackupSnapshotRecord[]
  */
 export function clearAutoBackupSnapshots(): void {
   safeRemoveLocalStorageItem(AUTO_BACKUP_SNAPSHOTS_STORAGE_KEY);
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(new CustomEvent(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, { detail: { action: 'clear' } }));
+  }
 }
 
 /**
@@ -391,7 +420,8 @@ export function clearAutoBackupSnapshots(): void {
  * 1. Preflight integrity inspection
  * 2. Zero-Data Overwrite Guard
  * 3. Deterministic content deduplication
- * 4. Atomic verify-before-rotate snapshot retention
+ * 4. Cancellation & commit token check
+ * 5. Atomic verify-before-rotate snapshot retention with storage safety
  */
 export function runGuardedAutoBackup(
   payload: unknown,
@@ -401,6 +431,7 @@ export function runGuardedAutoBackup(
     forceEmpty?: boolean;
     maxSnapshots?: number;
     now?: Date;
+    shouldCommit?: () => boolean;
   }
 ): GuardedBackupResult {
   const existingSnapshots = getAutoBackupSnapshots();
@@ -434,7 +465,16 @@ export function runGuardedAutoBackup(
     };
   }
 
-  // 4. Create new snapshot record
+  // 4. Async cancellation / commit authorization check before disk write
+  if (options?.shouldCommit && !options.shouldCommit()) {
+    return {
+      status: 'cancelled',
+      reason: 'Tác vụ sao lưu đã bị hủy bỏ trước khi ghi vào bộ nhớ.',
+      retainedCount: existingSnapshots.length,
+    };
+  }
+
+  // 5. Create new snapshot record
   const timestamp = (options?.now ?? new Date()).toISOString();
   const trigger = options?.trigger ?? 'auto';
   const snapshotId = `auto-backup-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -451,13 +491,35 @@ export function runGuardedAutoBackup(
     payload: payload as WorkspaceBackupPayload,
   };
 
-  // 5. Enforce retention limit (atomic rotate)
+  // 6. Enforce retention limit (atomic rotate) and persistence check
   const prefs = getAutoBackupPreferences();
   const requestedMax = typeof options?.maxSnapshots === 'number' ? options.maxSnapshots : prefs.maxSnapshots;
   const maxLimit = Math.max(MIN_SNAPSHOTS, Math.min(MAX_SNAPSHOTS, requestedMax));
 
   const rotatedSnapshots = [newSnapshot, ...existingSnapshots].slice(0, maxLimit);
-  safeSetLocalStorageItem(AUTO_BACKUP_SNAPSHOTS_STORAGE_KEY, JSON.stringify(rotatedSnapshots));
+  let writeSuccess = false;
+  try {
+    writeSuccess = safeSetLocalStorageItem(AUTO_BACKUP_SNAPSHOTS_STORAGE_KEY, JSON.stringify(rotatedSnapshots));
+  } catch {
+    writeSuccess = false;
+  }
+
+  if (!writeSuccess) {
+    return {
+      status: 'storage-failed',
+      reason: 'Không thể ghi bản sao lưu vào bộ nhớ cục bộ (localStorage đầy dung lượng hoặc bị chặn).',
+      retainedCount: existingSnapshots.length,
+    };
+  }
+
+  // Dispatch real-time update event in current tab ONLY upon successful persistence
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    window.dispatchEvent(
+      new CustomEvent(AUTO_BACKUP_SNAPSHOT_UPDATED_EVENT, {
+        detail: { action: 'create', snapshot: newSnapshot },
+      })
+    );
+  }
 
   return {
     status: 'created',
