@@ -77,7 +77,7 @@ export interface Resource {
   title: string;
   url?: string;
   filePath?: string;
-  openTarget?: string;
+  openTarget?: string | null;
   type: ResourceType;
   author?: string;
   notes?: string;
