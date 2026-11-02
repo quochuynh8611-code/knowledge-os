@@ -1830,19 +1830,19 @@ export class ApiDataRepository implements IDataRepository {
     if (filters?.status) params.set("status", filters.status);
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
-    const url =
-      this.getUrl(`/excerpts${queryString}`) ||
-      `${this.apiBaseUrl}/excerpts${queryString}`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          const excerpts = (await res.json()) as ResearchExcerpt[];
-          return excerpts;
-        }
-      } catch {
-        // Fallback to local
+    const url = this.getUrl(`/excerpts${queryString}`);
+    if (!url) {
+      return this.localFallback.getResearchExcerpts(filters);
+    }
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const excerpts = (await res.json()) as ResearchExcerpt[];
+        return excerpts;
       }
+    } catch {
+      // Fallback to local
     }
     return this.localFallback.getResearchExcerpts(filters);
   }
@@ -1850,20 +1850,22 @@ export class ApiDataRepository implements IDataRepository {
   async createResearchExcerpt(input: unknown): Promise<ResearchExcerpt> {
     const fallbackExcerpt =
       await this.localFallback.createResearchExcerpt(input);
-    const url = this.getUrl("/excerpts") || `${this.apiBaseUrl}/excerpts`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-        if (res.ok) {
-          return (await res.json()) as ResearchExcerpt;
-        }
-      } catch {
-        // Fallback already saved
+    const url = this.getUrl("/excerpts");
+    if (!url) {
+      return fallbackExcerpt;
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        return (await res.json()) as ResearchExcerpt;
       }
+    } catch {
+      // Fallback already saved
     }
     return fallbackExcerpt;
   }
@@ -1876,54 +1878,55 @@ export class ApiDataRepository implements IDataRepository {
       id,
       input,
     );
-    const url =
-      this.getUrl(`/excerpts/${encodeURIComponent(id)}`) ||
-      `${this.apiBaseUrl}/excerpts/${encodeURIComponent(id)}`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-        if (res.ok) {
-          return (await res.json()) as ResearchExcerpt;
-        }
-      } catch {
-        // Fallback already updated
+    const url = this.getUrl(`/excerpts/${encodeURIComponent(id)}`);
+    if (!url) {
+      return fallbackExcerpt;
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        return (await res.json()) as ResearchExcerpt;
       }
+    } catch {
+      // Fallback already updated
     }
     return fallbackExcerpt;
   }
 
   async deleteResearchExcerpt(id: string): Promise<boolean> {
     await this.localFallback.deleteResearchExcerpt(id);
-    const url =
-      this.getUrl(`/excerpts/${encodeURIComponent(id)}`) ||
-      `${this.apiBaseUrl}/excerpts/${encodeURIComponent(id)}`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, { method: "DELETE" });
-        return res.ok;
-      } catch {
-        // Fallback deleted
-      }
+    const url = this.getUrl(`/excerpts/${encodeURIComponent(id)}`);
+    if (!url) {
+      return true;
+    }
+
+    try {
+      const res = await fetch(url, { method: "DELETE" });
+      return res.ok;
+    } catch {
+      // Fallback deleted
     }
     return true;
   }
 
   async getResearchInboxItems(): Promise<ResearchInboxItem[]> {
-    const url =
-      this.getUrl("/excerpts/inbox") || `${this.apiBaseUrl}/excerpts/inbox`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url);
-        if (res.ok) {
-          return (await res.json()) as ResearchInboxItem[];
-        }
-      } catch {
-        // Fallback to local
+    const url = this.getUrl("/excerpts/inbox");
+    if (!url) {
+      return this.localFallback.getResearchInboxItems();
+    }
+
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        return (await res.json()) as ResearchInboxItem[];
       }
+    } catch {
+      // Fallback to local
     }
     return this.localFallback.getResearchInboxItems();
   }
@@ -1931,21 +1934,22 @@ export class ApiDataRepository implements IDataRepository {
   async createResearchInboxItem(input: unknown): Promise<ResearchInboxItem> {
     const fallbackItem =
       await this.localFallback.createResearchInboxItem(input);
-    const url =
-      this.getUrl("/excerpts/inbox") || `${this.apiBaseUrl}/excerpts/inbox`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        });
-        if (res.ok) {
-          return (await res.json()) as ResearchInboxItem;
-        }
-      } catch {
-        // Fallback created
+    const url = this.getUrl("/excerpts/inbox");
+    if (!url) {
+      return fallbackItem;
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (res.ok) {
+        return (await res.json()) as ResearchInboxItem;
       }
+    } catch {
+      // Fallback created
     }
     return fallbackItem;
   }
@@ -1958,38 +1962,38 @@ export class ApiDataRepository implements IDataRepository {
       id,
       isProcessed,
     );
-    const url =
-      this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}/process`) ||
-      `${this.apiBaseUrl}/excerpts/inbox/${encodeURIComponent(id)}/process`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isProcessed }),
-        });
-        if (res.ok) {
-          return (await res.json()) as ResearchInboxItem;
-        }
-      } catch {
-        // Fallback updated
+    const url = this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}/process`);
+    if (!url) {
+      return fallbackItem;
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isProcessed }),
+      });
+      if (res.ok) {
+        return (await res.json()) as ResearchInboxItem;
       }
+    } catch {
+      // Fallback updated
     }
     return fallbackItem;
   }
 
   async deleteResearchInboxItem(id: string): Promise<boolean> {
     await this.localFallback.deleteResearchInboxItem(id);
-    const url =
-      this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}`) ||
-      `${this.apiBaseUrl}/excerpts/inbox/${encodeURIComponent(id)}`;
-    if (url && typeof fetch === "function") {
-      try {
-        const res = await fetch(url, { method: "DELETE" });
-        return res.ok;
-      } catch {
-        // Fallback deleted
-      }
+    const url = this.getUrl(`/excerpts/inbox/${encodeURIComponent(id)}`);
+    if (!url) {
+      return true;
+    }
+
+    try {
+      const res = await fetch(url, { method: "DELETE" });
+      return res.ok;
+    } catch {
+      // Fallback deleted
     }
     return true;
   }
