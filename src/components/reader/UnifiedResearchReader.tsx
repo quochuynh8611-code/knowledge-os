@@ -34,7 +34,7 @@ export interface UnifiedResearchReaderProps {
   format: 'epub' | 'md' | 'markdown' | string;
   fileUrl?: string;
   content?: string;
-  sourceType?: 'docs' | 'vault';
+  sourceType?: 'docs' | 'vault' | 'archive';
   initialPosition?: string;
   initialToc?: TocItem[];
   initialExcerpts?: ResearchExcerpt[];
@@ -1338,7 +1338,14 @@ export function UnifiedResearchReader({
                 content={content}
                 fileUrl={fileUrl}
                 documentId={documentId}
-                sourceType={sourceType}
+                // Preserve undefined for legacy Vault inference; Archive Markdown is out of scope for NDH1a.
+                sourceType={
+                  sourceType === 'vault'
+                    ? 'vault'
+                    : sourceType === 'docs'
+                      ? 'docs'
+                      : undefined
+                }
                 initialHeadingId={targetHeadingId}
                 initialScrollPercentage={targetScrollPercentage}
                 onTocGenerated={(items) => setTocItems(items)}
