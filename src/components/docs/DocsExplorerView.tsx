@@ -432,6 +432,78 @@ export function DocsExplorerView({
         return;
       }
       if (format === "pdf") {
+        // Priority 1: Docs repository document has strictly verified provenance
+        const isStrictDocs =
+          doc.sourceType === "docs" ||
+          (doc.sourceType !== "archive" && docs.some((d) => d.id === doc.id || d.relativePath === doc.relativePath));
+
+        if (isStrictDocs) {
+          const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
+          setActiveReaderDoc({
+            documentId: matchingArch?.id || doc.id || doc.relativePath,
+            title: doc.title,
+            format: "pdf",
+            sourceType: "docs",
+            fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
+            initialPosition: initialPos,
+          });
+          return;
+        }
+
+        // Priority 2: Authoritative Archive PDF resolution
+        const ARCHIVE_HASH_PATTERN = /^(md|epub|pdf)\/([a-f0-9]{2})\/([a-f0-9]{40,})\.(md|epub|pdf)$/i;
+
+        // 2a. Exact ID match (highest confidence)
+        let authoritativeArch = doc.id ? archivedDocs.find((a) => a.id === doc.id) : undefined;
+
+        // 2b. Unambiguous structural fallback (only if exact ID not found and exactly 1 candidate exists)
+        if (!authoritativeArch) {
+          const structCandidates = archivedDocs.filter(
+            (a) =>
+              a.sourceType !== "vault" &&
+              a.sourceType !== "docs" &&
+              (a.storageRelPath === doc.relativePath ||
+                a.sourcePath === doc.relativePath ||
+                a.sourceKey === `archive:${doc.relativePath}`)
+          );
+          if (structCandidates.length === 1) {
+            authoritativeArch = structCandidates[0];
+          }
+        }
+
+        const isArchiveSource =
+          doc.sourceType === "archive" ||
+          doc.relativePath.startsWith("archive://") ||
+          ARCHIVE_HASH_PATTERN.test(doc.relativePath) ||
+          Boolean(authoritativeArch);
+
+        if (isArchiveSource) {
+          const archiveIdentifier =
+            authoritativeArch?.id ||
+            (doc.relativePath.startsWith("archive://")
+              ? doc.relativePath.replace(/^archive:\/\//, "").split("?")[0].trim()
+              : undefined) ||
+            doc.relativePath.match(ARCHIVE_HASH_PATTERN)?.[3] ||
+            authoritativeArch?.storageRelPath?.match(ARCHIVE_HASH_PATTERN)?.[3];
+
+          if (archiveIdentifier) {
+            setActiveReaderDoc({
+              documentId: authoritativeArch?.id || doc.id,
+              title: doc.title,
+              format: "pdf",
+              fileUrl: `/api/archive/file/${encodeURIComponent(archiveIdentifier)}`,
+              initialPosition: authoritativeArch?.lastPosition?.pageNumber
+                ? String(authoritativeArch.lastPosition.pageNumber)
+                : undefined,
+            });
+            return;
+          }
+
+          setRecentReadsError("Không thể xác định mã định danh tài liệu lưu trữ (Archive Identifier).");
+          return;
+        }
+
+        // Priority 3: Fallback Docs
         const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
         setActiveReaderDoc({
           documentId: matchingArch?.id || doc.id || doc.relativePath,
