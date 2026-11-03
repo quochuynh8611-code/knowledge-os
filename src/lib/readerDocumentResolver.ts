@@ -6,7 +6,7 @@ export interface ActiveReaderDocument {
   format: 'pdf' | 'epub' | 'md' | string;
   fileUrl?: string;
   content?: string;
-  sourceType?: 'docs' | 'vault';
+  sourceType?: 'docs' | 'vault' | 'archive';
   initialPosition?: string;
 }
 
@@ -529,7 +529,7 @@ export interface CitationResolutionResult {
     title: string;
     format: 'md' | 'epub' | 'pdf' | string;
     fileUrl?: string;
-    sourceType?: 'docs' | 'vault';
+    sourceType?: 'docs' | 'vault' | 'archive';
   } | null;
 }
 
@@ -554,7 +554,7 @@ export function resolveCitationTargetDocument(
     title?: string;
     format?: string;
     fileUrl?: string;
-    sourceType?: 'docs' | 'vault';
+    sourceType?: 'docs' | 'vault' | 'archive';
   } | null | undefined,
   resources: Resource[]
 ): CitationResolutionResult | null {

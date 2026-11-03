@@ -23,6 +23,7 @@ import { PageHeader, SurfaceCard, StatusPill, ToolbarButton } from "../workbench
 import { copyTextToClipboard } from "../../lib/clipboard";
 import { globalReadingPositionStore, formatReadingDuration, calculateReadingAnalyticsBreakdown } from "../../lib/readingPositionUnified";
 import { MarkdownReadabilityRenderer } from "../../lib/markdownReadability";
+import { resolveDocumentRouting } from "../../lib/documentRoutingResolver";
 
 const readerPromise = import("../reader/UnifiedResearchReader").then((m) => ({
   default: m.UnifiedResearchReader,
@@ -78,7 +79,7 @@ export function DocsExplorerView({
     format: string;
     fileUrl?: string;
     content?: string;
-    sourceType?: 'docs' | 'vault';
+    sourceType?: 'docs' | 'vault' | 'archive';
     initialPosition?: string;
   } | null>(null);
   const [isVaultModalOpen, setIsVaultModalOpen] = useState<boolean>(false);
@@ -367,6 +368,43 @@ export function DocsExplorerView({
   const handleDocClick = useCallback(
     (doc: DocItem, openInReader: boolean = false) => {
       const format = getDocFormat(doc);
+
+      // ─── NHÁNH 1: PDF & EPUB (DO PURE RESOLVER NDH1a ĐIỀU PHỐI) ───
+      if (format === "epub" || format === "pdf") {
+        const result = resolveDocumentRouting({
+          doc,
+          format,
+          archivedDocs,
+          docsList: docs,
+        });
+
+        if (result.success === true) {
+          const { route } = result;
+          setActiveReaderDoc({
+            documentId: route.documentId,
+            title: route.title,
+            format: route.format,
+            fileUrl: route.fileUrl,
+            sourceType: route.sourceType,
+            initialPosition: route.initialPosition,
+          });
+          return;
+        } else if (result.success === false) {
+          if (result.error.status === "ambiguous") {
+            setRecentReadsError(
+              `Phát hiện tài liệu bị trùng lặp định danh lưu trữ (${result.error.candidateIds?.join(", ")}). Vui lòng mở trực tiếp từ Quản lý Tài nguyên.`
+            );
+            return;
+          }
+
+          if (result.error.status === "not_found") {
+            setRecentReadsError("Không thể xác định nguồn tài liệu lưu trữ hợp lệ.");
+            return;
+          }
+        }
+      }
+
+      // ─── NHÁNH 2: MARKDOWN & CÁC ĐỊNH DẠNG KHÁC (BẢO LƯU 100% BEHAVIOR HIỆN HỮU) ───
       const isVault =
         doc.sourceType === "vault" ||
         doc.relativePath.startsWith("vault://") ||
@@ -390,9 +428,7 @@ export function DocsExplorerView({
       let initialPos: string | undefined = undefined;
       if (matchingArch?.lastPosition && typeof matchingArch.lastPosition === "object") {
         const lp = matchingArch.lastPosition;
-        if (format === "epub" && lp.cfi) initialPos = lp.cfi;
-        else if (format === "pdf" && lp.pageNumber) initialPos = String(lp.pageNumber);
-        else if (format === "md" && lp.headingId) initialPos = lp.headingId;
+        if (format === "md" && lp.headingId) initialPos = lp.headingId;
       }
 
       if (isVault) {
@@ -404,120 +440,13 @@ export function DocsExplorerView({
             : undefined) ||
           doc.relativePath.replace(/^vault:\/\//, "").replace(/^\/+/, "");
 
-        if (format === "epub" || format === "pdf") {
-          setActiveReaderDoc({
-            documentId: matchingArch?.id || doc.id || `vault:${cleanVaultPath}`,
-            title: doc.title || cleanVaultPath.split("/").pop() || cleanVaultPath,
-            format,
-            sourceType: "vault",
-            fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`,
-            initialPosition: initialPos,
-          });
-          return;
-        }
         fetchDocContent(cleanVaultPath, "vault", matchingArch?.id || doc.id, true, initialPos);
         return;
       }
 
-      if (format === "epub") {
-        const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-        setActiveReaderDoc({
-          documentId: matchingArch?.id || doc.id || doc.relativePath,
-          title: doc.title || doc.relativePath.split("/").pop() || doc.relativePath,
-          format: "epub",
-          sourceType: "docs",
-          fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
-          initialPosition: initialPos,
-        });
-        return;
-      }
-      if (format === "pdf") {
-        // Priority 1: Docs repository document has strictly verified provenance
-        const isStrictDocs =
-          doc.sourceType === "docs" ||
-          (doc.sourceType !== "archive" && docs.some((d) => d.id === doc.id || d.relativePath === doc.relativePath));
-
-        if (isStrictDocs) {
-          const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-          setActiveReaderDoc({
-            documentId: matchingArch?.id || doc.id || doc.relativePath,
-            title: doc.title,
-            format: "pdf",
-            sourceType: "docs",
-            fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
-            initialPosition: initialPos,
-          });
-          return;
-        }
-
-        // Priority 2: Authoritative Archive PDF resolution
-        const ARCHIVE_HASH_PATTERN = /^(md|epub|pdf)\/([a-f0-9]{2})\/([a-f0-9]{40,})\.(md|epub|pdf)$/i;
-
-        // 2a. Exact ID match (highest confidence)
-        let authoritativeArch = doc.id ? archivedDocs.find((a) => a.id === doc.id) : undefined;
-
-        // 2b. Unambiguous structural fallback (only if exact ID not found and exactly 1 candidate exists)
-        if (!authoritativeArch) {
-          const structCandidates = archivedDocs.filter(
-            (a) =>
-              a.sourceType !== "vault" &&
-              a.sourceType !== "docs" &&
-              (a.storageRelPath === doc.relativePath ||
-                a.sourcePath === doc.relativePath ||
-                a.sourceKey === `archive:${doc.relativePath}`)
-          );
-          if (structCandidates.length === 1) {
-            authoritativeArch = structCandidates[0];
-          }
-        }
-
-        const isArchiveSource =
-          doc.sourceType === "archive" ||
-          doc.relativePath.startsWith("archive://") ||
-          ARCHIVE_HASH_PATTERN.test(doc.relativePath) ||
-          Boolean(authoritativeArch);
-
-        if (isArchiveSource) {
-          const archiveIdentifier =
-            authoritativeArch?.id ||
-            (doc.relativePath.startsWith("archive://")
-              ? doc.relativePath.replace(/^archive:\/\//, "").split("?")[0].trim()
-              : undefined) ||
-            doc.relativePath.match(ARCHIVE_HASH_PATTERN)?.[3] ||
-            authoritativeArch?.storageRelPath?.match(ARCHIVE_HASH_PATTERN)?.[3];
-
-          if (archiveIdentifier) {
-            setActiveReaderDoc({
-              documentId: authoritativeArch?.id || doc.id,
-              title: doc.title,
-              format: "pdf",
-              fileUrl: `/api/archive/file/${encodeURIComponent(archiveIdentifier)}`,
-              initialPosition: authoritativeArch?.lastPosition?.pageNumber
-                ? String(authoritativeArch.lastPosition.pageNumber)
-                : undefined,
-            });
-            return;
-          }
-
-          setRecentReadsError("Không thể xác định mã định danh tài liệu lưu trữ (Archive Identifier).");
-          return;
-        }
-
-        // Priority 3: Fallback Docs
-        const sanitizedRelative = doc.relativePath.replace(/^\/+/, "");
-        setActiveReaderDoc({
-          documentId: matchingArch?.id || doc.id || doc.relativePath,
-          title: doc.title,
-          format: "pdf",
-          sourceType: "docs",
-          fileUrl: `/api/docs/raw?path=${encodeURIComponent(sanitizedRelative)}`,
-          initialPosition: initialPos,
-        });
-        return;
-      }
       fetchDocContent(doc.relativePath, "docs", matchingArch?.id || doc.id, openInReader, initialPos);
     },
-    [fetchDocContent, getDocFormat, archivedDocs]
+    [fetchDocContent, getDocFormat, archivedDocs, docs]
   );
 
   const handleVaultFileSelect = useCallback(async (filePath: string) => {

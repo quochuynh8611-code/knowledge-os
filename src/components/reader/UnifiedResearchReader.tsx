@@ -34,7 +34,7 @@ export interface UnifiedResearchReaderProps {
   format: 'epub' | 'md' | 'markdown' | string;
   fileUrl?: string;
   content?: string;
-  sourceType?: 'docs' | 'vault';
+  sourceType?: 'docs' | 'vault' | 'archive';
   initialPosition?: string;
   initialToc?: TocItem[];
   initialExcerpts?: ResearchExcerpt[];
@@ -1338,7 +1338,7 @@ export function UnifiedResearchReader({
                 content={content}
                 fileUrl={fileUrl}
                 documentId={documentId}
-                sourceType={sourceType}
+                sourceType={sourceType === 'vault' ? 'vault' : 'docs'}
                 initialHeadingId={targetHeadingId}
                 initialScrollPercentage={targetScrollPercentage}
                 onTocGenerated={(items) => setTocItems(items)}
