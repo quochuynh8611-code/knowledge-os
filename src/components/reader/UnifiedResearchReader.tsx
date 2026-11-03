@@ -1338,7 +1338,14 @@ export function UnifiedResearchReader({
                 content={content}
                 fileUrl={fileUrl}
                 documentId={documentId}
-                sourceType={sourceType === 'vault' ? 'vault' : 'docs'}
+                // Preserve undefined for legacy Vault inference; Archive Markdown is out of scope for NDH1a.
+                sourceType={
+                  sourceType === 'vault'
+                    ? 'vault'
+                    : sourceType === 'docs'
+                      ? 'docs'
+                      : undefined
+                }
                 initialHeadingId={targetHeadingId}
                 initialScrollPercentage={targetScrollPercentage}
                 onTocGenerated={(items) => setTocItems(items)}
