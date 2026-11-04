@@ -369,8 +369,21 @@ export function DocsExplorerView({
     (doc: DocItem, openInReader: boolean = false) => {
       const format = getDocFormat(doc);
 
-      // ─── NHÁNH 1: PDF & EPUB (DO PURE RESOLVER NDH1a ĐIỀU PHỐI) ───
-      if (format === "epub" || format === "pdf") {
+      // ─── NHÁNH 1: RESOLVER ĐIỀU PHỐI ROUTING (PDF, EPUB, ARCHIVE MARKDOWN) ───
+      const matchingArchItem = archivedDocs.find(
+        (a) =>
+          a.id === doc.id ||
+          a.storageRelPath === doc.relativePath ||
+          a.sourcePath === doc.relativePath ||
+          a.sourceKey === `archive:${doc.relativePath}`
+      );
+      const isArchiveMarkdown =
+        format === "md" &&
+        (matchingArchItem?.sourceType === "archive" ||
+          (doc.sourceType === "archive" && matchingArchItem?.sourceType !== "docs" && matchingArchItem?.sourceType !== "vault") ||
+          doc.relativePath?.startsWith("archive://"));
+
+      if (format === "epub" || format === "pdf" || isArchiveMarkdown) {
         const result = resolveDocumentRouting({
           doc,
           format,
@@ -380,15 +393,63 @@ export function DocsExplorerView({
 
         if (result.success === true) {
           const { route } = result;
-          setActiveReaderDoc({
-            documentId: route.documentId,
-            title: route.title,
-            format: route.format,
-            fileUrl: route.fileUrl,
-            sourceType: route.sourceType,
-            initialPosition: route.initialPosition,
-          });
-          return;
+          if (route.routeType === "archive") {
+            if (openInReader) {
+              setActiveReaderDoc({
+                documentId: route.documentId,
+                title: route.title,
+                format: route.format,
+                fileUrl: route.fileUrl,
+                sourceType: route.sourceType,
+                initialPosition: route.initialPosition,
+              });
+              return;
+            } else {
+              // Preview trong Library list
+              setIsLoadingContent(true);
+              setError(null);
+              fetch(route.fileUrl)
+                .then(async (res) => {
+                  if (!res.ok) throw new Error(`Lỗi nạp nội dung tài liệu lưu trữ (${res.status})`);
+                  const text = await res.text();
+                  const detail: DocDetail = {
+                    id: route.documentId,
+                    title: route.title,
+                    category: doc.category || "guides",
+                    relativePath: doc.relativePath,
+                    sizeBytes: doc.sizeBytes || text.length,
+                    lastModified: doc.lastModified || new Date().toISOString(),
+                    content: text,
+                    sourceType: "archive",
+                    sourcePath: doc.relativePath,
+                  };
+                  setSelectedDoc(detail);
+                })
+                .catch((error: unknown) => {
+                  const message =
+                    error instanceof Error
+                      ? error.message
+                      : "Không thể nạp nội dung tài liệu lưu trữ";
+                  setError(message);
+                })
+                .finally(() => {
+                  setIsLoadingContent(false);
+                });
+              return;
+            }
+          } else if (format === "epub" || format === "pdf") {
+            // Bảo toàn 100% logic NDH1a cho EPUB / PDF
+            setActiveReaderDoc({
+              documentId: route.documentId,
+              title: route.title,
+              format: route.format,
+              fileUrl: route.fileUrl,
+              sourceType: route.sourceType,
+              initialPosition: route.initialPosition,
+            });
+            return;
+          }
+          // Với route.routeType !== "archive" và format === "md" (Docs/Vault Markdown), để luồng hiện hữu tiếp tục xử lý
         } else if (result.success === false) {
           if (result.error.status === "ambiguous") {
             setRecentReadsError(
@@ -397,7 +458,7 @@ export function DocsExplorerView({
             return;
           }
 
-          if (result.error.status === "not_found") {
+          if (result.error.status === "not_found" || result.error.status === "missing_identifier") {
             setRecentReadsError("Không thể xác định nguồn tài liệu lưu trữ hợp lệ.");
             return;
           }

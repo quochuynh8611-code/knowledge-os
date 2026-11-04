@@ -397,7 +397,30 @@ describe('Unit: resolveDocumentRouting (NDH1a Pure Routing & Identity Resolver)'
   });
 
   // 12. Unsupported format
-  it('12. returns unsupported_format failure when given format is md or other', () => {
+  it('12. returns unsupported_format failure when given format is other', () => {
+    const otherDoc: DocItem = {
+      id: 'doc-other',
+      title: 'README',
+      category: 'guides',
+      relativePath: 'docs/README.txt',
+      sizeBytes: 512,
+      lastModified: '2026-11-01T00:00:00.000Z',
+    };
+
+    const resOther = resolveDocumentRouting({
+      doc: otherDoc,
+      format: 'other',
+      archivedDocs: [],
+    });
+
+    expect(resOther.success).toBe(false);
+    if (resOther.success === false) {
+      expect(resOther.error.status).toBe('unsupported_format');
+    }
+  });
+
+  // 13. Returns not_found for unsupported Markdown item outside Vault, Docs and Archive
+  it('13. returns not_found for unsupported Markdown item outside Vault, Docs and Archive', () => {
     const mdDoc: DocItem = {
       id: 'doc-md',
       title: 'README',
@@ -407,15 +430,16 @@ describe('Unit: resolveDocumentRouting (NDH1a Pure Routing & Identity Resolver)'
       lastModified: '2026-11-01T00:00:00.000Z',
     };
 
-    const resMd = resolveDocumentRouting({
+    const result = resolveDocumentRouting({
       doc: mdDoc,
       format: 'md',
       archivedDocs: [],
+      docsList: [],
     });
 
-    expect(resMd.success).toBe(false);
-    if (resMd.success === false) {
-      expect(resMd.error.status).toBe('unsupported_format');
+    expect(result.success).toBe(false);
+    if (result.success === false) {
+      expect(result.error.status).toBe('not_found');
     }
   });
 });
