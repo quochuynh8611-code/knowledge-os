@@ -1,7 +1,7 @@
 import type { ArchivedDocument } from '../types';
 import type { DocItem } from '../components/docs/DocsExplorerView';
 
-export type SupportedRoutingFormat = 'pdf' | 'epub';
+export type SupportedRoutingFormat = 'pdf' | 'epub' | 'md';
 
 export interface BaseResolvedRoute {
   readonly documentId: string;
@@ -31,7 +31,7 @@ export type ResolvedRoute = DocsResolvedRoute | VaultResolvedRoute | ArchiveReso
 
 export interface RoutingResolutionFailure {
   readonly routeType: 'unresolved';
-  readonly status: 'ambiguous' | 'not_found' | 'unsupported_format';
+  readonly status: 'ambiguous' | 'not_found' | 'unsupported_format' | 'missing_identifier';
   readonly reason: string;
   readonly candidateIds?: string[];
 }
@@ -63,26 +63,29 @@ function extractPosition(
   if (format === 'epub' && typeof pos.cfi === 'string' && pos.cfi.trim().length > 0) {
     return pos.cfi;
   }
+  if (format === 'md' && typeof pos.headingId === 'string' && pos.headingId.trim().length > 0) {
+    return pos.headingId;
+  }
   return undefined;
 }
 
 /**
- * Pure Resolver Function for NDH1a Document Routing & Identity Contract.
- * Implements deterministic routing for PDF and EPUB without React, DOM or network side-effects.
+ * Pure Resolver Function for NDH1a/NDH1b Document Routing & Identity Contract.
+ * Implements deterministic routing for PDF, EPUB, and Archive/Docs/Vault Markdown without React, DOM or network side-effects.
  */
 export function resolveDocumentRouting(
   input: ResolveDocumentRoutingInput
 ): ResolveDocumentRoutingResult {
   const { doc, format, archivedDocs, docsList = [] } = input;
 
-  // 1. Format Gate: Only 'pdf' and 'epub' are supported in NDH1a
-  if (format !== 'pdf' && format !== 'epub') {
+  // 1. Format Gate: 'pdf', 'epub', and 'md' are supported
+  if (format !== 'pdf' && format !== 'epub' && format !== 'md') {
     return {
       success: false,
       error: {
         routeType: 'unresolved',
         status: 'unsupported_format',
-        reason: `Định dạng ${format} không được hỗ trợ bởi resolver NDH1a (chỉ hỗ trợ pdf và epub)`,
+        reason: `Định dạng ${format} không được hỗ trợ bởi resolver (chỉ hỗ trợ pdf, epub và md)`,
       },
     };
   }
@@ -100,7 +103,6 @@ export function resolveDocumentRouting(
     );
 
   if (isVaultDoc) {
-    // Tìm authoritative vault record nếu có
     const authoritativeVault = archivedDocs.find(
       (a) =>
         (a.id === doc.id ||
@@ -121,6 +123,11 @@ export function resolveDocumentRouting(
     const title = doc.title || cleanVaultPath.split('/').pop() || cleanVaultPath;
     const initialPosition = extractPosition(format, authoritativeVault);
 
+    const fileUrl =
+      format === 'md'
+        ? `/api/obsidian/vault/file?path=${encodeURIComponent(cleanVaultPath)}`
+        : `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`;
+
     return {
       success: true,
       route: {
@@ -129,7 +136,7 @@ export function resolveDocumentRouting(
         documentId,
         title,
         format,
-        fileUrl: `/api/obsidian/vault/attachment?path=${encodeURIComponent(cleanVaultPath)}`,
+        fileUrl,
         initialPosition,
       },
     };
@@ -144,7 +151,6 @@ export function resolveDocumentRouting(
   const isStrictDocs = (isExplicitDocs || (isInDocsList && !isArchiveTagged)) && !isArchiveTagged;
 
   if (isStrictDocs) {
-    // Tìm authoritative Archive record nếu có (khớp exact ID hoặc structural unique match)
     let authoritativeArch: ArchivedDocument | undefined = undefined;
 
     if (doc.id) {
@@ -155,7 +161,6 @@ export function resolveDocumentRouting(
       const structCandidates = archivedDocs.filter(
         (a) =>
           a.sourceType !== 'vault' &&
-          a.sourceType !== 'docs' &&
           (a.storageRelPath === doc.relativePath ||
             a.sourcePath === doc.relativePath ||
             a.sourceKey === `archive:${doc.relativePath}`)
@@ -237,7 +242,18 @@ export function resolveDocumentRouting(
     Boolean(directHashMatch) ||
     Boolean(authoritativeArch);
 
-  if (isArchiveSource && archiveIdentifier) {
+  if (isArchiveSource) {
+    if (!archiveIdentifier) {
+      return {
+        success: false,
+        error: {
+          routeType: 'unresolved',
+          status: 'missing_identifier',
+          reason: 'Không thể xác định mã định danh tài liệu lưu trữ hợp lệ',
+        },
+      };
+    }
+
     const initialPosition = extractPosition(format, authoritativeArch);
     return {
       success: true,
@@ -260,9 +276,7 @@ export function resolveDocumentRouting(
     error: {
       routeType: 'unresolved',
       status: 'not_found',
-      reason: isArchiveSource
-        ? 'Không thể xác định mã định danh tài liệu lưu trữ hợp lệ'
-        : 'Không tìm thấy nguồn tài liệu phù hợp cho định tuyến đọc',
+      reason: 'Không tìm thấy nguồn tài liệu phù hợp cho định tuyến đọc',
     },
   };
 }
